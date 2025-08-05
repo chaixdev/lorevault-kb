@@ -12,6 +12,23 @@ LoreVault is an intelligent, service-oriented system designed to automatically b
 
 **Core Value Proposition:** Transform the tedious task of manual note-taking and lore tracking into an automated, intelligent process that provides a consistent, high-quality, and programmatically accessible knowledge base that grows richer over time.
 
+### Project Roadmap
+
+The project will be developed in major versions, each delivering a significant piece of functionality:
+
+- **v1.0: The Core Engine (The "Write" Path):** The initial focus is on perfecting the ingestion and synthesis pipeline. This version will establish a robust, automated "write" path capable of processing chapters and building a foundational knowledge base for the primary entity type: `Character`. This will be achieved through the following milestones:
+    - **v0.1: Project Setup & API Shell:** Establish the Maven project structure, essential dependencies (Spring Boot, JPA, etc.), and create placeholder REST controllers for the command and query APIs.
+    - **v0.2: Core Data Models (JPA):** Implement the JPA entities for the asynchronous job lifecycle (`IngestionJob`, `StatusRecord`) and the core content models (`Chapter`, `Scene`, `Chunk`).
+    - **v0.3: Asynchronous Job Processor:** Build the service to manage the `IngestionJob` state machine. A submitted chapter will create a job that transitions through states, but without executing the core logic yet.
+    - **v0.4: Content Pre-processing:** Implement the first stage of the pipeline: splitting raw chapter text into `Scene` and `Chunk` entities and persisting them.
+    - **v0.5: Synthesized Entity Models (JPA):** Define and implement the JPA entity for `Character`, including its properties, relationships, and a basic schema.
+    - **v0.6: Local AI Integration & Entity Extraction:** Integrate the local SLM. Add the core synthesis logic to the pipeline: process each `Chunk`, extract character mentions, and create or update `Character` entities.
+    - **v0.7: Basic Query Endpoint:** Implement the first "read" endpoint (`GET /api/v1/characters/{id}`) to retrieve a synthesized character, validating the end-to-end workflow.
+
+- **v2.0: The Complete Knowledge Base (The "Read" Path):** This version will expand support to all core entity types (e.g., `Location`, `Faction`, `Item`) and build out a comprehensive, structured query API. The outcome will be a feature-complete and secure lore API, mastering the "read" path.
+
+- **v3.0: The Interactive Lore Explorer:** The focus shifts to the user experience by building a polished web application. The defining feature will be the **"Annotated Reader Mode,"** which provides inline, interactive lore annotations, transforming the reading experience.
+
 ## 2. System Interaction & Architecture
 
 ### API-First, CQRS-based Architecture
@@ -43,6 +60,7 @@ The system is built as a service, prioritizing a clean separation of concerns us
 
 - **Progressive Revelation:** Build entity profiles gradually as new information is revealed.
 - **Status Tracking:** Monitor changes in character status, relationships, and affiliations.
+- **Local AI Pre-processing:** Utilize Gemma 3B for fast, local entity extraction and initial analysis before engaging expensive external LLMs.
 - **RAG-Powered Conflict Detection:** Utilize a Retrieval-Augmented Generation (RAG) pattern to identify contradictions or inconsistencies between new information and the existing knowledge base.
 - **Timeline Management:** Maintain chronological consistency across all entries.
 
@@ -127,8 +145,9 @@ The system is fundamentally a service. The RESTful API is the primary and sole p
 - Implement core REST API (Command & Query endpoints) using CQRS.
 - Define and implement the core PostgreSQL schema and JPA entities for Characters.
 - Set up the asynchronous processing pipeline for chapter ingestion.
-- Implement basic entity extraction for Characters.
-- Implement simple, RAG-powered conflict detection.
+- **Integrate Gemma 3B for local entity extraction** - Deploy lightweight local model for cost-effective pre-processing.
+- Implement basic entity extraction for Characters using the local Gemma 3B model.
+- Implement simple, RAG-powered conflict detection using external LLMs only when necessary.
 
 ### Phase 2: Enhancement
 
@@ -148,5 +167,45 @@ The system is fundamentally a service. The RESTful API is the primary and sole p
 
 - Optimize database queries and indexing for performance at scale.
 - Refine the AI prompts and models for higher accuracy and lower cost.
+- **Optimize Gemma 3B inference** - Fine-tune local model performance and explore model quantization for faster execution.
 - Implement advanced query capabilities (e.g., complex filtering, timeline queries).
 - Develop comprehensive API documentation.
+
+## 8. Technical Implementation Notes
+
+### 8.1 Local AI Integration
+
+**Gemma 3B Implementation:**
+- **Model Hosting:** Gemma 3B will be deployed locally within the application container using ONNX Runtime or similar inference framework.
+- **Cost Benefits:** Local execution eliminates per-request costs for initial entity extraction, making the system economically viable for high-volume processing.
+- **Performance:** Fast inference times (< 1 second per chunk) enable real-time processing feedback.
+- **Fallback Strategy:** If local model fails, system can gracefully fall back to external API for entity extraction.
+
+### 8.2 Hybrid AI Architecture
+
+**Two-Tier Processing:**
+1. **Tier 1 (Local):** Gemma 3B for entity extraction, text classification, and basic analysis
+2. **Tier 2 (External):** Powerful LLMs (GPT-4, Claude) for complex reasoning, synthesis, and conflict resolution
+
+**Benefits:**
+- **Cost Optimization:** 80% of processing handled locally at minimal cost
+- **Quality Assurance:** Complex reasoning still handled by state-of-the-art models
+- **Reduced Latency:** Local processing eliminates network round-trips for common tasks
+
+## 9. Future Horizons
+
+While the v1-v3 roadmap delivers a complete and powerful product, the architecture is designed to support even more advanced capabilities in the future. These represent potential long-term goals for v4.0 and beyond.
+
+- **v4.0: Natural Language Query Engine:** Introduce a "magic" search capability allowing users to ask questions in plain English (e.g., "What is Kevin Jenkins's relationship with the HDF?") and receive a synthesized answer with citations. This would involve building a sophisticated query-understanding and answer-synthesis pipeline.
+
+- **v5.0: The Proactive Agent:** Evolve the system from a passive service to a proactive knowledge partner. This could include features like:
+    - **Knowledge Gap Analysis:** The agent analyzes its own knowledge graph to find implied but unconfirmed relationships, flagging them for review.
+    - **Intelligent Re-processing:** The agent can automatically re-process entities with newer, more powerful AI models to continuously improve the quality of the knowledge base.
+
+- **Beyond v5.0: The Multi-Modal & Generative Agent:**
+    - **Multi-Modal Ingestion:** Expand beyond text to ingest images (maps, character art) and audio (audiobooks), using vision and transcription models to enrich the knowledge base.
+    - **Generative Content:** Enable the agent to use its structured knowledge to generate new content on demand, such as wiki articles, timelines, or "what if" scenario analyses.
+
+- **The Configurable & Multi-Tenant Universe:**
+    - **Multi-Tenancy:** Evolve the system to support multiple, isolated "universes" under a single deployment.
+    - **Configurable Entity Schemas:** Allow administrators to define which entity types are relevant for a specific universe. For example, a fantasy universe could track "magic systems" while a sci-fi universe tracks "technologies" and "spaceships," and realistic fiction would track neither. This would make the system adaptable to any genre.

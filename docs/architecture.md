@@ -53,7 +53,7 @@ graph TD
 
 ### 2. Functional Viewpoint
 
-This viewpoint describes the system's runtime functional elements, their responsibilities, interfaces, and the interactions between them. This view has been updated to incorporate `langextract` as a core part of the pre-processing stage.
+This viewpoint describes the system's runtime functional elements, their responsibilities, interfaces, and the interactions between them. This view has been updated to incorporate Gemma 3B as a core part of the pre-processing stage.
 
 Architectural Pattern: Command Query Responsibility Segregation (CQRS)
 
@@ -65,28 +65,30 @@ The system is structured around a CQRS pattern. The Command Path is explicitly d
     
 - **Orchestration Service:** The central coordinator of the Command path. Its primary role is to execute the high-level workflow, delegating specific tasks to the local and remote services.
     
-- **Local Extraction & Filtering Service:** A critical component responsible for all deterministic, low-cost tasks. It wraps the `langextract` library (via JNI or a similar integration method). Its responsibilities include:
+- **Local Extraction & Filtering Service:** A critical component responsible for all deterministic and local AI tasks. It uses Gemma 3B (a lightweight, locally-hosted model) for efficient entity extraction. Its responsibilities include:
     
     - Text cleaning and chunking.
         
     - Change detection (via hashing) to prevent re-processing of known content.
         
-    - Using `langextract` to perform high-fidelity mention extraction and clustering, producing a definitive list of all entities mentioned in a text chunk.
+    - Using Gemma 3B to perform high-fidelity mention extraction and clustering, producing a definitive list of all entities mentioned in a text chunk.
         
 - **AI Client Components:** A set of specialized clients for targeted AI tasks.
     
     - `EmbeddingClient`: Generates vectors for _new or changed_ text chunks only.
         
     - `SynthesisClient`: The primary interface to the powerful LLM. It is only called when the `Local Extraction & Filtering Service` has identified entities that require analysis. It receives the text chunk and the list of entities to focus on, then performs the RAG-powered synthesis and structured data extraction.
+
+    - `GemmaClient`: A local client for the Gemma 3B model, used for fast, cost-effective entity extraction and initial processing tasks.
         
 - **Query Service:** A simple, read-only service that provides fast access to the persisted entity data for the Query path.
     
 - **Persistence Service:** Provides a repository-based interface to the database.
     
 
-Diagram: Functional Components with LangExtract
+Diagram: Functional Components with Gemma 3B
 
-This diagram highlights the new Local Extraction & Filtering Service acting as an intelligent gatekeeper before the Orchestration Service engages the expensive AI components.
+This diagram highlights the new Local Extraction & Filtering Service using Gemma 3B as an intelligent gatekeeper before the Orchestration Service engages the expensive AI components.
 
 ```mermaid
 graph TD
@@ -110,7 +112,7 @@ graph TD
 
     User[API Client] -- "Command (POST /chapters)" --> API
     API -- "1. Invokes Command" --> OS
-    OS -- "2. Pre-process & Extract Mentions" --> LEFS
+    OS -- "2. Pre-process & Extract Mentions (Gemma 3B)" --> LEFS
     LEFS -- "3. Return clustered entity mentions" --> OS
     OS -- "4. Coordinate AI Pipeline (only for chunks with entities)" --> AC
     AC -- "5. Calls External LLMs" --> External_LLMs[External LLM APIs]
@@ -139,7 +141,7 @@ The system utilizes a unified PostgreSQL database that serves two distinct roles
 
 Information Flow:
 
-The flow of information is a multi-stage process. Raw text is first processed by the Local Extraction & Filtering Service which uses langextract to create a high-fidelity list of entity mentions. This list acts as a set of "candidate tasks." Only these qualified tasks are then sent for AI analysis, ensuring that expensive LLM calls are focused and necessary. The resulting structured information is what finally gets persisted in the database.
+The flow of information is a multi-stage process. Raw text is first processed by the Local Extraction & Filtering Service which uses Gemma 3B to create a high-fidelity list of entity mentions. This list acts as a set of "candidate tasks." Only these qualified tasks are then sent for AI analysis, ensuring that expensive LLM calls are focused and necessary. The resulting structured information is what finally gets persisted in the database.
 
 Diagram: High-Level Entity Relationship Model
 
@@ -188,21 +190,21 @@ The asynchronous processing model is critical. The initial local extraction step
 
 1. **Request Reception:** The API controller immediately hands off the command for background processing and returns `HTTP 202 Accepted`.
     
-2. **Local Extraction:** The first steps in the background thread are the deterministic checks (hashing) and the call to the `Local Extraction & Filtering Service`. This service uses `langextract` to find all entity mentions. Many text chunks may be discarded at this stage if they contain no entities, saving all downstream costs.
+2. **Local Extraction:** The first steps in the background thread are the deterministic checks (hashing) and the call to the `Local Extraction & Filtering Service`. This service uses Gemma 3B to find all entity mentions. Many text chunks may be discarded at this stage if they contain no entities, saving all downstream costs.
     
 3. **Targeted AI Processing:** Only if a chunk contains entity mentions does the `Orchestration Service` proceed with the RAG loop and the expensive call to the `SynthesisClient`.
     
 
-Diagram: Sequence Diagram for Chapter Ingestion (with LangExtract)
+Diagram: Sequence Diagram for Chapter Ingestion (with Gemma 3B)
 
-This diagram shows the new langextract step providing a high-quality filter.
+This diagram shows the new Gemma 3B step providing a high-quality filter.
 
 ```mermaid
 sequenceDiagram
     participant Client
     participant API as REST API
     participant OS as Orchestration Service
-    participant LEFS as Local Extraction Service (LangExtract)
+    participant LEFS as Local Extraction Service (Gemma 3B)
     participant AC as AI Clients
     participant DB as PostgreSQL
 
@@ -212,7 +214,7 @@ sequenceDiagram
     API-->>-Client: OK
     
     activate OS
-    OS->>LEFS: 1. Chunk, hash & extract mentions
+    OS->>LEFS: 1. Chunk, hash & extract mentions (Gemma 3B)
     activate LEFS
     LEFS->>DB: Check for existing hashes
     LEFS-->>OS: 2. Return clustered entity mentions for new chunks
@@ -245,7 +247,7 @@ The system is designed to be deployed as a set of containers for consistency and
 
 **Runtime Components:**
 
-1. **LoreVault Application Container:** A Docker container running the Spring Boot application JAR. This container must also include the `langextract` compiled library and any necessary runtime dependencies (e.g., C++ standard libraries) for it to function.
+1. **LoreVault Application Container:** A Docker container running the Spring Boot application JAR. This container must also include Gemma 3B model files and any necessary runtime dependencies (e.g., ONNX Runtime or similar ML inference libraries) for local model execution.
     
 2. **PostgreSQL Container:** A Docker container running the PostgreSQL database instance with the `pgvector` extension enabled.
     
@@ -258,7 +260,7 @@ All external service configurations (database URLs, LLM API keys) will be manage
 
 Diagram: Deployment Model
 
-The diagram remains the same, with the understanding that the "LoreVault App Container" now has an internal, compiled dependency on langextract.
+The diagram remains the same, with the understanding that the "LoreVault App Container" now has an internal dependency on Gemma 3B model files and ML inference runtime.
 
 ```mermaid
 graph TD
