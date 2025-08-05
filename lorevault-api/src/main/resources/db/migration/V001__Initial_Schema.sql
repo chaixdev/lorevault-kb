@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE chapters (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     
-    -- LoreCoordinates (embedded)
+    -- PublicationCoordinates (embedded)
     universe VARCHAR(255) NOT NULL,
     series VARCHAR(255) NOT NULL,
     book_number INTEGER NOT NULL,

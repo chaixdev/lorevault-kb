@@ -1,12 +1,11 @@
 package com.lorevault.api;
 
+import com.lorevault.api.test.IntegrationTestBase;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest
 @ActiveProfiles("test")
-class LoreVaultApiApplicationTests {
+class LoreVaultApiApplicationTests extends IntegrationTestBase {
 
     @Test
     void contextLoads() {
