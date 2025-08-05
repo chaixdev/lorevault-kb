@@ -1,0 +1,164 @@
+# Spring Boot / Maven / Gradle
+target/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Class files
+*.class
+
+# Log files
+*.log
+logs/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Environment variables and configuration
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+application-local.properties
+application-dev.properties
+application-*.yml
+!application.yml
+!application.properties
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+.idea_modules/
+
+# IDE - VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# IDE - Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Node.js (for any frontend components)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (for any AI/ML scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# JNI libraries (for langextract integration)
+*.dll
+*.so
+*.dylib
+
+# Test coverage
+/coverage/
+*.lcov
+
+# Dependency directories
+/.mvn/
+/.gradle/
+
+# Spring Boot DevTools
+spring-boot-devtools.properties
+
+# Application specific
+# AI model cache
+ai-cache/
+model-cache/
+
+# Vector embeddings cache
+embeddings-cache/
+
+# Backup files
+*.bak
+*.backup
+
+# Configuration backups
+config-backup/
+
+# API keys and secrets (additional safety)
+secrets/
+*.key
+*.pem
+*.p12
+*.jks
+
+# Documentation build artifacts
+docs/build/
+docs/_build/
+
+# Cache directories
+.cache/
+.npm/
+.yarn/
+
+# Local development Docker volumes
+docker-data/
+postgres-data/
