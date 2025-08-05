@@ -16,18 +16,33 @@ LoreVault is an intelligent, service-oriented system designed to automatically b
 
 The project will be developed in major versions, each delivering a significant piece of functionality:
 
-- **v1.0: The Core Engine (The "Write" Path):** The initial focus is on perfecting the ingestion and synthesis pipeline. This version will establish a robust, automated "write" path capable of processing chapters and building a foundational knowledge base for the primary entity type: `Character`. This will be achieved through the following milestones:
-    - **v0.1: Project Setup & API Shell:** Establish the Maven project structure, essential dependencies (Spring Boot, JPA, etc.), and create placeholder REST controllers for the command and query APIs.
-    - **v0.2: Core Data Models (JPA):** Implement the JPA entities for the asynchronous job lifecycle (`IngestionJob`, `StatusRecord`) and the core content models (`Chapter`, `Scene`, `Chunk`).
-    - **v0.3: Asynchronous Job Processor:** Build the service to manage the `IngestionJob` state machine. A submitted chapter will create a job that transitions through states, but without executing the core logic yet.
-    - **v0.4: Content Pre-processing:** Implement the first stage of the pipeline: splitting raw chapter text into `Scene` and `Chunk` entities and persisting them.
-    - **v0.5: Synthesized Entity Models (JPA):** Define and implement the JPA entity for `Character`, including its properties, relationships, and a basic schema.
-    - **v0.6: Local AI Integration & Entity Extraction:** Integrate the local SLM. Add the core synthesis logic to the pipeline: process each `Chunk`, extract character mentions, and create or update `Character` entities.
-    - **v0.7: Basic Query Endpoint:** Implement the first "read" endpoint (`GET /api/v1/characters/{id}`) to retrieve a synthesized character, validating the end-to-end workflow.
+- **v0.1.0: API Shell & Basic Job Lifecycle**
+    - **Goal:** Submit chapter text via API, get job ID back, track job status
 
-- **v2.0: The Complete Knowledge Base (The "Read" Path):** This version will expand support to all core entity types (e.g., `Location`, `Faction`, `Item`) and build out a comprehensive, structured query API. The outcome will be a feature-complete and secure lore API, mastering the "read" path.
+- **v0.2.0: Content Storage & Segmentation**
+    - **Goal:** Jobs actually process text and store Chapter/Chunk entities in database
 
-- **v3.0: The Interactive Lore Explorer:** The focus shifts to the user experience by building a polished web application. The defining feature will be the **"Annotated Reader Mode,"** which provides inline, interactive lore annotations, transforming the reading experience.
+- **v0.3.0: Local AI Integration & Raw Extraction**
+    - **Goal:** Each chunk gets processed by Gemma 3n E4B to extract preprocessing data (scene boundaries, scene tags, scene entities). scenes are also stored
+
+- **v0.4.0: Embedding Generation & Storage**
+    - **Goal:** All chunks have vector embeddings and semantic search works
+
+- **v0.5.0: Character Entity Synthesis**
+    - **Goal:** Character entity mentions become proper Character entities via RAG synthesis
+
+- **v1.0.0: Complete Pipeline Validation**
+    - **Goal:** End-to-end demo: submit story chapters, get back queryable character profiles
+
+- **v2.0: Multi-Entity Knowledge Base**
+    - **Goal:** Support for all core entity types (Characters, Locations, Factions, Items, Events) with full CRUD APIs
+    - **Deliverable:** Complete REST API documentation showing endpoints for all entity types. Demo that ingests a complex story and produces queryable entities of all types with relationships
+    - **Tasks:** Extend synthesis pipeline to all entity types, implement relationship modeling, build comprehensive query APIs, add advanced search capabilities
+
+- **v3.0: Interactive Web Application**
+    - **Goal:** Polished web UI with the signature "Annotated Reader Mode" feature
+    - **Deliverable:** Web application where users can paste a chapter and see it rendered with clickable entity annotations. Clicking annotations shows entity details and cross-references
+    - **Tasks:** Build React/Vue frontend, implement annotated reader component, create entity detail views, integrate with LoreVault API
 
 ## 2. System Interaction & Architecture
 
