@@ -2,7 +2,7 @@
 
 **Purpose**: Define the detailed workflow for ingesting chapter content and transforming it into structured knowledge entities  
 **Scope**: Complete content processing pipeline from HTTP request to persistent entity storage  
-**Dependencies**: CQRS Architecture (Functional Viewpoint), Asynchronous Processing (Concurrency Viewpoint)
+**Dependencies**: CQRS Architecture (Functional Viewpoint), Asynchronous Processing (Concurrency Viewpoint), Text Chunking (text-chunking-specification.md)
 
 ## Implementation Status
 
@@ -34,7 +34,7 @@ flowchart TD
     CREATE_JOB --> RESPONSE[Return 202 + Job ID]
     
     RESPONSE --> ASYNC_PROCESS[Async Processing]
-    ASYNC_PROCESS --> CHUNK_TEXT[Rolling Window Chunking]
+    ASYNC_PROCESS --> CHUNK_TEXT[Decision Gate Chunking]
     CHUNK_TEXT --> STORE_CHUNKS[Store Chunks with Positions]
     STORE_CHUNKS --> COMPLETE[Mark Job Complete]
     
@@ -47,7 +47,7 @@ flowchart TD
 **v0.2.0 Features Implemented**:
 - ✅ **Chapter Entity Storage**: Persistent storage with content hashing for deduplication
 - ✅ **Ingestion Job Tracking**: Comprehensive job lifecycle with status updates
-- ✅ **Rolling Window Chunking**: Deterministic text segmentation with 30% overlap
+- ✅ **Chunking**: chunking with 5000-char threshold and 15% overlap
 - ✅ **Chunk Entity Storage**: Position-aware chunks with content hashes
 - ✅ **REST API Endpoints**: Chapter submission and job status tracking
 - ✅ **Database Schema**: PostgreSQL with Flyway migrations (V001, V002)
@@ -55,7 +55,7 @@ flowchart TD
 **Current Processing Pipeline**:
 1. **Content Reception**: Validate and store chapter content with metadata
 2. **Job Creation**: Create trackable ingestion job with status updates
-3. **Text Chunking**: Split content into overlapping segments (200-1200 chars)
+3. **Text Chunking**: Apply decision gate logic (≤5000 chars = single chunk, >5000 chars = sliding window with 15% overlap) using specification-compliant algorithm (see [Text Chunking Specification](text-chunking-specification.md))
 4. **Chunk Storage**: Persist chunks with position coordinates and content hashes
 5. **Job Completion**: Update job status with final chunk count and completion time
 
@@ -133,8 +133,7 @@ flowchart TD
 
 **Current Processing Rules**:
 - **Content Hashing**: SHA-256 of normalized content for deduplication
-- **Rolling Window Chunking**: 30% overlap between adjacent chunks
-- **Chunk Size**: 200-1200 characters with sentence boundary awareness
+- **Text Chunking**: Rolling window algorithm with 30% overlap (detailed in [Text Chunking Specification](text-chunking-specification.md))
 - **Position Tracking**: Start/end character coordinates for each chunk
 - **Content Hash Storage**: Per-chunk hashing for future deduplication
 
@@ -325,9 +324,9 @@ sequenceDiagram
 - **Conflict Resolution**: Merge similar entities, resolve contradictions using scene evidence
 - **Scene Preservation**: Maintain references between entities and their source scenes
 
-## State Management (Current Implementation)
+## State Management
 
-### Job State Transitions (✅ IMPLEMENTED)
+### Current Job State Transitions (✅ IMPLEMENTED)
 
 ```mermaid
 stateDiagram-v2
@@ -357,6 +356,37 @@ stateDiagram-v2
 - `chapters`: Content storage with publication coordinates and content hashing
 - `chunks`: Text segments with position coordinates and content hashes
 
+### Future State Management (v0.3.0+ Planned)
+
+```mermaid
+stateDiagram-v2
+    [*] --> QUEUED: Job Created
+    QUEUED --> LOCAL_ANALYSIS: Local AI Processing
+    LOCAL_ANALYSIS --> SEMANTIC_CHUNKING: Scene Boundaries Detected
+    SEMANTIC_CHUNKING --> QUALITY_ASSESSMENT: Chunks Created
+    QUALITY_ASSESSMENT --> BASIC_STORAGE: Low Quality Content
+    QUALITY_ASSESSMENT --> EXTERNAL_ENHANCEMENT: High Quality Content
+    EXTERNAL_ENHANCEMENT --> ENTITY_SYNTHESIS: AI Enhancement
+    ENTITY_SYNTHESIS --> CONFLICT_RESOLUTION: Entity Conflicts
+    CONFLICT_RESOLUTION --> COMPLETE: Success
+    BASIC_STORAGE --> COMPLETE: Success
+    
+    LOCAL_ANALYSIS --> FAILED: Error Occurred
+    SEMANTIC_CHUNKING --> FAILED: Error Occurred
+    EXTERNAL_ENHANCEMENT --> FAILED: Error Occurred
+    ENTITY_SYNTHESIS --> RETRYING: Temporary Failure
+    RETRYING --> ENTITY_SYNTHESIS: Retry Attempt
+    RETRYING --> FAILED: Max Retries Exceeded
+    
+    COMPLETE --> [*]
+    FAILED --> [*]
+```
+
+**Future State Categories**:
+- **Processing States**: Local analysis, semantic chunking, external enhancement
+- **Quality Gates**: Assessment checkpoints for AI enhancement routing
+- **Error Handling**: Retry logic for transient failures, permanent failure handling
+
 ## Milestone Summary
 
 ### ✅ v0.2.0 DELIVERED (Current Implementation)
@@ -369,7 +399,7 @@ stateDiagram-v2
 - [x] PostgreSQL database schema with Flyway migrations
 
 **Text Processing**:
-- [x] Rolling window chunking algorithm with 30% overlap
+- [x] Rolling window chunking algorithm with 30% overlap (see [Text Chunking Specification](text-chunking-specification.md))
 - [x] Sentence-boundary-aware segmentation (200-1200 character chunks)
 - [x] Position coordinate tracking for chunk reconstruction
 - [x] Per-chunk content hashing for future deduplication
@@ -407,29 +437,38 @@ stateDiagram-v2
 - [ ] Conflict resolution for entity merging
 - [ ] Enhanced entity profiles with relationship mapping
 
-### Future State Management (Planned)
+## Current API Interface (v0.2.0)
 
-```mermaid
-stateDiagram-v2
-    [*] --> QUEUED: Job Created
-    QUEUED --> PROCESSING: Worker Assigned
-    PROCESSING --> COMPLETED: Success
-    PROCESSING --> FAILED: Error Occurred
-    PROCESSING --> RETRYING: Temporary Failure
-    RETRYING --> PROCESSING: Retry Attempt
-    RETRYING --> FAILED: Max Retries Exceeded
-    COMPLETED --> [*]
-    FAILED --> [*]
-```
+**Note**: For detailed API specifications, see [REST API Specification](rest-api-specification.md).
 
-**State Persistence Requirements**:
-- **QUEUED**: Job ID, content, metadata, created timestamp
-- **PROCESSING**: Worker ID, progress percentage, current stage
-- **COMPLETED**: Final entity count, processing duration, quality metrics
-- **FAILED**: Error message, failure stage, retry count
-- **RETRYING**: Previous error, retry count, next retry time
+### Content Submission Interface (✅ IMPLEMENTED)
 
-### Entity Lifecycle States
+**Current Implementation**: File-based multipart upload
+- **Endpoint**: `POST /api/ingest/submit-file`
+- **Format**: Multipart form data with file upload and metadata parameters
+- **Response**: HTTP 202 with jobId and chapterId
+
+### Job Status Interface (✅ IMPLEMENTED)
+
+**Current Implementation**: RESTful job monitoring
+- **Endpoint**: `GET /api/jobs/{jobId}`
+- **Response**: Complete job status with history and progress tracking
+
+## Future Vision (v0.3.0+)
+
+### Planned API Evolution
+
+**Enhanced Content Submission** (v0.3.0):
+- **Endpoint**: `POST /api/v1/chapters` with JSON payload
+- **Features**: Enhanced metadata, estimated completion times
+- **Quality**: Automatic quality assessment and routing
+
+**Advanced Job Monitoring** (v0.3.0):
+- **Enhanced Status**: Entity counts, processing stage details
+- **Real-time Updates**: WebSocket support for live progress
+- **Quality Metrics**: Confidence scores, enhancement decisions
+
+### Entity Lifecycle States (v0.3.0+)
 
 ```mermaid
 stateDiagram-v2
@@ -443,132 +482,11 @@ stateDiagram-v2
     VALIDATED --> [*]
 ```
 
-## Current API Interface (v0.2.0)
-
-### Content Submission Interface (✅ IMPLEMENTED)
-
-**Request Format**:
-```
-POST /api/chapters
-Content-Type: application/json
-
-{
-  "coordinates": {
-    "universe": "Deathworlders",
-    "series": "Main Series", 
-    "bookNumber": 1,
-    "partNumber": null,
-    "chapterNumber": 0
-  },
-  "chapterTitle": "The Kevin Jenkins Experience",
-  "chapterText": "Narrative text content..."
-}
-```
-
-**Response Format**:
-```
-HTTP 202 Accepted
-Content-Type: application/json
-
-{
-  "jobId": "550e8400-e29b-41d4-a716-446655440000",
-  "chapterId": "123e4567-e89b-12d3-a456-426614174000"
-}
-```
-
-### Job Status Interface (✅ IMPLEMENTED)
-
-**Status Query**:
-```
-GET /api/jobs/{jobId}
-
-{
-  "jobId": "550e8400-e29b-41d4-a716-446655440000",
-  "chapterId": "123e4567-e89b-12d3-a456-426614174000", 
-  "status": "COMPLETE",
-  "progress": 100,
-  "createdAt": "2025-08-06T00:22:41.783Z",
-  "completedAt": "2025-08-06T00:22:42.740Z",
-  "statusHistory": [
-    {
-      "status": "QUEUED",
-      "stepDescription": "Chapter submitted and queued for processing",
-      "progressPercent": 0,
-      "timestamp": "2025-08-06T00:22:41.783Z"
-    },
-    {
-      "status": "DETECTING_SCENES", 
-      "stepDescription": "Performing deterministic text segmentation",
-      "progressPercent": 15,
-      "timestamp": "2025-08-06T00:22:42.121Z"
-    },
-    {
-      "status": "EMBEDDING_CHUNKS",
-      "stepDescription": "Created 47 chunks from chapter content", 
-      "progressPercent": 45,
-      "timestamp": "2025-08-06T00:22:42.659Z"
-    },
-    {
-      "status": "COMPLETE",
-      "stepDescription": "Chapter processing completed successfully. Created 47 chunks.",
-      "progressPercent": 100,
-      "timestamp": "2025-08-06T00:22:42.740Z"
-    }
-  ]
-}
-```
-
-## Future Vision (v0.3.0+)
-
-The following represents the planned evolution of the ingestion process:
-
-### Interface Specifications
-
-**Request Format**:
-```
-POST /api/v1/chapters
-Content-Type: application/json
-
-{
-  "title": "Chapter Title",
-  "content": "Narrative text content...",
-  "metadata": {
-    "source": "book_name",
-    "chapter_number": 1,
-    "author": "author_name"
-  }
-}
-```
-
-**Response Format**:
-```
-HTTP 202 Accepted
-Content-Type: application/json
-
-{
-  "job_id": "uuid-v4",
-  "status": "QUEUED",
-  "estimated_completion": "2025-08-05T10:30:00Z",
-  "status_url": "/api/v1/jobs/uuid-v4"
-}
-```
-
-### Job Status Interface
-
-**Status Query**:
-```
-GET /api/v1/jobs/{job_id}
-
-{
-  "job_id": "uuid-v4",
-  "status": "PROCESSING",
-  "progress": 65,
-  "stage": "external_ai_synthesis",
-  "entities_found": 12,
-  "started_at": "2025-08-05T10:15:00Z",
-  "estimated_completion": "2025-08-05T10:30:00Z"
-}
-```
+**Entity Processing Flow**:
+- **MENTIONED**: Entities detected by local AI during scene analysis
+- **BASIC**: Low-quality entities stored without external AI enhancement
+- **ENHANCED**: High-quality entities processed through external AI synthesis
+- **VALIDATED**: Final state after conflict resolution and quality validation
 
 ## Error Handling
 
@@ -627,78 +545,42 @@ flowchart TD
 }
 ```
 
-## Performance Requirements
+## System Requirements & Integration
 
-### Response Time Targets
-- **Content Submission**: < 200ms response time
-- **Status Queries**: < 100ms response time
-- **Processing Completion**: < 5 minutes for typical chapter (5,000 characters)
+### Performance Requirements
 
-### Throughput Specifications
-- **Peak Load**: 100 concurrent chapter submissions
-- **Sustained Load**: 500 chapters per hour
-- **Queue Capacity**: 1,000 pending jobs maximum
+**Response Time Targets**:
+- Content Submission: < 200ms response time
+- Status Queries: < 100ms response time  
+- Processing Completion: < 5 minutes for typical chapter (5,000 characters)
 
-### Resource Utilization Limits
-- **Local AI Processing**: Maximum 2 concurrent model inferences
-- **External API Calls**: Respect rate limits, maximum 10 concurrent requests
-- **Database Connections**: Maximum 20 concurrent connections from processing workers
+**Throughput Specifications**:
+- Peak Load: 100 concurrent chapter submissions
+- Sustained Load: 500 chapters per hour
+- Queue Capacity: 1,000 pending jobs maximum
 
-## Integration Points
+### Integration Points
 
-### Database Integration
-- **Entity Storage**: PostgreSQL with pgvector for similarity search
-- **Job Tracking**: Relational tables for job status and progress
-- **Vector Storage**: pgvector extension for embedding similarity queries
+**Database Integration**:
+- PostgreSQL with pgvector for similarity search (future)
+- Job tracking via relational tables with status audit trail
+- Content storage with deduplication and position tracking
 
-### External AI Service Integration
-- **Embedding Service**: OpenAI text-embedding-ada-002 or equivalent
-- **Synthesis Service**: GPT-4 or Claude for entity enhancement
-- **Rate Limiting**: Respect service-specific rate limits and quotas
-
-### Monitoring Integration
-- **Metrics**: Job completion rates, processing duration, error rates
-- **Logging**: Structured logging for each processing stage
-- **Alerting**: Failed job alerts, performance degradation warnings
+**External Service Integration** (v0.3.0+):
+- Local AI: Small Language Model for content analysis
+- External AI: GPT-4/Claude for entity enhancement (v0.4.0+)
+- Rate limiting and cost optimization through local filtering
 
 ## Validation Criteria
 
-### ✅ Current Validation (v0.2.0 - VERIFIED WORKING)
+### ✅ Current Implementation Validation (v0.2.0)
 
-**Functional Validation**:
-- ✅ All submitted content processed and stored successfully
-- ✅ Deterministic chunking produces consistent, reproducible results  
-- ✅ Content deduplication prevents duplicate chapter processing
-- ✅ Job status tracking provides real-time processing visibility
-- ✅ Integration tests verify end-to-end functionality with real database
-
-**Performance Validation**:
-- ✅ Chapter submission responds within 200ms
-- ✅ Job status queries respond within 100ms  
-- ✅ 38,528-character chapter processed into 47 chunks successfully
-- ✅ Rolling window chunking maintains 30% overlap between adjacent chunks
-- ✅ Database operations complete efficiently with proper indexing
-
-**Data Integrity Validation**:
-- ✅ Position coordinates enable perfect chunk reconstruction
-- ✅ Content hashes ensure data integrity and enable deduplication
-- ✅ Database schema supports foreign key relationships and constraints
-- ✅ Flyway migrations maintain schema versioning and evolution capability
+**Functional**: Content processing, job tracking, chunking algorithm, deduplication
+**Performance**: Response times, processing throughput, database efficiency  
+**Data Integrity**: Position coordinates, content hashes, schema relationships
 
 ### 🔄 Future Validation Targets (v0.3.0+)
 
-**Functional Validation (Planned)**:
-- Entity extraction accuracy > 85% compared to manual review
-- Enhanced entities show improved accuracy over basic entities
-- Conflict resolution produces consistent entity records
-
-**Performance Validation (Planned)**:
-- Response times meet specified targets under load
-- System maintains performance with 100 concurrent users
-- Resource utilization stays within specified limits
-- External API costs optimized through local filtering
-
-**Quality Validation (Planned)**:
-- Vector embeddings enable accurate similarity search
-- Processing stages maintain data integrity throughout pipeline
-- Error handling recovers from transient failures
+**Quality**: Entity extraction accuracy > 85%, enhanced entity profiles
+**Performance**: 100 concurrent users, optimized external API costs
+**Integration**: Vector embeddings, conflict resolution, error recovery

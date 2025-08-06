@@ -1,8 +1,10 @@
 package com.lorevault.api.event;
 
+import lombok.Getter;
 import org.springframework.context.ApplicationEvent;
 import java.util.UUID;
 
+@Getter
 public class ChapterIngestionEvent extends ApplicationEvent {
     private final UUID jobId;
     private final UUID chapterId;
@@ -12,7 +14,5 @@ public class ChapterIngestionEvent extends ApplicationEvent {
         this.jobId = jobId;
         this.chapterId = chapterId;
     }
-    
-    public UUID getJobId() { return jobId; }
-    public UUID getChapterId() { return chapterId; }
+
 }

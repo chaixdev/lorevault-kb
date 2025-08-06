@@ -11,7 +11,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Service for deterministic text chunking using rolling window approach.
+ * Service for deterministic text chunking implementing the LoreVault text-chunking specification.
+ * Uses a decision gate approach: text ≤ 5000 chars creates a single chunk,
+ * text > 5000 chars applies sentence-aware sliding window with 15% overlap.
  * Implements overlapping chunks to prevent information loss at boundaries.
  */
 @Service
@@ -20,21 +22,27 @@ public class TextChunkingService {
 
     private static final Pattern SENTENCE_PATTERN = Pattern.compile("[.!?]+\\s+");
     
-    @Value("${lorevault.chunking.target-size:900}")
+    @Value("${lorevault.chunking.decision-threshold:5000}")
+    private int decisionThreshold;
+    
+    @Value("${lorevault.chunking.target-size:3000}")
     private int targetChunkSize;
     
-    @Value("${lorevault.chunking.overlap-percentage:30}")
+    @Value("${lorevault.chunking.overlap-percentage:15}")
     private int overlapPercentage;
     
-    @Value("${lorevault.chunking.min-chunk-size:200}")
+    @Value("${lorevault.chunking.min-chunk-size:2000}")
     private int minChunkSize;
     
-    @Value("${lorevault.chunking.max-chunk-size:1200}")
+    @Value("${lorevault.chunking.max-chunk-size:4000}")
     private int maxChunkSize;
 
     /**
-     * Split text into overlapping chunks using rolling window approach.
-     * Returns chunks with position information but no parent relationship set.
+     * Split text into overlapping chunks using specification-compliant decision gate approach.
+     * Implements Stage 3 & 4 from text-chunking-specification.md:
+     * - Stage 3: Decision gate based on text length threshold
+     * - Stage 4A: Single chunk creation for text ≤ threshold
+     * - Stage 4B: Sentence-aware sliding window for text > threshold
      * 
      * @param text The text to chunk
      * @return List of chunks with position coordinates
@@ -46,12 +54,25 @@ public class TextChunkingService {
 
         text = normalizeText(text);
         
-        if (text.length() <= maxChunkSize) {
-            // Single chunk for short text
+        // Stage 3: Chunking Decision Gate
+        if (text.length() <= decisionThreshold) {
+            // Stage 4A: Single-Chunk Creation
+            log.debug("Text length {} ≤ threshold {}, creating single chunk", text.length(), decisionThreshold);
             Chunk singleChunk = createChunk(1, 0, text.length(), text);
+            log.info("Single chunk created: {} chars", text.length());
             return List.of(singleChunk);
         }
+        
+        // Stage 4B: Multi-Chunk Subdivision with Sentence-Aware Sliding Window
+        log.debug("Text length {} > threshold {}, applying sliding window", text.length(), decisionThreshold);
+        return applySentenceAwareSlidingWindow(text);
+    }
 
+    /**
+     * Apply sentence-aware sliding window algorithm for multi-chunk subdivision.
+     * Implements Stage 4B from the text-chunking specification.
+     */
+    private List<Chunk> applySentenceAwareSlidingWindow(String text) {
         List<Chunk> chunks = new ArrayList<>();
         List<Integer> sentenceEnds = findSentenceEnds(text);
         
@@ -67,6 +88,20 @@ public class TextChunkingService {
             
             log.debug("Created chunk {}: chars {}-{} (length: {})",
                     chunkNumber, boundary.startChar, boundary.endChar, chunkContent.length());
+            
+            // Check if the remaining text after this chunk is too small for another chunk
+            int remainingAfterNext = text.length() - boundary.nextStart;
+            if (remainingAfterNext < minChunkSize) {
+                // Extend the current chunk to include the remaining text
+                chunks.remove(chunks.size() - 1); // Remove the last chunk
+                chunk = createChunk(chunkNumber, boundary.startChar, text.length(), 
+                                  text.substring(boundary.startChar, text.length()));
+                chunks.add(chunk);
+                log.debug("Extended final chunk {}: chars {}-{} (length: {})",
+                        chunkNumber, boundary.startChar, text.length(), 
+                        text.length() - boundary.startChar);
+                break;
+            }
             
             // Move to next position with overlap
             currentStart = boundary.nextStart;
@@ -136,29 +171,30 @@ public class TextChunkingService {
     }
 
     /**
-     * Find optimal chunk boundary that respects sentence boundaries and target size
+     * Find optimal chunk boundary that respects sentence boundaries and specification sizing.
+     * Creates chunks in the 2000-4000 character range with 15% sentence-aware overlap.
      */
     private ChunkBoundary findOptimalChunkBoundary(String text, int start, List<Integer> sentenceEnds) {
+        // Calculate target end position from start
+        int targetEnd = start + targetChunkSize;
+        
+        // Find the best sentence boundary near the target end
+        int bestEnd = findBestSentenceEnd(sentenceEnds, start, targetEnd, text.length());
+        
+        // Calculate overlap size for next chunk start
         int overlapSize = (int) (targetChunkSize * (overlapPercentage / 100.0));
-        int actualStart = Math.max(0, start - overlapSize);
         
-        // Find target end position
-        int targetEnd = actualStart + targetChunkSize;
-        
-        // Find the best sentence boundary near the target
-        int bestEnd = findBestSentenceEnd(sentenceEnds, actualStart, targetEnd, text.length());
-        
-        // Calculate next start position (with overlap)
+        // Calculate next start position with overlap, but ensure progress
         int nextStart = Math.max(start + minChunkSize, bestEnd - overlapSize);
         
-        return new ChunkBoundary(actualStart, bestEnd, nextStart);
+        return new ChunkBoundary(start, bestEnd, nextStart);
     }
 
     /**
-     * Find the best sentence ending position near the target
+     * Find the best sentence ending position that creates chunks within specification range.
+     * Prefers chunks closer to target size while respecting sentence boundaries.
      */
     private int findBestSentenceEnd(List<Integer> sentenceEnds, int start, int targetEnd, int textLength) {
-        // Find sentence ends within our range
         int bestEnd = targetEnd;
         int minDistance = Integer.MAX_VALUE;
         
@@ -166,13 +202,29 @@ public class TextChunkingService {
             if (sentenceEnd <= start) continue;
             if (sentenceEnd > textLength) break;
             
-            // Prefer sentence ends close to target, but not too short
-            int distance = Math.abs(sentenceEnd - targetEnd);
             int chunkSize = sentenceEnd - start;
             
-            if (chunkSize >= minChunkSize && chunkSize <= maxChunkSize && distance < minDistance) {
-                bestEnd = sentenceEnd;
-                minDistance = distance;
+            // Only consider sentence ends that create chunks within our size constraints
+            if (chunkSize >= minChunkSize && chunkSize <= maxChunkSize) {
+                int distance = Math.abs(sentenceEnd - targetEnd);
+                
+                // Prefer larger chunks (closer to target) when distances are equal
+                if (distance < minDistance || 
+                    (distance == minDistance && chunkSize > (bestEnd - start))) {
+                    bestEnd = sentenceEnd;
+                    minDistance = distance;
+                }
+            }
+        }
+        
+        // If no suitable sentence boundary found, use target end but ensure minimum size
+        if (bestEnd == targetEnd && (targetEnd - start) < minChunkSize) {
+            // Find the first sentence end that gives us minimum size
+            for (int sentenceEnd : sentenceEnds) {
+                if (sentenceEnd > start && (sentenceEnd - start) >= minChunkSize) {
+                    bestEnd = Math.min(sentenceEnd, textLength);
+                    break;
+                }
             }
         }
         

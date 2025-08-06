@@ -26,8 +26,8 @@ public class PublicationCoordinates {
 
     /**
      * The series or collection within the universe (e.g., "The Lord of the Rings", "Original Trilogy")
+     * Null for standalone books within a universe
      */
-    @NotBlank
     private String series;
 
     /**
