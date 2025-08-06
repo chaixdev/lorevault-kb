@@ -1,17 +1,32 @@
 #!/bin/bash
 
-# Development database reset script
-# WARNING: This will destroy all data!
+# Development database reset script for LoreVault Docker container ONLY
+# WARNING: This will destroy data in the LoreVault development container!
 
-echo "🔄 Resetting development database..."
+echo "🔄 Resetting LoreVault development database..."
 
-# Option 1: Drop and recreate the database
-echo "Dropping and recreating database..."
-psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS lorevault_dev;"
-psql -h localhost -U postgres -c "CREATE DATABASE lorevault_dev;"
+# Check if Docker container is running
+if ! docker ps | grep -q "lorevault-postgres"; then
+    echo "❌ Error: lorevault-postgres Docker container is not running!"
+    echo "   Start it with: docker-compose up -d"
+    exit 1
+fi
 
-# Option 2: Alternative - use Flyway clean
-# mvn -pl lorevault-api flyway:clean flyway:migrate
+echo "✅ Found LoreVault postgres container, proceeding with reset..."
 
-echo "✅ Database reset complete. Starting application..."
-mvn -pl lorevault-api spring-boot:run -Dspring.profiles.active=dev
+# Reset the database schema using Docker exec (SAFE - only affects container)
+echo "Dropping and recreating schema in Docker container..."
+docker exec lorevault-postgres psql -U lorevault -d lorevault -c "
+    DROP SCHEMA public CASCADE; 
+    CREATE SCHEMA public; 
+    GRANT ALL ON SCHEMA public TO lorevault; 
+    GRANT ALL ON SCHEMA public TO public;
+"
+
+if [ $? -eq 0 ]; then
+    echo "✅ Database reset complete. Starting application..."
+    mvn -pl lorevault-api spring-boot:run
+else
+    echo "❌ Database reset failed!"
+    exit 1
+fi
