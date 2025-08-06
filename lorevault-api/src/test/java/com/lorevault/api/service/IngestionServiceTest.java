@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -44,6 +45,9 @@ class IngestionServiceTest {
 
     @Mock
     private ChunkService chunkService;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private IngestionService ingestionService;
@@ -83,11 +87,6 @@ class IngestionServiceTest {
         when(chapterRepository.findByContentHash(contentHash)).thenReturn(Optional.empty());
         when(chapterRepository.save(any(Chapter.class))).thenReturn(sampleChapter);
         when(jobRepository.save(any(IngestionJob.class))).thenReturn(sampleJob);
-        
-        // Mock ChunkService behavior
-        when(chunkService.chunksExistForChapter(any())).thenReturn(false);
-        when(chunkService.createChunksForChapter(any())).thenReturn(List.of());
-        when(chunkService.getChunkCount(any())).thenReturn(0);
 
         // When
         SubmitChapterResponse response = ingestionService.submitChapter(sampleRequest);
@@ -99,9 +98,12 @@ class IngestionServiceTest {
         assertThat(response.getMessage()).contains("submitted successfully");
 
         verify(chapterRepository).save(any(Chapter.class));
-        verify(jobRepository, times(5)).save(any(IngestionJob.class)); // Job creation + 4 processing updates  
-        verify(statusRecordRepository, times(5)).save(any(StatusRecord.class)); // QUEUED + 4 processing stages
-        verify(chunkService).createChunksForChapter(any(Chapter.class));
+        verify(jobRepository, times(1)).save(any(IngestionJob.class)); // Only job creation in submitChapter  
+        verify(statusRecordRepository, times(1)).save(any(StatusRecord.class)); // Only QUEUED status
+        verify(eventPublisher).publishEvent(any()); // Event published for processing
+        
+        // Note: Processing now happens asynchronously via event handler
+        // ChunkService calls will happen in ChapterProcessor, not directly in submitChapter
     }
 
     @Test
@@ -112,10 +114,6 @@ class IngestionServiceTest {
         when(chapterRepository.findByContentHash(contentHash)).thenReturn(Optional.of(sampleChapter));
         when(jobRepository.hasActiveJobForChapter(sampleChapter.getId())).thenReturn(false);
         when(jobRepository.save(any(IngestionJob.class))).thenReturn(sampleJob);
-        
-        // Mock ChunkService behavior for existing content
-        when(chunkService.chunksExistForChapter(any())).thenReturn(true);
-        when(chunkService.getChunkCount(any())).thenReturn(1);
 
         // When
         SubmitChapterResponse response = ingestionService.submitChapter(sampleRequest);
@@ -126,8 +124,10 @@ class IngestionServiceTest {
         assertThat(response.getChapterId()).isEqualTo(sampleChapter.getId());
 
         verify(chapterRepository, never()).save(any(Chapter.class)); // Should not create new chapter
-        verify(jobRepository, times(4)).save(any(IngestionJob.class)); // Job creation + 3 processing updates
-        verify(chunkService, never()).createChunksForChapter(any()); // Chunks already exist
+        verify(jobRepository, times(1)).save(any(IngestionJob.class)); // Only job creation
+        verify(eventPublisher).publishEvent(any()); // Event published for processing
+        
+        // Note: Processing logic moved to ChapterProcessor via events
     }
 
     @Test

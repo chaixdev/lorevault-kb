@@ -3,12 +3,14 @@ package com.lorevault.api.service;
 import com.lorevault.api.dto.SubmitChapterRequest;
 import com.lorevault.api.dto.SubmitChapterResponse;
 import com.lorevault.api.dto.JobStatusResponse;
+import com.lorevault.api.event.ChapterIngestionEvent;
 import com.lorevault.api.model.*;
 import com.lorevault.api.repository.ChapterRepository;
 import com.lorevault.api.repository.IngestionJobRepository;
 import com.lorevault.api.repository.StatusRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,7 @@ public class IngestionService {
     private final StatusRecordRepository statusRecordRepository;
     private final HashService hashService;
     private final ChunkService chunkService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Submit a chapter for processing
@@ -62,8 +65,8 @@ public class IngestionService {
             // Create a new job for the existing chapter
             IngestionJob newJob = createIngestionJob(existingChapterId);
             
-            // Process the existing chapter (v0.2.0: create chunks)
-            processChapter(newJob, existingChapter.get());
+            // Publish event to process the existing chapter (v0.2.0: create chunks)
+            eventPublisher.publishEvent(new ChapterIngestionEvent(this, newJob.getId(), existingChapterId));
             
             return SubmitChapterResponse.success(newJob.getId(), existingChapterId);
         }
@@ -81,8 +84,8 @@ public class IngestionService {
         // Create ingestion job
         IngestionJob job = createIngestionJob(chapter.getId());
         
-        // Process the chapter (v0.2.0: create chunks)
-        processChapter(job, chapter);
+        // Publish event to process the chapter (v0.2.0: create chunks)
+        eventPublisher.publishEvent(new ChapterIngestionEvent(this, job.getId(), chapter.getId()));
 
         return SubmitChapterResponse.success(job.getId(), chapter.getId());
     }
@@ -172,7 +175,7 @@ public class IngestionService {
      * v0.2.0: Implements content storage & segmentation
      */
     @Transactional
-    protected void processChapter(IngestionJob job, Chapter chapter) {
+    public void processChapter(IngestionJob job, Chapter chapter) {
         try {
             log.info("Starting chapter processing for job {} and chapter {}", job.getId(), chapter.getId());
             
