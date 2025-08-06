@@ -2,7 +2,7 @@
 
 **Purpose**: This specification defines the logical data structures, relationships, and rationale for storing the core content within the LoreVault system. It details the hierarchical model used to represent chapters, scenes, and chunks of narrative text.
 
-**Scope**: This document covers the data model for ingesting and storing the primary source text and its subdivisions. This includes the `Chapter`, `Scene`, and `Chunk` entities, as well as the `LoreCoordinates` component. The model for storing extracted, synthesized entity profiles (e.g., `CHARACTERS`, `LOCATIONS` from the architecture document) is out of scope for this specification.
+**Scope**: This document covers the data model for ingesting and storing the primary source text and its subdivisions. This includes the `Chapter`, `Scene`, and `Chunk` entities, as well as the `PublicationCoordinates` component. The model for storing extracted, synthesized entity profiles (e.g., `CHARACTERS`, `LOCATIONS` from the architecture document) is out of scope for this specification.
 
 **Dependencies**:
 - **Architecture Document**: Information Viewpoint (03-information-viewpoint.md)
@@ -29,7 +29,7 @@ The data model is realized through a set of interconnected entities that represe
 classDiagram
     direction LR
     class Chapter {
-        +LoreCoordinates coordinates
+        +PublicationCoordinates coordinates
         +String chapterTitle
         +String rawText
         +String contentHash
@@ -46,7 +46,7 @@ classDiagram
         +Integer endCharInChapter
         +vector embedding
     }
-    class LoreCoordinates {
+    class PublicationCoordinates {
         <<Embeddable>>
         +String universe
         +String series
@@ -55,14 +55,14 @@ classDiagram
         +Integer chapterNumber
     }
 
-    Chapter "1" *-- "1" LoreCoordinates : has
+    Chapter "1" *-- "1" PublicationCoordinates : has
     Chapter "1" -- "*" Scene : contains
     Scene "1" -- "*" Chunk : contains
 ```
 
 ### Entity Descriptions
 
-- **LoreCoordinates**: An embeddable component that defines the precise location of a chapter within the overall fictional universe. It is a value object that provides a consistent structure for addressing content.
+- **PublicationCoordinates**: An embeddable component that defines the precise location of a chapter within the overall fictional universe. It is a value object that provides a consistent structure for addressing content.
 - **Chapter**: The root entity representing a single, complete chapter from a source book. It contains the full raw text and high-level metadata. It acts as the "source of truth" from which scenes and chunks are derived.
 - **Scene**: A semantic subdivision of a Chapter. Scenes are identified by the Local Intelligence Service based on narrative shifts. They provide logical context and carry thematic tags that can inform downstream processing.
 - **Chunk**: A technical subdivision of a Scene. Chunks are the most granular level of the hierarchy and are sized for optimal performance in the RAG process. Each chunk has a vector embedding for semantic retrieval.
@@ -79,7 +79,7 @@ The data model is designed around the principle of source text immutability.
 
 The following tables define the logical data contracts for each entity.
 
-### `LoreCoordinates` (Embeddable)
+### `PublicationCoordinates` (Embeddable)
 
 | Attribute | Logical Type | Description |
 |-----------|--------------|-------------|
@@ -94,7 +94,7 @@ The following tables define the logical data contracts for each entity.
 | Attribute | Logical Type | Description |
 |-----------|--------------|-------------|
 | `id` | `UUID` | Unique identifier for the chapter. |
-| `coordinates` | `LoreCoordinates` | Embedded coordinates object. |
+| `coordinates` | `PublicationCoordinates` | Embedded coordinates object. |
 | `chapterTitle` | `String` | The title of the chapter. |
 | `rawText` | `Text` | The full, unmodified chapter text. |
 | `contentHash` | `String` | A SHA-256 hash of `rawText` for deduplication. |

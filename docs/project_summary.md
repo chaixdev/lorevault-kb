@@ -23,7 +23,7 @@ The project will be developed in major versions, each delivering a significant p
     - **Goal:** Jobs actually process text and store Chapter/Chunk entities in database
 
 - **v0.3.0: Local AI Integration & Raw Extraction**
-    - **Goal:** Each chunk gets processed by Gemma 3n E4B to extract preprocessing data (scene boundaries, scene tags, scene entities). scenes are also stored
+    - **Goal:** Each chunk gets processed by Gemma 3B to extract preprocessing data (scene boundaries, scene tags, scene entities). scenes are also stored
 
 - **v0.4.0: Embedding Generation & Storage**
     - **Goal:** All chunks have vector embeddings and semantic search works
@@ -50,7 +50,7 @@ The project will be developed in major versions, each delivering a significant p
 
 The system is built as a service, prioritizing a clean separation of concerns using the Command Query Responsibility Segregation (CQRS) pattern. Clients interact with the system through a well-defined REST API.
 
-**Commands (The "Write" Path):** Clients submit new content for processing via a command endpoint (e.g., POST /api/processing-jobs). This triggers a complex, asynchronous background process that performs the entire knowledge extraction and synthesis pipeline. This path is optimized for thoroughness and data integrity.
+**Commands (The "Write" Path):** Clients submit new content for processing via a command endpoint (e.g., POST /api/ingestion/chapters). This triggers a complex, asynchronous background process that performs the entire knowledge extraction and synthesis pipeline. This path is optimized for thoroughness and data integrity.
 
 **Queries (The "Read" Path):** Clients retrieve processed information via query endpoints (e.g., GET /api/entities/{type}/{id}). This path is optimized for high-performance, low-latency reads directly from the structured database.
 

@@ -31,6 +31,7 @@ public class IngestionService {
     private final IngestionJobRepository jobRepository;
     private final StatusRecordRepository statusRecordRepository;
     private final HashService hashService;
+    private final ChunkService chunkService;
 
     /**
      * Submit a chapter for processing
@@ -61,8 +62,8 @@ public class IngestionService {
             // Create a new job for the existing chapter
             IngestionJob newJob = createIngestionJob(existingChapterId);
             
-            // For v0.1.0, immediately mark as complete (basic pipeline)
-            completeJobImmediately(newJob);
+            // Process the existing chapter (v0.2.0: create chunks)
+            processChapter(newJob, existingChapter.get());
             
             return SubmitChapterResponse.success(newJob.getId(), existingChapterId);
         }
@@ -80,8 +81,8 @@ public class IngestionService {
         // Create ingestion job
         IngestionJob job = createIngestionJob(chapter.getId());
         
-        // For v0.1.0, immediately mark as complete (basic pipeline)
-        completeJobImmediately(job);
+        // Process the chapter (v0.2.0: create chunks)
+        processChapter(job, chapter);
 
         return SubmitChapterResponse.success(job.getId(), chapter.getId());
     }
@@ -167,29 +168,112 @@ public class IngestionService {
     }
 
     /**
-     * For v0.1.0: Complete the job immediately with a simple pipeline
-     * In future versions, this will be replaced with actual processing
+     * Process a chapter by creating chunks and tracking progress
+     * v0.2.0: Implements content storage & segmentation
      */
     @Transactional
-    protected void completeJobImmediately(IngestionJob job) {
-        // Update job to complete status
+    protected void processChapter(IngestionJob job, Chapter chapter) {
+        try {
+            log.info("Starting chapter processing for job {} and chapter {}", job.getId(), chapter.getId());
+            
+            // Update job status to preprocessing
+            updateJobStatus(job, IngestionStatus.PREPROCESSING_STARTED, 
+                IngestionStatus.PREPROCESSING_STARTED.getProgressPercentage(), 
+                "Starting content segmentation");
+            
+            // Check if chunks already exist
+            if (chunkService.chunksExistForChapter(chapter.getId())) {
+                log.info("Chunks already exist for chapter {}, skipping chunk creation", chapter.getId());
+                updateJobStatus(job, IngestionStatus.EMBEDDING_CHUNKS, 
+                    IngestionStatus.EMBEDDING_CHUNKS.getProgressPercentage(), 
+                    "Chunks already exist, validating");
+            } else {
+                // Create chunks using deterministic segmentation
+                updateJobStatus(job, IngestionStatus.DETECTING_SCENES, 
+                    IngestionStatus.DETECTING_SCENES.getProgressPercentage(), 
+                    "Performing deterministic text segmentation");
+                
+                List<Chunk> chunks = chunkService.createChunksForChapter(chapter);
+                
+                log.info("Created {} chunks for chapter {}", chunks.size(), chapter.getId());
+                updateJobStatus(job, IngestionStatus.EMBEDDING_CHUNKS, 
+                    IngestionStatus.EMBEDDING_CHUNKS.getProgressPercentage(),
+                    String.format("Created %d chunks from chapter content", chunks.size()));
+            }
+            
+            // Complete the job
+            completeJob(job, chapter);
+            
+        } catch (Exception e) {
+            log.error("Error processing chapter {} for job {}", chapter.getId(), job.getId(), e);
+            failJob(job, "Chapter processing failed: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Update job status and create status record
+     */
+    @Transactional
+    protected void updateJobStatus(IngestionJob job, IngestionStatus status, int progressPercent, String description) {
+        job.setCurrentStatus(status);
+        job.setProgressPercent(progressPercent);
+        jobRepository.save(job);
+        
+        createStatusRecord(job.getId(), status, description, Map.of(
+            "progressPercent", progressPercent,
+            "timestamp", LocalDateTime.now().toString()
+        ));
+        
+        log.debug("Updated job {} status to {} ({}%): {}", job.getId(), status, progressPercent, description);
+    }
+    
+    /**
+     * Mark job as completed successfully
+     */
+    @Transactional
+    protected void completeJob(IngestionJob job, Chapter chapter) {
+        int chunkCount = chunkService.getChunkCount(chapter.getId());
+        
         job.setCurrentStatus(IngestionStatus.COMPLETE);
         job.setProgressPercent(100);
         job.setCompletedAt(LocalDateTime.now());
         jobRepository.save(job);
 
-        // Create completion status record
         createStatusRecord(
                 job.getId(),
                 IngestionStatus.COMPLETE,
-                "Chapter processing completed successfully (v0.1.0 basic pipeline)",
+                String.format("Chapter processing completed successfully. Created %d chunks.", chunkCount),
                 Map.of(
-                        "version", "0.1.0",
-                        "pipeline", "basic",
+                        "version", "0.2.0",
+                        "pipeline", "content_segmentation",
+                        "chunkCount", chunkCount,
+                        "chapterLength", chapter.getRawText().length(),
                         "completedAt", LocalDateTime.now().toString()
                 )
         );
 
-        log.info("Job {} completed immediately (v0.1.0 basic pipeline)", job.getId());
+        log.info("Job {} completed successfully with {} chunks", job.getId(), chunkCount);
+    }
+    
+    /**
+     * Mark job as failed
+     */
+    @Transactional
+    protected void failJob(IngestionJob job, String errorMessage) {
+        job.setCurrentStatus(IngestionStatus.FAILED);
+        job.setCompletedAt(LocalDateTime.now());
+        jobRepository.save(job);
+
+        createStatusRecord(
+                job.getId(),
+                IngestionStatus.FAILED,
+                errorMessage,
+                Map.of(
+                        "version", "0.2.0",
+                        "failedAt", LocalDateTime.now().toString()
+                )
+        );
+
+        log.error("Job {} failed: {}", job.getId(), errorMessage);
     }
 }

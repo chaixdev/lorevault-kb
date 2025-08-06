@@ -42,6 +42,9 @@ class IngestionServiceTest {
     @Mock
     private HashService hashService;
 
+    @Mock
+    private ChunkService chunkService;
+
     @InjectMocks
     private IngestionService ingestionService;
 
@@ -80,6 +83,11 @@ class IngestionServiceTest {
         when(chapterRepository.findByContentHash(contentHash)).thenReturn(Optional.empty());
         when(chapterRepository.save(any(Chapter.class))).thenReturn(sampleChapter);
         when(jobRepository.save(any(IngestionJob.class))).thenReturn(sampleJob);
+        
+        // Mock ChunkService behavior
+        when(chunkService.chunksExistForChapter(any())).thenReturn(false);
+        when(chunkService.createChunksForChapter(any())).thenReturn(List.of());
+        when(chunkService.getChunkCount(any())).thenReturn(0);
 
         // When
         SubmitChapterResponse response = ingestionService.submitChapter(sampleRequest);
@@ -91,8 +99,9 @@ class IngestionServiceTest {
         assertThat(response.getMessage()).contains("submitted successfully");
 
         verify(chapterRepository).save(any(Chapter.class));
-        verify(jobRepository, times(2)).save(any(IngestionJob.class)); // Initial save + completion update
-        verify(statusRecordRepository, times(2)).save(any(StatusRecord.class)); // QUEUED + COMPLETE
+        verify(jobRepository, times(5)).save(any(IngestionJob.class)); // Job creation + 4 processing updates  
+        verify(statusRecordRepository, times(5)).save(any(StatusRecord.class)); // QUEUED + 4 processing stages
+        verify(chunkService).createChunksForChapter(any(Chapter.class));
     }
 
     @Test
@@ -103,6 +112,10 @@ class IngestionServiceTest {
         when(chapterRepository.findByContentHash(contentHash)).thenReturn(Optional.of(sampleChapter));
         when(jobRepository.hasActiveJobForChapter(sampleChapter.getId())).thenReturn(false);
         when(jobRepository.save(any(IngestionJob.class))).thenReturn(sampleJob);
+        
+        // Mock ChunkService behavior for existing content
+        when(chunkService.chunksExistForChapter(any())).thenReturn(true);
+        when(chunkService.getChunkCount(any())).thenReturn(1);
 
         // When
         SubmitChapterResponse response = ingestionService.submitChapter(sampleRequest);
@@ -113,7 +126,8 @@ class IngestionServiceTest {
         assertThat(response.getChapterId()).isEqualTo(sampleChapter.getId());
 
         verify(chapterRepository, never()).save(any(Chapter.class)); // Should not create new chapter
-        verify(jobRepository, times(2)).save(any(IngestionJob.class)); // Initial save + completion update
+        verify(jobRepository, times(4)).save(any(IngestionJob.class)); // Job creation + 3 processing updates
+        verify(chunkService, never()).createChunksForChapter(any()); // Chunks already exist
     }
 
     @Test
