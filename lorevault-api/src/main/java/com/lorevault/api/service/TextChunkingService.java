@@ -93,9 +93,9 @@ public class TextChunkingService {
             int remainingAfterNext = text.length() - boundary.nextStart;
             if (remainingAfterNext < minChunkSize) {
                 // Extend the current chunk to include the remaining text
-                chunks.remove(chunks.size() - 1); // Remove the last chunk
+                chunks.removeLast(); // Remove the last chunk
                 chunk = createChunk(chunkNumber, boundary.startChar, text.length(), 
-                                  text.substring(boundary.startChar, text.length()));
+                                  text.substring(boundary.startChar));
                 chunks.add(chunk);
                 log.debug("Extended final chunk {}: chars {}-{} (length: {})",
                         chunkNumber, boundary.startChar, text.length(), 

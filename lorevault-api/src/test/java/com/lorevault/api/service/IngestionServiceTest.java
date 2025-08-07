@@ -5,6 +5,7 @@ import com.lorevault.api.dto.SubmitChapterResponse;
 import com.lorevault.api.dto.JobStatusResponse;
 import com.lorevault.api.model.*;
 import com.lorevault.api.repository.ChapterRepository;
+import com.lorevault.api.repository.ChunkRepository;
 import com.lorevault.api.repository.IngestionJobRepository;
 import com.lorevault.api.repository.StatusRecordRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +46,15 @@ class IngestionServiceTest {
 
     @Mock
     private ChunkService chunkService;
+
+    @Mock
+    private SceneDetectionService sceneDetectionService;
+
+    @Mock
+    private TextChunkingService textChunkingService;
+
+    @Mock
+    private ChunkRepository chunkRepository;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;

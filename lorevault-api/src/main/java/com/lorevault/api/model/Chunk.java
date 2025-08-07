@@ -24,6 +24,7 @@ import java.util.UUID;
     name = "chunks",
     indexes = {
         @Index(name = "idx_chunks_chapter", columnList = "chapterId"),
+        @Index(name = "idx_chunks_scene", columnList = "sceneId"),
         @Index(name = "idx_chunks_position", columnList = "chapterId, chunkNumberInChapter"),
         @Index(name = "idx_chunks_content_hash", columnList = "contentHash")
     }
@@ -38,11 +39,21 @@ public class Chunk {
     private UUID id;
 
     /**
-     * Foreign key referencing the parent Chapter
+     * Foreign key referencing the parent Chapter (aggregate root)
+     * Always present - chapter owns all chunks
      */
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chapter_id", nullable = false)
     @NotNull
-    private UUID chapterId;
+    private Chapter chapter;
+
+    /**
+     * Foreign key referencing the parent Scene (v0.3.0+)
+     * Optional during transition period - new chunks will use scenes, legacy chunks may not
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "scene_id")
+    private Scene scene;
 
     /**
      * The sequential order of the chunk within the chapter (1-based)

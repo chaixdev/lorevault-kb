@@ -18,6 +18,12 @@
     <description>REST API module for LoreVault service</description>
 
     <dependencies>
+        <!-- Spring AI OpenAI-compatible client for Gemini -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

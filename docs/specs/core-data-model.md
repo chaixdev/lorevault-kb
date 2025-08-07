@@ -1,157 +1,179 @@
-# Core Data Model Specification
+# Core Data Model Specification (v0.3.0)
 
-**Purpose**: This specification defines the logical data structures, relationships, and rationale for storing the core content within the LoreVault system. It details the hierarchical model used to represent chapters, scenes, and chunks of narrative text.
+**Purpose**: This specification defines the logical data structures, relationships, and domain-driven design patterns for storing the core content within the LoreVault system. It details the hierarchical model using aggregate root patterns to represent chapters, scenes, and chunks of narrative text.
 
-**Scope**: This document covers the data model for ingesting and storing the primary source text and its subdivisions. This includes the `Chapter`, `Scene`, and `Chunk` entities, as well as the `PublicationCoordinates` component. The model for storing extracted, synthesized entity profiles (e.g., `CHARACTERS`, `LOCATIONS` from the architecture document) is out of scope for this specification.
+**Scope**: This document covers the data model for ingesting and storing the primary source text and its subdivisions, implemented using Domain-Driven Design (DDD) aggregate patterns. This includes the `Chapter` aggregate root, `Scene` and `Chunk` entities, as well as the `PublicationCoordinates` component. The model for storing extracted, synthesized entity profiles (e.g., `CHARACTERS`, `LOCATIONS` from the architecture document) is out of scope for this specification.
 
 **Dependencies**:
 - **Architecture Document**: Information Viewpoint (03-information-viewpoint.md)
 - **Process Specification**: Content Ingestion Process (content-ingestion-process.md)
+- **AI Integration**: Scene Detection Service (v0.3.0+)
 
 ## Process Overview
 
-The primary goal of the LoreVault system is to create a "structured and searchable knowledge base from unstructured narrative text". The core data model is designed to support this by organizing content into a three-tiered hierarchy: `Chapter` -> `Scene` -> `Chunk`.
+The LoreVault system creates a "structured and searchable knowledge base from unstructured narrative text" using a three-tiered hierarchy: `Chapter` -> `Scene` -> `Chunk`, implemented with Domain-Driven Design aggregate patterns.
 
-This structure serves two main purposes:
+### Version Evolution
+- **v0.2.0**: Direct Chapter → Chunk relationship with deterministic text chunking
+- **v0.3.0**: AI-powered Scene detection creating Chapter → Scene → Chunk hierarchy with DDD aggregates
 
-1. **Enabling Granular AI Processing**: It provides semantically coherent `Chunks` of text that are optimized for Retrieval-Augmented Generation (RAG). This allows the powerful synthesis LLM to work with focused, relevant context.
-2. **Supporting Advanced Features**: It establishes a detailed coordinate system that is essential for user-facing features like spoiler prevention, allowing content to be filtered based on a user's progress through the narrative.
+### Design Goals
+1. **Granular AI Processing**: Semantically coherent chunks optimized for RAG
+2. **Advanced Features**: Coordinate system enabling spoiler prevention and progress tracking
+3. **Data Consistency**: Aggregate boundaries ensuring transactional consistency and business rule encapsulation
 
-The model is designed to be persisted in a PostgreSQL database, leveraging extensions like `pgvector` for storing vector embeddings.
+The model persists in PostgreSQL with `pgvector` extensions for embeddings.
 
-## Detailed Workflow
+## Domain Model Architecture
 
-The data model is realized through a set of interconnected entities that represent the content hierarchy. The relationship between these entities is visualized in the following domain diagram.
+### Aggregate Root Pattern Implementation
+
+`Chapter` serves as the **Aggregate Root** with complete encapsulation:
+
+- **Encapsulated Collections**: Private `List<Scene>` and `List<Chunk>` with read-only public access via `Collections.unmodifiableList()`
+- **Controlled Mutations**: All modifications through aggregate methods (`addScene()`, `addChunk()`, `addChunkToScene()`, etc.)
+- **Automatic Relationship Management**: Bidirectional JPA relationships maintained transparently
+- **Invariant Enforcement**: Scene must belong to chapter before chunk association; cascade operations for removals
+- **Transaction Boundaries**: All aggregate modifications are atomic
+
+### ChunkRepository Design Rationale
+
+Despite Chapter being the aggregate root, `ChunkRepository` is maintained for specific technical requirements:
+
+**Performance Optimization**: Vector similarity searches require direct, optimized database access; batch operations (embedding generation, reprocessing) benefit from direct repository access; read-heavy query services need efficient patterns that bypass full aggregate loading.
+
+**Processing Pipeline Separation**: Chunk embeddings update independently during model upgrades; content analysis services require direct chunk access; migration operations need direct chunk manipulation.
+
+**Implementation Guidelines**: Use Chapter aggregate for structural changes; use ChunkRepository for RAG queries, embeddings, and analysis workflows.
 
 ### Domain Class Diagram
 
 ```mermaid
 classDiagram
-    direction LR
+    direction TB
+    
     class Chapter {
+        <<Aggregate Root>>
         +PublicationCoordinates coordinates
-        +String chapterTitle
-        +String rawText
-        +String contentHash
+        +String chapterTitle, rawText, contentHash
+        +addScene(index, start, end, summary) Scene
+        +addChunkToScene(scene, number, start, end, hash) Chunk
+        +getScenes() List~Scene~
+        +getChunks() List~Chunk~
     }
+    
     class Scene {
-        +Integer sceneNumber
-        +Integer startChar
-        +Integer endChar
-        +JSON tags
+        +Integer sceneIndex
+        +Long startCharacterOffset, endCharacterOffset
+        +String contextSummary
+        #addChunk(chunk) void
     }
+    
     class Chunk {
-        +Integer chunkNumberInScene
-        +Integer startCharInChapter
-        +Integer endCharInChapter
-        +vector embedding
+        +Integer chunkNumberInChapter
+        +Integer startCharInChapter, endCharInChapter
+        +String contentHash
+        +Vector embedding
     }
+    
     class PublicationCoordinates {
-        <<Embeddable>>
-        +String universe
-        +String series
-        +Integer bookNumber
-        +Integer partNumber
-        +Integer chapterNumber
+        <<Value Object>>
+        +String universe, series
+        +Integer bookNumber, partNumber, chapterNumber
     }
 
-    Chapter "1" *-- "1" PublicationCoordinates : has
-    Chapter "1" -- "*" Scene : contains
-    Scene "1" -- "*" Chunk : contains
+    class ChunkRepository {
+        <<Repository>>
+        +findByChapterIdOrderByChunkNumber()
+        +findByContentHash()
+        +existsByChapterId()
+    }
+
+    Chapter "1" *-- "1" PublicationCoordinates
+    Chapter "1" *-- "*" Scene
+    Chapter "1" *-- "*" Chunk
+    Scene "1" -- "*" Chunk
+    Chapter -.-> ChunkRepository : "performance access"
 ```
 
-### Entity Descriptions
+### Entity Definitions
 
-- **PublicationCoordinates**: An embeddable component that defines the precise location of a chapter within the overall fictional universe. It is a value object that provides a consistent structure for addressing content.
-- **Chapter**: The root entity representing a single, complete chapter from a source book. It contains the full raw text and high-level metadata. It acts as the "source of truth" from which scenes and chunks are derived.
-- **Scene**: A semantic subdivision of a Chapter. Scenes are identified by the Local Intelligence Service based on narrative shifts. They provide logical context and carry thematic tags that can inform downstream processing.
-- **Chunk**: A technical subdivision of a Scene. Chunks are the most granular level of the hierarchy and are sized for optimal performance in the RAG process. Each chunk has a vector embedding for semantic retrieval.
+**PublicationCoordinates** (Value Object): Embedded coordinates defining precise chapter location within fictional universe.
+
+**Chapter** (Aggregate Root): Complete chapter entity containing raw text, metadata, and managing scene/chunk collections. All structural modifications must go through aggregate methods.
+
+**Scene**: AI-identified semantic subdivision with character offset boundaries and context summary. Collections managed exclusively through Chapter aggregate.
+
+**Chunk**: Granular text subdivision optimized for RAG processing. Supports both direct chapter association (v0.2.0 compatibility) and scene association (v0.3.0+). Accessed via both aggregate methods and direct repository patterns.
 
 ## State Management
 
-The data model is designed around the principle of source text immutability.
+**Aggregate Lifecycle**: Chapters created as complete aggregates; structural modifications via aggregate methods; transaction boundaries ensure atomic operations.
 
-- **Initial Creation**: When a chapter is first ingested, a `Chapter` record is created along with all its derived `Scene` and `Chunk` records. The `content_hash` of the chapter's `raw_text` ensures that identical content is not processed twice.
-- **Updates**: The `raw_text` of an existing `Chapter` record should be treated as immutable. If a chapter is updated in the source material, a new `Chapter` record (with a new hash and ID) should be created to represent the new version. Logic may be required to archive or supersede the old version's data.
-- **Data Integrity**: The relationships between entities (e.g., a `Chunk` must belong to a `Scene`) are maintained through relational constraints.
+**Content Immutability**: Raw text treated as immutable; updates create new aggregate instances with new content hashes; legacy chapters archived while maintaining referential integrity.
+
+**Processing Separation**: Aggregate handles structural relationships; individual chunk processing (embeddings, analysis) uses repository access patterns.
 
 ## Interface Specifications
 
-The following tables define the logical data contracts for each entity.
+### Core Entities
 
-### `PublicationCoordinates` (Embeddable)
+| Entity | Key Attributes | Notes |
+|--------|----------------|-------|
+| `PublicationCoordinates` | universe, series, bookNumber, partNumber, chapterNumber | Embeddable value object |
+| `Chapter` | id (UUID), coordinates, chapterTitle, rawText, contentHash, embedding | Aggregate root with collection management |
+| `Scene` | id (UUID), sceneIndex, contextSummary, startCharacterOffset, endCharacterOffset | AI-detected semantic boundaries |
+| `Chunk` | id (UUID), chunkNumberInChapter, startCharInChapter, endCharInChapter, contentHash, embedding | RAG-optimized text segments |
 
-| Attribute | Logical Type | Description |
-|-----------|--------------|-------------|
-| `universe` | `String` | The top-level fictional universe. |
-| `series` | `String` | The series within the universe. |
-| `bookNumber` | `Integer` | The order of the book in the series. |
-| `partNumber` | `Integer` | The part number within the book. |
-| `chapterNumber` | `Integer` | The chapter number. |
+### Aggregate Operations
 
-### `Chapter` Entity
+| Operation | Parameters | Purpose |
+|-----------|------------|---------|
+| `addScene()` | index, startOffset, endOffset, summary | Create scene with character boundaries |
+| `addChunkToScene()` | scene, chunkNumber, startChar, endChar, contentHash | Associate chunk with specific scene |
+| `getScenes()` / `getChunks()` | none | Read-only collection access |
 
-| Attribute | Logical Type | Description |
-|-----------|--------------|-------------|
-| `id` | `UUID` | Unique identifier for the chapter. |
-| `coordinates` | `PublicationCoordinates` | Embedded coordinates object. |
-| `chapterTitle` | `String` | The title of the chapter. |
-| `rawText` | `Text` | The full, unmodified chapter text. |
-| `contentHash` | `String` | A SHA-256 hash of `rawText` for deduplication. |
-| `embedding` | `Vector` | A vector embedding of the entire chapter for high-level analysis. |
+### Repository Patterns
 
-### `Scene` Entity
+**ChunkRepository**: Direct access for vector queries (`findByContentHash`, `existsByChapterId`), batch operations, and performance-critical RAG searches.
 
-| Attribute | Logical Type | Description |
-|-----------|--------------|-------------|
-| `id` | `UUID` | Unique identifier for the scene. |
-| `chapterId` | `UUID` | Foreign key referencing the parent `Chapter`. |
-| `sceneNumber` | `Integer` | The sequential order of the scene within the chapter. |
-| `startChar` | `Integer` | The starting character position in the parent chapter's `rawText`. |
-| `endChar` | `Integer` | The ending character position in the parent chapter's `rawText`. |
-| `tags` | `JSON` | Thematic tags identified by the Local Intelligence Service. |
+**Chapter Access**: All structural modifications via aggregate methods; lazy-loaded collections for efficient querying.
 
-### `Chunk` Entity
+## Technical Requirements
 
-| Attribute | Logical Type | Description |
-|-----------|--------------|-------------|
-| `id` | `UUID` | Unique identifier for the chunk. |
-| `sceneId` | `UUID` | Foreign key referencing the parent `Scene`. |
-| `chunkNumberInScene`| `Integer` | The sequential order of the chunk within its scene. |
-| `startCharInChapter`| `Integer` | The absolute start position in the chapter's `rawText`. |
-| `endCharInChapter`| `Integer` | The absolute end position in the chapter's `rawText`. |
-| `embedding` | `Vector` | The vector embedding used for RAG semantic search. |
+### Error Handling
+- Constraint violations for invalid parent relationships
+- Duplicate content rejection via `content_hash` validation  
+- Invalid coordinate validation (endChar ≥ startChar)
 
-## Error Handling
+### Performance Requirements
+- Multi-column indexes on coordinate fields for spoiler-prevention filtering
+- Hash indexing on `content_hash` for deduplication
+- Vector indexing (HNSW/IVFFlat) on chunk embeddings for RAG queries
 
-The data model must enforce integrity. The persistence layer should handle:
-
-- **Constraint Violations**: Rejecting any `Scene` or `Chunk` that does not have a valid, existing parent ID.
-- **Duplicate Content**: Rejecting a new `Chapter` if its `content_hash` already exists in the database.
-- **Invalid Coordinates**: Rejecting data where `endChar` is less than `startChar`.
-
-## Performance Requirements
-
-To ensure the "read" side of the system is "fast and efficient", the following are required:
-
-- **Coordinate Indexing**: The persistence layer must have a multi-column index on the coordinate fields (`universe`, `series`, `bookNumber`, `chapterNumber`) to allow for fast filtering, which is essential for the spoiler-prevention feature.
-- **Hash Indexing**: The `content_hash` field on the `chapters` table must be indexed to enable fast lookups during the deduplication check of the ingestion process.
-- **Vector Indexing**: The `embedding` field on the `chunks` table must have an appropriate vector index (e.g., HNSW or IVFFlat) to enable efficient, large-scale semantic search.
-
-## Integration Points
-
-This data model is central to the LoreVault system and integrates with several key components:
-
-- **Content Ingestion Process**: This process, managed by the `Orchestration Service`, is the primary writer to this data model. It creates `Chapter`, `Scene`, and `Chunk` records.
-- **RAG-Powered Synthesis**: The `SynthesisClient` indirectly reads from this model during its "Retrieve" step, performing a vector search on the `chunks` table to gather context.
-- **Query Service**: The `Query Service` is the primary reader of this model, using the coordinate system and relational links to serve structured data to the user.
+### Integration Points
+- **Content Ingestion**: Primary writer creating Chapter aggregates
+- **RAG Synthesis**: Vector searches on chunks table via ChunkRepository
+- **Query Service**: Coordinate-based filtering and relational queries
 
 ## Validation Criteria
 
-The data model implementation will be considered successful if the following criteria are met:
+### Aggregate Pattern Compliance
+- Chapter properly encapsulates collections with read-only access
+- All structural modifications go through aggregate methods
+- Scene protected methods only accessible within aggregate boundary
 
-- A `Chunk` record cannot be persisted without a valid foreign key to a `Scene` record.
-- A `Scene` record cannot be persisted without a valid foreign key to a `Chapter` record.
-- Attempting to insert a `Chapter` with a `content_hash` that already exists results in a rejected transaction.
-- Queries filtering on the `LoreCoordinates` fields execute within acceptable performance limits (e.g., sub-second response time for spoiler-prevention checks).
-- The data structure can be successfully mapped to application-level objects (e.g., JPA Entities) as defined in the domain diagram.
+### Data Integrity  
+- Chunks/Scenes require valid Chapter relationships
+- Scene-associated chunks must belong to same chapter
+- Duplicate content_hash rejection
+
+### Performance Targets
+- Sub-second coordinate-based filtering for spoiler-prevention
+- Efficient vector searches via ChunkRepository for RAG operations
+- Acceptable aggregate loading performance with lazy collections
+
+### Backward Compatibility (v0.2.0 → v0.3.0)
+- Legacy direct chapter-chunk relationships preserved
+- Migration maintains data integrity
+- Existing ChunkRepository access patterns functional

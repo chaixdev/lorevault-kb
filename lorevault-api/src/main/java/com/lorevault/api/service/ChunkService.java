@@ -51,7 +51,7 @@ public class ChunkService {
 
         // Set chapter relationship and content hashes
         for (Chunk chunk : chunks) {
-            chunk.setChapterId(chapter.getId());
+            chunk.setChapter(chapter);
             
             // Extract content for this chunk and generate hash
             String chunkContent = chapter.getRawText().substring(
