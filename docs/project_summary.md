@@ -25,17 +25,20 @@ The project will be developed in major versions, each delivering a significant p
 - **v0.3.0: Scene Detection & Hierarchical Structure** ✅
     - **Goal:** AI-powered scene boundary detection creating Chapter → Scene → Chunk hierarchy using external LLM APIs with XML-based reliable parsing
 
-- **v0.4.0: AI Enhancement & Intelligence** 🔄
-    - **Goal:** Character/location extraction, emotional analysis, and enhanced scene metadata
+- **v0.4.0: Production Polish & Architecture** ✅
+    - **Goal:** Feature-oriented package structure, enhanced XML parsing, comprehensive testing, and production-ready scene detection pipeline
 
-- **v0.5.0: Embedding Generation & Storage** 📋
-    - **Goal:** All chunks have vector embeddings and semantic search works
+- **v0.5.0: Vector Embeddings & Semantic Search** 📋
+    - **Goal:** pgvector integration, embedding generation, and semantic search capabilities
 
-- **v0.5.0: Character Entity Synthesis**
-    - **Goal:** Character entity mentions become proper Character entities via RAG synthesis
+- **v0.6.0: Entity Extraction & Recognition** 📋
+    - **Goal:** Character/location extraction, entity persistence, and relationship tracking
 
-- **v1.0.0: Complete Pipeline Validation**
-    - **Goal:** End-to-end demo: submit story chapters, get back queryable character profiles
+- **v0.7.0: Entity Intelligence & Synthesis** 📋
+    - **Goal:** RAG-based entity merging, enhanced profiles, and cross-reference resolution
+
+- **v1.0.0: Complete Lore Ingestion System** 📋
+    - **Goal:** End-to-end demo: submit story chapters, get back queryable character profiles and semantic knowledge base
 
 - **v2.0: Multi-Entity Knowledge Base**
     - **Goal:** Support for all core entity types (Characters, Locations, Factions, Items, Events) with full CRUD APIs

@@ -1,6 +1,6 @@
 package com.lorevault.api.repository;
 
-import com.lorevault.api.model.StatusRecord;
+import com.lorevault.api.domain.ingestion.StatusRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

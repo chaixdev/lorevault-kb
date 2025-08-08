@@ -2,7 +2,7 @@
 
 **Purpose**: Define the complete REST API interface for the LoreVault content ingestion and lore exploration system, implementing CQRS patterns with clear command/query separation.
 
-**Scope**: All public HTTP endpoints, request/response formats, error handling, and integration patterns for the LoreVault API. Covers current v0.2.0 implementation and planned expansion through v1.0.0.
+**Scope**: All public HTTP endpoints, request/response formats, error handling, and integration patterns for the LoreVault API. Covers current v0.3.x implementation and planned expansion through v1.0.0.
 
 **Dependencies**: 
 - Architecture Document: Functional Viewpoint (02-functional-viewpoint.md) - CQRS patterns
@@ -155,10 +155,10 @@ jobId: UUID (required) - Unique job identifier
 
 **Query Parameters**:
 ```
-universe: string (optional) - Filter by universe
-status: string (optional) - Filter by status (QUEUED, PROCESSING, COMPLETE, FAILED)
-limit: integer (optional, default: 20) - Maximum results to return
-offset: integer (optional, default: 0) - Pagination offset
+universe: string (optional) - Filter by universe (matches Chapter.coordinates.universe)
+status: string (optional) - One of [ACTIVE | QUEUED | PREPROCESSING_STARTED | DETECTING_SCENES | EMBEDDING_CHUNKS | COMPLETE | FAILED]
+limit: integer (optional, default: 20, min: 1, max: 100) - Page size
+offset: integer (optional, default: 0, min: 0) - Pagination offset
 ```
 
 **Response Format**:
@@ -167,8 +167,12 @@ offset: integer (optional, default: 0) - Pagination offset
   "jobs": [
     {
       "jobId": "550e8400-e29b-41d4-a716-446655440000",
+      "chapterId": "123e4567-e89b-12d3-a456-426614174000",
       "universe": "Middle Earth",
-      "book": "The Fellowship of the Ring",
+      "series": "The Lord of the Rings",
+      "bookNumber": 1,
+      "partNumber": null,
+      "chapterNumber": 2,
       "chapterTitle": "The Shadow of the Past",
       "status": "COMPLETE",
       "progress": 100,
@@ -184,6 +188,9 @@ offset: integer (optional, default: 0) - Pagination offset
   }
 }
 ```
+
+- ACTIVE returns jobs whose current status is not in [COMPLETE, FAILED].
+- Results are ordered by `createdAt` desc.
 
 ### Lore Exploration Domain
 
@@ -226,6 +233,7 @@ universe: string (required) - Universe identifier
 | `EMBEDDING_CHUNKS` | 45 | Chunk creation and storage | No |
 | `COMPLETE` | 100 | Processing completed successfully | Yes |
 | `FAILED` | varies | Processing failed with error | Yes |
+| `ACTIVE` | varies | Job is currently being processed | No |
 
 ### Content Processing States
 
@@ -394,19 +402,15 @@ flowchart TD
 
 ### Version Compatibility
 
-**Current Version**: v0.2.0 (Content Storage & Segmentation)
-**API Stability**: File upload endpoint stable for v0.2.x
-**Breaking Changes**: None planned for v0.2.x series
+**Current Version**: v0.3.x (Scene Detection & Chunking)  
+**API Stability**: File upload, job status, and job listing endpoints are stable for v0.3.x  
+**Breaking Changes**: None planned for v0.3.x series
 
 ### Future Enhancements
 
-**v0.3.0 Additions**:
-- Enhanced job status with scene detection progress
-- Scene-level granularity in status updates
-
 **v0.4.0 Additions**:
-- `/api/lore/{universe}/search` endpoint for semantic search
-- Vector similarity queries
+- Entity extraction and synthesis endpoints (spec to be finalized)
+- Vector embeddings and semantic search endpoints
 
 **v1.0.0 Additions**:
 - `/api/lore/{universe}/characters` endpoint

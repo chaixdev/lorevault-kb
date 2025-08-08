@@ -1,9 +1,13 @@
 package com.lorevault.api.service;
 
-import com.lorevault.api.dto.SceneDetectionResult;
-import com.lorevault.api.dto.SceneWithCoordinates;
-import com.lorevault.api.model.Chapter;
+import com.lorevault.api.dto.content.SceneDetectionResult;
+import com.lorevault.api.dto.content.SceneWithCoordinates;
+import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.repository.ChapterRepository;
+import com.lorevault.api.service.content.SceneDetectionClient;
+import com.lorevault.api.service.content.SceneDetectionXmlParser;
+import com.lorevault.api.service.content.SceneCoordinateLocalizer;
+import com.lorevault.api.service.content.SceneDetectionService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

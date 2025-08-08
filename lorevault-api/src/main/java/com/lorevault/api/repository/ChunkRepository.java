@@ -1,6 +1,6 @@
 package com.lorevault.api.repository;
 
-import com.lorevault.api.model.Chunk;
+import com.lorevault.api.domain.content.Chunk;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

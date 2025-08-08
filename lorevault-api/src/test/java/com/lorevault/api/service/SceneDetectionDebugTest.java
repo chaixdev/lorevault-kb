@@ -1,6 +1,7 @@
 package com.lorevault.api.service;
 
-import com.lorevault.api.dto.SceneDetectionResult;
+import com.lorevault.api.dto.content.SceneDetectionResult;
+import com.lorevault.api.service.content.SceneDetectionXmlParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

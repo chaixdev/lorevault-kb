@@ -1,6 +1,7 @@
 package com.lorevault.api.service;
 
-import com.lorevault.api.model.Chunk;
+import com.lorevault.api.domain.content.Chunk;
+import com.lorevault.api.service.content.TextChunkingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;

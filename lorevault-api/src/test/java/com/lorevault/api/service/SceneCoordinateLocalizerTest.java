@@ -1,7 +1,8 @@
 package com.lorevault.api.service;
 
-import com.lorevault.api.dto.SceneDetectionResult;
-import com.lorevault.api.dto.SceneWithCoordinates;
+import com.lorevault.api.dto.content.SceneDetectionResult;
+import com.lorevault.api.dto.content.SceneWithCoordinates;
+import com.lorevault.api.service.content.SceneCoordinateLocalizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

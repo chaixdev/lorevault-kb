@@ -91,6 +91,6 @@ lorevault/
 
 ### 🏗️ Implementation Status
 
-- ✅ **v0.3.0** - Scene Detection & Hierarchical Structure (Current)
-- 🔄 **v0.4.0** - AI Enhancement & Intelligence (Next)
-- 📋 **v0.5.0** - Vector Embeddings & Semantic Search (Future)
+- ✅ **v0.4.0** - Production Polish & Architecture (Current)
+- � **v0.5.0** - Vector Embeddings & Semantic Search (Next)
+- 📋 **v0.6.0** - Entity Extraction & Recognition (Future)

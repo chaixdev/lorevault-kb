@@ -1,7 +1,7 @@
 package com.lorevault.api.testutil;
 
-import com.lorevault.api.dto.SubmitChapterRequest;
-import com.lorevault.api.model.PublicationCoordinates;
+import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
+import com.lorevault.api.domain.shared.PublicationCoordinates;
 import lombok.experimental.UtilityClass;
 import org.springframework.util.ResourceUtils;
 
