@@ -71,5 +71,26 @@ lorevault/
 ## API Endpoints
 
 - `GET /api/status` - Application status
-- `GET /actuator/health` - Health check endpoint
+- `GET /actuator/health` - Health check endpoint  
 - `GET /actuator/info` - Application information
+- `GET /api/health` - Service health monitoring
+- `GET /api/health/llm` - LLM connectivity validation
+
+## Documentation
+
+### 📚 Architecture & Specifications
+
+- **[Architecture Documentation](docs/architecture/)** - Complete architectural viewpoints using Rozanski & Woods methodology
+- **[Technical Specifications](docs/specs/)** - Detailed specs bridging architecture to implementation
+- **[Project Summary](docs/project_summary.md)** - High-level vision and roadmap
+
+### 🤖 AI Integration
+
+- **[Scene Detection Specification](docs/specs/scene-detection-specification.md)** - XML-based AI scene boundary detection
+- **[Health Endpoint Specification](docs/specs/health-endpoint-specification.md)** - LLM service monitoring
+
+### 🏗️ Implementation Status
+
+- ✅ **v0.3.0** - Scene Detection & Hierarchical Structure (Current)
+- 🔄 **v0.4.0** - AI Enhancement & Intelligence (Next)
+- 📋 **v0.5.0** - Vector Embeddings & Semantic Search (Future)

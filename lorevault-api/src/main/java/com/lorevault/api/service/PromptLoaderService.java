@@ -3,6 +3,7 @@ package com.lorevault.api.service;
 import com.lorevault.api.config.PromptProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
@@ -10,12 +11,13 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
  * Service for loading and caching AI prompt templates from resources.
- * Provides efficient access to prompt templates with fallback handling.
+ * Provides efficient access to configured PromptTemplate instances with centralized configuration.
  */
 @Service
 @RequiredArgsConstructor
@@ -25,7 +27,7 @@ public class PromptLoaderService {
     private final PromptProperties promptProperties;
     private final ResourceLoader resourceLoader;
     
-    private final ConcurrentMap<String, String> promptCache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, PromptTemplate> promptCache = new ConcurrentHashMap<>();
 
     /**
      * Initialize the service by pre-loading critical prompts.
@@ -36,45 +38,45 @@ public class PromptLoaderService {
         
         // Pre-load scene detection prompt
         try {
-            getSceneDetectionPrompt();
-            log.info("Successfully pre-loaded scene detection prompt");
+            getSceneDetectionPromptTemplate();
+            log.info("Successfully pre-loaded scene detection prompt template");
         } catch (Exception e) {
-            log.error("Failed to pre-load scene detection prompt: {}", e.getMessage());
+            log.error("Failed to pre-load scene detection prompt template: {}", e.getMessage());
         }
     }
 
     /**
-     * Get the scene detection prompt template.
+     * Get the scene detection prompt template with centralized configuration.
      * 
-     * @return The scene detection prompt template
+     * @return Configured PromptTemplate for scene detection
      * @throws RuntimeException if prompt cannot be loaded
      */
-    public String getSceneDetectionPrompt() {
-        return getPrompt("scene-detection", promptProperties.getSceneDetectionPath());
+    public PromptTemplate getSceneDetectionPromptTemplate() {
+        return getPromptTemplate("scene-detection", promptProperties.getSceneDetectionPath());
     }
 
     /**
-     * Generic method to load and cache prompt templates.
+     * Generic method to load and cache prompt templates with centralized configuration.
      * 
      * @param promptKey Unique key for caching
      * @param resourcePath Full resource path to the prompt file
-     * @return The prompt template content
+     * @return Configured PromptTemplate instance
      * @throws RuntimeException if prompt cannot be loaded
      */
-    private String getPrompt(String promptKey, String resourcePath) {
-        return promptCache.computeIfAbsent(promptKey, key -> loadPromptFromResource(resourcePath));
+    private PromptTemplate getPromptTemplate(String promptKey, String resourcePath) {
+        return promptCache.computeIfAbsent(promptKey, key -> loadPromptTemplateFromResource(resourcePath));
     }
 
     /**
-     * Load prompt content from a resource file.
+     * Load prompt template from a resource file with centralized configuration.
      * 
      * @param resourcePath The resource path to load from
-     * @return The prompt content
+     * @return Configured PromptTemplate instance
      * @throws RuntimeException if loading fails
      */
-    private String loadPromptFromResource(String resourcePath) {
+    private PromptTemplate loadPromptTemplateFromResource(String resourcePath) {
         try {
-            log.debug("Loading prompt from resource: {}", resourcePath);
+            log.debug("Loading prompt template from resource: {}", resourcePath);
             
             Resource resource = resourceLoader.getResource(resourcePath);
             
@@ -84,17 +86,36 @@ public class PromptLoaderService {
             
             String content = resource.getContentAsString(StandardCharsets.UTF_8);
             
-            if (content == null || content.trim().isEmpty()) {
+            if (content.trim().isEmpty()) {
                 throw new RuntimeException("Prompt resource is empty: " + resourcePath);
             }
             
-            log.debug("Successfully loaded prompt from {}, length: {} characters", 
+            // Create PromptTemplate with default constructor first
+            // We'll override the template rendering by manually processing {{}} placeholders
+            PromptTemplate template = new PromptTemplate(content) {
+                @Override
+                public String render(Map<String, Object> variables) {
+                    // Custom rendering with {{}} delimiters to avoid XML tag conflicts
+                    String result = content;
+                    for (Map.Entry<String, Object> entry : variables.entrySet()) {
+                        String placeholder = "{{" + entry.getKey() + "}}";
+                        String value = entry.getValue() != null ? entry.getValue().toString() : "";
+                        result = result.replace(placeholder, value);
+                    }
+                    return result;
+                }
+            };
+            
+
+
+            
+            log.debug("Successfully loaded prompt template from {}, length: {} characters", 
                      resourcePath, content.length());
             
-            return content;
+            return template;
             
         } catch (IOException e) {
-            String errorMsg = "Failed to load prompt from resource: " + resourcePath;
+            String errorMsg = "Failed to load prompt template from resource: " + resourcePath;
             log.error(errorMsg, e);
             throw new RuntimeException(errorMsg, e);
         }
@@ -105,7 +126,7 @@ public class PromptLoaderService {
      */
     public void clearCache() {
         promptCache.clear();
-        log.info("Prompt cache cleared");
+        log.info("Prompt template cache cleared");
     }
 
     /**

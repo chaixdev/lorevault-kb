@@ -16,16 +16,19 @@ LoreVault is an intelligent, service-oriented system designed to automatically b
 
 The project will be developed in major versions, each delivering a significant piece of functionality:
 
-- **v0.1.0: API Shell & Basic Job Lifecycle**
+- **v0.1.0: API Shell & Basic Job Lifecycle** ✅
     - **Goal:** Submit chapter text via API, get job ID back, track job status
 
-- **v0.2.0: Content Storage & Segmentation**
+- **v0.2.0: Content Storage & Segmentation** ✅
     - **Goal:** Jobs actually process text and store Chapter/Chunk entities in database
 
-- **v0.3.0: Local AI Integration & Raw Extraction**
-    - **Goal:** Each chunk gets processed by Gemma 3B to extract preprocessing data (scene boundaries, scene tags, scene entities). scenes are also stored
+- **v0.3.0: Scene Detection & Hierarchical Structure** ✅
+    - **Goal:** AI-powered scene boundary detection creating Chapter → Scene → Chunk hierarchy using external LLM APIs with XML-based reliable parsing
 
-- **v0.4.0: Embedding Generation & Storage**
+- **v0.4.0: AI Enhancement & Intelligence** 🔄
+    - **Goal:** Character/location extraction, emotional analysis, and enhanced scene metadata
+
+- **v0.5.0: Embedding Generation & Storage** 📋
     - **Goal:** All chunks have vector embeddings and semantic search works
 
 - **v0.5.0: Character Entity Synthesis**

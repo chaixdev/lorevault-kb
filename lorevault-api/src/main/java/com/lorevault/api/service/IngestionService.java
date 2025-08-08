@@ -3,6 +3,7 @@ package com.lorevault.api.service;
 import com.lorevault.api.dto.SubmitChapterRequest;
 import com.lorevault.api.dto.SubmitChapterResponse;
 import com.lorevault.api.dto.JobStatusResponse;
+import com.lorevault.api.dto.SceneWithCoordinates;
 import com.lorevault.api.event.ChapterIngestionEvent;
 import com.lorevault.api.model.*;
 import com.lorevault.api.repository.ChapterRepository;
@@ -37,6 +38,7 @@ public class IngestionService {
     private final HashService hashService;
     private final ChunkService chunkService;
     private final SceneDetectionService sceneDetectionService;
+    private final ScenePersistenceService scenePersistenceService;
     private final TextChunkingService textChunkingService;
     private final ChunkRepository chunkRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -203,9 +205,13 @@ public class IngestionService {
                     IngestionStatus.DETECTING_SCENES.getProgressPercentage(), 
                     "Analyzing chapter text with AI to identify semantic scene boundaries");
                 
-                List<Scene> detectedScenes = sceneDetectionService.detectScenesForChapter(chapter.getId());
+                // Detect scenes (returns coordinates, no persistence)
+                List<SceneWithCoordinates> scenesWithCoordinates = sceneDetectionService.detectScenesForChapter(chapter.getId());
                 
-                log.info("Detected {} scenes for chapter {}", detectedScenes.size(), chapter.getId());
+                // Persist scenes in a separate transaction
+                List<Scene> detectedScenes = scenePersistenceService.persistDetectedScenes(chapter.getId(), scenesWithCoordinates);
+                
+                log.info("Detected and persisted {} scenes for chapter {}", detectedScenes.size(), chapter.getId());
                 updateJobStatus(job, IngestionStatus.DETECTING_SCENES, 
                     IngestionStatus.DETECTING_SCENES.getProgressPercentage() + 10,
                     String.format("Detected %d semantic scenes from chapter text", detectedScenes.size()));
@@ -306,8 +312,7 @@ public class IngestionService {
     /**
      * Creates chunks from scenes following the text-chunking specification.
      * Implements Stage 3 (Chunking Decision Gate) and Stage 4 (Chunk Generation):
-     * - Scene ≤ 5000 chars: Create single chunk
-     * - Scene > 5000 chars: Apply sentence-aware sliding window chunking
+     * Uses TextChunkingService which transparently handles both single and multi-chunk cases.
      */
     private List<Chunk> createChunksFromScenes(Chapter chapter) {
         List<Chunk> allChunks = new ArrayList<>();
@@ -316,75 +321,42 @@ public class IngestionService {
         log.debug("Processing {} scenes for chunking", chapter.getScenes().size());
         
         for (Scene scene : chapter.getScenes()) {
-            // Stage 3: Chunking Decision Gate
             long sceneLength = scene.getEndCharacterOffset() - scene.getStartCharacterOffset();
             
-            if (sceneLength <= 5000) {
-                // Stage 4.A: Single-Chunk Creation
-                log.debug("Scene {} has {} chars, creating single chunk", 
-                         scene.getSceneIndex(), sceneLength);
-                
-                Chunk singleChunk = createChunkFromScene(scene, chapter);
-                allChunks.add(singleChunk);
-                
-            } else {
-                // Stage 4.B: Multi-Chunk Subdivision using sliding window
-                log.debug("Scene {} has {} chars, applying sliding window chunking", 
-                         scene.getSceneIndex(), sceneLength);
-                
-                String sceneText = chapterText.substring(
-                    scene.getStartCharacterOffset().intValue(), 
-                    scene.getEndCharacterOffset().intValue()
+            log.debug("Processing scene {} with {} chars", scene.getSceneIndex(), sceneLength);
+            
+            String sceneText = chapterText.substring(
+                scene.getStartCharacterOffset().intValue(), 
+                scene.getEndCharacterOffset().intValue()
+            );
+            
+            // Use TextChunkingService which handles threshold logic transparently
+            // Returns 1 chunk if ≤ threshold, multiple chunks if > threshold
+            List<Chunk> sceneChunks = textChunkingService.extractChunks(sceneText);
+            
+            // Adjust chunk coordinates to be relative to chapter and set scene relationship
+            for (Chunk chunk : sceneChunks) {
+                // Adjust coordinates to be relative to chapter, not scene
+                chunk.setStartCharInChapter(chunk.getStartCharInChapter() + scene.getStartCharacterOffset().intValue());
+                chunk.setEndCharInChapter(chunk.getEndCharInChapter() + scene.getStartCharacterOffset().intValue());
+
+                // Set relationships
+                chunk.setChapter(chapter);
+                chunk.setScene(scene);
+
+                // Generate content hash
+                String chunkContent = chapterText.substring(
+                        chunk.getStartCharInChapter(),
+                        chunk.getEndCharInChapter()
                 );
-                
-                // Use TextChunkingService to create chunks from scene text
-                List<Chunk> sceneChunks = textChunkingService.extractChunks(sceneText);
-                
-                // Adjust chunk coordinates to be relative to chapter and set scene relationship
-                for (Chunk chunk : sceneChunks) {
-                    // Adjust coordinates to be relative to chapter, not scene
-                    chunk.setStartCharInChapter(chunk.getStartCharInChapter() + scene.getStartCharacterOffset().intValue());
-                    chunk.setEndCharInChapter(chunk.getEndCharInChapter() + scene.getStartCharacterOffset().intValue());
-
-                    // Set relationships
-                    chunk.setChapter(chapter);
-                    chunk.setScene(scene);
-
-                    // Generate content hash
-                    String chunkContent = chapterText.substring(
-                            chunk.getStartCharInChapter(),
-                            chunk.getEndCharInChapter()
-                    );
-                    chunk.setContentHash(hashService.generateSha256Hash(chunkContent));
-                }
-                
-                // Save the scene chunks
-                allChunks.addAll(chunkRepository.saveAll(sceneChunks));
+                chunk.setContentHash(hashService.generateSha256Hash(chunkContent));
             }
+            
+            // Save the scene chunks
+            allChunks.addAll(chunkRepository.saveAll(sceneChunks));
         }
         
         log.info("Created {} total chunks from {} scenes", allChunks.size(), chapter.getScenes().size());
         return allChunks;
-    }
-
-    /**
-     * Creates a single chunk from a scene (Stage 4.A implementation)
-     */
-    private Chunk createChunkFromScene(Scene scene, Chapter chapter) {
-        Chunk chunk = new Chunk();
-        chunk.setChapter(chapter);
-        chunk.setScene(scene);
-        chunk.setChunkNumberInChapter(1); // Single chunk for this scene
-        chunk.setStartCharInChapter(scene.getStartCharacterOffset().intValue());
-        chunk.setEndCharInChapter(scene.getEndCharacterOffset().intValue());
-        
-        // Generate content hash
-        String sceneText = chapter.getRawText().substring(
-            scene.getStartCharacterOffset().intValue(), 
-            scene.getEndCharacterOffset().intValue()
-        );
-        chunk.setContentHash(hashService.generateSha256Hash(sceneText));
-        
-        return chunkRepository.save(chunk);
     }
 }

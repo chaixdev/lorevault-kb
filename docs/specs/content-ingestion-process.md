@@ -6,13 +6,13 @@
 
 ## Implementation Status
 
-**Current Version**: v0.2.0 - Core Content Storage & Segmentation  
-**Next Version**: v0.3.0 - Scene Detection & Hierarchical Structure  
-**Future Version**: v0.4.0+ - AI Enhancement & Vector Embeddings
+**Current Version**: v0.3.0 - Scene Detection & Hierarchical Structure  
+**Next Version**: v0.4.0 - AI Enhancement & Vector Embeddings  
+**Latest Update**: 2025-08-07 - XML-based scene detection implemented
 
 ## Process Overview
 
-The content ingestion process transforms unstructured narrative text into searchable knowledge entities through a multi-stage pipeline. The current v0.2.0 implementation provides core content storage and deterministic text segmentation, with future versions adding AI-powered scene detection and external AI enhancement for cost-efficient processing.
+The content ingestion process transforms unstructured narrative text into searchable knowledge entities through a multi-stage pipeline. The current v0.3.0 implementation provides AI-powered scene detection with XML-based parsing, creating a Chapter → Scene → Chunk hierarchy for semantic content organization.
 
 ## Current Implementation (v0.2.0)
 
@@ -410,21 +410,36 @@ stateDiagram-v2
 - [x] Spring Boot framework integration
 - [x] Testcontainers-based integration testing with real PostgreSQL
 
-### 🔄 v0.3.0 PLANNED (Scene Detection & Hierarchy)
+### ✅ v0.3.0 IMPLEMENTED (Scene Detection & Hierarchy)
 
 **Semantic Structure**:
-- [ ] Local AI integration for scene boundary detection
-- [ ] Scene entity creation with context metadata
-- [ ] Hierarchical content structure (Chapter → Scene → Chunk)
-- [ ] Enhanced chunking based on semantic scene boundaries
+- [x] External AI integration for scene boundary detection (Google Gemini)
+- [x] XML-based LLM response parsing for reliable prose handling
+- [x] Scene entity creation with context metadata
+- [x] Hierarchical content structure (Chapter → Scene → Chunk)
+- [x] Two-stage processing: AI identification + coordinate localization
+- [x] Retry mechanisms with exponential backoff for API resilience
+
+**Quality & Reliability**:
+- [x] Comprehensive unit test coverage for XML parsing
+- [x] Error handling and graceful degradation
+- [x] Trace-level logging for debugging AI interactions
+- [x] Integration with Chapter aggregate pattern
+
+### 🔄 v0.4.0 PLANNED (AI Enhancement & Intelligence)
+
+**Enhanced Scene Analysis**:
+- [ ] Character presence tracking within scenes
+- [ ] Location extraction and scene tagging
+- [ ] Emotional tone analysis per scene
 
 **Intelligence Processing**:
-- [ ] Small Language Model (SLM) integration for content analysis
+- [ ] Local LLM integration for cost reduction
 - [ ] Entity extraction (characters, locations, items, organizations)
 - [ ] Thematic tag classification
 - [ ] Quality assessment for AI enhancement filtering
 
-### 🔮 v0.4.0+ FUTURE (AI Enhancement & Search)
+### 🔮 v0.5.0+ FUTURE (Vector Processing & Search)
 
 **Vector Processing**:
 - [ ] Vector embedding generation for semantic search

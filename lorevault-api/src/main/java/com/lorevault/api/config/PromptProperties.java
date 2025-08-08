@@ -21,9 +21,9 @@ public class PromptProperties {
 
     /**
      * Filename for scene detection prompt template.
-     * Default: scene-detection.txt
+     * Default: scene-detection-v2.txt
      */
-    private String sceneDetection = "scene-detection.txt";
+    private String sceneDetection = "scene-detection-v2.txt";
 
     /**
      * Get the full resource path for scene detection prompt.

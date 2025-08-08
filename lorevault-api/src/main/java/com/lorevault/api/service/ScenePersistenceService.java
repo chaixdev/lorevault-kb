@@ -1,5 +1,6 @@
 package com.lorevault.api.service;
 
+import com.lorevault.api.dto.SceneWithCoordinates;
 import com.lorevault.api.model.Chapter;
 import com.lorevault.api.model.Scene;
 import com.lorevault.api.repository.ChapterRepository;
@@ -32,7 +33,7 @@ public class ScenePersistenceService {
      * @return List of created Scene entities
      */
     @Transactional
-    public List<Scene> persistDetectedScenes(UUID chapterId, List<SceneDetectionService.SceneWithCoordinates> scenesWithCoords) {
+    public List<Scene> persistDetectedScenes(UUID chapterId, List<SceneWithCoordinates> scenesWithCoords) {
         log.debug("Starting transactional persistence of {} scenes for chapter {}", 
                  scenesWithCoords.size(), chapterId);
         
@@ -67,7 +68,7 @@ public class ScenePersistenceService {
      * @param scenesWithCoords List of scene coordinate data
      * @return List of created Scene entities
      */
-    private List<Scene> createScenesFromCoordinates(Chapter chapter, List<SceneDetectionService.SceneWithCoordinates> scenesWithCoords) {
+    private List<Scene> createScenesFromCoordinates(Chapter chapter, List<SceneWithCoordinates> scenesWithCoords) {
         return scenesWithCoords.stream()
                 .map(sceneData -> {
                     // Use Chapter aggregate's factory method to create and add scene
