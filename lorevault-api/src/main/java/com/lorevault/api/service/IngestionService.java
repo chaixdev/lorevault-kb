@@ -238,7 +238,20 @@ public class IngestionService {
             
         } catch (Exception e) {
             log.error("Error processing chapter {} for job {}: {}", chapter.getId(), job.getId(), e.getMessage(), e);
-            failJob(job, "Chapter processing failed: " + e.getMessage());
+            
+            // Determine if this is an LLM API failure that should trigger cleanup for retry
+            if (e.getMessage() != null && (
+                e.getMessage().contains("LLM API") || 
+                e.getMessage().contains("scene detection failed") ||
+                e.getMessage().contains("Empty response") ||
+                e.getMessage().contains("failed permanently after multiple attempts"))) {
+                // For LLM API failures, clean up data to allow for fresh retry
+                log.warn("LLM API failure detected - cleaning up data for retry");
+                failJobWithCleanup(job, "LLM API call failed: " + e.getMessage());
+            } else {
+                // For other failures, just mark as failed
+                failJob(job, "Chapter processing failed: " + e.getMessage());
+            }
         }
     }
     
@@ -307,6 +320,27 @@ public class IngestionService {
         );
 
         log.error("Job {} failed: {}", job.getId(), errorMessage);
+    }
+    
+    /**
+     * Mark job as failed and clean up any partially processed data
+     * This allows a clean retry of the chapter later
+     */
+    @Transactional
+    protected void failJobWithCleanup(IngestionJob job, String errorMessage) {
+        // Get the chapter ID to clean up
+        UUID chapterId = job.getChapterId();
+        
+        // Clean up any chunks created for this chapter
+        int deletedChunks = chunkRepository.deleteAllByChapterId(chapterId);
+        log.info("Cleaned up {} chunks for failed chapter {}", deletedChunks, chapterId);
+        
+        // Clean up any scenes created for this chapter
+        int deletedScenes = scenePersistenceService.deleteAllScenesForChapter(chapterId);
+        log.info("Cleaned up {} scenes for failed chapter {}", deletedScenes, chapterId);
+        
+        // Mark the job as failed
+        failJob(job, errorMessage + " (data cleaned up for retry)");
     }
 
     /**

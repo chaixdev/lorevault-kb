@@ -5,7 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -22,13 +24,16 @@ public class SceneDetectionClient {
     private final ChatClient chatClient;
     private final PromptLoaderService promptLoaderService;
     
+    @Qualifier("llmRetryTemplate")
+    private final RetryTemplate retryTemplate;
+    
     @Value("${spring.ai.openai.chat.options.model:unknown}")
     private String currentModelId;
     
     /**
      * Calls the configured AI model to analyze chapter text and detect scene boundaries.
      * Uses system prompt + user message pattern with optimized parameters for consistent results.
-     * Includes application-level retry logic for robustness.
+     * Leverages Spring RetryTemplate for robust retry handling.
      * 
      * @param chapterText The full chapter text to analyze
      * @return Raw XML response from the AI model
@@ -39,20 +44,19 @@ public class SceneDetectionClient {
         PromptTemplate template = promptLoaderService.getSceneDetectionPromptTemplate();
         String systemPrompt = template.render(Map.of()); // No variables needed for system prompt
         
-        // Retry configuration for additional robustness beyond Spring AI's built-in retry
-        int maxRetries = 3;
-        long baseDelayMs = 2000;
+        // Create options for consistent, deterministic results
+        OpenAiChatOptions options = OpenAiChatOptions.builder()
+            .temperature(0.1)       // Very low temperature for consistent, deterministic results
+            .topP(0.9)              // Focused sampling - high quality tokens only
+            .maxTokens(6000)        // Sufficient for XML response with multiple scenes
+            .build();
         
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                log.debug("Calling {} for scene detection (attempt {}/{})", currentModelId, attempt, maxRetries);
-                
-                // Create options for consistent, deterministic results
-                OpenAiChatOptions options = OpenAiChatOptions.builder()
-                    .temperature(0.1)       // Very low temperature for consistent, deterministic results
-                    .topP(0.9)              // Focused sampling - high quality tokens only
-                    .maxTokens(6000)        // Sufficient for XML response with multiple scenes
-                    .build();
+        try {
+            // Use RetryTemplate to handle retries with proper logging and backoff
+            return retryTemplate.execute(retryContext -> {
+                int retryCount = retryContext.getRetryCount();
+                String attemptMsg = retryCount > 0 ? " (retry attempt " + retryCount + ")" : "";
+                log.debug("Calling {} for scene detection{}", currentModelId, attemptMsg);
                 
                 // Call AI model with system prompt + user message pattern
                 String response = chatClient.prompt()
@@ -67,32 +71,23 @@ public class SceneDetectionClient {
                 }
                 
                 // Log full response at trace level for debugging
-                log.trace("Full LLM API response for scene detection (attempt {}): {}", attempt, response);
+                log.trace("Full LLM API response for scene detection: {}", response);
                 
                 return response;
+            }, recoveryContext -> {
+                // This is the recovery callback, called when all retries are exhausted
+                Throwable lastError = recoveryContext.getLastThrowable();
+                String errorMsg = lastError != null ? lastError.getMessage() : "Unknown error";
+                log.error("All scene detection attempts failed for text length {}: {}", 
+                         chapterText.length(), errorMsg);
                 
-            } catch (Exception e) {
-                log.warn("Scene detection attempt {}/{} failed: {}", attempt, maxRetries, e.getMessage());
-                
-                if (attempt == maxRetries) {
-                    log.error("All {} scene detection attempts failed for chapter text length {}", 
-                             maxRetries, chapterText.length());
-                    throw new RuntimeException("Scene detection failed after " + maxRetries + " attempts", e);
-                }
-                
-                // Exponential backoff delay before retry
-                long delayMs = baseDelayMs * (long) Math.pow(2, attempt - 1);
-                try {
-                    log.debug("Waiting {}ms before retry attempt {}", delayMs, attempt + 1);
-                    Thread.sleep(delayMs);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Scene detection interrupted", ie);
-                }
-            }
+                throw new RuntimeException("Scene detection failed permanently after multiple attempts: " + errorMsg, 
+                                          recoveryContext.getLastThrowable());
+            });
+        } catch (Exception e) {
+            // This catches any exceptions not handled by the retry template
+            log.error("Unexpected error during scene detection: {}", e.getMessage());
+            throw new RuntimeException("Scene detection failed: " + e.getMessage(), e);
         }
-        
-        // This should never be reached due to the throw in the catch block
-        throw new RuntimeException("Unexpected end of retry loop");
     }
 }

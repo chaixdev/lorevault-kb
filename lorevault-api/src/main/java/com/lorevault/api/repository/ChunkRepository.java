@@ -52,4 +52,11 @@ public interface ChunkRepository extends JpaRepository<Chunk, UUID> {
     @Modifying
     @Query("DELETE FROM Chunk c WHERE c.chapter.id = :chapterId")
     void deleteByChapterId(@Param("chapterId") UUID chapterId);
+    
+    /**
+     * Delete all chunks for a specific chapter and return the count of deleted items
+     */
+    @Modifying
+    @Query("DELETE FROM Chunk c WHERE c.chapter.id = :chapterId")
+    int deleteAllByChapterId(@Param("chapterId") UUID chapterId);
 }

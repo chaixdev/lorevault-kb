@@ -81,4 +81,31 @@ public class ScenePersistenceService {
                 })
                 .toList();
     }
+    
+    /**
+     * Deletes all scenes for a chapter to support clean retry after failure.
+     * 
+     * @param chapterId The chapter ID to delete scenes for
+     * @return The number of scenes deleted
+     */
+    @Transactional
+    public int deleteAllScenesForChapter(UUID chapterId) {
+        log.debug("Deleting all scenes for chapter {}", chapterId);
+        
+        // Load the chapter within the transaction
+        Chapter chapter = chapterRepository.findById(chapterId)
+                .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
+        
+        // Get number of scenes for logging
+        int sceneCount = chapter.getScenes().size();
+        
+        // Clear scenes collection
+        chapter.getScenes().clear();
+        
+        // Save the chapter (which will cascade the scene removal)
+        chapterRepository.save(chapter);
+        
+        log.info("Deleted {} scenes for chapter {}", sceneCount, chapterId);
+        return sceneCount;
+    }
 }
