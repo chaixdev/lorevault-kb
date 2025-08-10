@@ -12,7 +12,6 @@ import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.ingestion.StatusRecord;
-import com.lorevault.api.domain.shared.PublicationCoordinates;
 import com.lorevault.api.repository.ChapterRepository;
 import com.lorevault.api.repository.ChunkRepository;
 import com.lorevault.api.repository.IngestionJobRepository;
@@ -22,6 +21,7 @@ import com.lorevault.api.service.content.ChunkService;
 import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.ScenePersistenceService;
 import com.lorevault.api.service.content.TextChunkingService;
+import com.lorevault.api.service.content.ChunkEmbeddingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -58,6 +58,7 @@ public class IngestionService {
     private final TextChunkingService textChunkingService;
     private final ChunkRepository chunkRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final ChunkEmbeddingService chunkEmbeddingService;
 
     /**
      * Submit a chapter for processing
@@ -249,6 +250,13 @@ public class IngestionService {
                 IngestionStatus.EMBEDDING_CHUNKS.getProgressPercentage() + 15,
                 String.format("Created %d chunks from %d semantic scenes", chunks.size(), chapter.getScenes().size()));
             
+            // Generate embeddings for new chunks
+            updateJobStatus(job, IngestionStatus.EMBEDDING_CHUNKS,
+                    IngestionStatus.EMBEDDING_CHUNKS.getProgressPercentage() + 30,
+                    "Generating embeddings for chapter chunks");
+            int embedded = chunkEmbeddingService.generateEmbeddingsForChapter(chapter.getId());
+            log.info("Generated embeddings for {} chunks for chapter {}", embedded, chapter.getId());
+
             // Complete the job
             completeJob(job, chapter);
             

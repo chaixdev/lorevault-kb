@@ -19,6 +19,7 @@ import com.lorevault.api.service.content.ChunkService;
 import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.TextChunkingService;
 import com.lorevault.api.service.ingestion.IngestionService;
+import com.lorevault.api.service.content.ChunkEmbeddingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,6 +70,9 @@ class IngestionServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private ChunkEmbeddingService chunkEmbeddingService;
 
     @InjectMocks
     private IngestionService ingestionService;
