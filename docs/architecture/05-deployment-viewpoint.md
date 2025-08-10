@@ -1,27 +1,35 @@
 # Deployment Viewpoint
 
-**Stakeholders:** Developers, system administrators  
-**Concerns:** Basic component deployment, development environment setup
+**Stakeholders:** Developers, AI researchers, demo audience  
+**Concerns:** Development environment setup, demo deployment, AI integration exploration
 
 ## Overview
 
-This viewpoint describes the fundamental deployment components for LoreVault development prototyping. The focus is on identifying the core deployable components and their basic relationships for local development.
+This viewpoint describes the deployment setup for LoreVault development and demonstration environments. The focus is on simple, local deployment that enables exploration of AI integration patterns and demonstration of GraphRAG capabilities without complex infrastructure requirements.
 
 ## Core Deployable Components
+
+### Deployment Philosophy
+
+This deployment approach prioritizes:
+- **Ease of Setup**: Get running quickly to explore AI integration patterns
+- **Demo Readiness**: Stable environment for showcasing GraphRAG capabilities  
+- **Learning Focus**: Clear component relationships for understanding system architecture
+- **Development Iteration**: Fast feedback loops for experimenting with AI workflows
 
 ### Primary Components
 
 #### LoreVault API Application
 - **Purpose**: Main application providing REST API and orchestration services
 - **Technology**: Spring Boot JAR application
-- **Dependencies**: PostgreSQL database, external AI services
+- **Dependencies**: Graph database service, external AI services
 - **Resource Requirements**: 2GB RAM, 1 CPU core minimum
 
-#### PostgreSQL Database with pgvector
-- **Purpose**: Primary data storage with vector similarity search capabilities
-- **Technology**: PostgreSQL 16 with pgvector extension
-- **Dependencies**: Persistent storage for data
-- **Resource Requirements**: 1GB RAM, 500MB CPU, 20GB storage
+#### Graph Database Service
+- **Purpose**: Primary data persistence with integrated vector capabilities
+- **Technology**: Neo4j graph database
+- **Dependencies**: Persistent storage for graph data and vector indices
+- **Resource Requirements**: 2GB RAM, 1 CPU core minimum, 20GB storage
 
 ### Supporting Components
 
@@ -32,52 +40,50 @@ This viewpoint describes the fundamental deployment components for LoreVault dev
 - **Resource Requirements**: Additional 1GB RAM for model loading
 
 #### External AI Services
-- **Purpose**: Advanced synthesis and embedding generation
+- **Purpose**: Advanced synthesis and embedding generation for demo capabilities
 - **Technology**: External HTTP APIs (OpenAI, etc.)
 - **Dependencies**: Internet connectivity, API keys
 - **Resource Requirements**: Network bandwidth for API calls
 
-## Development Deployment Architecture
+## Demo Environment Architecture
 
 ```mermaid
 graph TB
-    subgraph "Development Environment"
-        DEV[Developer Machine]
+    subgraph "Demo Environment"
+        DEV[Developer/Demo Machine]
         
-        subgraph "Local Services"
-            APP[LoreVault API]
-            DB[PostgreSQL + pgvector]
+        subgraph "Application Services"
+            APP[LoreVault API Service]
+            DB[Graph Database Service]
         end
         
-        subgraph "Local Storage"
+        subgraph "Storage Requirements"
             MODELS[AI Model Files]
-            DATA[Database Storage]
+            GRAPHDATA[Graph Data Storage]
         end
         
-        subgraph "External Services"
-            LLM[External LLM APIs]
-            EMB[Embedding APIs]
+        subgraph "External Dependencies"
+            AI[External AI Services]
         end
     end
     
     DEV --> APP
     APP --> DB
     APP --> MODELS
-    APP --> LLM
-    APP --> EMB
+    APP --> AI
     
-    DB --> DATA
+    DB --> GRAPHDATA
     
     style APP fill:#E1F5FE
     style DB fill:#F3E5F5
-    style LLM fill:#FFE6CC
+    style AI fill:#FFE6CC
 ```
 
-## Development Deployment Setup
+## Demo Deployment Setup
 
 ### Docker Compose Architecture
 
-The development environment uses container orchestration to coordinate core components:
+The demo environment uses container orchestration to coordinate core components:
 
 **Service Coordination**:
 - Application container dependent on database availability
@@ -86,24 +92,24 @@ The development environment uses container orchestration to coordinate core comp
 - Environment-based configuration injection
 
 **Container Strategy**:
-- **API Container**: Application runtime with model file access
-- **Database Container**: PostgreSQL with pgvector extension
+- **API Container**: Application runtime with graph database connectivity
+- **Database Container**: Neo4j graph database with vector support
 - **Network Isolation**: Internal service communication with selective external exposure
-- **Data Persistence**: Volume-based storage for database data retention
+- **Data Persistence**: Volume-based storage for graph database retention
 
 ### Component Dependencies
 
 #### Startup Order
-1. **PostgreSQL Database**: Must be running first
+1. **Graph Database Service**: Must be running first
 2. **LoreVault API**: Starts after database is available
 3. **AI Model Loading**: Happens during application startup
 4. **External Services**: Connected as needed during processing
 
 #### Configuration Dependencies
-- **Database Connection**: Application requires database credentials and connection string
+- **Database Connection**: Application requires graph database credentials and connection parameters
 - **AI Model Path**: Application needs access to local Gemma 3B model files
 - **API Keys**: External service credentials for LLM and embedding APIs
-- **Port Configuration**: Homelab-compatible ports (18080 for API, 15432 for database)
+- **Port Configuration**: Homelab-compatible ports (18080 for API, 17474/17687 for database)
 
 ## Component Specifications
 
@@ -115,23 +121,24 @@ The development environment uses container orchestration to coordinate core comp
 - Java 21 JRE
 - 2GB heap memory minimum
 - Access to AI model files
-- Network access to database and external APIs
+- Network access to graph database and external APIs
 
 **Key Configuration Elements**:
 - `application.properties`: Main configuration
 - `application-development.properties`: Development overrides
 
-### PostgreSQL Database
+### Graph Database Service
 
-**Database Technology**: PostgreSQL 16 with pgvector extension
+**Database Technology**: Neo4j with integrated vector indexing capabilities
 
-**Required Extensions**:
-- Vector extension for similarity search capabilities
+**Required Configuration**:
+- Vector indexing capabilities enabled
+- Graph schema constraints for data integrity
 
-**Database Schema**: Automatically created during application startup
+**Database Schema**: Graph model initialized during application startup
 
 **Storage Requirements**:
-- Minimum 1GB for development
+- Minimum 2GB for development (graph data + vector indices)
 - Persistent volume for data retention
 
 ### AI Model Files
@@ -151,12 +158,12 @@ The development environment uses container orchestration to coordinate core comp
 | Service | Internal Port | External Port | Purpose |
 |---------|---------------|---------------|---------|
 | LoreVault API | 18080 | 18080 | REST API endpoints |
-| PostgreSQL | 5432 | 15432 | Database connections |
+| Graph Database | 7474/7687 | 17474/17687 | Web UI / Bolt protocol |
 
 ### Network Topology
 - **lorevault-network**: Internal Docker network for service communication
 - **External Access**: API accessible on host port 18080
-- **Database Access**: Direct database access on host port 15432 for development tools
+- **Database Access**: Graph database web UI accessible on host port 17474 for development tools
 
 ### External Connectivity
 - **Internet Access**: Required for external AI service API calls
@@ -168,9 +175,9 @@ The development environment uses container orchestration to coordinate core comp
 ### Required Environment Variables
 
 **Database Configuration**:
-- Database connection URL
-- Database credentials (username/password)
-- Connection pool settings
+- Graph database connection URI and credentials
+- Connection pool settings for graph database driver
+- Vector indexing configuration parameters
 
 **AI Service Configuration**:
 - External LLM API keys
@@ -217,36 +224,37 @@ The development environment uses container orchestration to coordinate core comp
 ### Troubleshooting Common Issues
 
 **Database Connection Issues**:
-- Verify PostgreSQL container is running
+- Verify graph database container is running
 - Check network connectivity between containers
-- Validate database credentials
+- Validate database credentials and connection parameters
 
 **AI Model Loading Issues**:
 - Ensure model files are present in mounted volume
 - Check file permissions and accessibility
 - Monitor application logs for model loading errors
 
-## Basic Resource Requirements
+## Demo Resource Requirements
 
-### Minimum Development Requirements
+### Target Demo Environment
 
-**Single Developer Machine**:
-- 4GB RAM (2GB for application, 1GB for database, 1GB for system)
-- 2 CPU cores
-- 50GB storage (database growth, logs, models)
+**Standard Developer/Demo Machine**:
+- 8GB RAM (2GB for application, 2GB for graph database, 4GB for system/OS)
+- 2-4 CPU cores for responsive demo performance
+- 50GB storage (graph database growth, logs, models)
 - Reliable internet connection for external AI services
+- **Demo Capacity**: Suitable for 1-5 concurrent users exploring the system
 
 ### Storage Considerations
 
-**Local Development Storage**:
+**Demo Environment Storage**:
 - **Application Logs**: Stored in container, accessible via `docker logs`
-- **Database Data**: Persistent Docker volume for data retention
+- **Graph Data**: Persistent Docker volume for Neo4j data retention
 - **AI Models**: Local filesystem mounted into container
 - **Build Artifacts**: Maven target directory with JAR files
 
-## Basic Security Considerations
+## Demo Security Considerations
 
-### Development Security
+### Development/Demo Security
 
 **Environment Variable Security**:
 - Store API keys in environment files (not in version control)
@@ -254,9 +262,9 @@ The development environment uses container orchestration to coordinate core comp
 - Keep development and production API keys separate
 
 **Database Security**:
-- Use simple passwords for development
-- Database only accessible within Docker network by default
-- Port 15432 exposed only for development tool access
+- Use simple passwords for demo environments
+- Graph database only accessible within Docker network by default
+- Port 17474 exposed only for demo and development tool access
 
 **Network Security**:
 - Default Docker network isolation between containers
@@ -265,10 +273,10 @@ The development environment uses container orchestration to coordinate core comp
 
 ## Future Production Considerations
 
-The following production features are intentionally **out of scope** for the current prototype:
+The following production features are intentionally **out of scope** for the current learning/demo prototype:
 
 - **Advanced Orchestration**: Kubernetes, service meshes, auto-scaling
-- **High Availability**: Load balancing, clustering, failover mechanisms
+- **High Availability**: Load balancing, clustering, failover mechanisms  
 - **Advanced Security**: Network segmentation, encryption at rest, certificate management
 - **Monitoring & Observability**: Prometheus, Grafana, distributed tracing, centralized logging
 - **CI/CD Pipeline**: Automated testing, deployment pipelines, blue-green deployments
@@ -276,4 +284,4 @@ The following production features are intentionally **out of scope** for the cur
 - **Backup & Recovery**: Automated backups, disaster recovery procedures
 - **Compliance**: Security scanning, audit logging, data retention policies
 
-These will be addressed in future iterations as the prototype matures into a production-ready system.
+This deployment viewpoint focuses on **learning AI integration patterns** and **demonstrating GraphRAG capabilities** rather than production operational concerns. These features will be addressed in future iterations as the prototype matures into a production-ready system.

@@ -88,26 +88,25 @@ The system implements a cost-effective hybrid approach to AI processing:
 ### Query Path Components
 
 #### Query Service
-- **Responsibility**: Fast access to processed knowledge
+- **Responsibility**: Fast access to processed knowledge via graph traversals and vector search
 - **Key Functions**:
   - Entity retrieval by type and identifier
-  - Semantic search using vector embeddings
-  - Relationship navigation and aggregation
+  - Relationship-based queries and graph traversals
+  - Hybrid semantic and structural search
   - Response caching and optimization
 - **Interfaces**: Internal APIs for data access
-- **Non-functional**: Read-only operations optimized for performance
+- **Non-functional**: Read-only operations optimized for graph query performance
 
 ### Data Management Components
 
 #### Persistence Service
-- **Responsibility**: Data storage and retrieval abstraction
+- **Responsibility**: Graph data storage and retrieval abstraction
 - **Key Functions**:
-  - Entity lifecycle management
-  - Vector storage and similarity search
-  - Transaction coordination
-  - Data consistency enforcement
-- **Interfaces**: Repository pattern for data access
-- **Non-functional**: ACID compliance with optimized indexing
+  - Entity lifecycle management via graph nodes and relationships
+  - Transaction coordination for graph operations
+  - Vector storage integration for semantic search
+- **Interfaces**: Spring Data Neo4j repository pattern for data access
+- **Non-functional**: ACID compliance with graph-optimized performance
 
 ## Component Interaction Patterns
 
@@ -142,8 +141,8 @@ flowchart TB
     end
     
     subgraph DataLayer ["Data Layer"]
-        WRITEDB[(Write Database)]
-        READMODEL[(Query Models)]
+        GRAPHDB[(Neo4j Graph Database)]
+        QUERYOPT[(Query Optimization)]
     end
     
     UI -->|1- Submit Content| CP
@@ -151,17 +150,17 @@ flowchart TB
     
     CP -->|2- Queue Job| CH
     CH -->|3- Enqueue| JQ
-    CH -->|4- Store Job Status| WRITEDB
+    CH -->|4- Store Job Status| GRAPHDB
     
     JQ -->|5- Assign Work| WP
     WP -->|6a- Local Processing| LOCAL
     WP -->|6b- External Processing| EXTERNAL
     
-    WP -->|7- Persist Results| WRITEDB
-    WP -->|7- Update Models| READMODEL
+    WP -->|7- Persist Results| GRAPHDB
+    WP -->|7- Update Models| QUERYOPT
     
     QP --> QM
-    QM --> READMODEL
+    QM --> GRAPHDB
     
     classDef client fill:#e1f5fe,stroke:#01579b
     classDef command fill:#f3e5f5,stroke:#4a148c
@@ -173,7 +172,7 @@ flowchart TB
     class CP,CH,Commands command
     class QP,QM,Queries query
     class JQ,WP,LOCAL,EXTERNAL,Processing,AIServices processing
-    class WRITEDB,READMODEL,DataLayer data
+    class GRAPHDB,QUERYOPT,DataLayer data
 ```
 
 ### AI Processing Pipeline Detail
@@ -191,20 +190,20 @@ flowchart TD
 
     subgraph Embedding [2. Contextual Embedding]
         direction LR
-        EMBED[Generate Embedding for Raw Chunk] --> STORE_VEC[Store Vector in pgvector]
+        EMBED[Generate Embedding for Raw Chunk] --> STORE_VEC[Store Vector in Neo4j Vector Index]
     end
 
     subgraph Synthesis [3. RAG-Powered Synthesis]
         direction TB
-        RAG_START(Start Synthesis) --> RETRIEVE[Retrieve Context from pgvector]
-        RETRIEVE --> AUGMENT_PROMPT[Augment Prompt with Context]
+        RAG_START(Start Synthesis) --> RETRIEVE[Retrieve Context from Graph+Vector Store]
+        RETRIEVE --> AUGMENT_PROMPT[Augment Prompt with Relationship Context]
         AUGMENT_PROMPT --> SYNTH[Synthesize & Extract with Powerful LLM]
-        SYNTH --> RESOLVE[Conflict Resolution & Merging]
+        SYNTH --> RESOLVE[Conflict Resolution & Graph Integration]
     end
 
     subgraph Persistence [4. Final Persistence]
         direction LR
-        VALIDATE[Data Validation] --> PERSIST[Persist Structured Data in PostgreSQL]
+        VALIDATE[Data Validation] --> PERSIST[Persist as Graph Entities]
     end
 
     %% --- Connections & Dependencies ---
@@ -242,17 +241,17 @@ sequenceDiagram
     participant Worker
     participant LocalAI
     participant ExternalAI
-    participant WriteDB
+    participant GraphDB
     participant QueryAPI
     participant ReadModel
 
     Client->>CommandAPI: Submit Content
     CommandAPI->>JobQueue: Enqueue Processing Job
-    CommandAPI->>WriteDB: Store Job Status
+    CommandAPI->>GraphDB: Store Job Status
     CommandAPI-->>Client: Job ID (202 Accepted)
     
     JobQueue->>Worker: Assign Job
-    Worker->>WriteDB: Update Status (Processing)
+    Worker->>GraphDB: Update Status (Processing)
     
     Worker->>LocalAI: Extract Entities
     LocalAI-->>Worker: Entity Mentions
@@ -262,9 +261,9 @@ sequenceDiagram
         ExternalAI-->>Worker: Structured Data
     end
     
-    Worker->>WriteDB: Persist Entity Data
+    Worker->>GraphDB: Persist Entity Data
     Worker->>ReadModel: Update Query Models
-    Worker->>WriteDB: Update Status (Completed)
+    Worker->>GraphDB: Update Status (Completed)
     
     Note over Client,ReadModel: Query Path (separate flow)
     Client->>QueryAPI: Query Entities

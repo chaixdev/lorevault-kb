@@ -21,6 +21,11 @@ This document establishes guidelines for creating effective architecture documen
 - **Trade-offs**: Document alternatives considered and why they were rejected
 - **Constraints**: Clearly state limitations and assumptions
 
+### 4. Context-Appropriate Scope
+- **Project Maturity**: Adapt viewpoint depth to project stage (prototype, demo, production)
+- **Audience Needs**: Tailor content to actual stakeholder requirements
+- **Learning vs. Operations**: Distinguish between educational/demo projects and operational systems
+
 ## Viewpoint Guidelines
 
 ### Context Viewpoint
@@ -115,15 +120,15 @@ This document establishes guidelines for creating effective architecture documen
 - Scalability architecture
 
 ### Deployment Viewpoint
-**Primary Stakeholders**: Operations teams, infrastructure architects, DevOps engineers  
-**Purpose**: Describe physical deployment and operational environment
+**Primary Stakeholders**: Operations teams, infrastructure architects, DevOps engineers (production), OR developers, researchers, demo audience (learning/demo projects)  
+**Purpose**: Describe physical deployment and operational environment appropriate to project scope
 
 **Should Include**:
-- Deployment architecture
-- Infrastructure requirements
-- Environment configurations
+- Deployment architecture appropriate to project maturity
+- Infrastructure requirements for target environment
+- Environment configurations for intended use
 - Operational procedures overview
-- Scalability and availability strategy
+- Scalability and availability strategy (production) OR demo capacity and learning objectives (demo/learning projects)
 
 **Should NOT Include**:
 - Detailed configuration files
@@ -135,7 +140,11 @@ This document establishes guidelines for creating effective architecture documen
 - Deployment architecture diagrams
 - Infrastructure topology charts
 - Environment relationship diagrams
-- Scaling strategy illustrations
+- Scaling strategy illustrations (production) OR demo environment setup (learning projects)
+
+**Scope Considerations**:
+- **Production Projects**: Focus on operational concerns, scalability, high availability, security
+- **Learning/Demo Projects**: Focus on ease of setup, demo capacity, learning objectives, exploration of architectural patterns
 
 ## Diagram Standards
 
@@ -261,6 +270,15 @@ was made because:
 - Write operations involve multi-stage AI processing
 - Read operations are straightforward database queries
 - Different optimization strategies benefit each path
+```
+
+### Good: Context-Appropriate Deployment Scope
+```
+This deployment approach prioritizes ease of setup and demo readiness 
+over production concerns. The target environment supports 1-5 concurrent 
+users exploring AI integration patterns. Production features like 
+clustering, automated failover, and advanced monitoring are intentionally 
+out of scope for this learning-focused prototype.
 ```
 
 ### Poor: Technology Implementation Details

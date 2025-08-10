@@ -4,7 +4,7 @@
 
 ### Executive Summary
 
-LoreVault is an intelligent, service-oriented system designed to automatically build and maintain a comprehensive lore database for fictional universes. The system provides a RESTful API for ingesting unstructured narrative content (e.g., chapters) and transforms it into a structured, queryable, and semantically indexed knowledge base within a unified PostgreSQL database. This service acts as a central "source of truth" for lore, accessible to a variety of potential client applications.
+LoreVault is an intelligent, service-oriented system designed to automatically build and maintain a comprehensive lore database for fictional universes. The system provides a RESTful API for ingesting unstructured narrative content (e.g., chapters) and transforms it into a structured, queryable, and semantically indexed knowledge graph using Neo4j. This GraphRAG architecture combines the power of graph relationships with vector semantic search to create a unified knowledge base that serves as a central "source of truth" for lore, accessible to a variety of potential client applications.
 
 ## 1. Project Vision
 
@@ -28,27 +28,55 @@ The project will be developed in major versions, each delivering a significant p
 - **v0.4.0: Production Polish & Architecture** ✅
     - **Goal:** Feature-oriented package structure, enhanced XML parsing, comprehensive testing, and production-ready scene detection pipeline
 
-- **v0.5.0: Vector Embeddings & Semantic Search** 📋
-    - **Goal:** pgvector integration, embedding generation, and semantic search capabilities
+- **v0.5.0: Neo4j Data Model Foundation** 📋
+    - **Goal:** Implement core Neo4j schema and basic content storage without search
+    - **Deliverable:** Universe→Series→Book→Chapter→Scene→Chunk nodes stored in Neo4j with Spring Data Neo4j
+    - **Tasks:** Neo4j setup, Spring Data Neo4j integration, basic content data model implementation, PostgreSQL to Neo4j migration scripts
 
-- **v0.6.0: Entity Extraction & Recognition** 📋
-    - **Goal:** Character/location extraction, entity persistence, and relationship tracking
+- **v0.6.0: Publication Coordinates & Hierarchy** 📋
+    - **Goal:** Add publication ordering and coordinate materialization for spoiler-aware access
+    - **Deliverable:** Complete hierarchy with bookOrder, chapterOrder, sceneIndex, and materialized coordinates on chunks
+    - **Tasks:** Coordinate calculation logic, hierarchy validation, coordinate materialization service, basic hierarchy APIs
 
-- **v0.7.0: Entity Intelligence & Synthesis** 📋
-    - **Goal:** RAG-based entity merging, enhanced profiles, and cross-reference resolution
+- **v0.7.0: Vector Search Integration** 📋
+    - **Goal:** Add semantic search capabilities without spoiler filtering
+    - **Deliverable:** Vector embeddings stored in Neo4j, basic semantic search API endpoint
+    - **Tasks:** Embedding generation pipeline, Neo4j vector index setup, semantic search service, search API implementation
 
-- **v1.0.0: Complete Lore Ingestion System** 📋
-    - **Goal:** End-to-end demo: submit story chapters, get back queryable character profiles and semantic knowledge base
+- **v0.8.0: Spoiler-Aware Search** 📋
+    - **Goal:** Implement publication coordinate filtering for spoiler-safe search
+    - **Deliverable:** Search API that respects user reading progress and filters results appropriately
+    - **Tasks:** User progress tracking, spoiler filtering logic, oversample-and-filter search pipeline, progress-aware APIs
 
-- **v2.0: Multi-Entity Knowledge Base**
-    - **Goal:** Support for all core entity types (Characters, Locations, Factions, Items, Events) with full CRUD APIs
-    - **Deliverable:** Complete REST API documentation showing endpoints for all entity types. Demo that ingests a complex story and produces queryable entities of all types with relationships
-    - **Tasks:** Extend synthesis pipeline to all entity types, implement relationship modeling, build comprehensive query APIs, add advanced search capabilities
+- **v0.9.0: Fulltext Search & Performance** 📋
+    - **Goal:** Add Lucene fulltext search and optimize performance for production
+    - **Deliverable:** Combined semantic + fulltext search with performance optimizations
+    - **Tasks:** Neo4j Lucene integration, hybrid search implementation, performance tuning, comprehensive testing
 
-- **v3.0: Interactive Web Application**
-    - **Goal:** Polished web UI with the signature "Annotated Reader Mode" feature
-    - **Deliverable:** Web application where users can paste a chapter and see it rendered with clickable entity annotations. Clicking annotations shows entity details and cross-references
-    - **Tasks:** Build React/Vue frontend, implement annotated reader component, create entity detail views, integrate with LoreVault API
+- **v1.0.0: Content Graph & Search** 📋
+    - **Goal:** Production-ready content ingestion and retrieval system
+    - **Deliverable:** Complete API for chapter ingestion, hierarchical storage, and spoiler-aware search
+    - **Tasks:** API documentation, performance validation, error handling polish, deployment readiness
+
+- **v2.0.0: Entity Knowledge Graph Foundation** 📋
+    - **Goal:** Establish entity extraction and graph relationship patterns using Characters as the primary entity type
+    - **Deliverable:** Character extraction, identity resolution, entity merging, and source attribution with publication coordinates
+    - **Tasks:** Character extraction pipeline, entity deduplication logic, graph relationship modeling, spoiler-aware entity queries
+
+- **v3.0.0: Interactive Entity Browser** 📋
+    - **Goal:** Web UI for browsing extracted entities and their relationships
+    - **Deliverable:** React/Vue application with entity detail views, relationship visualization, and spoiler-safe browsing
+    - **Tasks:** Frontend development, entity detail components, graph visualization, citation and source navigation
+
+- **v4.0.0: Multi-Entity Knowledge Graph** 📋
+    - **Goal:** Expand to all core entity types using established patterns from Characters
+    - **Deliverable:** Support for Locations, Items, Factions, Events with full relationship modeling
+    - **Tasks:** Extend extraction pipeline to new entity types, enhance relationship discovery, build comprehensive entity APIs
+
+- **v5.0.0: Timeline & Temporal Reasoning** 📋
+    - **Goal:** Canonical timeline structure with scenes and events positioned temporally
+    - **Deliverable:** Timeline visualization, temporal queries, and chronological consistency validation
+    - **Tasks:** Timeline data model, temporal relationship extraction, chronological ordering algorithms, timeline browsing interface
 
 ## 2. System Interaction & Architecture
 
@@ -64,8 +92,8 @@ The system is built as a service, prioritizing a clean separation of concerns us
 
 1. An API client (e.g., a script, a web UI) sends chapter text to the LoreVault API's command endpoint.
 2. The API acknowledges the request immediately (HTTP 202 Accepted) and initiates an asynchronous processing task.
-3. The backend LoreMaster Agent executes the full pipeline, updating the central knowledge base in the PostgreSQL database.
-4. Client applications can then immediately query the API to access the updated, cross-referenced information.
+3. The backend LoreMaster Agent executes the full pipeline, updating the central knowledge graph in the Neo4j database.
+4. Client applications can then immediately query the API to access the updated, cross-referenced information through both graph traversals and semantic vector search.
 
 ## 3. Core Functionality
 
@@ -81,22 +109,24 @@ The system is built as a service, prioritizing a clean separation of concerns us
 
 - **Progressive Revelation:** Build entity profiles gradually as new information is revealed.
 - **Status Tracking:** Monitor changes in character status, relationships, and affiliations.
-- **Local AI Pre-processing:** Utilize Gemma 3B for fast, local entity extraction and initial analysis before engaging expensive external LLMs.
-- **RAG-Powered Conflict Detection:** Utilize a Retrieval-Augmented Generation (RAG) pattern to identify contradictions or inconsistencies between new information and the existing knowledge base.
+- **Cost-Effective AI Pre-processing:** Utilize efficient, cost-effective models for fast entity extraction and initial analysis before engaging more expensive models for complex reasoning.
+- **RAG-Powered Conflict Detection:** Utilize a Graph-Augmented Generation (GraphRAG) pattern to identify contradictions or inconsistencies between new information and the existing knowledge graph.
 - **Timeline Management:** Maintain chronological consistency across all entries.
 
-### 3.3 Structured & Semantic Data Management
+### 3.3 Graph-Native Data Management
 
-- **Relational Entity Storage:** Store all curated entity data in structured PostgreSQL tables, enforcing a consistent schema.
-- **Semantic Vector Indexing:** Use pgvector to store embeddings of source text and entity descriptions, enabling powerful semantic search capabilities.
-- **Alias Management:** Track multiple names and spellings for each entity.
-- **Confidence Scoring:** Rate the reliability of extracted information.
+- **Graph Entity Storage:** Store all curated entity data as nodes and relationships in Neo4j, leveraging native graph traversal capabilities.
+- **Semantic Vector Integration:** Use Neo4j's native vector indexing to store embeddings of source text and entity descriptions, enabling powerful semantic search within the graph context.
+- **Relationship-First Modeling:** Model complex interpersonal and organizational relationships as first-class graph edges with properties.
+- **Alias Management:** Track multiple names and spellings for each entity using graph relationships.
+- **Confidence Scoring:** Rate the reliability of extracted information and relationships.
 
 ### 3.4 Automated Cross-Referencing
 
-- **Relationship Modeling:** Document complex interpersonal and organizational relationships using relational database principles (e.g., join tables).
-- **Contextual Connections:** Leverage the semantic index to discover implied or indirect relationships between entities.
-- **Dynamic Updates:** Automatically update relationships as new information emerges.
+- **Graph Relationship Modeling:** Document complex interpersonal and organizational relationships as native graph connections with rich properties.
+- **Contextual Connections:** Leverage both graph traversals and semantic vectors to discover implied or indirect relationships between entities.
+- **Dynamic Updates:** Automatically update relationships as new information emerges through graph algorithms.
+- **Relationship Inference:** Use graph analysis patterns to suggest missing or implicit connections.
 
 ## 4. Supported Entity Types
 
@@ -119,16 +149,16 @@ The system is designed to extract and manage a wide variety of entity types to b
 
 ### 5.1 Automated Validation
 
-- **Schema Compliance Checking:** Ensure all data written to the database conforms to the defined entity models.
+- **Schema Compliance Checking:** Ensure all data written to the graph database conforms to the defined node and relationship models.
 - **Required Field Validation:** Enforce data completeness rules for core entity information.
-- **Cross-reference Integrity:** Verify that relationships point to valid, existing entities.
-- **Timeline Consistency Analysis:** Check for chronological paradoxes or inconsistencies in event data.
+- **Cross-reference Integrity:** Verify that relationships point to valid, existing graph nodes.
+- **Timeline Consistency Analysis:** Check for chronological paradoxes or inconsistencies in event data using graph traversals.
 
 ### 5.2 Conflict Management & Disambiguation
 
 - **Automatic Detection:** Proactively identify contradictory information during the synthesis phase.
-- **Intelligent Resolution:** Leverage an LLM to attempt to resolve conflicts based on context.
-- **Human Review Queue:** Flag complex or unresolvable conflicts in the database for human review.
+- **Intelligent Resolution:** Leverage an LLM with graph context to attempt to resolve conflicts based on relationship patterns.
+- **Human Review Queue:** Flag complex or unresolvable conflicts in the graph database for human review.
 - **Change History Preservation:** Maintain a history of all updates with source attribution.
 
 ### 5.3 Confidence Assessment
@@ -164,21 +194,21 @@ The system is fundamentally a service. The RESTful API is the primary and sole p
 **Tasks:**
 
 - Implement core REST API (Command & Query endpoints) using CQRS.
-- Define and implement the core PostgreSQL schema and JPA entities for Characters.
+- Define and implement the core Neo4j graph schema and Spring Data Neo4j entities for Characters.
 - Set up the asynchronous processing pipeline for chapter ingestion.
-- **Integrate Gemma 3B for local entity extraction** - Deploy lightweight local model for cost-effective pre-processing.
-- Implement basic entity extraction for Characters using the local Gemma 3B model.
-- Implement simple, RAG-powered conflict detection using external LLMs only when necessary.
+- **Integrate Cost-Effective AI for entity extraction** - Deploy efficient models for cost-effective pre-processing.
+- Implement basic entity extraction for Characters using cost-effective models.
+- Implement simple, GraphRAG-powered conflict detection using more capable models only when necessary.
 
 ### Phase 2: Enhancement
 
 **Goal:** Expand the breadth of knowledge and improve quality assurance.
 
 **Tasks:**
-- Add support for multiple entity types (Locations, Items, Factions).
-- Implement advanced relationship modeling in the database and API.
+- Add support for multiple entity types (Locations, Items, Factions) as graph nodes.
+- Implement advanced relationship modeling in the graph database and API.
 - Build out the Quality Assurance pipeline, including a robust Review Queue system.
-- Enhance the /api/search endpoint with both structured and semantic search.
+- Enhance the /api/search endpoint with both graph traversal and semantic vector search.
 
 ### Phase 3: Optimization
 
@@ -186,47 +216,46 @@ The system is fundamentally a service. The RESTful API is the primary and sole p
 
 **Tasks:**
 
-- Optimize database queries and indexing for performance at scale.
+- Optimize graph queries and indexing for performance at scale.
 - Refine the AI prompts and models for higher accuracy and lower cost.
-- **Optimize Gemma 3B inference** - Fine-tune local model performance and explore model quantization for faster execution.
-- Implement advanced query capabilities (e.g., complex filtering, timeline queries).
+- **Optimize AI Model Usage** - Fine-tune model selection and usage patterns for optimal cost-performance balance.
+- Implement advanced query capabilities (e.g., complex graph traversals, timeline queries).
 - Develop comprehensive API documentation.
 
 ## 8. Technical Implementation Notes
 
-### 8.1 Local AI Integration
+### 8.1 Cost-Effective AI Integration
 
-**Gemma 3B Implementation:**
-- **Model Hosting:** Gemma 3B will be deployed locally within the application container using ONNX Runtime or similar inference framework.
-- **Cost Benefits:** Local execution eliminates per-request costs for initial entity extraction, making the system economically viable for high-volume processing.
-- **Performance:** Fast inference times (< 1 second per chunk) enable real-time processing feedback.
-- **Fallback Strategy:** If local model fails, system can gracefully fall back to external API for entity extraction.
+**AI Model Strategy:**
+- **Model Selection:** Choose efficient, cost-effective models that provide good performance for entity extraction and basic analysis.
+- **Cost Benefits:** Optimize model usage to minimize operational costs while maintaining quality.
+- **Performance:** Target fast inference times (< 1 second per chunk) to enable responsive processing.
+- **Fallback Strategy:** Implement graceful degradation with alternative models or providers if primary choices fail.
 
 ### 8.2 Hybrid AI Architecture
 
 **Two-Tier Processing:**
-1. **Tier 1 (Local):** Gemma 3B for entity extraction, text classification, and basic analysis
-2. **Tier 2 (External):** Powerful LLMs (GPT-4, Claude) for complex reasoning, synthesis, and conflict resolution
+1. **Tier 1 (Cost-Effective):** Efficient, cost-effective models for entity extraction, text classification, and basic analysis
+2. **Tier 2 (Capability-Focused):** More capable models for complex reasoning, synthesis, conflict resolution, and graph relationship inference
 
 **Benefits:**
-- **Cost Optimization:** 80% of processing handled locally at minimal cost
-- **Quality Assurance:** Complex reasoning still handled by state-of-the-art models
-- **Reduced Latency:** Local processing eliminates network round-trips for common tasks
+- **Cost Optimization:** 80% of processing handled by cost-effective models
+- **Quality Assurance:** Complex reasoning handled by more capable models when needed
+- **Reduced Latency:** Efficient model selection minimizes processing time
 
 ## 9. Future Horizons
 
-While the v1-v3 roadmap delivers a complete and powerful product, the architecture is designed to support even more advanced capabilities in the future. These represent potential long-term goals for v4.0 and beyond.
+Beyond the core v1-v5 roadmap, the architecture supports advanced capabilities for long-term evolution:
 
-- **v4.0: Natural Language Query Engine:** Introduce a "magic" search capability allowing users to ask questions in plain English (e.g., "What is Kevin Jenkins's relationship with the HDF?") and receive a synthesized answer with citations. This would involve building a sophisticated query-understanding and answer-synthesis pipeline.
+- **v6.0: Natural Language Query Engine:** Plain English queries (e.g., "What is Kaladin's relationship with Bridge Four?") with synthesized answers and citations using GraphRAG patterns
 
-- **v5.0: The Proactive Agent:** Evolve the system from a passive service to a proactive knowledge partner. This could include features like:
-    - **Knowledge Gap Analysis:** The agent analyzes its own knowledge graph to find implied but unconfirmed relationships, flagging them for review.
-    - **Intelligent Re-processing:** The agent can automatically re-process entities with newer, more powerful AI models to continuously improve the quality of the knowledge base.
+- **v7.0: Proactive Knowledge Analysis:** 
+    - **Knowledge Gap Detection:** Analyze graph structure to identify missing or implied relationships
+    - **Consistency Validation:** Automated detection of timeline conflicts and entity contradictions
+    - **Smart Re-processing:** Continuously improve entity extraction with newer models
 
-- **Beyond v5.0: The Multi-Modal & Generative Agent:**
-    - **Multi-Modal Ingestion:** Expand beyond text to ingest images (maps, character art) and audio (audiobooks), using vision and transcription models to enrich the knowledge base.
-    - **Generative Content:** Enable the agent to use its structured knowledge to generate new content on demand, such as wiki articles, timelines, or "what if" scenario analyses.
-
-- **The Configurable & Multi-Tenant Universe:**
-    - **Multi-Tenancy:** Evolve the system to support multiple, isolated "universes" under a single deployment.
-    - **Configurable Entity Schemas:** Allow administrators to define which entity types are relevant for a specific universe. For example, a fantasy universe could track "magic systems" while a sci-fi universe tracks "technologies" and "spaceships," and realistic fiction would track neither. This would make the system adaptable to any genre.
+- **v8.0+: Advanced Knowledge Synthesis:**
+    - **Multi-Modal Ingestion:** Images (maps, character art), audio (audiobooks) 
+    - **Generative Content:** Wiki articles, timelines, relationship summaries generated from graph data
+    - **Multi-Tenant Universes:** Support multiple isolated fictional universes
+    - **Configurable Entity Schemas:** Customize entity types per universe (magic systems vs. technologies)

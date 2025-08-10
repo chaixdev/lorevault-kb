@@ -5,9 +5,30 @@
 
 ## Overview
 
-This viewpoint describes the structure and flow of information within LoreVault, from content ingestion through knowledge extraction to storage and retrieval. The design emphasizes vector-based semantic search capabilities while maintaining efficient relational data structures.
+This viewpoint describes the structure and flow of information within LoreVault, from content ingestion through knowledge extraction to storage and retrieval. The design emphasizes a graph-native approach using Neo4j, enabling natural representation of entity relationships combined with integrated vector search capabilities for GraphRAG-powered knowledge synthesis.
 
 ## Information Architecture
+
+### Graph-Native Knowledge Representation
+
+**Core Philosophy:** Narrative knowledge is inherently interconnected. A graph database naturally represents the complex web of relationships between entities without the impedance mismatch of mapping relationships to relational tables and joins.
+
+**Technology Foundation:**
+- **Neo4j Graph Database** - Primary knowledge store
+- **Neo4j Vector Index** - Integrated vector embeddings for semantic search
+- **Spring Data Neo4j** - Object-Graph Mapping framework
+
+### Unified Graph + Vector Model
+
+**Graph Structure:** Entities as nodes, relationships as edges, with properties on both
+**Vector Integration:** Embeddings stored as node properties, enabling hybrid graph-semantic queries
+**Schema Flexibility:** Dynamic schema evolution as new entity types and relationship patterns emerge
+
+**Key Architectural Benefits:**
+- **Relationship-First Modeling:** Direct representation of entity connections
+- **Traversal Performance:** Native graph algorithms for relationship queries  
+- **Contextual Embeddings:** Vector search enhanced by graph neighborhood context
+- **Incremental Growth:** Organic schema evolution as understanding deepens
 
 ### Primary Data Domains
 
@@ -18,16 +39,16 @@ This viewpoint describes the structure and flow of information within LoreVault,
 - **Relationships**: One-to-many from content to extracted entities
 
 #### Knowledge Domain  
-- **Purpose**: Extracted and structured knowledge representation
+- **Purpose**: Extracted and structured knowledge representation as graph nodes and relationships
 - **Lifecycle**: Creation → Enrichment → Relationships → Query
-- **Key Entities**: Characters, locations, organizations, concepts
-- **Relationships**: Rich interconnected graph of entity relationships
+- **Key Entities**: Characters, locations, organizations, concepts as labeled nodes
+- **Relationships**: Rich interconnected graph with typed edges and properties
 
 #### Vector Domain
-- **Purpose**: Semantic representations for similarity search
-- **Lifecycle**: Generation → Storage → Search → Retrieval
-- **Key Entities**: Embeddings, similarity indices, search results
-- **Relationships**: Vector spaces linked to knowledge entities
+- **Purpose**: Semantic representations integrated with graph structure
+- **Lifecycle**: Generation → Storage as node properties → Search → Retrieval
+- **Key Entities**: Embeddings as node properties, vector indices
+- **Relationships**: Vector spaces coexist with graph relationships for hybrid queries
 
 ### Information Flow Architecture
 
@@ -75,86 +96,139 @@ graph TB
 
 ## Data Model Architecture
 
-### Core Entity Structure
+### Graph Modeling Principles
 
-#### Content Entities
-**Chapter Entity**:
-- Identity: Unique identifier, title, source information
-- Content: Raw text, processed chunks, word count
-- Metadata: Creation date, last modified, processing status
-- Relationships: Extracted entities, processing jobs
+**Node-Centric Entity Design:**
+- Each entity type represented as labeled nodes
+- Multiple labels supported for entity classification hierarchy
+- Properties store entity-specific attributes
+- Flexible schema allows new properties to emerge organically
 
-**Processing Job Entity**:
-- Identity: Job identifier, type, priority
-- State: Status, progress, error information
-- Timing: Started, completed, estimated duration
-- Relationships: Source content, result entities
+**Relationship-Rich Connections:**
+- Direct relationship modeling between any entity types
+- Typed relationships with descriptive semantics
+- Relationship properties for context, strength, timestamps
+- Bidirectional relationships where appropriate
 
-#### Knowledge Entities
-**Character Entity**:
-- Identity: Canonical name, alternative names, unique ID
-- Profile: Description, key traits, significance
-- Context: Origin sources, first appearance, evolution
-- Relationships: Affiliations, relationships, appearances
+**Hierarchical Content Structure:**
+- Source content organized in containment hierarchies
+- Entity-to-source attribution maintaining provenance
+- Version control through relationship timestamps
 
-**Location Entity**:
-- Identity: Canonical name, alternative names, unique ID
-- Geography: Description, type (city, region, building)
-- Context: Cultural significance, historical importance
-- Relationships: Sub-locations, characters present, events
+### Schema Evolution Strategy
 
-**Organization Entity**:
-- Identity: Canonical name, alternative names, unique ID
-- Structure: Type, hierarchy, purpose
-- Context: Formation, dissolution, transformation
-- Relationships: Members, allies, rivals, locations
+**Incremental Discovery:** Schema grows as new entity types and relationships are encountered
+**Type Safety:** Constraints ensure data integrity without rigid schema requirements
+**Migration-Free Growth:** Add new node types and relationships without breaking existing data
 
-**Concept Entity**:
-- Identity: Canonical term, alternative terms, unique ID
-- Definition: Core meaning, context, significance
-- Context: Usage patterns, evolution, related concepts
-- Relationships: Related concepts, character associations
+**Architectural Flexibility:**
+- New entity types introduced through new node labels
+- New relationship types added as discovered in content
+- Property schemas expand based on AI extraction capabilities
+- No database migrations required for model evolution
+
+### Content and Knowledge Entity Categories
+
+**Content Entities:** Source materials and processing metadata (chapters, processing jobs, status tracking)
+**Knowledge Entities:** Extracted narrative elements (characters, locations, organizations, concepts)
+**Relationship Entities:** Connections and associations between knowledge entities with contextual metadata
+
+*Specific entity properties, constraints, and relationship schemas will be documented incrementally as features are implemented.*
 
 ### Relationship Architecture
 
-#### Entity Relationship Types
-- **Hierarchical**: Parent-child relationships (organization structure, location containment)
-- **Associative**: Peer relationships (character friendships, concept connections)
+**Relationship Categories:**
+- **Hierarchical**: Parent-child relationships (organizational structure, location containment)
+- **Associative**: Peer relationships (character interactions, concept connections)
 - **Temporal**: Time-based relationships (event sequences, character development)
-- **Contextual**: Situational relationships (character presence in locations)
+- **Contextual**: Situational relationships (character presence, event participation)
 
-#### Relationship Metadata
-- **Strength**: Quantified relationship importance (weak, moderate, strong)
-- **Confidence**: AI extraction confidence level (0.0 to 1.0)
-- **Context**: Source chapter references and textual evidence
-- **Temporal**: Time periods or story arcs when relationship applies
+**Relationship Metadata Strategy:**
+- Relationship strength, confidence scoring, and temporal context
+- Source chapter references for traceability
+- Support for relationship evolution over narrative time
 
-### Vector Information Model
+*Specific relationship types and properties will be defined as entity extraction capabilities are developed.*
 
-#### Embedding Strategy
-**Entity Embeddings**:
-- **Purpose**: Semantic similarity between entities
-- **Dimensions**: 768-dimensional vectors for comprehensive representation
-- **Scope**: Generated for all entity descriptions and contexts
-- **Usage**: Entity clustering, duplicate detection, similarity search
+### Integrated Graph-Vector Architecture
 
-**Content Embeddings**:
-- **Purpose**: Semantic search across original content
-- **Dimensions**: Chunk-level embeddings for fine-grained search
-- **Scope**: Chapter sections, character descriptions, scene descriptions
-- **Usage**: Context retrieval, relevant passage identification
+**Unified Storage Model:** Neo4j's native vector indexing eliminates the need for separate vector databases, allowing embeddings to coexist with graph structure in a single data model.
 
-#### Vector Search Architecture
-**Similarity Metrics**:
-- **Cosine Similarity**: Primary metric for semantic relationships
-- **Euclidean Distance**: Secondary metric for clustering operations
-- **Dot Product**: Optimized for ranking operations
+**Vector Integration Patterns:**
+- **Content Embeddings:** Text chunks embedded for semantic content retrieval
+- **Entity Embeddings:** Entity descriptions embedded for similarity matching
+- **Relationship Context:** Contextual embeddings that consider graph neighborhood
 
-**Index Structure**:
-- **HNSW Algorithm**: Hierarchical Navigable Small World for fast approximate search
-- **Dynamic Updates**: Incremental index updates as entities are processed
-- **Partitioning**: Separate indices by entity type for optimized queries
-## Information Flow Patterns
+**GraphRAG Enablement:**
+- **Hybrid Queries:** Combine vector similarity with graph traversals in single operations
+- **Contextual Retrieval:** Use graph relationships to expand and enrich vector search results
+- **Multi-hop Reasoning:** Traverse relationships while maintaining semantic relevance scoring
+
+**Query Pattern Examples:**
+- Find semantically similar entities within relationship constraints
+- Retrieve related content based on graph distance and semantic similarity
+- Generate context-rich prompts using both direct relationships and semantic neighbors
+
+### Vector Integration Strategy
+
+**Unified Storage:** Embeddings coexist with graph structure as node properties within Neo4j
+**Hybrid Queries:** Combine semantic similarity with relationship traversals in single operations
+**Contextual Search:** Graph neighborhood context enhances vector search relevance and precision
+
+*Vector indexing configurations, similarity metrics, and performance optimizations will be tuned based on usage patterns and performance requirements.*
+## Query Architecture
+
+### Graph-Native Query Patterns
+
+**Traversal-Based Queries:** Leverage graph structure for relationship-based information retrieval
+**Pattern Matching:** Use Cypher's pattern matching for complex relationship queries
+**Aggregation Queries:** Compute metrics across graph neighborhoods
+**Path Finding:** Discover connections between entities through relationship chains
+
+### Hybrid Query Capabilities
+
+**Vector-Enhanced Traversals:** Start with semantic search, then traverse relationships for context
+**Relationship-Constrained Similarity:** Limit vector searches to specific graph neighborhoods
+**Multi-Modal Retrieval:** Combine exact matches, fuzzy matching, and semantic similarity
+
+### RAG-Optimized Query Patterns
+
+**Context Expansion:** Given an entity, retrieve semantically relevant content plus relationship context
+**Prompt Enrichment:** Build comprehensive prompts using graph traversals to gather related information
+**Conflict Detection:** Query for potentially contradictory information across the knowledge graph
+
+**Performance Characteristics:**
+- Graph traversals: Optimized for relationship-heavy queries
+- Vector searches: Efficient semantic similarity at scale
+- Hybrid operations: Balanced performance across query types
+
+## Information Flow Architecture
+
+### Write Path: Content to Knowledge Graph
+
+**Text Ingestion → Chunking → Embedding → Entity Extraction → Graph Integration**
+
+1. **Source Content:** Raw narrative text enters the system
+2. **Structural Analysis:** Content segmented into processable chunks
+3. **Vector Generation:** Embeddings created for semantic search
+4. **Entity Recognition:** AI identifies entities and relationships
+5. **Graph Synthesis:** Entities and relationships integrated into knowledge graph
+
+### Read Path: Knowledge Graph to Insights
+
+**Query → Graph Traversal → Vector Search → Context Assembly → Response**
+
+1. **Query Processing:** Parse and understand information requests
+2. **Graph Navigation:** Traverse relationships to gather relevant entities
+3. **Semantic Enhancement:** Use vector search to expand context
+4. **Synthesis:** Combine structured and semantic information
+5. **Response Generation:** Deliver comprehensive, contextualized answers
+
+### Feedback Loops
+
+**Quality Improvement:** Query patterns inform entity extraction optimization
+**Schema Evolution:** Discovered relationships guide model expansion  
+**Confidence Tracking:** Usage patterns improve reliability scoring
 
 ### Content Processing Flow
 
@@ -229,59 +303,47 @@ sequenceDiagram
 
 ## Storage Architecture
 
-### Relational Storage Strategy
-**Entity Tables**:
-- **Normalized Structure**: Separate tables for each entity type
-- **Common Attributes**: Shared base structure for all entities
-- **Type-Specific Attributes**: Extended attributes per entity type
-- **Versioning**: Maintain entity evolution history
+### Graph-Native Storage Strategy
 
-**Relationship Tables**:
-- **Junction Tables**: Many-to-many relationships between entities
-- **Relationship Metadata**: Strength, confidence, context information
-- **Temporal Support**: Time-bound relationships with valid periods
-- **Source Tracking**: Link relationships to originating content
+**Neo4j Database:**
+- **Node Storage:** Entities represented as labeled nodes with flexible properties
+- **Relationship Storage:** Direct relationship modeling with typed edges and properties
+- **Vector Integration:** Embeddings stored as node properties with native vector indexing
+- **Schema Evolution:** Dynamic schema growth without migration requirements
 
-### Vector Storage Strategy
-**Integration Approach**:
-- **PostgreSQL + pgvector**: Unified storage for relational and vector data
-- **Co-location**: Vectors stored alongside entity data for efficiency
-- **Indexing**: Optimized indices for both exact and approximate search
-- **Scalability**: Partitioning strategy for large vector datasets
-
-**Performance Optimization**:
-- **Batch Operations**: Efficient bulk vector operations
-- **Index Tuning**: Optimized HNSW parameters for workload
-- **Caching**: Vector result caching for frequent queries
-- **Compression**: Vector quantization for storage efficiency
+**Performance Characteristics:**
+- **Traversal Optimization:** Native graph algorithms for relationship queries
+- **Vector Search:** Integrated similarity search with graph context
+- **Hybrid Operations:** Efficient combination of graph and vector operations
+- **Memory Management:** Optimized caching for frequently accessed nodes and relationships
 
 ## Data Access Patterns
 
 ### Read Patterns
-**Entity Retrieval**:
-- **By Type**: List all entities of specific type
-- **By ID**: Direct entity lookup with full details
-- **By Name**: Fuzzy name matching with alternatives
-- **By Relationship**: Navigate entity relationship graph
+**Entity Retrieval:**
+- **By Type:** Traverse nodes with specific labels
+- **By ID:** Direct node lookup with properties and relationships
+- **By Name:** Property-based matching with fuzzy search
+- **By Relationship:** Navigate graph structure using relationship patterns
 
-**Search Patterns**:
-- **Semantic Search**: Vector similarity for conceptual queries
-- **Full-Text Search**: Traditional text search within descriptions
-- **Faceted Search**: Filter by entity types, sources, confidence
-- **Relationship Search**: Find entities by relationship patterns
+**Search Patterns:**
+- **Semantic Search:** Vector similarity queries on node embeddings
+- **Graph Search:** Cypher pattern matching for complex relationship queries
+- **Hybrid Search:** Combined vector similarity with relationship constraints
+- **Path Search:** Find connections between entities through relationship traversal
 
 ### Write Patterns
-**Batch Processing**:
-- **Entity Creation**: Bulk entity insertion from processing jobs
-- **Relationship Building**: Batch relationship creation
-- **Vector Generation**: Bulk embedding computation and storage
-- **Index Updates**: Incremental search index maintenance
+**Graph Construction:**
+- **Node Creation:** Create entities as labeled nodes with properties
+- **Relationship Building:** Establish typed relationships between nodes
+- **Vector Integration:** Generate and store embeddings as node properties
+- **Schema Evolution:** Dynamically add new labels and relationship types
 
-**Incremental Updates**:
-- **Entity Evolution**: Update entity details as new information emerges
-- **Relationship Refinement**: Adjust relationship strengths and confidence
-- **Conflict Resolution**: Merge or split entities based on new analysis
-- **Quality Improvement**: Ongoing data cleaning and enhancement
+**Incremental Updates:**
+- **Property Updates:** Modify node and relationship properties
+- **Relationship Refinement:** Adjust relationship types and properties
+- **Graph Expansion:** Add new nodes and relationships as entities are discovered
+- **Vector Updates:** Refresh embeddings when entity descriptions change
 
 ## Information Security and Privacy
 
@@ -308,78 +370,25 @@ sequenceDiagram
 
 ## Performance and Scalability Considerations
 
-### Query Optimization
-**Index Strategy**:
-- **Composite Indices**: Multi-column indices for common query patterns
-- **Vector Indices**: HNSW indices optimized for similarity search
-- **Partial Indices**: Conditional indices for high-selectivity queries
-- **Maintenance**: Automated index optimization and statistics updates
+### Query Performance Strategy
+**Graph Query Optimization:**
+- Index strategy for common access patterns
+- Native vector indexing for semantic search operations
+- Query planning optimization for graph traversals
+- Application-level caching for frequently accessed patterns
 
-### Scaling Strategies
-**Horizontal Scaling**:
-- **Read Replicas**: Multiple read-only database instances
-- **Sharding**: Partition data across multiple database instances
-- **Caching**: Distributed caching for frequently accessed data
-- **Load Balancing**: Distribute queries across available resources
+### Scaling Architecture
+**Vertical Scaling Approach:**
+- Memory optimization for larger graph working sets
+- Storage optimization for improved traversal performance
+- Processing optimization for parallel graph operations
 
-**Vertical Scaling**:
-- **Memory Optimization**: Increased RAM for larger working sets
-- **Storage Optimization**: SSD storage for improved I/O performance
-- **CPU Optimization**: Multi-core processing for parallel operations
-- **Network Optimization**: High-bandwidth connections for data transfer
+**Horizontal Scaling Strategy:**
+- Read replica distribution for query load balancing
+- Distributed caching for frequently accessed entities
+- Load distribution across available graph database instances
 
-### Data Archival Strategy
-**Lifecycle Management**:
-- **Hot Data**: Recently processed entities with high access frequency
-- **Warm Data**: Older entities with moderate access frequency
-- **Cold Data**: Historical entities with low access frequency
-- **Frozen Data**: Archived entities for long-term retention only
+*Specific performance metrics, indexing configurations, and scaling implementations will be optimized based on actual usage patterns and performance requirements.*
+---
 
-**Storage Tiering**:
-- **Primary Storage**: High-performance storage for active data
-- **Secondary Storage**: Cost-effective storage for warm data
-- **Archive Storage**: Long-term retention storage for cold data
-- **Backup Storage**: Disaster recovery and compliance storage
-    resolution_method VARCHAR(100), -- automatic, manual, ai_assisted
-    resolved_by VARCHAR(100),
-    detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    resolved_at TIMESTAMP
-);
-```
-
-## Query Optimization Strategy
-
-### Indexing Approach
-- **Composite Indexes**: Strategic multi-column indexes for common query patterns
-- **Partial Indexes**: Conditional indexes for high-selectivity queries on active data
-- **Vector Indexes**: Optimized indexes for semantic similarity searches
-- **Maintenance**: Automated index optimization and statistics updates
-
-### Performance Optimization
-- **Materialized Views**: Pre-computed complex aggregations for frequent queries
-- **Query Planning**: Strategic query path optimization for common access patterns
-- **Cache Integration**: Coordinated caching strategy for frequent data access
-
-## Data Consistency Strategy
-
-### Consistency Guarantees
-- **Entity Integrity**: Strong consistency for individual entity updates
-- **Relationship Consistency**: Eventual consistency for cross-entity relationships
-- **Search Index Consistency**: Near real-time consistency for search capabilities
-
-### Conflict Resolution
-- **Optimistic Locking**: Version-based conflict detection for concurrent updates
-- **Merge Strategies**: Automated conflict resolution based on confidence scores
-- **Manual Resolution**: Administrative tools for complex conflict cases
-
-## Backup and Recovery Strategy
-
-### Data Protection
-- **Full Backups**: Daily automated backups with 30-day retention
-- **Incremental Backups**: Hourly WAL shipping for point-in-time recovery
-- **Vector Index Rebuild**: Automated re-indexing procedures for pgvector
-
-### Disaster Recovery
-- **RTO (Recovery Time Objective)**: 4 hours for full system restoration
-- **RPO (Recovery Point Objective)**: Maximum 1 hour of data loss
-- **Cross-Region Replication**: Read replicas for geographic distribution
+*This viewpoint focuses on the architectural patterns and information modeling capabilities enabled by the graph-native approach. Specific implementation details for entities, relationships, and constraints will be documented incrementally as features are developed.*
