@@ -1,4 +1,4 @@
-package com.lorevault.api.graph.model;
+package com.lorevault.api.infrastructure.persistence.neo4j.model;
 
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import lombok.Data;

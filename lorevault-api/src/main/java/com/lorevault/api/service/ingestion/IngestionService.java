@@ -15,11 +15,12 @@ import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.ScenePersistenceService;
 import com.lorevault.api.service.content.TextChunkingService;
 import com.lorevault.api.service.content.ChunkEmbeddingService;
-import com.lorevault.api.graph.port.ContentPersistencePort;
-import com.lorevault.api.graph.model.IngestionJobNode;
-import com.lorevault.api.graph.model.ChapterNode;
-import com.lorevault.api.graph.model.SceneNode;
-import com.lorevault.api.graph.model.ChunkNode;
+import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.StatusRecordNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -172,7 +173,7 @@ public class IngestionService {
      */
     @Transactional
     protected void createStatusRecord(UUID jobId, IngestionStatus status, String description, Map<String, Object> properties) {
-        var node = new com.lorevault.api.graph.model.StatusRecordNode();
+        var node = new StatusRecordNode();
         node.setId(UUID.randomUUID());
         node.setJobId(jobId);
         node.setStatus(status);

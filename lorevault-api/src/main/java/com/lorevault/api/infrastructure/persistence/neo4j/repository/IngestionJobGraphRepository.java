@@ -1,6 +1,6 @@
-package com.lorevault.api.graph.repo;
+package com.lorevault.api.infrastructure.persistence.neo4j.repository;
 
-import com.lorevault.api.graph.model.IngestionJobNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 
@@ -16,6 +16,6 @@ public interface IngestionJobGraphRepository extends Neo4jRepository<IngestionJo
     @Query("MATCH (j:IngestionJob) WHERE j.chapterId IN $chapterIds RETURN j")
     List<IngestionJobNode> findByChapterIds(List<UUID> chapterIds);
 
-    @Query("MATCH (j:IngestionJob) WHERE j.chapterId = $chapterId AND j.currentStatusTerminal = false RETURN count(j) > 0")
+    @Query("MATCH (j:IngestionJob) WHERE j.chapterId = $chapterId AND (j.currentStatus IS NULL OR (j.currentStatus <> 'COMPLETE' AND j.currentStatus <> 'FAILED')) RETURN count(j) > 0")
     boolean existsActiveForChapter(UUID chapterId);
 }

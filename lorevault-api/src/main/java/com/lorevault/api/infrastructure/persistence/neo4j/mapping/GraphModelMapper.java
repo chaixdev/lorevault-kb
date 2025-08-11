@@ -1,11 +1,11 @@
-package com.lorevault.api.graph.mapping;
+package com.lorevault.api.infrastructure.persistence.neo4j.mapping;
 
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.StatusRecord;
-import com.lorevault.api.graph.model.*;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.*;
 import org.springframework.stereotype.Component;
 
 /** Simplified mapper during transition; only entity->node needed now. */

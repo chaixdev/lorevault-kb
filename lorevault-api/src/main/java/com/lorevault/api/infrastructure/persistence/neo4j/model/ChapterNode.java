@@ -1,4 +1,4 @@
-package com.lorevault.api.graph.model;
+package com.lorevault.api.infrastructure.persistence.neo4j.model;
 
 import lombok.Data;
 import org.springframework.data.annotation.CreatedDate;

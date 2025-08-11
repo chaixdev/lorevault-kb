@@ -1,13 +1,10 @@
 package com.lorevault.api.service;
 
-import com.lorevault.api.dto.content.SceneDetectionResult;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
-import com.lorevault.api.graph.model.ChapterNode;
-import com.lorevault.api.graph.port.ContentPersistencePort;
-import com.lorevault.api.service.content.SceneCoordinateLocalizer;
-import com.lorevault.api.service.content.SceneDetectionClient;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
+import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.service.content.SceneDetectionService;
-import com.lorevault.api.service.content.SceneDetectionXmlParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,20 +18,17 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for SceneDetectionService focusing on service orchestration.
+ * Now tests the port-based architecture.
  */
 @ExtendWith(MockitoExtension.class)
 class SceneDetectionServiceTest {
 
     @Mock private ContentPersistencePort contentPersistencePort;
-    @Mock private SceneDetectionClient sceneDetectionClient;
-    @Mock private SceneDetectionXmlParser xmlParser;
-    @Mock private SceneCoordinateLocalizer coordinateLocalizer;
+    @Mock private SceneDetectionPort sceneDetectionPort;
 
     @InjectMocks private SceneDetectionService sceneDetectionService;
 
@@ -59,55 +53,82 @@ class SceneDetectionServiceTest {
     }
 
     @Test
-    void detectScenesForChapter_WhenChapterNotFound_ShouldThrow() {
+    void detectScenesForChapter_WhenChapterNotFound_ShouldThrowException() {
+        // Given
         when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.empty());
+
+        // When & Then
         assertThatThrownBy(() -> sceneDetectionService.detectScenesForChapter(chapterId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Chapter not found");
-        verifyNoInteractions(sceneDetectionClient, xmlParser, coordinateLocalizer);
+
+        verifyNoInteractions(sceneDetectionPort);
     }
 
     @Test
-    void detectScenesForChapter_WhenChapterTextEmpty_ShouldReturnEmptyList() {
-        chapterNode.setRawText("   ");
+    void detectScenesForChapter_WhenChapterHasNoText_ShouldReturnEmptyList() {
+        // Given
+        chapterNode.setRawText("");
         when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(chapterNode));
+
+        // When
         List<SceneWithCoordinates> result = sceneDetectionService.detectScenesForChapter(chapterId);
+
+        // Then
         assertThat(result).isEmpty();
-        verifyNoInteractions(sceneDetectionClient, xmlParser, coordinateLocalizer);
+        verifyNoInteractions(sceneDetectionPort);
     }
 
     @Test
-    void detectScenesForChapter_WhenAiReturnsNoScenes_ShouldReturnEmptyList() {
+    void detectScenesForChapter_WhenPortReturnsEmpty_ShouldReturnEmptyList() {
+        // Given
         when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(chapterNode));
-        when(sceneDetectionClient.detectScenes(chapterText)).thenReturn("<scenes></scenes>");
-        when(xmlParser.parseResponse(any(), eq(chapterText.length()))).thenReturn(List.of());
+        when(sceneDetectionPort.detectScenesInText(chapterId, chapterText)).thenReturn(List.of());
+
+        // When
         List<SceneWithCoordinates> result = sceneDetectionService.detectScenesForChapter(chapterId);
+
+        // Then
         assertThat(result).isEmpty();
-        verify(sceneDetectionClient).detectScenes(chapterText);
-        verify(xmlParser).parseResponse(any(), eq(chapterText.length()));
-        verifyNoInteractions(coordinateLocalizer);
+        verify(sceneDetectionPort).detectScenesInText(chapterId, chapterText);
     }
 
     @Test
-    void detectScenesForChapter_WhenScenesDetected_ShouldReturnCoordinates() {
+    void detectScenesForChapter_WhenPortReturnsScenes_ShouldReturnScenes() {
+        // Given
         when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(chapterNode));
-        when(sceneDetectionClient.detectScenes(chapterText)).thenReturn("<scenes><scene></scene></scenes>");
-        SceneDetectionResult detection = new SceneDetectionResult(1, "First", "Second", "Intro scene", "shift in location");
-        when(xmlParser.parseResponse(any(), eq(chapterText.length()))).thenReturn(List.of(detection));
-        SceneWithCoordinates coordinated = new SceneWithCoordinates(1, 0L, 20L, "Intro scene");
-        when(coordinateLocalizer.localizeCoordinates(eq(chapterText), any())).thenReturn(List.of(coordinated));
+        
+        SceneWithCoordinates coordinated = new SceneWithCoordinates(
+                1, 0L, 25L, "Intro scene"
+        );
+        when(sceneDetectionPort.detectScenesInText(chapterId, chapterText)).thenReturn(List.of(coordinated));
 
+        // When
         List<SceneWithCoordinates> result = sceneDetectionService.detectScenesForChapter(chapterId);
 
+        // Then
         assertThat(result).hasSize(1);
-        SceneWithCoordinates sc = result.get(0);
-        assertThat(sc.sceneIndex()).isEqualTo(1);
-        assertThat(sc.startCharacterOffset()).isEqualTo(0L);
-        assertThat(sc.endCharacterOffset()).isEqualTo(20L);
-        assertThat(sc.contextSummary()).isEqualTo("Intro scene");
+        assertThat(result.get(0).sceneIndex()).isEqualTo(1);
+        assertThat(result.get(0).contextSummary()).isEqualTo("Intro scene");
+        assertThat(result.get(0).startCharacterOffset()).isEqualTo(0L);
+        assertThat(result.get(0).endCharacterOffset()).isEqualTo(25L);
 
-        verify(sceneDetectionClient).detectScenes(chapterText);
-        verify(xmlParser).parseResponse(any(), eq(chapterText.length()));
-        verify(coordinateLocalizer).localizeCoordinates(eq(chapterText), any());
+        verify(sceneDetectionPort).detectScenesInText(chapterId, chapterText);
+    }
+
+    @Test
+    void detectScenesForChapter_WhenPortThrowsException_ShouldWrapAndRethrow() {
+        // Given
+        when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(chapterNode));
+        when(sceneDetectionPort.detectScenesInText(chapterId, chapterText))
+                .thenThrow(new RuntimeException("AI service error"));
+
+        // When & Then
+        assertThatThrownBy(() -> sceneDetectionService.detectScenesForChapter(chapterId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Scene detection failed for chapter")
+                .hasMessageContaining(chapterId.toString());
+
+        verify(sceneDetectionPort).detectScenesInText(chapterId, chapterText);
     }
 }

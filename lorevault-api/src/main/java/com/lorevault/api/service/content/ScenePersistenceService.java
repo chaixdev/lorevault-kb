@@ -1,8 +1,8 @@
 package com.lorevault.api.service.content;
 
 import com.lorevault.api.dto.content.SceneWithCoordinates;
-import com.lorevault.api.graph.port.ContentPersistencePort;
-import com.lorevault.api.graph.model.SceneNode;
+import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

@@ -1,6 +1,6 @@
-package com.lorevault.api.graph.repo;
+package com.lorevault.api.infrastructure.persistence.neo4j.repository;
 
-import com.lorevault.api.graph.model.SceneNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 

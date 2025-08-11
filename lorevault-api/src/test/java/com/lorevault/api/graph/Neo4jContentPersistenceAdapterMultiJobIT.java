@@ -1,8 +1,8 @@
 package com.lorevault.api.graph;
 
 import com.lorevault.api.domain.ingestion.IngestionStatus;
-import com.lorevault.api.graph.model.*;
-import com.lorevault.api.graph.port.ContentPersistencePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.*;
+import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.test.IntegrationTestBase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,8 +27,20 @@ public class Neo4jContentPersistenceAdapterMultiJobIT extends IntegrationTestBas
         chapter.setContentHash("hash-multi");
         chapter = port.createChapter(chapter);
 
-        IngestionJobNode job1 = new IngestionJobNode(); job1.setId(UUID.randomUUID()); job1.setChapterId(chapter.getId()); job1.setProgressPercent(0); job1 = port.createJob(job1);
-        IngestionJobNode job2 = new IngestionJobNode(); job2.setId(UUID.randomUUID()); job2.setChapterId(chapter.getId()); job2.setProgressPercent(0); job2 = port.createJob(job2);
+        // Create jobs with proper initial status using production approach
+        IngestionJobNode job1 = new IngestionJobNode(); 
+        job1.setId(UUID.randomUUID()); 
+        job1.setChapterId(chapter.getId()); 
+        job1.setCurrentStatus(IngestionStatus.QUEUED);
+        job1.setProgressPercent(0); 
+        job1 = port.createJob(job1);
+        
+        IngestionJobNode job2 = new IngestionJobNode(); 
+        job2.setId(UUID.randomUUID()); 
+        job2.setChapterId(chapter.getId()); 
+        job2.setCurrentStatus(IngestionStatus.QUEUED);
+        job2.setProgressPercent(0); 
+        job2 = port.createJob(job2);
 
         // Add status records (out of order creation) to ensure ordering retrieval works
         StatusRecordNode r2 = new StatusRecordNode(); r2.setId(UUID.randomUUID()); r2.setJobId(job2.getId()); r2.setStatus(IngestionStatus.PREPROCESSING_STARTED); r2.setStepDescription("preprocessing"); r2.setProgressPercent(10); port.addStatusRecord(job2.getId(), r2);

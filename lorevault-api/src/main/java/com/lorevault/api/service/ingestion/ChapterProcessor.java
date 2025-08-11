@@ -2,9 +2,10 @@ package com.lorevault.api.service.ingestion;
 
 import com.lorevault.api.event.ChapterIngestionEvent;
 import com.lorevault.api.domain.ingestion.IngestionJob;
-import com.lorevault.api.graph.port.ContentPersistencePort;
-import com.lorevault.api.graph.model.ChapterNode;
-import com.lorevault.api.graph.model.IngestionJobNode;
+import com.lorevault.api.domain.content.Chapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode;
+import com.lorevault.api.application.port.ContentPersistencePort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -46,7 +47,7 @@ public class ChapterProcessor {
             job.setCompletedAt(jobNode.getCompletedAt());
 
             // Build transient Chapter
-            com.lorevault.api.domain.content.Chapter chapter = new com.lorevault.api.domain.content.Chapter();
+            Chapter chapter = new Chapter();
             chapter.setId(chapterNode.getId());
             chapter.setRawText(chapterNode.getRawText());
 

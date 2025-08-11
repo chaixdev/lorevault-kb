@@ -1,8 +1,8 @@
 package com.lorevault.api.service.content;
 
-import com.lorevault.api.dto.content.SceneDetectionResult;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
-import com.lorevault.api.graph.port.ContentPersistencePort;
+import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.application.port.SceneDetectionPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -12,7 +12,7 @@ import java.util.UUID;
 
 /**
  * Service responsible for AI-powered scene detection within chapters.
- * Orchestrates the scene detection pipeline: AI detection, coordinate localization.
+ * Orchestrates scene detection using the SceneDetectionPort abstraction.
  * No longer handles persistence - that's delegated to ScenePersistenceService.
  * 
  * This service implements the v0.3.0 feature that transitions from deterministic
@@ -24,14 +24,11 @@ import java.util.UUID;
 public class SceneDetectionService {
 
     private final ContentPersistencePort contentPersistencePort;
-    private final SceneDetectionClient sceneDetectionClient;
-    private final SceneDetectionXmlParser xmlParser;
-    private final SceneCoordinateLocalizer coordinateLocalizer;
+    private final SceneDetectionPort sceneDetectionPort;
 
     /**
      * Detects scenes within a chapter using AI analysis but does NOT persist them.
-     * Implements the two-pass approach: AI identifies scenes with anchors,
-     * then code calculates exact character positions.
+     * Uses the SceneDetectionPort abstraction to remain technology-agnostic.
      * <p>
      * This method is NOT transactional because it includes external API calls.
      * Database persistence should be handled separately via ScenePersistenceService.
@@ -51,24 +48,13 @@ public class SceneDetectionService {
             return List.of();
         }
         
+        log.debug("Using scene detection implementation: {}", sceneDetectionPort.getImplementationInfo());
+        
         try {
-            // Stage 1: AI Scene Identification (external API call - no transaction)
-            log.debug("Stage 1: Calling AI for scene detection on {} characters", chapterText.length());
-            String aiResponse = sceneDetectionClient.detectScenes(chapterText);
+            // Delegate to the scene detection port implementation
+            List<SceneWithCoordinates> scenesWithCoords = sceneDetectionPort.detectScenesInText(chapterId, chapterText);
             
-            // Parse the XML response
-            List<SceneDetectionResult> aiResults = xmlParser.parseResponse(aiResponse, chapterText.length());
-            
-            if (aiResults.isEmpty()) {
-                log.warn("No scenes detected for chapter {}", chapterId);
-                return List.of();
-            }
-            
-            // Stage 2: Coordinate Localization (pure computation - no transaction)
-            log.debug("Stage 2: Localizing coordinates for {} detected scenes", aiResults.size());
-            List<SceneWithCoordinates> scenesWithCoords = coordinateLocalizer.localizeCoordinates(chapterText, aiResults);
-            
-            log.info("Successfully detected {} scenes with coordinates for chapter {}", 
+            log.info("Successfully detected {} scenes for chapter {}", 
                     scenesWithCoords.size(), chapterId);
             
             return scenesWithCoords;

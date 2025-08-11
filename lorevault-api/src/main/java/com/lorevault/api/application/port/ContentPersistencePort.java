@@ -1,6 +1,6 @@
-package com.lorevault.api.graph.port;
+package com.lorevault.api.application.port;
 
-import com.lorevault.api.graph.model.*;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.*;
 
 import java.util.List;
 import java.util.Optional;

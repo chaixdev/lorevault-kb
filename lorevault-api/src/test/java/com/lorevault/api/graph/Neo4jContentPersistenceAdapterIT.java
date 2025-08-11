@@ -1,7 +1,12 @@
 package com.lorevault.api.graph;
 
-import com.lorevault.api.graph.model.*;
-import com.lorevault.api.graph.port.ContentPersistencePort;
+import com.lorevault.api.domain.ingestion.IngestionStatus;
+import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
+import com.lorevault.api.dto.ingestion.SubmitChapterResponse;
+import com.lorevault.api.domain.shared.PublicationCoordinates;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.*;
+import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.service.ingestion.IngestionService;
 import com.lorevault.api.test.IntegrationTestBase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +20,9 @@ public class Neo4jContentPersistenceAdapterIT extends IntegrationTestBase {
 
     @Autowired
     private ContentPersistencePort port;
+    
+    @Autowired
+    private IngestionService ingestionService;
 
     @Test
     void chapter_scene_chunk_job_lifecycle() {
@@ -46,25 +54,22 @@ public class Neo4jContentPersistenceAdapterIT extends IntegrationTestBase {
         port.addChunksToChapter(chapter.getId(), List.of(chunk));
         assertThat(port.countChunksByChapterId(chapter.getId())).isEqualTo(1);
 
-        IngestionJobNode job = new IngestionJobNode();
-        job.setId(UUID.randomUUID());
-        job.setChapterId(chapter.getId());
-        job.setCurrentStatus(null);
-        job.setProgressPercent(0);
-        job = port.createJob(job);
-        assertThat(job.getId()).isNotNull();
+        // Use the production service to create a job with proper initialization
+        SubmitChapterRequest request = new SubmitChapterRequest();
+        request.setCoordinates(new PublicationCoordinates("TestU", "Series", 1, null, 1));
+        request.setChapterTitle("Ch1");
+        request.setChapterText("Some raw text for testing scenes and chunks.");
+        SubmitChapterResponse response = ingestionService.submitChapter(request);
+        assertThat(response.getJobId()).isNotNull();
+        assertThat(response.getChapterId()).isNotNull();
 
-        StatusRecordNode record = new StatusRecordNode();
-        record.setId(UUID.randomUUID());
-        record.setJobId(job.getId());
-        record.setStatus(null);
-        record.setStepDescription("Queued");
-        record.setProgressPercent(0);
-        port.addStatusRecord(job.getId(), record);
-        assertThat(port.findRecentStatusRecords(job.getId(), 5)).hasSize(1);
+        // Verify the job was created with proper status
+        var createdJob = port.findJob(response.getJobId());
+        assertThat(createdJob).isPresent();
+        assertThat(createdJob.get().getCurrentStatus()).isEqualTo(IngestionStatus.QUEUED);
 
-        assertThat(port.hasActiveJobForChapter(chapter.getId())).isTrue();
-        assertThat(port.findMostRecentJobForChapter(chapter.getId())).isPresent();
+        assertThat(port.hasActiveJobForChapter(response.getChapterId())).isTrue();
+        assertThat(port.findMostRecentJobForChapter(response.getChapterId())).isPresent();
 
         assertThat(port.deleteChunksByChapterId(chapter.getId())).isEqualTo(1);
         assertThat(port.deleteScenesByChapterId(chapter.getId())).isEqualTo(1);

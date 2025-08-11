@@ -1,8 +1,8 @@
-package com.lorevault.api.graph.adapter;
+package com.lorevault.api.infrastructure.persistence.neo4j.adapter;
 
-import com.lorevault.api.graph.model.*;
-import com.lorevault.api.graph.port.ContentPersistencePort;
-import com.lorevault.api.graph.repo.*;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.*;
+import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;

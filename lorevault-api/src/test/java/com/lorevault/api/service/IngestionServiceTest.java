@@ -11,7 +11,9 @@ import com.lorevault.api.service.ingestion.IngestionService;
 import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.TextChunkingService;
 import com.lorevault.api.service.content.ChunkEmbeddingService;
-import com.lorevault.api.graph.port.ContentPersistencePort;
+import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,7 +60,7 @@ class IngestionServiceTest {
     private IngestionService ingestionService;
 
     private SubmitChapterRequest sampleRequest;
-    private com.lorevault.api.graph.model.ChapterNode sampleChapter;
+    private ChapterNode sampleChapter;
     private IngestionJob sampleJob;
 
     @BeforeEach
@@ -69,7 +71,7 @@ class IngestionServiceTest {
         sampleRequest.setChapterTitle("The Shadow of the Past");
         sampleRequest.setChapterText("When Frodo reached his majority...");
 
-        sampleChapter = new com.lorevault.api.graph.model.ChapterNode();
+        sampleChapter = new ChapterNode();
         sampleChapter.setId(UUID.randomUUID());
         sampleChapter.setUniverse(coordinates.getUniverse());
         sampleChapter.setSeries(coordinates.getSeries());
@@ -94,12 +96,12 @@ class IngestionServiceTest {
         when(hashService.generateSha256Hash(anyString())).thenReturn(contentHash);
         when(contentPersistencePort.findChapterByContentHash(contentHash)).thenReturn(Optional.empty());
         when(contentPersistencePort.createChapter(any())).thenAnswer(inv -> {
-            com.lorevault.api.graph.model.ChapterNode n = inv.getArgument(0);
+            ChapterNode n = inv.getArgument(0);
             if (n.getId() == null) n.setId(UUID.randomUUID());
             return n;
         });
         when(contentPersistencePort.createJob(any())).thenAnswer(inv -> {
-            com.lorevault.api.graph.model.IngestionJobNode n = inv.getArgument(0);
+            IngestionJobNode n = inv.getArgument(0);
             if (n.getId() == null) n.setId(UUID.randomUUID());
             return n;
         });
@@ -123,12 +125,12 @@ class IngestionServiceTest {
         // Given
         String contentHash = "abc123";
         UUID existingChapterId = UUID.randomUUID();
-        var existingChapterNode = new com.lorevault.api.graph.model.ChapterNode(); existingChapterNode.setId(existingChapterId);
+        var existingChapterNode = new ChapterNode(); existingChapterNode.setId(existingChapterId);
         when(hashService.generateSha256Hash(anyString())).thenReturn(contentHash);
         when(contentPersistencePort.findChapterByContentHash(contentHash)).thenReturn(Optional.of(existingChapterNode));
         when(contentPersistencePort.hasActiveJobForChapter(existingChapterId)).thenReturn(false);
         when(contentPersistencePort.createJob(any())).thenAnswer(inv -> {
-            com.lorevault.api.graph.model.IngestionJobNode n = inv.getArgument(0);
+            IngestionJobNode n = inv.getArgument(0);
             if (n.getId() == null) n.setId(UUID.randomUUID());
             return n;
         });
@@ -148,7 +150,7 @@ class IngestionServiceTest {
     void getJobStatus_WhenJobExists_ShouldReturnStatus() {
         // Given
         UUID jobId = UUID.randomUUID();
-        var jobNode = new com.lorevault.api.graph.model.IngestionJobNode(); jobNode.setId(jobId); jobNode.setChapterId(UUID.randomUUID()); jobNode.setCurrentStatus(IngestionStatus.COMPLETE); jobNode.setProgressPercent(100);
+        var jobNode = new IngestionJobNode(); jobNode.setId(jobId); jobNode.setChapterId(UUID.randomUUID()); jobNode.setCurrentStatus(IngestionStatus.COMPLETE); jobNode.setProgressPercent(100);
         when(contentPersistencePort.findJob(jobId)).thenReturn(Optional.of(jobNode));
         when(contentPersistencePort.findRecentStatusRecords(jobId, 5)).thenReturn(List.of());
 
