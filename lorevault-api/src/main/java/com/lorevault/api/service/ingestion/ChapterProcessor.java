@@ -1,10 +1,10 @@
 package com.lorevault.api.service.ingestion;
 
 import com.lorevault.api.event.ChapterIngestionEvent;
-import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.ingestion.IngestionJob;
-import com.lorevault.api.repository.ChapterRepository;
-import com.lorevault.api.repository.IngestionJobRepository;
+import com.lorevault.api.graph.port.ContentPersistencePort;
+import com.lorevault.api.graph.model.ChapterNode;
+import com.lorevault.api.graph.model.IngestionJobNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -23,8 +23,7 @@ import java.util.UUID;
 @Slf4j
 public class ChapterProcessor {
 
-    private final ChapterRepository chapterRepository;
-    private final IngestionJobRepository jobRepository;
+    private final ContentPersistencePort contentPersistencePort;
     private final IngestionService ingestionService;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -34,11 +33,24 @@ public class ChapterProcessor {
                 event.getJobId(), event.getChapterId(), Thread.currentThread().getName());
 
         try {
-            // Defensive retry logic for potential race conditions
-            IngestionJob job = findJobWithRetry(event.getJobId());
-            Chapter chapter = findChapterWithRetry(event.getChapterId());
+            IngestionJobNode jobNode = findJobWithRetry(event.getJobId());
+            ChapterNode chapterNode = findChapterWithRetry(event.getChapterId());
 
-            // Call the existing processing logic
+            // Minimal transient domain objects for processing (rawText & scenes still domain-gap; future refactor)
+            IngestionJob job = new IngestionJob();
+            job.setId(jobNode.getId());
+            job.setChapterId(jobNode.getChapterId());
+            job.setCurrentStatus(jobNode.getCurrentStatus());
+            job.setProgressPercent(jobNode.getProgressPercent());
+            job.setCreatedAt(jobNode.getCreatedAt());
+            job.setCompletedAt(jobNode.getCompletedAt());
+
+            // Build transient Chapter
+            com.lorevault.api.domain.content.Chapter chapter = new com.lorevault.api.domain.content.Chapter();
+            chapter.setId(chapterNode.getId());
+            chapter.setRawText(chapterNode.getRawText());
+
+            // Scenes will be resolved later when scene graph refactor adds retrieval
             ingestionService.processChapter(job, chapter);
 
         } catch (Exception e) {
@@ -47,64 +59,45 @@ public class ChapterProcessor {
         }
     }
 
-    /**
-     * Find job with retry logic to handle potential race conditions
-     */
-    private IngestionJob findJobWithRetry(UUID jobId) {
-        int maxAttempts = 3;
+    private IngestionJobNode findJobWithRetry(UUID jobId) {
+        int maxAttempts = 3; 
         long delayMs = 100;
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-            Optional<IngestionJob> jobOpt = jobRepository.findById(jobId);
+            Optional<IngestionJobNode> jobOpt = contentPersistencePort.findJob(jobId);
             if (jobOpt.isPresent()) {
-                log.debug("Found job {} on attempt {}", jobId, attempt);
-                return jobOpt.get();
+                log.debug("Found job {} on attempt {}", jobId, attempt); 
+                return jobOpt.get(); 
             }
 
-            if (attempt < maxAttempts) {
-                log.warn("Job {} not found on attempt {}/{}, retrying in {}ms", 
-                        jobId, attempt, maxAttempts, delayMs);
-                try {
-                    Thread.sleep(delayMs);
-                    delayMs *= 2; // Exponential backoff
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Interrupted while waiting for job", ie);
-                }
+            if (attempt < maxAttempts) { 
+                sleep(delayMs); 
+                delayMs *= 2; // Exponential backoff
             }
         }
-
-        throw new IllegalStateException("Job not found after " + maxAttempts + " attempts: " + jobId);
+        throw new IllegalStateException("Job not found after retries: " + jobId);
     }
 
-    /**
-     * Find chapter with retry logic to handle potential race conditions.
-     * Eagerly loads scenes to avoid LazyInitializationException in async context.
-     */
-    private Chapter findChapterWithRetry(UUID chapterId) {
-        int maxAttempts = 3;
+    private ChapterNode findChapterWithRetry(UUID chapterId) {
+        int maxAttempts = 3; 
         long delayMs = 100;
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-            Optional<Chapter> chapterOpt = chapterRepository.findByIdWithScenes(chapterId);
-            if (chapterOpt.isPresent()) {
-                log.debug("Found chapter {} with scenes on attempt {}", chapterId, attempt);
-                return chapterOpt.get();
+            Optional<ChapterNode> chOpt = contentPersistencePort.findChapterById(chapterId);
+            if (chOpt.isPresent()) { 
+                log.debug("Found chapter {} on attempt {}", chapterId, attempt); 
+                return chOpt.get(); 
             }
 
-            if (attempt < maxAttempts) {
-                log.warn("Chapter {} not found on attempt {}/{}, retrying in {}ms", 
-                        chapterId, attempt, maxAttempts, delayMs);
-                try {
-                    Thread.sleep(delayMs);
-                    delayMs *= 2; // Exponential backoff
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Interrupted while waiting for chapter", ie);
-                }
+            if (attempt < maxAttempts) { 
+                sleep(delayMs); 
+                delayMs *= 2; // Exponential backoff
             }
         }
+        throw new IllegalStateException("Chapter not found after retries: " + chapterId);
+    }
 
-        throw new IllegalStateException("Chapter not found after " + maxAttempts + " attempts: " + chapterId);
+    private void sleep(long ms) {
+        try { Thread.sleep(ms); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); throw new RuntimeException("Interrupted", ie); }
     }
 }

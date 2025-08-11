@@ -1,6 +1,5 @@
 package com.lorevault.api.domain.shared;
 
-import jakarta.persistence.Embeddable;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -8,14 +7,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Embeddable component that defines the precise position of a chapter within
- * the published text corpus. Used for reading order, spoiler prevention,
- * and organizing content by publication sequence rather than fictional geography.
+ * Value object defining the position of a chapter within the publication hierarchy.
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Embeddable
 public class PublicationCoordinates {
 
     /**

@@ -2,11 +2,7 @@ package com.lorevault.api.service.content;
 
 import com.lorevault.api.dto.content.SceneDetectionResult;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
-import com.lorevault.api.domain.content.Chapter;
-import com.lorevault.api.repository.ChapterRepository;
-import com.lorevault.api.service.content.SceneDetectionClient;
-import com.lorevault.api.service.content.SceneDetectionXmlParser;
-import com.lorevault.api.service.content.SceneCoordinateLocalizer;
+import com.lorevault.api.graph.port.ContentPersistencePort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,7 +23,7 @@ import java.util.UUID;
 @Slf4j
 public class SceneDetectionService {
 
-    private final ChapterRepository chapterRepository;
+    private final ContentPersistencePort contentPersistencePort;
     private final SceneDetectionClient sceneDetectionClient;
     private final SceneDetectionXmlParser xmlParser;
     private final SceneCoordinateLocalizer coordinateLocalizer;
@@ -47,11 +43,9 @@ public class SceneDetectionService {
     public List<SceneWithCoordinates> detectScenesForChapter(UUID chapterId) {
         log.info("Starting scene detection for chapter: {}", chapterId);
         
-        // Load the chapter (read-only operation)
-        Chapter chapter = chapterRepository.findById(chapterId)
+        var chapterNode = contentPersistencePort.findChapterById(chapterId)
                 .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
-        
-        String chapterText = chapter.getRawText();
+        String chapterText = chapterNode.getRawText();
         if (chapterText == null || chapterText.trim().isEmpty()) {
             log.warn("Chapter {} has no text content, cannot detect scenes", chapterId);
             return List.of();

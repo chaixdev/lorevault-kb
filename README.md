@@ -10,11 +10,17 @@ An Agentic Knowledge Ingestion Service for fictional universes.
 - Maven 3.6+
 - Docker and Docker Compose
 
+### Stack (v0.4.0)
+
+- Spring Boot 3
+- Neo4j (graph persistence) – replaces prior Postgres/JPA
+- Spring AI (LLM scene detection only; semantic search deferred)
+
 ### Setup
 
-1. **Start the PostgreSQL database:**
+1. **Start Neo4j:**
    ```bash
-   docker-compose up -d postgres
+   docker-compose up -d neo4j
    ```
 
 2. **Build the project:**
@@ -27,9 +33,9 @@ An Agentic Knowledge Ingestion Service for fictional universes.
    mvn -pl lorevault-api spring-boot:run
    ```
 
-4. **Verify the application is running:**
-   - Health check: http://localhost:8080/actuator/health
-   - Custom status: http://localhost:8080/api/status
+4. **Verify:**
+   - Health: http://localhost:8080/actuator/health
+   - API status: http://localhost:8080/api/status
 
 ### Running Tests
 
@@ -37,60 +43,70 @@ An Agentic Knowledge Ingestion Service for fictional universes.
 mvn test
 ```
 
+Tests spin up a Neo4j Testcontainer automatically.
+
 ## Development
 
 ### Environment Configuration
 
-Copy `.env.example` to `.env` and adjust values as needed:
+Copy `.env.example` to `.env` if present (optional):
 
 ```bash
 cp .env.example .env
 ```
 
-### Database Management
+### Neo4j Management
 
-The application connects to PostgreSQL by default. For development:
+(See `docker-compose.yml` for credentials.)
 
-- **Start database:** `docker-compose up -d postgres`
-- **Stop database:** `docker-compose down`
-- **Reset database:** `docker-compose down -v && docker-compose up -d postgres`
+- Start: `docker-compose up -d neo4j`
+- Stop: `docker-compose down`
+- Reset: `docker-compose down -v && docker-compose up -d neo4j`
+
+Minimal constraint applied automatically on startup:
+
+- `Chapter.contentHash` UNIQUE
 
 ### Project Structure
 
 ```
 lorevault/
-├── lorevault-api/          # REST API module
-│   ├── src/main/java/      # Application source
-│   ├── src/main/resources/ # Configuration files
-│   └── src/test/          # Tests
-├── docker-compose.yml     # Development database
-├── pom.xml               # Parent POM
-└── README.md            # This file
+├── lorevault-api/
+│   ├── src/main/java/
+│   ├── src/main/resources/
+│   └── src/test/
+├── docs/
+├── docker-compose.yml
+├── pom.xml
+└── README.md
 ```
 
 ## API Endpoints
 
-- `GET /api/status` - Application status
-- `GET /actuator/health` - Health check endpoint  
-- `GET /actuator/info` - Application information
-- `GET /api/health` - Service health monitoring
-- `GET /api/health/llm` - LLM connectivity validation
+- `GET /api/status`
+- `GET /actuator/health`
+- `GET /actuator/info`
+- `GET /api/health`
+- `GET /api/health/llm`
+- `POST /api/ingestion/chapters` (submit chapter)
+- `GET /api/ingestion/jobs/{id}` (job status)
+- `GET /api/ingestion/jobs` (list jobs)
+- `POST /api/search/semantic` → 501 (semantic search deferred to v0.5.0)
 
 ## Documentation
 
-### 📚 Architecture & Specifications
+See `docs/` for architecture viewpoints & specifications.
 
-- **[Architecture Documentation](docs/architecture/)** - Complete architectural viewpoints using Rozanski & Woods methodology
-- **[Technical Specifications](docs/specs/)** - Detailed specs bridging architecture to implementation
-- **[Project Summary](docs/project_summary.md)** - High-level vision and roadmap
+## Version Roadmap
 
-### 🤖 AI Integration
+- ✅ v0.4.0 Graph Migration & Architecture hardening (current)
+- ⏳ v0.5.0 Semantic Search & Embeddings (upcoming)
+- 📝 v0.6.0 Entity Extraction
 
-- **[Scene Detection Specification](docs/specs/scene-detection-specification.md)** - XML-based AI scene boundary detection
-- **[Health Endpoint Specification](docs/specs/health-endpoint-specification.md)** - LLM service monitoring
+## Migration Notes
 
-### 🏗️ Implementation Status
+Legacy Postgres/JPA artifacts removed; domain objects now plain POJOs mapped to Neo4j node models. Temporary mapper will be deleted once ingestion flow no longer constructs transitional objects.
 
-- ✅ **v0.4.0** - Production Polish & Architecture (Current)
-- � **v0.5.0** - Vector Embeddings & Semantic Search (Next)
-- 📋 **v0.6.0** - Entity Extraction & Recognition (Future)
+---
+
+Semantic search currently returns 501 until embeddings are introduced.

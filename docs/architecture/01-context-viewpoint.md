@@ -9,58 +9,54 @@ This viewpoint describes the relationships, dependencies, and interactions betwe
 
 ## System Scope and Responsibilities
 
-LoreVault is an intelligent knowledge ingestion service that automatically builds structured lore databases from narrative text. The system operates as a service-oriented platform that transforms unstructured content into queryable knowledge.
+LoreVault is an intelligent knowledge ingestion service that automatically builds structured lore graphs from narrative text. The system operates as a service-oriented platform transforming unstructured content into a navigable, query-ready graph (chapters → scenes → chunks; future: entities & relationships).
 
 ### Core Responsibilities
 1. **Content Ingestion**: Accept and process narrative text through REST API
-2. **Knowledge Extraction**: Transform unstructured text into structured entities and relationships
-3. **Data Management**: Persist and maintain knowledge in searchable format
-4. **Query Services**: Provide fast access to processed knowledge via REST API
-5. **Quality Assurance**: Detect and resolve conflicts in extracted information
+2. **Scene Detection & Chunking**: Derive semantic scenes and retrieval-friendly chunks (embeddings deferred)
+3. **Graph Persistence**: Persist hierarchical content in Neo4j with integrity constraints
+4. **Job Lifecycle Tracking**: Asynchronous ingestion workflow with status history
+5. **(Future) Knowledge Extraction**: Entity & relationship mining (planned ≥ v0.6.0)
+6. **(Future) Semantic Search**: Vector-based retrieval (planned v0.5.0)
 
 ### System Boundaries
 
 **Within LoreVault System:**
-- REST API gateway and endpoints
-- Local AI processing capabilities
-- Database management and persistence
-- Background processing orchestration
-- Entity relationship management
+- REST API (Spring Boot)
+- Ingestion orchestration & background processors
+- AI-assisted scene detection (LLM calls)
+- Neo4j graph persistence adapter (port-driven)
+- Status audit trail (StatusRecord nodes)
 
 **Outside LoreVault System:**
-- External AI service providers
-- Client applications and users
-- External monitoring and logging systems
-- Infrastructure and deployment platforms
+- External LLM provider(s) for scene detection
+- (Future) Embedding/vector providers
+- Client applications / integrators
+- Monitoring / logging infrastructure
 
 ## External Dependencies
 
-### Critical External Services
+### Current External Services (v0.4.0)
 
 #### Large Language Model Providers
-- **Purpose**: Complex reasoning, synthesis, and conflict resolution
-- **Business Impact**: Essential for high-quality knowledge extraction
-- **Dependency Type**: External API services (OpenAI, Anthropic, Google)
-- **Risk Profile**: Service availability affects processing quality, not system availability
-- **Mitigation**: Multi-provider support with automatic failover
+- **Purpose**: Scene boundary & summary detection
+- **Risk**: Latency / availability affects ingestion throughput, not API uptime
+- **Mitigation**: Retry with backoff; failure triggers cleanup for safe retry
 
-#### Embedding Service Providers  
-- **Purpose**: Text vectorization for semantic search capabilities
-- **Business Impact**: Required for semantic search features
-- **Dependency Type**: External API services for text-to-vector conversion
-- **Risk Profile**: Affects search quality, cached vectors reduce dependency
-- **Mitigation**: Local embedding alternatives available
+### Deferred (Not active in v0.4.0)
+#### Embedding / Vector Providers
+- Semantic search disabled (endpoint returns 501)
+- Will introduce vector storage and similarity queries in v0.5.0
 
-### External Actors
+## External Actors
 
-#### Primary Users
-- **Content Creators**: Submit narrative chapters for processing
-- **Knowledge Consumers**: Query processed lore information  
-- **System Integrators**: Build applications on top of LoreVault API
+**Primary Users**
+- Content Creators (submit chapters)
+- API Integrators (pipeline orchestration)
 
-#### Secondary Users
-- **System Administrators**: Deploy, monitor, and maintain the system
-- **Content Reviewers**: Resolve conflicts and improve data quality
+**Secondary Users**
+- System Operators (deployment / monitoring)
+- Future Knowledge Consumers (semantic + entity queries) – partial functionality now (no semantic search yet)
 
 ## System Context Diagram
 
@@ -68,130 +64,109 @@ LoreVault is an intelligent knowledge ingestion service that automatically build
 graph TD
     subgraph "External Content Sources"
         CC[Content Creators]
-        WEB[Web Applications]
+        WEB[Web Apps]
         CLI[CLI Tools]
     end
 
     subgraph "LoreVault System"
         API[LoreVault API]
-        LOCAL[Local AI Processing]
-        DB[(Knowledge Database)]
+        PROC[Ingestion Orchestrator]
+        GRAPH[(Neo4j Graph DB)]
     end
 
     subgraph "External AI Services"
-        LLM[Language Model APIs]
-        EMB[Embedding APIs]
+        LLM[LLM APIs]
+        EMB[(Embedding APIs - Future)]
     end
 
-    subgraph "Knowledge Consumers"
-        QUERY[Query Applications]
+    subgraph "Clients"
+        QUERY[Query Apps]
         DASH[Dashboards]
-        TOOLS[Analysis Tools]
     end
 
     subgraph "Operations"
-        MON[Monitoring Systems]
-        LOG[Logging Services]
+        MON[Monitoring]
+        LOG[Logging]
     end
 
     CC --> API
     WEB --> API
     CLI --> API
-    
-    API --> LOCAL
-    API --> DB
-    LOCAL --> LLM
-    LOCAL --> EMB
-    
+
+    API --> PROC
+    PROC --> LLM
+    PROC --> GRAPH
+
+    API --> GRAPH
+
     API --> QUERY
     API --> DASH
-    API --> TOOLS
-    
+
     API --> MON
     API --> LOG
 
     style API fill:#D5E8D4,stroke:#82B366,stroke-width:2px
-    style LOCAL fill:#F8CECC,stroke:#B85450,stroke-width:2px
-    style DB fill:#FFF2CC,stroke:#D6B656,stroke-width:2px
+    style GRAPH fill:#FFF2CC,stroke:#D6B656,stroke-width:2px
+    style PROC fill:#F8CECC,stroke:#B85450,stroke-width:2px
+    style LLM fill:#E1D5E7,stroke:#9673A6,stroke-width:1px
+    style EMB fill:#EEEEEE,stroke:#999999,stroke-dasharray: 4 2
 ```
 
 ## Integration Patterns
 
-### Content Ingestion Flow
-1. **Client Submission**: Users submit content via REST API
-2. **Immediate Acknowledgment**: System returns processing job ID
-3. **Background Processing**: Content processed asynchronously
-4. **Status Updates**: Clients poll for processing progress and completion
+### Ingestion Flow (Graph-Oriented)
+1. Submit chapter → returns jobId immediately
+2. Job QUEUED → scene detection (LLM) → scene nodes persisted
+3. Chunking over scenes → chunk nodes persisted
+4. Status records appended (audit trail) until COMPLETE / FAILED
+5. On failure: scenes & chunks cleaned for idempotent retry
 
-### Knowledge Query Flow
-1. **Query Submission**: Applications query for specific entities or relationships
-2. **Database Lookup**: System retrieves structured data from knowledge base
-3. **Response Delivery**: Formatted results returned to client
-4. **Caching**: Frequently accessed data cached for performance
-
-### External AI Integration
-1. **Local Filtering**: Content pre-processed locally to identify AI processing needs
-2. **Selective API Calls**: Only necessary content sent to external AI services
-3. **Result Integration**: AI outputs integrated with existing knowledge base
-4. **Cost Management**: Local processing minimizes external API usage
+### (Deferred) Semantic Search Flow
+- Placeholder endpoint returns 501 until embeddings introduced.
 
 ## Environmental Constraints
 
-### Development Environment
-- **Local Development**: Containerized services for database and external service simulation
-- **Testing**: In-memory databases with mock external services
-- **Integration Testing**: Containerized external service simulators
+### Development
+- Single Neo4j container (no Postgres)
+- Testcontainers Neo4j for integration tests (isolated graph state)
+- No vector store yet (design reserved for v0.5.0)
 
-### Production Environment
-- **Scalability**: Horizontal scaling requirements for processing load
-- **Availability**: High availability needs for query services
-- **Performance**: Sub-second response times for query operations
-- **Cost Management**: External AI service cost optimization
+### Production (Target)
+- Neo4j causal cluster (future scaling) – current phase uses single instance
+- Asynchronous ingestion threads isolated from request threads
+- Planned introduction of vector index (Neo4j or external) post v0.4.0
 
-### Security Requirements
-- **API Security**: Authentication and authorization for content submission
-- **Data Protection**: Secure handling of potentially sensitive narrative content
-- **External Communications**: Encrypted connections to all external services
-- **Audit Requirements**: Complete audit trail of all processing activities
+### Security
+- API authentication (future hardening roadmap) – basic controls current
+- Encrypted outbound LLM traffic
+- Content hash uniqueness prevents duplicate ingestion
 
-## Business Context
+## Updated Assumptions (v0.4.0)
+1. Semantic search postponed; no embeddings stored yet
+2. Chapter → Scene → Chunk hierarchy is authoritative graph structure
+3. Status history retained indefinitely (volume modest at v0.4.0 scale)
+4. Retry strategy must leave graph in clean state (hard requirement)
 
-### Value Proposition
-- **Automation**: Eliminates manual lore tracking and note-taking
-- **Consistency**: Provides structured, standardized knowledge representation
-- **Searchability**: Enables complex queries across narrative content
-- **Scalability**: Handles large volumes of content automatically
+## Removed / Changed (from earlier RDBMS design)
+- Postgres, JPA, Flyway eliminated; replaced by Spring Data Neo4j
+- No relational schema migrations; constraints applied programmatically
+- Entity classes are lightweight POJOs decoupled from persistence
+- Job & status queries now port-driven with potential future Cypher optimization
 
-### Success Criteria
-- **Processing Accuracy**: >95% accuracy in entity extraction and relationship identification
-- **Cost Efficiency**: 90% reduction in processing costs compared to external-API-only solutions
-- **Performance**: Average processing time <5 minutes per chapter
-- **User Adoption**: Integration with popular content management workflows
+## Risks & Mitigations (Current Phase)
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Naive in-memory filtering in adapter | Performance degradation at scale | Replace with targeted Cypher (planned) |
+| LLM latency/failure | Slower ingestion / retries | Backoff + cleanup for deterministic retriable state |
+| Missing ordering metadata on relationships | Complex ordering queries later | Future relationship properties (HAS_SCENE.index) |
+| Constraint drift | Duplicate chapters | Startup constraint initializer |
 
-### Business Risks
-- **External Service Dependency**: Reliance on third-party AI service availability
-- **Data Quality**: Potential for incorrect entity extraction affecting knowledge quality
-- **Scaling Costs**: External AI service costs scaling with processing volume
-- **Competition**: Alternative automated knowledge extraction solutions
+## Roadmap Alignment
+- v0.4.0: Graph migration foundation (DONE/NEAR DONE)
+- v0.5.0: Embeddings + semantic search (vector layer, similarity ranking)
+- v0.6.0: Entity extraction & relationship expansion
 
-## Assumptions and Constraints
-
-### Key Assumptions
-1. **Content Type**: Primary focus on English-language narrative fiction
-2. **Processing Volume**: Designed for 100-1000 chapters per day processing load
-3. **External Service Availability**: 99%+ uptime for critical AI services
-4. **User Behavior**: Asynchronous processing acceptable for content ingestion
-
-### Technical Constraints
-1. **Local Processing**: Limited by available computational resources for AI models
-2. **Database Storage**: Vector storage requirements grow with content volume
-3. **API Limitations**: External AI service rate limits and cost considerations
-4. **Network Dependency**: Requires reliable internet connectivity for external services
-
-### Business Constraints
-1. **Budget**: External AI service costs must remain within operational budget
-2. **Compliance**: Must handle content according to data protection regulations
-3. **Performance**: Query response times must support real-time application use
-4. **Maintenance**: System must operate with minimal manual intervention
+---
+This context reflects the post-migration Neo4j architecture (v0.4.0) and intentionally excludes deferred vector/semantic components.
 
 

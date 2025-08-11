@@ -18,16 +18,10 @@
     <description>REST API module for LoreVault service</description>
 
     <dependencies>
-        <!-- Spring AI OpenAI-compatible client for Gemini -->
+        <!-- Spring AI model client (LLM usage for scene detection, etc.) -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-openai</artifactId>
-        </dependency>
-
-        <!-- Spring AI Vector Store: PGVector -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
         </dependency>
 
         <!-- Spring Boot Starters -->
@@ -36,9 +30,10 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         
+        <!-- Neo4j (graph persistence) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <artifactId>spring-boot-starter-data-neo4j</artifactId>
         </dependency>
         
         <dependency>
@@ -57,13 +52,6 @@
             <artifactId>spring-aspects</artifactId>
         </dependency>
 
-        <!-- Database -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
         <!-- Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -77,44 +65,27 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Flyway for database migrations -->
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-        </dependency>
-        
-        <!-- Flyway PostgreSQL database support -->
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-postgresql</artifactId>
-        </dependency>
-
-        <!-- Test Dependencies -->
+        <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-        
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>test</scope>
-        </dependency>
-        
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <!-- Mockito for unit tests -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>neo4j</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
-        
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
@@ -143,6 +114,19 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.1.2</version>
+                <configuration>
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tests.java</include>
+                    </includes>
+                </configuration>
             </plugin>
         </plugins>
     </build>

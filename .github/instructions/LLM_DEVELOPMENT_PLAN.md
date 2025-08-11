@@ -6,6 +6,8 @@
 
 **Quick Reference**: Balance clean, robust enterprise code with pragmatic delivery. Consider multiple approaches and select based on maintainability, robustness, complexity, and architectural alignment.
 
+> NOTE (v0.4.0 pivot): The project has migrated from an RDBMS approach to a graph-based persistence layer (Neo4j). All plan language is now persistence-neutral. Semantic embeddings and true semantic/vector search are explicitly deferred to v0.5.0. Until then, the semantic search endpoint is retained but returns a Not Implemented response.
+
 ## Issue Implementation Workflow
 
 ### Phase 1: Context Gathering (MANDATORY)
@@ -24,7 +26,7 @@ Before implementing any issue, the LLM MUST gather complete context:
 ```markdown
 🔍 IMPLEMENTATION AUDIT:
 - Examine source code in lorevault-api/src/main/java/
-- Check database schema in src/main/resources/db/migration/
+- Review persistence layer definitions (e.g., node/entity models, repositories, migrations or setup scripts)
 - Review existing tests in src/test/java/ for patterns
 - Identify integration points with existing components
 - Document gaps between current state and requirements
@@ -35,7 +37,7 @@ Before implementing any issue, the LLM MUST gather complete context:
 🏗️ ARCHITECTURAL CONTEXT:
 - CQRS impact: Command path vs Query path?
 - Spring Boot component integration requirements
-- Database schema implications (PostgreSQL + pgvector)
+- Persistence model implications (graph representation, relationships, indexing strategy, future vector/semantic capabilities)
 - Asynchronous processing workflow effects
 - External service dependencies (AI APIs)
 ```
@@ -155,10 +157,10 @@ Please provide guidance on: [Specific questions]
 **Follow the Testing Strategy**: Implement according to `/docs/spec/testing-strategy.md`:
 1. **Service Tests First**: Write service-level tests that define business behavior
 2. **Implementation**: Implement the business logic to satisfy service tests  
-3. **Integration Tests**: Add integration tests for database interactions if needed
+3. **Integration Tests**: Add integration tests for persistence interactions if needed
 4. **Edge Case Coverage**: Add specific contract tests for complex edge cases
 
-**Database Changes**: If needed, create Flyway migration in `src/main/resources/db/migration/`
+**Persistence Changes**: If needed, create appropriate migration or schema update artifacts (e.g., graph refactor scripts, index creation guidance). Avoid premature vector/embedding scaffolding before v0.5.0.
 
 **Spring Boot Patterns**: Follow existing patterns for Controllers, Services, Repositories, DTOs
 
@@ -207,7 +209,7 @@ Please provide guidance on: [Specific questions]
 **Update relevant documentation**:
 - **Architecture docs** (`/docs/architecture/`): If architectural impact
 - **Spec docs** (`/docs/spec/`): If data model or process changes  
-- **API documentation**: If new endpoints
+- **API documentation**: If new endpoints or changes (e.g., placeholder behaviors)
 - **README**: If user-facing changes
 
 **Documentation focus**: Why decisions were made, architectural impact, integration points
@@ -225,11 +227,11 @@ feat: implement issue [Issue Number] - [Brief description]
 
 ✅ IMPLEMENTED:
 - [Key feature 1 - e.g., new REST endpoint, service layer logic]
-- [Key feature 2 - e.g., database schema changes, integration logic] 
+- [Key feature 2 - e.g., schema changes, integration logic] 
 - [Key feature 3 - e.g., validation, error handling, testing]
 
 🔍 VERIFICATION:
-- [How user can verify it works - API calls, database queries]
+- [How user can verify it works - API calls, queries]
 - [Observable behavior/output - HTTP responses, log messages]
 
 📋 INTEGRATION:
@@ -255,7 +257,7 @@ git commit -m "feat: implement issue [Issue Number] - [Brief description]
 🔍 VERIFICATION:
 - [How to verify it works]
 
-📋 INTEGRATION:
+📋 INTEGRRATION:
 - [Integration details]"
 
 # Push changes (if working with remote)
@@ -281,7 +283,7 @@ feat: implement issue 0.1.1 - basic chapter ingestion endpoint
 
 📋 INTEGRATION:
 - Follows CQRS pattern (command path implementation)
-- Uses existing PostgreSQL schema with job tracking
+- Uses current persistence layer with job tracking
 - Service-level tests with 90%+ coverage
 - Ready for async processing pipeline integration
 ```

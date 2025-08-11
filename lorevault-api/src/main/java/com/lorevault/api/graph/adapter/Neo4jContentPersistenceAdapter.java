@@ -1,0 +1,179 @@
+package com.lorevault.api.graph.adapter;
+
+import com.lorevault.api.graph.model.*;
+import com.lorevault.api.graph.port.ContentPersistencePort;
+import com.lorevault.api.graph.repo.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Component
+@RequiredArgsConstructor
+@Transactional
+public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
+
+    private final ChapterGraphRepository chapterRepo;
+    private final SceneGraphRepository sceneRepo;
+    private final ChunkGraphRepository chunkRepo;
+    private final IngestionJobGraphRepository jobRepo;
+    private final StatusRecordGraphRepository statusRepo;
+
+    @Override
+    public ChapterNode createChapter(ChapterNode chapter) {
+        if (chapter.getId() == null) {
+            chapter.setId(UUID.randomUUID());
+        }
+        return chapterRepo.save(chapter);
+    }
+
+    @Override
+    public Optional<ChapterNode> findChapterById(UUID id) {
+        return chapterRepo.findById(id);
+    }
+
+    @Override
+    public Optional<ChapterNode> findChapterByContentHash(String contentHash) {
+        return chapterRepo.findByContentHash(contentHash);
+    }
+
+    @Override
+    public boolean chapterExistsByContentHash(String contentHash) {
+        return chapterRepo.existsByContentHash(contentHash);
+    }
+
+    @Override
+    public ChapterNode updateChapter(ChapterNode chapter) {
+        return chapterRepo.save(chapter);
+    }
+
+    @Override
+    public SceneNode addSceneToChapter(UUID chapterId, SceneNode scene) {
+        ChapterNode chapter = chapterRepo.findById(chapterId).orElseThrow();
+        if (scene.getId() == null) scene.setId(UUID.randomUUID());
+        scene = sceneRepo.save(scene);
+        var scenes = chapter.getScenes();
+        if (scenes != null) {
+            scenes.add(scene);
+        }
+        chapterRepo.save(chapter);
+        return scene;
+    }
+
+    @Override
+    public List<SceneNode> addScenesToChapter(UUID chapterId, List<SceneNode> scenes) {
+        return scenes.stream().map(s -> addSceneToChapter(chapterId, s)).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<SceneNode> findScenesByChapterId(UUID chapterId) {
+        return sceneRepo.findByChapterId(chapterId);
+    }
+
+    @Override
+    public int deleteScenesByChapterId(UUID chapterId) {
+        var existing = sceneRepo.findByChapterId(chapterId);
+        sceneRepo.deleteByChapterId(chapterId);
+        return existing.size();
+    }
+
+    @Override
+    public List<ChunkNode> addChunksToChapter(UUID chapterId, List<ChunkNode> chunks) {
+        ChapterNode chapter = chapterRepo.findById(chapterId).orElseThrow();
+        for (ChunkNode chunk : chunks) {
+            if (chunk.getId() == null) chunk.setId(UUID.randomUUID());
+            chunkRepo.save(chunk);
+        }
+        var existing = chapter.getChunks();
+        if (existing != null) {
+            existing.addAll(chunks);
+            existing.sort(Comparator.comparing(ChunkNode::getChunkNumberInChapter));
+        }
+        chapterRepo.save(chapter);
+        return chunks;
+    }
+
+    @Override
+    public List<ChunkNode> findChunksByChapterId(UUID chapterId) {
+        return chunkRepo.findByChapterId(chapterId);
+    }
+
+    @Override
+    public int deleteChunksByChapterId(UUID chapterId) {
+        int existing = chunkRepo.countByChapterId(chapterId);
+        chunkRepo.deleteByChapterId(chapterId);
+        return existing;
+    }
+
+    @Override
+    public boolean chunksExistForChapter(UUID chapterId) {
+        return chunkRepo.existsForChapter(chapterId);
+    }
+
+    @Override
+    public int countChunksByChapterId(UUID chapterId) {
+        return chunkRepo.countByChapterId(chapterId);
+    }
+
+    @Override
+    public IngestionJobNode createJob(IngestionJobNode jobNode) {
+        if (jobNode.getId() == null) jobNode.setId(UUID.randomUUID());
+        return jobRepo.save(jobNode);
+    }
+
+    @Override
+    public Optional<IngestionJobNode> findJob(UUID id) {
+        return jobRepo.findById(id);
+    }
+
+    @Override
+    public IngestionJobNode updateJob(IngestionJobNode jobNode) {
+        return jobRepo.save(jobNode);
+    }
+
+    @Override
+    public Optional<IngestionJobNode> findMostRecentJobForChapter(UUID chapterId) {
+        return jobRepo.findLatestForChapter(chapterId);
+    }
+
+    @Override
+    public boolean hasActiveJobForChapter(UUID chapterId) {
+        return jobRepo.existsActiveForChapter(chapterId);
+    }
+
+    @Override
+    public List<IngestionJobNode> findJobsByChapterIds(List<UUID> chapterIds) {
+        if (chapterIds == null || chapterIds.isEmpty()) return List.of();
+        return jobRepo.findByChapterIds(chapterIds);
+    }
+
+    @Override
+    public List<IngestionJobNode> findAllJobs() {
+        return jobRepo.findAll();
+    }
+
+    @Override
+    public List<ChapterNode> findChaptersByUniverse(String universe) {
+        if (universe == null || universe.isBlank()) return List.of();
+        return chapterRepo.findAll().stream()
+                .filter(c -> universe.equals(c.getUniverse()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public StatusRecordNode addStatusRecord(UUID jobId, StatusRecordNode recordNode) {
+        if (recordNode.getId() == null) recordNode.setId(UUID.randomUUID());
+        if (recordNode.getJobId() == null) recordNode.setJobId(jobId);
+        return statusRepo.save(recordNode);
+    }
+
+    @Override
+    public List<StatusRecordNode> findRecentStatusRecords(UUID jobId, int limit) {
+        return statusRepo.findRecentForJob(jobId, limit);
+    }
+}

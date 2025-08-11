@@ -3,30 +3,21 @@ package com.lorevault.api.test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.springframework.context.annotation.Import;
+import com.lorevault.api.test.config.MockLlmConfig;
+import com.lorevault.api.test.container.SharedNeo4jTestContainer;
+import org.testcontainers.containers.Neo4jContainer;
 
-/**
- * Base class for integration tests that require a PostgreSQL database.
- * Uses Testcontainers to provide a real PostgreSQL instance for testing.
- */
 @SpringBootTest
-@Testcontainers
+@Import(MockLlmConfig.class)
 public abstract class IntegrationTestBase {
 
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg16")
-            .withDatabaseName("lorevault_test")
-            .withUsername("test")
-            .withPassword("test")
-            .withReuse(true); // Reuse container across test classes for performance
+    private static final Neo4jContainer<?> neo4j = SharedNeo4jTestContainer.getInstance();
 
     @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.datasource.driver-class-name", postgres::getDriverClassName);
+    static void registerNeo4jProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.neo4j.uri", neo4j::getBoltUrl);
+        registry.add("spring.neo4j.authentication.username", () -> "neo4j");
+        registry.add("spring.neo4j.authentication.password", () -> "password");
     }
 }
