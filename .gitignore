@@ -162,3 +162,5 @@ docs/_build/
 # Local development Docker volumes
 docker-data/
 postgres-data/
+
+.volumes/
