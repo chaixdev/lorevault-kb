@@ -9,6 +9,8 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -27,20 +29,27 @@ public class LlmHealthCheckService {
     @Value("${spring.ai.openai.chat.options.model:unknown}")
     private String currentModelId;
 
+    @Value("${lorevault.llm.health.enabled:true}")
+    private boolean healthEnabled;
+
     /**
      * Performs health check on the configured LLM model after application startup.
      * Fails early if the service is not accessible.
      */
     @EventListener(ApplicationReadyEvent.class)
     public void performStartupHealthCheck() {
+        if (!healthEnabled) {
+            log.info("LLM health check disabled via lorevault.llm.health.enabled=false");
+            return;
+        }
+        Instant overallStart = Instant.now();
         log.info("Performing LLM service health check for model: {}", currentModelId);
-        
         ModelHealthStatus healthResult = checkCurrentModel();
-        
+        long totalMs = Duration.between(overallStart, Instant.now()).toMillis();
         if (healthResult.isHealthy()) {
-            log.info("✅ LLM model '{}' is healthy", currentModelId);
+            log.info("✅ LLM model '{}' is healthy ({} ms total)", currentModelId, totalMs);
         } else {
-            log.error("❌ LLM model '{}' health check FAILED: {}", currentModelId, healthResult.getErrorMessage());
+            log.error("❌ LLM model '{}' health check FAILED after {} ms: {}", currentModelId, totalMs, healthResult.getErrorMessage());
         }
     }
     
@@ -67,62 +76,44 @@ public class LlmHealthCheckService {
     
     /**
      * Checks the health of a specific model.
+     * Adds per-attempt timing information for diagnostics.
      * 
      * @param modelId The model identifier (e.g., "gemini-2.5-flash-lite")
      * @return Health status for the model
      */
     public ModelHealthStatus checkSingleModel(String modelId) {
-        // Retry configuration for robustness during health checks
         int maxRetries = 3;
         long baseDelayMs = 1000;
-        
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            Instant attemptStart = Instant.now();
             try {
-                log.debug("Checking health of model: {} - attempt {}/{}", modelId, attempt, maxRetries);
-                
-                // Create a simple health check prompt
+                log.debug("[LLM-Health] Checking model={} attempt={}/{}", modelId, attempt, maxRetries);
                 Prompt healthCheckPrompt = new Prompt("Respond with 'OK' if you can process this message.");
-                
-                // Make the call (the model is already configured in the ChatClient)
-                String response = chatClient.prompt(healthCheckPrompt)
-                        .call()
-                        .content();
-                
-                // Log full response at trace level for debugging
-                log.trace("Full LLM API response for health check (attempt {}): {}", attempt, response);
-                
+                String response = chatClient.prompt(healthCheckPrompt).call().content();
+                long attemptMs = Duration.between(attemptStart, Instant.now()).toMillis();
+                log.trace("[LLM-Health] Raw response (attempt {} model={}): {}", attempt, modelId, response);
                 if (response != null && !response.trim().isEmpty()) {
-                    log.debug("✅ Model '{}' health check PASSED on attempt {}", modelId, attempt);
-                    return new ModelHealthStatus(true, modelId, response.trim());
+                    log.debug("✅ Model '{}' health attempt {}/{} succeeded in {} ms", modelId, attempt, maxRetries, attemptMs);
+                    return new ModelHealthStatus(true, modelId, response.trim(), attemptMs, attempt);
                 } else {
-                    String error = "Empty response received";
-                    throw new RuntimeException(error);
+                    throw new RuntimeException("Empty response received");
                 }
-                
             } catch (Exception e) {
-                log.warn("Health check attempt {}/{} failed for model '{}': {}", attempt, maxRetries, modelId, e.getMessage());
-                
+                long attemptMs = Duration.between(attemptStart, Instant.now()).toMillis();
+                log.warn("[LLM-Health] Attempt {}/{} failed model={} in {} ms: {}", attempt, maxRetries, modelId, attemptMs, e.getMessage());
                 if (attempt == maxRetries) {
-                    String error = e.getMessage();
-                    log.debug("❌ Model '{}' health check FAILED after {} attempts: {}", modelId, maxRetries, error);
-                    return new ModelHealthStatus(false, modelId, error);
+                    return new ModelHealthStatus(false, modelId, e.getMessage(), attemptMs, attempt);
                 }
-                
-                // Exponential backoff delay before retry
                 long delayMs = baseDelayMs * (long) Math.pow(2, attempt - 1);
                 try {
-                    log.debug("Waiting {}ms before retry attempt {} for model '{}'", delayMs, attempt + 1, modelId);
                     Thread.sleep(delayMs);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    log.warn("Health check interrupted for model '{}'", modelId);
-                    return new ModelHealthStatus(false, modelId, "Health check interrupted");
+                    return new ModelHealthStatus(false, modelId, "Health check interrupted", attemptMs, attempt);
                 }
             }
         }
-        
-        // This should never be reached due to the return in the catch block
-        return new ModelHealthStatus(false, modelId, "Unexpected end of retry loop");
+        return new ModelHealthStatus(false, modelId, "Unexpected end of retry loop", 0, maxRetries);
     }
     
     /**
@@ -131,38 +122,34 @@ public class LlmHealthCheckService {
      * @return true if the service is healthy, false otherwise
      */
     public boolean isLlmServiceHealthy() {
+        if (!healthEnabled) return true; // treat disabled as healthy to not fail readiness
         ModelHealthStatus status = checkCurrentModel();
         return status.isHealthy();
     }
     
     /**
-     * Data class to hold the health status of a specific model.
+     * Data class to hold the health status of a specific model with timing metadata.
      */
     public static class ModelHealthStatus {
         private final boolean healthy;
         private final String modelName;
         private final String message;
+        private final long lastAttemptDurationMs;
+        private final int attemptsUsed;
         
-        public ModelHealthStatus(boolean healthy, String modelName, String message) {
+        public ModelHealthStatus(boolean healthy, String modelName, String message, long lastAttemptDurationMs, int attemptsUsed) {
             this.healthy = healthy;
             this.modelName = modelName;
             this.message = message;
+            this.lastAttemptDurationMs = lastAttemptDurationMs;
+            this.attemptsUsed = attemptsUsed;
         }
         
-        public boolean isHealthy() {
-            return healthy;
-        }
-        
-        public String getModelName() {
-            return modelName;
-        }
-        
-        public String getErrorMessage() {
-            return healthy ? null : message;
-        }
-        
-        public String getSuccessMessage() {
-            return healthy ? message : null;
-        }
+        public boolean isHealthy() { return healthy; }
+        public String getModelName() { return modelName; }
+        public String getErrorMessage() { return healthy ? null : message; }
+        public String getSuccessMessage() { return healthy ? message : null; }
+        public long getLastAttemptDurationMs() { return lastAttemptDurationMs; }
+        public int getAttemptsUsed() { return attemptsUsed; }
     }
 }

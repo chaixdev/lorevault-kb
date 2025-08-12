@@ -181,10 +181,18 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
 
     @Override
     public List<ChunkNode> findChunksByChapterId(UUID chapterId) {
-        // Prefer scene path first
+        long start = System.currentTimeMillis();
         List<ChunkNode> viaScenes = chunkRepo.findByChapterIdViaScenes(chapterId);
-        if (!viaScenes.isEmpty()) return viaScenes;
-        return chunkRepo.findByChapterId(chapterId);
+        if (!viaScenes.isEmpty()) {
+            long ms = System.currentTimeMillis() - start;
+            // simple debug log without introducing log dependency changes
+            System.out.println("[Neo4jAdapter] findChunksByChapterId viaScenes size=" + viaScenes.size() + " ms=" + ms + " chapter=" + chapterId);
+            return viaScenes;
+        }
+        List<ChunkNode> legacy = chunkRepo.findByChapterId(chapterId);
+        long ms = System.currentTimeMillis() - start;
+        System.out.println("[Neo4jAdapter] findChunksByChapterId legacy size=" + legacy.size() + " ms=" + ms + " chapter=" + chapterId);
+        return legacy;
     }
 
     @Override
@@ -217,5 +225,20 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
         jobNode.setChapter(chapter);
         jobNode.setChapterId(chapter.getId());
         return jobRepo.save(jobNode);
+    }
+
+    @Override
+    public ChunkNode updateChunk(ChunkNode chunk) {
+        return chunkRepo.save(chunk);
+    }
+
+    @Override
+    public List<ChunkNode> updateChunks(List<ChunkNode> chunks) {
+        long start = System.currentTimeMillis();
+        if (chunks == null || chunks.isEmpty()) return List.of();
+        List<ChunkNode> saved = chunks.stream().map(chunkRepo::save).toList();
+        long ms = System.currentTimeMillis() - start;
+        System.out.println("[Neo4jAdapter] updateChunks persisted=" + saved.size() + " ms=" + ms);
+        return saved;
     }
 }
