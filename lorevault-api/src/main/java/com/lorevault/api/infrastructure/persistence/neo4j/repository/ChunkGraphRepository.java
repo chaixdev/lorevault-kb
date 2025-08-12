@@ -36,4 +36,19 @@ public interface ChunkGraphRepository extends Neo4jRepository<ChunkNode, UUID> {
 
     @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(ch:Chunk) DETACH DELETE ch")
     void deleteByChapterIdViaScenes(UUID chapterId);
+
+    // Embedding targeting queries
+    @Query("""
+            MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(ch:Chunk)
+            WHERE ch.embedding IS NULL OR ch.embeddingHash IS NULL
+            RETURN ch ORDER BY ch.chunkNumberInChapter
+            """)
+    List<ChunkNode> findUnembeddedByChapterId(UUID chapterId);
+
+    @Query("""
+            MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(ch:Chunk)
+            WHERE ch.embeddingHash <> $expectedHash
+            RETURN ch ORDER BY ch.chunkNumberInChapter
+            """)
+    List<ChunkNode> findStaleEmbeddingsByChapterId(UUID chapterId, String expectedHash);
 }
