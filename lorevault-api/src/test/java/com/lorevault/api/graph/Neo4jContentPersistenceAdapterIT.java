@@ -66,7 +66,7 @@ public class Neo4jContentPersistenceAdapterIT extends IntegrationTestBase {
         // Verify the job was created with proper status
         var createdJob = port.findJob(response.getJobId());
         assertThat(createdJob).isPresent();
-        assertThat(createdJob.get().getCurrentStatus()).isEqualTo(IngestionStatus.QUEUED);
+        assertThat(createdJob.get().getCurrentStatusRecord()).isEqualTo(IngestionStatus.QUEUED);
 
         assertThat(port.hasActiveJobForChapter(response.getChapterId())).isTrue();
         assertThat(port.findMostRecentJobForChapter(response.getChapterId())).isPresent();

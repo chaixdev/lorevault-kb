@@ -14,9 +14,7 @@ import java.util.UUID;
 public class IngestionJob {
     private UUID id;
     private UUID chapterId;
-    private IngestionStatus currentStatus;
-    private List<StatusRecord> statusHistory;
+    private StatusRecord currentStatus;
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;
-    private Integer progressPercent;
 }

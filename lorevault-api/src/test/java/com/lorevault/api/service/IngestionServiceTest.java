@@ -1,11 +1,13 @@
 package com.lorevault.api.service;
 
+import com.lorevault.api.domain.ingestion.StatusRecord;
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import com.lorevault.api.dto.ingestion.SubmitChapterResponse;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.shared.PublicationCoordinates;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.StatusRecordNode;
 import com.lorevault.api.service.shared.HashService;
 import com.lorevault.api.service.ingestion.IngestionService;
 import com.lorevault.api.service.content.SceneDetectionService;
@@ -22,6 +24,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -85,8 +89,7 @@ class IngestionServiceTest {
         sampleJob = new IngestionJob();
         sampleJob.setId(UUID.randomUUID());
         sampleJob.setChapterId(sampleChapter.getId());
-        sampleJob.setCurrentStatus(IngestionStatus.COMPLETE);
-        sampleJob.setProgressPercent(100);
+        sampleJob.setCurrentStatus(new StatusRecord(UUID.randomUUID(), sampleJob.getId(), LocalDateTime.now(),IngestionStatus.COMPLETE, "job complete", Collections.emptyMap()));
     }
 
     @Test
@@ -150,9 +153,11 @@ class IngestionServiceTest {
     void getJobStatus_WhenJobExists_ShouldReturnStatus() {
         // Given
         UUID jobId = UUID.randomUUID();
-        var jobNode = new IngestionJobNode(); jobNode.setId(jobId); jobNode.setChapterId(UUID.randomUUID()); jobNode.setCurrentStatus(IngestionStatus.COMPLETE); jobNode.setProgressPercent(100);
+        var jobNode = new IngestionJobNode(); jobNode.setId(jobId); jobNode.setChapterId(UUID.randomUUID());
+        jobNode.setCurrentStatusRecord(new StatusRecordNode(UUID.randomUUID(), sampleJob.getId(), LocalDateTime.now(),IngestionStatus.COMPLETE, "job complete",IngestionStatus.COMPLETE.getProgressPercentage(),null));
+
         when(contentPersistencePort.findJob(jobId)).thenReturn(Optional.of(jobNode));
-        when(contentPersistencePort.findRecentStatusRecords(jobId, 5)).thenReturn(List.of());
+        when(contentPersistencePort.findStatusHistoryForJob(jobId)).thenReturn(List.of());
 
         // When
         Optional<JobStatusResponse> response = ingestionService.getJobStatus(jobId);

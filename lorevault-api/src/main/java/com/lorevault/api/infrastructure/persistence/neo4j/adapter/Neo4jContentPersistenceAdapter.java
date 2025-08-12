@@ -1,7 +1,7 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.adapter;
 
-import com.lorevault.api.infrastructure.persistence.neo4j.model.*;
 import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.*;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -169,11 +169,22 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     public StatusRecordNode addStatusRecord(UUID jobId, StatusRecordNode recordNode) {
         if (recordNode.getId() == null) recordNode.setId(UUID.randomUUID());
         if (recordNode.getJobId() == null) recordNode.setJobId(jobId);
-        return statusRepo.save(recordNode);
+
+        // Save the status record first
+        recordNode = statusRepo.save(recordNode);
+
+        // Ensure the job exists; fail fast if not
+        jobRepo.findById(jobId)
+                .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+
+        // Atomic pointer swap via repository method
+        jobRepo.swapCurrentStatus(jobId, recordNode.getId());
+
+        return recordNode;
     }
 
     @Override
-    public List<StatusRecordNode> findRecentStatusRecords(UUID jobId, int limit) {
-        return statusRepo.findRecentForJob(jobId, limit);
+    public List<StatusRecordNode> findStatusHistoryForJob(UUID jobId) {
+        return statusRepo.findStatusHistoryForJob(jobId);
     }
 }
