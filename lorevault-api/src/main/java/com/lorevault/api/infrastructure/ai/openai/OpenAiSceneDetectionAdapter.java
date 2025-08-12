@@ -30,17 +30,24 @@ public class OpenAiSceneDetectionAdapter implements SceneDetectionPort {
     @Override
     public List<SceneWithCoordinates> detectScenesInText(UUID chapterId, String chapterText) {
         try {
-            log.debug("Starting OpenAI scene detection for chapter {}", chapterId);
+            log.debug("Starting OpenAI scene detection for chapter {} (length={} chars)", chapterId, chapterText.length());
             
             // Call the AI service to get scene detection XML
             String xmlResponse = sceneDetectionClient.detectScenes(chapterText);
+            int xmlLen = xmlResponse == null ? 0 : xmlResponse.length();
+            String xmlPreview = xmlResponse == null ? "<null>" : xmlResponse.substring(0, Math.min(400, xmlLen)).replaceAll("\n", "\\n");
+            log.debug("[LLM] XML response length={} preview={}...", xmlLen, xmlPreview);
             
             // Parse the XML response into scene detection results
             List<SceneDetectionResult> sceneResults = xmlParser.parseResponse(xmlResponse, chapterText.length());
+            log.debug("[LLM] Parsed {} scene result elements", sceneResults.size());
             
             // Localize scene coordinates within the chapter text
             List<SceneWithCoordinates> scenes = coordinateLocalizer.localizeCoordinates(chapterText, sceneResults);
-            
+            if (log.isTraceEnabled()) {
+                scenes.forEach(s -> log.trace("[LLM] Scene localized index={} start={} end={} contextPreview={}...", s.sceneIndex(), s.startCharacterOffset(), s.endCharacterOffset(),
+                        s.contextSummary() == null ? "" : s.contextSummary().substring(0, Math.min(80, s.contextSummary().length()))));
+            }
             log.info("OpenAI detected {} scenes for chapter {}", scenes.size(), chapterId);
             return scenes;
             

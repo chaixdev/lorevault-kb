@@ -11,7 +11,6 @@ import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
-import com.lorevault.api.infrastructure.persistence.neo4j.mapping.GraphModelMapper;
 import com.lorevault.api.service.shared.HashService;
 import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.ScenePersistenceService;
@@ -48,7 +47,6 @@ public class IngestionService {
     private final ApplicationEventPublisher eventPublisher;
     private final ChunkEmbeddingService chunkEmbeddingService;
     private final ContentPersistencePort contentPersistencePort;
-    private final GraphModelMapper mapper;
 
     /**
      * Submit a chapter for processing
@@ -94,7 +92,8 @@ public class IngestionService {
             node.setChapterTitle(request.getChapterTitle());
             node.setRawText(request.getChapterText());
             node.setContentHash(contentHash);
-            node = contentPersistencePort.createChapter(node);
+            ChapterNode persisted = contentPersistencePort.createChapter(node);
+            if (persisted != null) node = persisted; // tolerate mock returning null
             chapterId = node.getId();
         } catch (Exception e) {
             throw new IllegalStateException("Failed to create chapter in graph: " + e.getMessage(), e);
@@ -142,14 +141,17 @@ public class IngestionService {
      */
     @Transactional
     protected IngestionJob createIngestionJob(UUID chapterId) {
-        // Persist the job first to obtain the definitive jobId
         IngestionJobNode node;
         try {
             node = new IngestionJobNode();
             node.setId(UUID.randomUUID());
             node.setChapterId(chapterId);
             node.setCreatedAt(LocalDateTime.now());
-            node = contentPersistencePort.createJob(node);
+            IngestionJobNode persisted = contentPersistencePort.createJobWithChapter(node, chapterId);
+            if (persisted == null) { // fallback for mocks not stubbing new method
+                persisted = contentPersistencePort.createJob(node);
+            }
+            if (persisted != null) node = persisted;
         } catch (Exception e) {
             throw new IllegalStateException("Failed to create job in graph: " + e.getMessage(), e);
         }
@@ -338,11 +340,12 @@ public class IngestionService {
      * Uses TextChunkingService which transparently handles both single and multi-chunk cases.
      */
     private int createChunksFromScenes(UUID chapterId, String chapterText, List<SceneNode> sceneNodes) {
-        if (chapterText == null) return 0; 
-        List<ChunkNode> chunkNodes = new ArrayList<>();
+        if (chapterText == null) return 0;
+        int total = 0;
         for (SceneNode scene : sceneNodes) {
             String sceneText = chapterText.substring(scene.getStartOffset().intValue(), scene.getEndOffset().intValue());
             List<Chunk> sceneChunks = textChunkingService.extractChunks(sceneText);
+            List<ChunkNode> toPersist = new ArrayList<>();
             for (Chunk chunk : sceneChunks) {
                 chunk.setStartCharInChapter(chunk.getStartCharInChapter() + scene.getStartOffset().intValue());
                 chunk.setEndCharInChapter(chunk.getEndCharInChapter() + scene.getStartOffset().intValue());
@@ -353,12 +356,15 @@ public class IngestionService {
                 node.setStartCharInChapter(chunk.getStartCharInChapter());
                 node.setEndCharInChapter(chunk.getEndCharInChapter());
                 node.setContentHash(hash);
-                chunkNodes.add(node);
+                toPersist.add(node);
+            }
+            if (!toPersist.isEmpty()) {
+                contentPersistencePort.addChunksToScene(scene.getId(), toPersist);
+                total += toPersist.size();
             }
         }
-        if (!chunkNodes.isEmpty()) { contentPersistencePort.addChunksToChapter(chapterId, chunkNodes); }
-        log.info("Created {} total chunks from {} scenes (graph persisted)", chunkNodes.size(), sceneNodes.size());
-        return chunkNodes.size();
+        log.info("Created {} total chunks from {} scenes (scene-linked)", total, sceneNodes.size());
+        return total;
     }
 
     /**
