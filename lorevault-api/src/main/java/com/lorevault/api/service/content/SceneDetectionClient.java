@@ -44,50 +44,47 @@ public class SceneDetectionClient {
         // Load the system prompt (instructions) from resources
         PromptTemplate template = promptLoaderService.getSceneDetectionPromptTemplate();
         String systemPrompt = template.render(Map.of()); // No variables needed for system prompt
-        
+        log.debug("[LLM] Scene detection request: inputLength={} chars, model={}", chapterText == null ? 0 : chapterText.length(), currentModelId);
+        log.trace("[LLM] System prompt ({} chars): {}", systemPrompt.length(), systemPrompt);
         // Create options for consistent, deterministic results
         OpenAiChatOptions options = OpenAiChatOptions.builder()
-            .temperature(0.1)       // Very low temperature for consistent, deterministic results
-            .topP(0.9)              // Focused sampling - high quality tokens only
-            .maxTokens(6000)        // Sufficient for XML response with multiple scenes
+            .temperature(0.1)
+            .topP(0.9)
+            .maxTokens(6000)
             .build();
-        
+        final String safeText = chapterText == null ? "" : chapterText;
         try {
-            // Use RetryTemplate to handle retries with proper logging and backoff
+            long start = System.nanoTime();
             return retryTemplate.execute(retryContext -> {
                 int retryCount = retryContext.getRetryCount();
-                String attemptMsg = retryCount > 0 ? " (retry attempt " + retryCount + ")" : "";
-                log.debug("Calling {} for scene detection{}", currentModelId, attemptMsg);
-                
-                // Call AI model with system prompt + user message pattern
+                String attemptMsg = retryCount > 0 ? " (retry=" + retryCount + ")" : "";
+                log.debug("[LLM] Calling model={}{}", currentModelId, attemptMsg);
                 String response = chatClient.prompt()
                     .system(systemPrompt)
-                    .user(chapterText)
+                    .user(safeText)
                     .options(options)
                     .call()
                     .content();
-                
+                long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
                 if (response == null || response.trim().isEmpty()) {
+                    log.warn("[LLM] Empty response (elapsed={}ms) model={}", elapsedMs, currentModelId);
                     throw new RuntimeException("Empty response from " + currentModelId);
                 }
-                
-                // Log full response at trace level for debugging
-                log.trace("Full LLM API response for scene detection: {}", response);
-                
+                int len = response.length();
+                String preview = response.substring(0, Math.min(400, len)).replaceAll("\n", "\\n");
+                log.debug("[LLM] Raw response length={} elapsed={}ms model={}", len, elapsedMs, currentModelId);
+                log.trace("[LLM] Full raw response:{}\n{}", System.lineSeparator(), response);
+                log.debug("[LLM] Response preview (first {} chars): {}", preview.length(), preview);
                 return response;
             }, recoveryContext -> {
-                // This is the recovery callback, called when all retries are exhausted
                 Throwable lastError = recoveryContext.getLastThrowable();
                 String errorMsg = lastError != null ? lastError.getMessage() : "Unknown error";
-                log.error("All scene detection attempts failed for text length {}: {}", 
-                         chapterText.length(), errorMsg);
-                
-                throw new RuntimeException("Scene detection failed permanently after multiple attempts: " + errorMsg, 
-                                          recoveryContext.getLastThrowable());
+                log.error("[LLM] All attempts failed after {} retries: {}", recoveryContext.getRetryCount(), errorMsg);
+                throw new RuntimeException("Scene detection failed permanently after multiple attempts: " + errorMsg,
+                        recoveryContext.getLastThrowable());
             });
         } catch (Exception e) {
-            // This catches any exceptions not handled by the retry template
-            log.error("Unexpected error during scene detection: {}", e.getMessage());
+            log.error("[LLM] Unexpected error during scene detection: {}", e.getMessage(), e);
             throw new RuntimeException("Scene detection failed: " + e.getMessage(), e);
         }
     }
