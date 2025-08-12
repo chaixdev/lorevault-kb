@@ -1,32 +1,29 @@
 #!/bin/bash
 
-# Development database reset script for LoreVault Docker container ONLY
+# Development database reset script for LoreVault Neo4j Docker container ONLY
 # WARNING: This will destroy data in the LoreVault development container!
 
-echo "🔄 Resetting LoreVault development database..."
+echo "🔄 Resetting LoreVault development Neo4j database..."
 
 # Check if Docker container is running
-if ! docker ps | grep -q "lorevault-postgres"; then
-    echo "❌ Error: lorevault-postgres Docker container is not running!"
+if ! docker ps | grep -q "lorevault-neo4j"; then
+    echo "❌ Error: lorevault-neo4j Docker container is not running!"
     echo "   Start it with: docker-compose up -d"
     exit 1
 fi
 
-echo "✅ Found LoreVault postgres container, proceeding with reset..."
+echo "✅ Found LoreVault Neo4j container, proceeding with reset..."
 
-# Reset the database schema using Docker exec (SAFE - only affects container)
-echo "Dropping and recreating schema in Docker container..."
-docker exec lorevault-postgres psql -U lorevault -d lorevault -c "
-    DROP SCHEMA public CASCADE; 
-    CREATE SCHEMA public; 
-    GRANT ALL ON SCHEMA public TO lorevault; 
-    GRANT ALL ON SCHEMA public TO public;
+# Reset the Neo4j database using cypher-shell (SAFE - only affects container)
+echo "Clearing all data in Neo4j database..."
+docker exec lorevault-neo4j cypher-shell -u neo4j -p neosecret -d neo4j "
+    MATCH (n) DETACH DELETE n;
 "
 
 if [ $? -eq 0 ]; then
-    echo "✅ Database reset complete. Starting application..."
-    mvn -pl lorevault-api spring-boot:run
+    echo "✅ Neo4j database reset complete!"
+    echo "🚀 You can now start the application with: mvn -pl lorevault-api spring-boot:run"
 else
-    echo "❌ Database reset failed!"
+    echo "❌ Neo4j database reset failed!"
     exit 1
 fi

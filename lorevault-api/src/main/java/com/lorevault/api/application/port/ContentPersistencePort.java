@@ -39,7 +39,7 @@ public interface ContentPersistencePort {
 
     // Status Records
     StatusRecordNode addStatusRecord(UUID jobId, StatusRecordNode recordNode);
-    List<StatusRecordNode> findRecentStatusRecords(UUID jobId, int limit);
+    List<StatusRecordNode> findStatusHistoryForJob(UUID jobId);
 
     // Queries
     List<ChapterNode> findChaptersByUniverse(String universe);

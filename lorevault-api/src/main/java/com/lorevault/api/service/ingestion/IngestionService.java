@@ -1,5 +1,6 @@
 package com.lorevault.api.service.ingestion;
 
+import com.lorevault.api.domain.ingestion.StatusRecord;
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import com.lorevault.api.dto.ingestion.SubmitChapterResponse;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
@@ -10,6 +11,7 @@ import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
+import com.lorevault.api.infrastructure.persistence.neo4j.mapping.GraphModelMapper;
 import com.lorevault.api.service.shared.HashService;
 import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.ScenePersistenceService;
@@ -46,6 +48,7 @@ public class IngestionService {
     private final ApplicationEventPublisher eventPublisher;
     private final ChunkEmbeddingService chunkEmbeddingService;
     private final ContentPersistencePort contentPersistencePort;
+    private final GraphModelMapper mapper;
 
     /**
      * Submit a chapter for processing
@@ -111,19 +114,20 @@ public class IngestionService {
             var jobNodeOpt = contentPersistencePort.findJob(jobId);
             if (jobNodeOpt.isPresent()) {
                 var jobNode = jobNodeOpt.get();
-                var recentNodes = contentPersistencePort.findRecentStatusRecords(jobId, 5);
+                var recentNodes = contentPersistencePort.findStatusHistoryForJob(jobId);
                 List<JobStatusResponse.StatusUpdateDto> recentUpdates = recentNodes.stream().map(n -> new JobStatusResponse.StatusUpdateDto(
                         n.getStatus(), n.getStepDescription(), n.getTimestamp(), n.getProgressPercent())).toList();
                 JobStatusResponse response = new JobStatusResponse();
                 response.setJobId(jobNode.getId());
                 response.setChapterId(jobNode.getChapterId());
-                response.setCurrentStatus(jobNode.getCurrentStatus());
-                response.setProgressPercent(jobNode.getProgressPercent());
+                var cur = jobNode.getCurrentStatusRecord();
+                if (cur != null) {
+                    response.setCurrentStatus(cur.getStatus());
+                    response.setProgressPercent(cur.getProgressPercent());
+                    response.setIsComplete(cur.getStatus().isTerminal());
+                }
                 response.setCreatedAt(jobNode.getCreatedAt());
                 response.setCompletedAt(jobNode.getCompletedAt());
-                if (jobNode.getCurrentStatus() != null) {
-                    response.setIsComplete(jobNode.getCurrentStatus().isTerminal());
-                }
                 response.setRecentUpdates(recentUpdates);
                 return Optional.of(response);
             }
@@ -138,32 +142,35 @@ public class IngestionService {
      */
     @Transactional
     protected IngestionJob createIngestionJob(UUID chapterId) {
-        // Create the job
-        IngestionJob job = new IngestionJob();
-        job.setChapterId(chapterId);
-        job.setCurrentStatus(IngestionStatus.QUEUED);
-        job.setProgressPercent(IngestionStatus.QUEUED.getProgressPercentage());
-        
+        // Persist the job first to obtain the definitive jobId
+        IngestionJobNode node;
         try {
-            IngestionJobNode node = new IngestionJobNode();
+            node = new IngestionJobNode();
             node.setId(UUID.randomUUID());
-            node.setChapterId(job.getChapterId());
-            node.setCurrentStatus(job.getCurrentStatus());
-            node.setProgressPercent(job.getProgressPercent());
+            node.setChapterId(chapterId);
             node.setCreatedAt(LocalDateTime.now());
             node = contentPersistencePort.createJob(node);
-            job.setId(node.getId()); job.setCreatedAt(node.getCreatedAt());
         } catch (Exception e) {
             throw new IllegalStateException("Failed to create job in graph: " + e.getMessage(), e);
         }
 
-        // Create initial status record
-        createStatusRecord(
-                job.getId(), 
-                IngestionStatus.QUEUED, 
+        // Build the domain aggregate from persisted data
+        IngestionJob job = new IngestionJob();
+        job.setId(node.getId());
+        job.setChapterId(chapterId);
+        job.setCreatedAt(node.getCreatedAt());
+
+        // Create and persist the initial status record using the persisted jobId
+        StatusRecord sr = new StatusRecord(
+                UUID.randomUUID(),
+                node.getId(),
+                LocalDateTime.now(),
+                IngestionStatus.QUEUED,
                 "Chapter submitted and queued for processing",
                 Map.of("chapterId", chapterId.toString())
         );
+        job.setCurrentStatus(sr);
+        updateJobNodeStatus(sr);
 
         return job;
     }
@@ -172,7 +179,27 @@ public class IngestionService {
      * Create a status record for a job
      */
     @Transactional
-    protected void createStatusRecord(UUID jobId, IngestionStatus status, String description, Map<String, Object> properties) {
+    protected void updateJobNodeStatus(StatusRecord sr) {
+        var node = new StatusRecordNode();
+        node.setId(UUID.randomUUID());
+        node.setJobId(sr.getJobId());
+        node.setStatus(sr.getStatus());
+        node.setStepDescription(sr.getStepDescription());
+        node.setProgressPercent(sr.getStatus().getProgressPercentage());
+        node.setTimestamp(sr.getTimestamp());
+        try {
+            contentPersistencePort.addStatusRecord(sr.getJobId(), node);
+        } catch (Exception e) {
+            log.debug("Failed to add status record to graph: {}", e.getMessage());
+        }
+        log.debug("Created status record for job {}: {} - {}", sr.getJobId(), sr.getStatus(), sr.getStepDescription());
+    }
+
+    /**
+     * Create a status record for a job
+     */
+    @Transactional
+    protected void updateJobNodeStatus(UUID jobId, IngestionStatus status, String description, Map<String, Object> properties) {
         var node = new StatusRecordNode();
         node.setId(UUID.randomUUID());
         node.setJobId(jobId);
@@ -180,14 +207,18 @@ public class IngestionService {
         node.setStepDescription(description);
         node.setProgressPercent(status.getProgressPercentage());
         node.setTimestamp(LocalDateTime.now());
-        try { contentPersistencePort.addStatusRecord(jobId, node); } catch (Exception e) { log.debug("Failed to add status record to graph: {}", e.getMessage()); }
+        try {
+            contentPersistencePort.addStatusRecord(jobId, node);
+        } catch (Exception e) {
+            log.debug("Failed to add status record to graph: {}", e.getMessage());
+        }
         log.debug("Created status record for job {}: {} - {}", jobId, status, description);
     }
 
     /**
-     * Process a chapter by detecting scenes and creating chunks following 
+     * Process a chapter by detecting scenes and creating chunks following
      * the v0.3.0 text-chunking specification.
-     * Implements the four-stage workflow: Scene Identification → Coordinate Localization → 
+     * Implements the four-stage workflow: Scene Identification → Coordinate Localization →
      * Chunking Decision Gate → Chunk Generation
      */
     @Transactional
@@ -196,26 +227,26 @@ public class IngestionService {
             UUID chapterId = chapter.getId();
             String chapterText = chapter.getRawText();
             log.info("Starting v0.3.0 chapter processing for job {} and chapter {}", job.getId(), chapterId);
-            updateJobStatus(job, IngestionStatus.PREPROCESSING_STARTED, IngestionStatus.PREPROCESSING_STARTED.getProgressPercentage(), "Starting AI-powered scene detection");
+            updateJobNodeStatus(job.getId(), IngestionStatus.PREPROCESSING_STARTED, "Starting AI-powered scene detection", Collections.emptyMap());
 
             List<SceneNode> sceneNodes;
             // Fetch existing scenes from graph
             List<SceneNode> existing = contentPersistencePort.findScenesByChapterId(chapterId);
             if (!existing.isEmpty()) {
                 sceneNodes = existing;
-                updateJobStatus(job, IngestionStatus.DETECTING_SCENES, IngestionStatus.DETECTING_SCENES.getProgressPercentage(), String.format("Found %d existing scenes, proceeding to chunking", sceneNodes.size()));
+                updateJobNodeStatus(job.getId(), IngestionStatus.DETECTING_SCENES, String.format("Found %d existing scenes, proceeding to chunking", sceneNodes.size()), Collections.emptyMap());
             } else {
-                updateJobStatus(job, IngestionStatus.DETECTING_SCENES, IngestionStatus.DETECTING_SCENES.getProgressPercentage(), "Analyzing chapter text with AI to identify semantic scene boundaries");
+                updateJobNodeStatus(job.getId(), IngestionStatus.DETECTING_SCENES, "Analyzing chapter text with AI to identify semantic scene boundaries", Collections.emptyMap());
                 List<SceneWithCoordinates> scenesWithCoordinates = sceneDetectionService.detectScenesForChapter(chapterId);
                 sceneNodes = scenePersistenceService.persistDetectedScenes(chapterId, scenesWithCoordinates);
-                updateJobStatus(job, IngestionStatus.DETECTING_SCENES, IngestionStatus.DETECTING_SCENES.getProgressPercentage() + 10, String.format("Detected %d semantic scenes from chapter text", sceneNodes.size()));
+                updateJobNodeStatus(job.getId(), IngestionStatus.DETECTING_SCENES, String.format("Detected %d semantic scenes from chapter text", sceneNodes.size()), Collections.emptyMap());
             }
 
-            updateJobStatus(job, IngestionStatus.EMBEDDING_CHUNKS, IngestionStatus.EMBEDDING_CHUNKS.getProgressPercentage(), "Applying chunking decision gate to scenes");
+            updateJobNodeStatus(job.getId(), IngestionStatus.EMBEDDING_CHUNKS, "Applying chunking decision gate to scenes", Collections.emptyMap());
             int chunkCount = createChunksFromScenes(chapterId, chapterText, sceneNodes);
-            updateJobStatus(job, IngestionStatus.EMBEDDING_CHUNKS, IngestionStatus.EMBEDDING_CHUNKS.getProgressPercentage() + 15, String.format("Created %d chunks from %d semantic scenes", chunkCount, sceneNodes.size()));
+            updateJobNodeStatus(job.getId(), IngestionStatus.EMBEDDING_CHUNKS, String.format("Created %d chunks from %d semantic scenes", chunkCount, sceneNodes.size()), Collections.emptyMap());
 
-            updateJobStatus(job, IngestionStatus.EMBEDDING_CHUNKS, IngestionStatus.EMBEDDING_CHUNKS.getProgressPercentage() + 30, "Generating embeddings for chapter chunks");
+            updateJobNodeStatus(job.getId(), IngestionStatus.EMBEDDING_CHUNKS, "Generating embeddings for chapter chunks", Collections.emptyMap());
             int embedded = chunkEmbeddingService.generateEmbeddingsForChapter(chapterId);
             log.info("Generated embeddings for {} chunks for chapter {}", embedded, chapterId);
 
@@ -230,60 +261,63 @@ public class IngestionService {
             }
         }
     }
-    
-    /**
-     * Update job status and create status record
-     */
-    @Transactional
-    protected void updateJobStatus(IngestionJob job, IngestionStatus status, int progressPercent, String description) {
-        job.setCurrentStatus(status);
-        job.setProgressPercent(progressPercent);
-        try {
-            contentPersistencePort.findJob(job.getId()).ifPresent(node -> {
-                node.setCurrentStatus(status);
-                node.setProgressPercent(progressPercent);
-                if (status.isTerminal()) {
-                    node.setCompletedAt(LocalDateTime.now());
-                }
-                contentPersistencePort.updateJob(node);
-            });
-        } catch (Exception e) {
-            log.debug("Graph job update failed for {}: {}", job.getId(), e.getMessage());
-        }
-        createStatusRecord(job.getId(), status, description, Map.of(
-                "progressPercent", progressPercent,
-                "timestamp", LocalDateTime.now().toString()
-        ));
-        log.debug("Updated job {} status to {} ({}%): {}", job.getId(), status, progressPercent, description);
-    }
-    
+
     /**
      * Mark job as completed successfully
      */
     @Transactional
     protected void completeJob(IngestionJob job, UUID chapterId, int chapterLength) {
         int chunkCount = contentPersistencePort.countChunksByChapterId(chapterId);
-        
-        job.setCurrentStatus(IngestionStatus.COMPLETE);
-        job.setProgressPercent(100);
+
+        StatusRecord sr = new StatusRecord(
+                UUID.randomUUID(),
+                job.getId(),
+                LocalDateTime.now(),
+                IngestionStatus.COMPLETE,
+                String.format("Chapter processing completed successfully. Created %d chunks.", chunkCount),
+                Map.of("version", "0.2.0",
+                        "pipeline", "content_segmentation",
+                        "chunkCount", chunkCount,
+                        "chapterLength", chapterLength,
+                        "completedAt", LocalDateTime.now().toString()));
+
+        job.setCurrentStatus(sr);
         job.setCompletedAt(LocalDateTime.now());
-        try { contentPersistencePort.findJob(job.getId()).ifPresent(node -> { node.setCurrentStatus(IngestionStatus.COMPLETE); node.setProgressPercent(100); node.setCompletedAt(job.getCompletedAt()); contentPersistencePort.updateJob(node); }); } catch (Exception e) { log.debug("Graph completion update failed for job {}: {}", job.getId(), e.getMessage()); }
-        createStatusRecord(job.getId(), IngestionStatus.COMPLETE, String.format("Chapter processing completed successfully. Created %d chunks.", chunkCount), Map.of("version", "0.2.0", "pipeline", "content_segmentation", "chunkCount", chunkCount, "chapterLength", chapterLength, "completedAt", LocalDateTime.now().toString()));
+        updateJobNodeStatus(sr);
+        // Also persist completedAt on the Job node
+        try {
+            contentPersistencePort.findJob(job.getId()).ifPresent(n -> {
+                n.setCompletedAt(job.getCompletedAt());
+                contentPersistencePort.updateJob(n);
+            });
+        } catch (Exception e) {
+            log.debug("Graph completion update failed for job {}: {}", job.getId(), e.getMessage());
+        }
         log.info("Job {} completed successfully with {} chunks", job.getId(), chunkCount);
     }
-    
+
     /**
      * Mark job as failed
      */
     @Transactional
     protected void failJob(IngestionJob job, String errorMessage) {
-        job.setCurrentStatus(IngestionStatus.FAILED);
+        StatusRecord sr = new StatusRecord(UUID.randomUUID(), job.getId(), LocalDateTime.now(), IngestionStatus.FAILED, errorMessage,
+                Map.of("version", "0.2.0", "failedAt", LocalDateTime.now().toString()));
+        job.setCurrentStatus(sr);
         job.setCompletedAt(LocalDateTime.now());
-        try { contentPersistencePort.findJob(job.getId()).ifPresent(node -> { node.setCurrentStatus(IngestionStatus.FAILED); node.setCompletedAt(job.getCompletedAt()); contentPersistencePort.updateJob(node); }); } catch (Exception e) { log.debug("Graph fail update failed for job {}: {}", job.getId(), e.getMessage()); }
-        createStatusRecord(job.getId(), IngestionStatus.FAILED, errorMessage, Map.of("version", "0.2.0", "failedAt", LocalDateTime.now().toString()));
+        updateJobNodeStatus(sr);
+        // Also persist completedAt on the Job node
+        try {
+            contentPersistencePort.findJob(job.getId()).ifPresent(n -> {
+                n.setCompletedAt(job.getCompletedAt());
+                contentPersistencePort.updateJob(n);
+            });
+        } catch (Exception e) {
+            log.debug("Graph fail update failed for job {}: {}", job.getId(), e.getMessage());
+        }
         log.error("Job {} failed: {}", job.getId(), errorMessage);
     }
-    
+
     /**
      * Mark job as failed and clean up any partially processed data
      * This allows a clean retry of the chapter later
@@ -291,8 +325,10 @@ public class IngestionService {
     @Transactional
     protected void failJobWithCleanup(IngestionJob job, String errorMessage) {
         UUID chapterId = job.getChapterId();
-        int deletedChunks = contentPersistencePort.deleteChunksByChapterId(chapterId); log.info("Cleaned up {} chunks for failed chapter {} (graph)", deletedChunks, chapterId);
-        int deletedScenes = contentPersistencePort.deleteScenesByChapterId(chapterId); log.info("Cleaned up {} scenes for failed chapter {} (graph)", deletedScenes, chapterId);
+        int deletedChunks = contentPersistencePort.deleteChunksByChapterId(chapterId);
+        log.info("Cleaned up {} chunks for failed chapter {} (graph)", deletedChunks, chapterId);
+        int deletedScenes = contentPersistencePort.deleteScenesByChapterId(chapterId);
+        log.info("Cleaned up {} scenes for failed chapter {} (graph)", deletedScenes, chapterId);
         failJob(job, errorMessage + " (data cleaned up for retry)");
     }
 
@@ -302,7 +338,8 @@ public class IngestionService {
      * Uses TextChunkingService which transparently handles both single and multi-chunk cases.
      */
     private int createChunksFromScenes(UUID chapterId, String chapterText, List<SceneNode> sceneNodes) {
-        if (chapterText == null) return 0; List<ChunkNode> chunkNodes = new ArrayList<>();
+        if (chapterText == null) return 0; 
+        List<ChunkNode> chunkNodes = new ArrayList<>();
         for (SceneNode scene : sceneNodes) {
             String sceneText = chapterText.substring(scene.getStartOffset().intValue(), scene.getEndOffset().intValue());
             List<Chunk> sceneChunks = textChunkingService.extractChunks(sceneText);
@@ -311,27 +348,87 @@ public class IngestionService {
                 chunk.setEndCharInChapter(chunk.getEndCharInChapter() + scene.getStartOffset().intValue());
                 String chunkContent = chapterText.substring(chunk.getStartCharInChapter(), chunk.getEndCharInChapter());
                 String hash = hashService.generateSha256Hash(chunkContent);
-                ChunkNode node = new ChunkNode(); node.setChunkNumberInChapter(chunk.getChunkNumberInChapter()); node.setStartCharInChapter(chunk.getStartCharInChapter()); node.setEndCharInChapter(chunk.getEndCharInChapter()); node.setContentHash(hash); chunkNodes.add(node);
+                ChunkNode node = new ChunkNode();
+                node.setChunkNumberInChapter(chunk.getChunkNumberInChapter());
+                node.setStartCharInChapter(chunk.getStartCharInChapter());
+                node.setEndCharInChapter(chunk.getEndCharInChapter());
+                node.setContentHash(hash);
+                chunkNodes.add(node);
             }
         }
         if (!chunkNodes.isEmpty()) { contentPersistencePort.addChunksToChapter(chapterId, chunkNodes); }
         log.info("Created {} total chunks from {} scenes (graph persisted)", chunkNodes.size(), sceneNodes.size());
         return chunkNodes.size();
     }
+
     /**
      * List jobs with optional universe and status filters and pagination.
      */
     public JobListResponse listJobs(String universe, String status, int limit, int offset) {
         List<IngestionJobNode> allJobs;
-        try { if (universe != null && !universe.isBlank()) { var chapters = contentPersistencePort.findChaptersByUniverse(universe); var chapterIds = chapters.stream().map(ChapterNode::getId).toList(); allJobs = contentPersistencePort.findJobsByChapterIds(chapterIds); } else { allJobs = contentPersistencePort.findAllJobs(); } }
-        catch (Exception e) { log.debug("Graph listJobs error: {}", e.getMessage()); return new JobListResponse(List.of(), new JobListResponse.Pagination(0, limit, offset, false)); }
-        IngestionStatus statusEnumLocal = null; List<IngestionStatus> excludeStatusesLocal = null; if (status != null && !status.isBlank()) { if ("ACTIVE".equalsIgnoreCase(status)) { excludeStatusesLocal = List.of(IngestionStatus.COMPLETE, IngestionStatus.FAILED); } else { statusEnumLocal = IngestionStatus.valueOf(status.toUpperCase()); } }
-        final IngestionStatus statusEnum = statusEnumLocal; final List<IngestionStatus> excludeStatuses = excludeStatusesLocal;
-        Stream<IngestionJobNode> stream = allJobs.stream(); if (statusEnum != null) { stream = stream.filter(j -> statusEnum.equals(j.getCurrentStatus())); } else if (excludeStatuses != null) { stream = stream.filter(j -> j.getCurrentStatus() == null || !excludeStatuses.contains(j.getCurrentStatus())); }
-        List<IngestionJobNode> filtered = stream.sorted((a,b) -> { if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0; if (a.getCreatedAt() == null) return 1; if (b.getCreatedAt() == null) return -1; return b.getCreatedAt().compareTo(a.getCreatedAt()); }).toList();
-        long total = filtered.size(); int from = Math.min(offset, filtered.size()); int to = Math.min(from + limit, filtered.size()); List<IngestionJobNode> pageSlice = filtered.subList(from, to);
+        try {
+            if (universe != null && !universe.isBlank()) {
+                var chapters = contentPersistencePort.findChaptersByUniverse(universe);
+                var chapterIds = chapters.stream().map(ChapterNode::getId).toList();
+                allJobs = contentPersistencePort.findJobsByChapterIds(chapterIds);
+            } else {
+                allJobs = contentPersistencePort.findAllJobs();
+            }
+        } catch (Exception e) {
+            log.debug("Graph listJobs error: {}", e.getMessage());
+            return new JobListResponse(List.of(), new JobListResponse.Pagination(0, limit, offset, false));
+        }
+        IngestionStatus statusEnumLocal = null;
+        List<IngestionStatus> excludeStatusesLocal = null;
+        if (status != null && !status.isBlank()) {
+            if ("ACTIVE".equalsIgnoreCase(status)) {
+                excludeStatusesLocal = List.of(IngestionStatus.COMPLETE, IngestionStatus.FAILED);
+            } else {
+                statusEnumLocal = IngestionStatus.valueOf(status.toUpperCase());
+            }
+        }
+        final IngestionStatus statusEnum = statusEnumLocal;
+        final List<IngestionStatus> excludeStatuses = excludeStatusesLocal;
+        Stream<IngestionJobNode> stream = allJobs.stream();
+        if (statusEnum != null) {
+            stream = stream.filter(j -> j.getCurrentStatusRecord() != null && statusEnum.equals(j.getCurrentStatusRecord().getStatus()));
+        } else if (excludeStatuses != null) {
+            stream = stream.filter(j -> j.getCurrentStatusRecord() == null || !excludeStatuses.contains(j.getCurrentStatusRecord().getStatus()));
+        }
+        List<IngestionJobNode> filtered = stream.sorted((a, b) -> {
+            if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0;
+            if (a.getCreatedAt() == null) return 1;
+            if (b.getCreatedAt() == null) return -1;
+            return b.getCreatedAt().compareTo(a.getCreatedAt());
+        }).toList();
+        long total = filtered.size();
+        int from = Math.min(offset, filtered.size());
+        int to = Math.min(from + limit, filtered.size());
+        List<IngestionJobNode> pageSlice = filtered.subList(from, to);
         List<JobListResponse.JobSummary> summaries = new ArrayList<>();
-        for (IngestionJobNode jobNode : pageSlice) { JobListResponse.JobSummary s = new JobListResponse.JobSummary(); s.setJobId(jobNode.getId()); s.setChapterId(jobNode.getChapterId()); s.setStatus(jobNode.getCurrentStatus()); s.setProgress(jobNode.getProgressPercent()); s.setCreatedAt(jobNode.getCreatedAt()); s.setCompletedAt(jobNode.getCompletedAt()); contentPersistencePort.findChapterById(jobNode.getChapterId()).ifPresent(ch -> { s.setChapterTitle(ch.getChapterTitle()); s.setUniverse(ch.getUniverse()); s.setSeries(ch.getSeries()); s.setBookNumber(ch.getBookNumber()); s.setPartNumber(ch.getPartNumber()); s.setChapterNumber(ch.getChapterNumber()); }); summaries.add(s); }
-        boolean hasMore = (long) (offset + limit) < total; JobListResponse.Pagination pagination = new JobListResponse.Pagination(total, limit, offset, hasMore); return new JobListResponse(summaries, pagination);
+        for (IngestionJobNode jobNode : pageSlice) {
+            JobListResponse.JobSummary s = new JobListResponse.JobSummary();
+            s.setJobId(jobNode.getId());
+            s.setChapterId(jobNode.getChapterId());
+            var cur = jobNode.getCurrentStatusRecord();
+            if (cur != null) {
+                s.setStatus(cur.getStatus());
+                s.setProgress(cur.getProgressPercent());
+            }
+            s.setCreatedAt(jobNode.getCreatedAt());
+            s.setCompletedAt(jobNode.getCompletedAt());
+            contentPersistencePort.findChapterById(jobNode.getChapterId()).ifPresent(ch -> {
+                s.setChapterTitle(ch.getChapterTitle());
+                s.setUniverse(ch.getUniverse());
+                s.setSeries(ch.getSeries());
+                s.setBookNumber(ch.getBookNumber());
+                s.setPartNumber(ch.getPartNumber());
+                s.setChapterNumber(ch.getChapterNumber());
+            });
+            summaries.add(s);
+        }
+        boolean hasMore = (long) (offset + limit) < total;
+        JobListResponse.Pagination pagination = new JobListResponse.Pagination(total, limit, offset, hasMore);
+        return new JobListResponse(summaries, pagination);
     }
 }
