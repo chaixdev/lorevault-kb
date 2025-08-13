@@ -22,10 +22,4 @@ public class EmbeddingConfig {
         factory.setReadTimeout((int) Duration.ofSeconds(30).toMillis());
         return builder.requestFactory(() -> factory).build();
     }
-
-    @Bean(name = "embeddingRestTemplate")
-    public RestTemplate embeddingRestTemplate() {
-        // Simple fallback RestTemplate (no custom timeouts) to satisfy constructor injection in tests
-        return new RestTemplate();
-    }
 }
