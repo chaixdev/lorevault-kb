@@ -11,6 +11,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -52,42 +53,74 @@ public class EmbeddingModelAdapter implements EmbeddingPort {
     @Override
     public List<double[]> embedBatch(List<String> texts) {
         if (texts == null || texts.isEmpty()) return List.of();
-        try {
-            long start = System.currentTimeMillis();
-            String url = normalizeBase(baseUrl) + "/embeddings";
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(apiKey);
-            // OpenAI compatible body uses "input"
-            var body = objectMapper.createObjectNode();
-            body.put("model", modelId);
-            body.set("input", objectMapper.valueToTree(texts));
-            ResponseEntity<JsonNode> resp = restTemplate.postForEntity(url, new HttpEntity<>(body, headers), JsonNode.class);
-            JsonNode root = resp.getBody();
-            List<double[]> vectors = new ArrayList<>();
-            if (root != null && root.has("data")) {
-                for (JsonNode datum : root.get("data")) {
-                    JsonNode emb = datum.get("embedding");
-                    if (emb == null || !emb.isArray()) {
-                        vectors.add(new double[0]);
-                        continue;
-                    }
-                    double[] vec = new double[emb.size()];
-                    for (int i = 0; i < emb.size(); i++) vec[i] = emb.get(i).asDouble();
-                    vectors.add(vec);
+        int attempts = 0;
+        long delay = embeddingProperties.getInitialDelayMillis();
+        while (attempts < embeddingProperties.getMaxAttempts()) {
+            attempts++;
+            try {
+                return invokeRemote(texts, attempts);
+            } catch (Exception e) {
+                boolean retryable = isRetryable(e);
+                if (!retryable) {
+                    log.error("[Embeddings] Non-retryable failure attempt={} model={} size={} error={}", attempts, modelId, texts.size(), e.getMessage());
+                    break;
                 }
+                if (attempts >= embeddingProperties.getMaxAttempts()) {
+                    log.error("[Embeddings] Exhausted retries attempts={} model={} size={} lastError={}", attempts, modelId, texts.size(), e.getMessage());
+                    break;
+                }
+                log.warn("[Embeddings] Retry attempt {}/{} in {} ms (model={} size={} error={})", attempts, embeddingProperties.getMaxAttempts(), delay, modelId, texts.size(), e.getMessage());
+                sleep(delay);
+                delay = Math.min((long) (delay * embeddingProperties.getBackoffMultiplier()), embeddingProperties.getMaxDelayMillis());
             }
-            long ms = System.currentTimeMillis() - start;
-            log.debug("[Embeddings] remote call model={} batchSize={} ms={} firstVecDim={}", modelId, texts.size(), ms, vectors.isEmpty() ? 0 : vectors.get(0).length);
-            // Size reconciliation
-            if (vectors.size() != texts.size()) {
-                log.warn("[Embeddings] Mismatch textCount={} vectorCount={} model={}", texts.size(), vectors.size(), modelId);
-            }
-            return vectors;
-        } catch (Exception e) {
-            log.error("[Embeddings] Remote embedding call failed model={} size={} error={}", modelId, texts.size(), e.getMessage());
-            return texts.stream().map(t -> new double[0]).toList();
         }
+        // Failure path: return empty vectors to keep alignment
+        return texts.stream().map(t -> new double[0]).toList();
+    }
+
+    private List<double[]> invokeRemote(List<String> texts, int attempt) throws Exception {
+        long start = System.currentTimeMillis();
+        String url = normalizeBase(baseUrl) + "/embeddings";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(apiKey);
+        var body = objectMapper.createObjectNode();
+        body.put("model", modelId);
+        body.set("input", objectMapper.valueToTree(texts));
+        ResponseEntity<JsonNode> resp = restTemplate.postForEntity(url, new HttpEntity<>(body, headers), JsonNode.class);
+        JsonNode root = resp.getBody();
+        List<double[]> vectors = new ArrayList<>();
+        if (root != null && root.has("data")) {
+            for (JsonNode datum : root.get("data")) {
+                JsonNode emb = datum.get("embedding");
+                if (emb == null || !emb.isArray()) {
+                    vectors.add(new double[0]);
+                    continue;
+                }
+                double[] vec = new double[emb.size()];
+                for (int i = 0; i < emb.size(); i++) vec[i] = emb.get(i).asDouble();
+                vectors.add(vec);
+            }
+        } else {
+            throw new IllegalStateException("Missing data field in embedding response");
+        }
+        long ms = System.currentTimeMillis() - start;
+        log.debug("[Embeddings] remote call model={} batchSize={} ms={} attempt={} firstVecDim={}", modelId, texts.size(), ms, attempt, vectors.isEmpty() ? 0 : vectors.get(0).length);
+        if (vectors.size() != texts.size()) {
+            log.warn("[Embeddings] Mismatch textCount={} vectorCount={} model={} attempt={}", texts.size(), vectors.size(), modelId, attempt);
+        }
+        return vectors;
+    }
+
+    private boolean isRetryable(Exception e) {
+        if (e instanceof IllegalStateException) return false; // parsing / logic issues -> don't retry
+        if (e instanceof RestClientException) return true;
+        String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+        return msg.contains("timeout") || msg.contains("refused") || msg.contains("503") || msg.contains("rate") || msg.contains("429");
+    }
+
+    private void sleep(long millis) {
+        try { Thread.sleep(millis); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
     }
 
     private String normalizeBase(String b) {

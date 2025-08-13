@@ -3,11 +3,13 @@ package com.lorevault.api.service.content;
 import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.application.port.EmbeddingPort;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import io.micrometer.core.instrument.Metrics;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -19,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -46,7 +49,9 @@ public class ChunkEmbeddingService {
         List<ChunkNode> chunks = contentPersistencePort.findChunksByChapterId(chapterId);
         log.debug("[Embeddings] Loaded {} chunks ({} ms) chapter={}", chunks.size(), Duration.between(overallStart, Instant.now()).toMillis(), chapterId);
         if (chunks.isEmpty()) {
-            log.info("[Embeddings] DONE (no chunks) chapter={} totalMs={}", chapterId, Duration.between(overallStart, Instant.now()).toMillis());
+            long totalMs = Duration.between(overallStart, Instant.now()).toMillis();
+            log.info("[Embeddings] DONE (no chunks) chapter={} totalMs={}", chapterId, totalMs);
+            Metrics.timer("embeddings.process.duration").record(totalMs, TimeUnit.MILLISECONDS);
             return 0;
         }
         String modelId = embeddingPort.getModelId();
@@ -62,19 +67,56 @@ public class ChunkEmbeddingService {
         }
         log.debug("[Embeddings] Selection completed in {} ms (targets={} / {}) chapter={}", Duration.between(selectionStart, Instant.now()).toMillis(), targets.size(), chunks.size(), chapterId);
         if (targets.isEmpty()) {
-            log.info("[Embeddings] DONE (all up-to-date) chapter={} totalMs={}", chapterId, Duration.between(overallStart, Instant.now()).toMillis());
+            long totalMs = Duration.between(overallStart, Instant.now()).toMillis();
+            log.info("[Embeddings] DONE (all up-to-date) chapter={} totalMs={}", chapterId, totalMs);
+            Metrics.counter("embeddings.skipped.count", "reason", "up_to_date").increment(chunks.size());
+            Metrics.timer("embeddings.process.duration").record(totalMs, TimeUnit.MILLISECONDS);
             return 0;
         }
         log.info("[Embeddings] {} / {} chunks need embeddings (chapter {})", targets.size(), chunks.size(), chapterId);
 
-        List<String> texts = targets.stream().map(ChunkNode::getContentHash).toList(); // TODO: replace with real text reconstruction
+        // Real text reconstruction
+        String rawText = null;
+        try {
+            rawText = contentPersistencePort.findChapterById(chapterId).map(ChapterNode::getRawText).orElse(null);
+        } catch (Exception e) {
+            log.warn("[Embeddings] Failed to load chapter rawText chapter={} error={}", chapterId, e.getMessage());
+        }
+        if (rawText == null) {
+            log.warn("[Embeddings] rawText unavailable for chapter {}, falling back to contentHash embedding (degraded)", chapterId);
+        }
+        List<String> texts = new ArrayList<>(targets.size());
+        for (ChunkNode target : targets) {
+            String text;
+            if (rawText != null && target.getStartCharInChapter() != null && target.getEndCharInChapter() != null) {
+                int start = target.getStartCharInChapter();
+                int end = target.getEndCharInChapter();
+                if (start >= 0 && end <= rawText.length() && start < end) {
+                    try {
+                        text = rawText.substring(start, end);
+                    } catch (Exception ex) {
+                        log.warn("[Embeddings] Substring extraction failed chunkId={} start={} end={} len={} error={} fallback=hash", target.getId(), start, end, rawText.length(), ex.getMessage());
+                        text = target.getContentHash();
+                    }
+                } else {
+                    log.warn("[Embeddings] Invalid offsets chunkId={} start={} end={} len={} fallback=hash", target.getId(), start, end, rawText.length());
+                    text = target.getContentHash();
+                }
+            } else {
+                text = target.getContentHash();
+            }
+            texts.add(text == null ? "" : text);
+        }
 
         Instant embedStart = Instant.now();
         List<double[]> vectors;
         try {
             vectors = batchEmbed(texts);
         } catch (Exception e) {
-            log.error("[Embeddings] Batch embedding failed chapter={} stage=embedding elapsedMs={} error={}", chapterId, Duration.between(embedStart, Instant.now()).toMillis(), e.getMessage(), e);
+            long elapsed = Duration.between(embedStart, Instant.now()).toMillis();
+            log.error("[Embeddings] Batch embedding failed chapter={} stage=embedding elapsedMs={} error={}", chapterId, elapsed, e.getMessage(), e);
+            Metrics.counter("embeddings.skipped.count", "reason", "batch_failure").increment(targets.size());
+            Metrics.timer("embeddings.process.duration").record(Duration.between(overallStart, Instant.now()).toMillis(), TimeUnit.MILLISECONDS);
             return 0;
         }
         long embedMs = Duration.between(embedStart, Instant.now()).toMillis();
@@ -82,10 +124,11 @@ public class ChunkEmbeddingService {
 
         Instant persistStart = Instant.now();
         int updated = 0;
+        int zeroLength = 0;
         for (int i = 0; i < targets.size(); i++) {
             ChunkNode target = targets.get(i);
             double[] vec = vectors.get(i);
-            if (vec.length == 0) continue; // skip failed
+            if (vec.length == 0) { zeroLength++; continue; } // skip failed
             if (embeddingDim > 0 && vec.length != embeddingDim) {
                 log.warn("[Embeddings] Dimension mismatch chunkId={} expectedDim={} actualDim={} chapter={}", target.getId(), embeddingDim, vec.length, chapterId);
             }
@@ -98,6 +141,14 @@ public class ChunkEmbeddingService {
         long persistMs = Duration.between(persistStart, Instant.now()).toMillis();
         long totalMs = Duration.between(overallStart, Instant.now()).toMillis();
         log.info("[Embeddings] Persisted {} updated embeddings (persistMs={} totalMs={}) chapter={}", updated, persistMs, totalMs, chapterId);
+
+        // Metrics publishing
+        if (updated > 0) Metrics.counter("embeddings.generated.count").increment(updated);
+        int skipped = targets.size() - updated;
+        if (skipped > 0) Metrics.counter("embeddings.skipped.count", "reason", zeroLength > 0 ? "zero_length" : "other").increment(skipped);
+        Metrics.timer("embeddings.process.duration").record(totalMs, TimeUnit.MILLISECONDS);
+        Metrics.timer("embeddings.embedding.phase.duration").record(embedMs, TimeUnit.MILLISECONDS);
+
         return updated;
     }
 
