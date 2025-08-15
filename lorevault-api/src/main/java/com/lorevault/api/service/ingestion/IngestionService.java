@@ -80,7 +80,6 @@ public class IngestionService {
     /**
      * Process a chapter using the workflow service
      */
-    @Transactional
     public void processChapter(IngestionJob job, Chapter chapter) {
         workflowService.processChapter(job, chapter);
     }

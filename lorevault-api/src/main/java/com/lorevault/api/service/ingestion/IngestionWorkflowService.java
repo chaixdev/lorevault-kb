@@ -6,6 +6,7 @@ import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
+import com.lorevault.api.infrastructure.ai.openai.OpenAiSceneDetectionAdapter;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
 import com.lorevault.api.service.content.ChunkEmbeddingService;
@@ -77,6 +78,9 @@ public class IngestionWorkflowService {
             log.info("Starting v0.3.0 chapter processing for job {} and chapter {}", 
                     context.getJobId(), context.getChapterId());
             
+            // Set job ID for retry-aware scene detection
+            OpenAiSceneDetectionAdapter.setCurrentJobId(context.getJobId());
+            
             updateStatus(context, IngestionStatus.PREPROCESSING_STARTED, 
                     "Starting AI-powered scene detection");
 
@@ -89,6 +93,9 @@ public class IngestionWorkflowService {
             
         } catch (Exception e) {
             handleProcessingError(context, e);
+        } finally {
+            // Always clear job ID from ThreadLocal to prevent memory leaks
+            OpenAiSceneDetectionAdapter.clearCurrentJobId();
         }
     }
 
