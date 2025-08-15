@@ -21,7 +21,6 @@ public class GraphModelMapper {
             node.setUniverse(chapter.getCoordinates().getUniverse());
             node.setSeries(chapter.getCoordinates().getSeries());
             node.setBookNumber(chapter.getCoordinates().getBookNumber());
-            node.setPartNumber(chapter.getCoordinates().getPartNumber());
             node.setChapterNumber(chapter.getCoordinates().getChapterNumber());
         }
         node.setChapterTitle(chapter.getChapterTitle());
@@ -63,15 +62,49 @@ public class GraphModelMapper {
         return n;
     }
 
+    public SceneNode toSceneNode(Scene scene, String sceneText) {
+        if (scene == null) return null;
+        SceneNode n = new SceneNode();
+        n.setId(scene.getId());
+        n.setSceneIndex(scene.getSceneIndex());
+        n.setStartOffset(scene.getStartCharacterOffset());
+        n.setEndOffset(scene.getEndCharacterOffset());
+        n.setContextSummary(scene.getContextSummary());
+        n.setText(sceneText);
+        return n;
+    }
+
     public ChunkNode toChunkNode(Chunk chunk) {
         if (chunk == null) return null;
         ChunkNode n = new ChunkNode();
         n.setId(chunk.getId());
+    // Legacy positional fields will be deprecated from Chunk; kept temporarily
+    n.setChunkNumberInChapter(chunk.getChunkNumberInChapter());
+    n.setStartCharInChapter(chunk.getStartCharInChapter());
+    n.setEndCharInChapter(chunk.getEndCharInChapter());
+        n.setContentHash(chunk.getContentHash());
+        return n;
+    }
+
+    public ChunkNode toChunkNode(Chunk chunk, String chunkText) {
+        if (chunk == null) return null;
+        ChunkNode n = new ChunkNode();
+        n.setId(chunk.getId());
+        // Legacy positional fields will be deprecated from Chunk; kept temporarily
         n.setChunkNumberInChapter(chunk.getChunkNumberInChapter());
         n.setStartCharInChapter(chunk.getStartCharInChapter());
         n.setEndCharInChapter(chunk.getEndCharInChapter());
         n.setContentHash(chunk.getContentHash());
+        n.setText(chunkText);
         return n;
+    }
+
+    public SceneHasChunk toSceneHasChunk(ChunkNode chunkNode, Integer chunkIndex) {
+        if (chunkNode == null) return null;
+        SceneHasChunk rel = new SceneHasChunk();
+        rel.setChunk(chunkNode);
+        rel.setChunkIndex(chunkIndex);
+        return rel;
     }
 
     public StatusRecord toStatusRecord(StatusRecordNode recordNode) {

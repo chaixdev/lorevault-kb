@@ -100,8 +100,14 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
         SceneNode scene = sceneRepo.findById(sceneId).orElseThrow();
         if (chunk.getId() == null) chunk.setId(UUID.randomUUID());
         chunk = chunkRepo.save(chunk);
-        if (scene.getChunks() == null) scene.setChunks(new ArrayList<>());
-        scene.getChunks().add(chunk);
+    if (scene.getChunks() == null) scene.setChunks(new ArrayList<>());
+        SceneHasChunk rel = new SceneHasChunk();
+        rel.setChunk(chunk);
+        // Set index from legacy node field when available (migration path)
+        try {
+            rel.setChunkIndex(chunk.getChunkNumberInChapter());
+        } catch (Exception ignored) {}
+    scene.getChunks().add(rel);
         sceneRepo.save(scene);
         return chunk;
     }

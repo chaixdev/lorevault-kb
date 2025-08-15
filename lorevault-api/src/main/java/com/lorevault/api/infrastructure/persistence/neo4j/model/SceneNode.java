@@ -21,6 +21,7 @@ public class SceneNode {
     private Long startOffset;
     private Long endOffset;
     private String contextSummary;
+    private String text; // The actual scene text extracted from chapter
 
     @CreatedDate
     private LocalDateTime createdAt;
@@ -28,16 +29,17 @@ public class SceneNode {
     private LocalDateTime updatedAt;
 
     @Relationship(type = "HAS_CHUNK")
-    private List<ChunkNode> chunks;
+    private List<SceneHasChunk> chunks;
 
     @PersistenceCreator
     public SceneNode(UUID id, Integer sceneIndex, Long startOffset, Long endOffset, String contextSummary,
-                     LocalDateTime createdAt, LocalDateTime updatedAt, List<ChunkNode> chunks) {
+                     String text, LocalDateTime createdAt, LocalDateTime updatedAt, List<SceneHasChunk> chunks) {
         this.id = id;
         this.sceneIndex = sceneIndex;
         this.startOffset = startOffset;
         this.endOffset = endOffset;
         this.contextSummary = contextSummary;
+        this.text = text;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.chunks = chunks;

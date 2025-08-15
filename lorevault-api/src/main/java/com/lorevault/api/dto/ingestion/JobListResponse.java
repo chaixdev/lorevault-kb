@@ -29,7 +29,6 @@ public class JobListResponse {
         private String universe;
         private String series;
         private Integer bookNumber;
-        private Integer partNumber;
         private Integer chapterNumber;
         private String chapterTitle;
         private IngestionStatus status;

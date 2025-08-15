@@ -2,6 +2,7 @@ package com.lorevault.api.web.system;
 
 import com.lorevault.api.service.system.LlmHealthCheckService;
 import com.lorevault.api.service.system.EmbeddingHealthCheckService;
+import com.lorevault.api.service.system.metrics.HealthMetricsCollector;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -57,7 +58,7 @@ public class HealthController {
     @GetMapping("/llm")
     public Map<String, Object> getLlmHealth() {
         var modelResults = llmHealthCheckService.checkAllModels();
-        boolean allHealthy = modelResults.values().stream().allMatch(LlmHealthCheckService.ModelHealthStatus::isHealthy);
+        boolean allHealthy = modelResults.values().stream().allMatch(HealthMetricsCollector.ModelHealthStatus::isHealthy);
         Map<String, Object> models = new HashMap<>();
         modelResults.forEach((modelId, status) -> {
             models.put(modelId, Map.of(

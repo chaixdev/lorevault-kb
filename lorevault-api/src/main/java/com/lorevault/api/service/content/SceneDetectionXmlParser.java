@@ -152,10 +152,35 @@ public class SceneDetectionXmlParser {
             
             if (sceneNode.getNodeType() == Node.ELEMENT_NODE) {
                 Element sceneElement = (Element) sceneNode;
-                SceneDetectionResult result = extractSingleSceneResult(sceneElement);
-                
-                if (result != null) {
-                    results.add(result);
+                // Extract fields with resilience to minor format drift
+                int sceneIndex = getIntValue(sceneElement, "index");
+                if (sceneIndex <= 0) {
+                    // Fallback to sequential index if missing/invalid
+                    sceneIndex = i + 1;
+                }
+                String startAnchor = getStringValue(sceneElement, "start_anchor");
+                String contextSummary = getStringValue(sceneElement, "context_summary");
+                String breakReason = getStringValue(sceneElement, "break_reason");
+                String chronology = getStringValue(sceneElement, "chronology");
+                String chronologyCertainty = getStringValue(sceneElement, "chronology_certainty");
+                String chronologyMarker = getStringValue(sceneElement, "chronology_marker");
+
+                if (startAnchor != null && contextSummary != null) {
+                    results.add(new SceneDetectionResult(
+                        sceneIndex,
+                        startAnchor,
+                        contextSummary,
+                        breakReason,
+                        chronology,
+                        chronologyCertainty,
+                        chronologyMarker
+                    ));
+                } else {
+                    log.warn("Skipping incomplete scene: index={}, start={}, context={}, reason={}", 
+                            sceneIndex,
+                            startAnchor != null ? "present" : "missing",
+                            contextSummary != null ? "present" : "missing",
+                            breakReason != null ? "present" : "missing");
                 }
             }
         }
@@ -177,28 +202,7 @@ public class SceneDetectionXmlParser {
         }
     }
     
-    /**
-     * Extracts a single scene result from a scene element
-     */
-    private SceneDetectionResult extractSingleSceneResult(Element sceneElement) {
-        // Extract individual fields from scene element
-        int sceneIndex = getIntValue(sceneElement, "scene_index");
-        String startAnchor = getStringValue(sceneElement, "start_anchor");
-        String endAnchor = getStringValue(sceneElement, "end_anchor");
-        String contextSummary = getStringValue(sceneElement, "context_summary");
-        String sceneBreakReason = getStringValue(sceneElement, "scene_break_reason");
-        
-        if (sceneIndex > 0 && startAnchor != null && endAnchor != null && contextSummary != null) {
-            return new SceneDetectionResult(sceneIndex, startAnchor, endAnchor, contextSummary, sceneBreakReason);
-        } else {
-            log.warn("Skipping incomplete scene: index={}, start={}, end={}, context={}, reason={}", 
-                    sceneIndex, startAnchor != null ? "present" : "missing",
-                    endAnchor != null ? "present" : "missing",
-                    contextSummary != null ? "present" : "missing",
-                    sceneBreakReason != null ? "present" : "missing");
-            return null;
-        }
-    }
+    // Inlined single-scene extraction into extractSceneResults to allow index fallback
     
     /**
      * Extracts integer value from DOM element with the given tag name.

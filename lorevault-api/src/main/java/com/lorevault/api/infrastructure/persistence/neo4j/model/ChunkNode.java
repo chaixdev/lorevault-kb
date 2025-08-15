@@ -21,6 +21,7 @@ public class ChunkNode {
     private Integer startCharInChapter;
     private Integer endCharInChapter;
     private String contentHash;
+    private String text; // The actual chunk text extracted from chapter
 
     // Embedding fields (Phase 1)
     private double[] embedding;          // Vector values (null until generated)
@@ -38,6 +39,7 @@ public class ChunkNode {
                      Integer startCharInChapter,
                      Integer endCharInChapter,
                      String contentHash,
+                     String text,
                      double[] embedding,
                      String embeddingHash,
                      LocalDateTime embeddedAt,
@@ -48,6 +50,7 @@ public class ChunkNode {
         this.startCharInChapter = startCharInChapter;
         this.endCharInChapter = endCharInChapter;
         this.contentHash = contentHash;
+        this.text = text;
         this.embedding = embedding;
         this.embeddingHash = embeddingHash;
         this.embeddedAt = embeddedAt;
