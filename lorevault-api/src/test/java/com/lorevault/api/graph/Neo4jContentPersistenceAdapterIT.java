@@ -20,7 +20,7 @@ public class Neo4jContentPersistenceAdapterIT extends IntegrationTestBase {
 
     @Autowired
     private ContentPersistencePort port;
-    
+
     @Autowired
     private IngestionService ingestionService;
 
@@ -56,7 +56,7 @@ public class Neo4jContentPersistenceAdapterIT extends IntegrationTestBase {
 
         // Use the production service to create a job with proper initialization
         SubmitChapterRequest request = new SubmitChapterRequest();
-        request.setCoordinates(new PublicationCoordinates("TestU", "Series", 1, null, 1));
+        request.setCoordinates(new PublicationCoordinates("TestU", "Series", "Book", "Chapter", 1, 1));
         request.setChapterTitle("Ch1");
         request.setChapterText("Some raw text for testing scenes and chunks.");
         SubmitChapterResponse response = ingestionService.submitChapter(request);

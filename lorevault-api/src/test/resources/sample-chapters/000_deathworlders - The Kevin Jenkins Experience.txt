@@ -1,9 +1,9 @@
-Title: deathworlders - The Kevin Jenkins Experience
-URL: https://deathworlders.com/books/deathworlders/chapter-00-kevin-jenkins-experience/
-Order: 000
-Type: side
-Date: Sep 8, 2014
-================================================================================
+Title: reddit-Hambone3110 - Aftermath
+Series: The Deathworlders
+Book: The Deathworlders
+Universe: Jenkinsverse
+Chapter: 1
+---
 
 The first chapter of what would eventually become “The Deathworlders,” was posted on 4chan some years ago now, as a self-contained story.
 
@@ -12,6 +12,8 @@ At first I thought it had received some pleasant comments and then sank without 
 Surprising as this was, I then decided to write a sequel, and from there the clamor for more has picked me up and swept me along.
 
 For those who are upset by the strongly antitheistic content of part 0.2, I implore you to power on through it. You may be pleasantly surprised by the resolution to that content.
+
+---
 
 “Next!” I ordered. I did not at first bother to look up from the desktop in front of me where the standard security systems were scanning the being in front of me for weapons, pathogens, parasites and other such contraband. I only looked up when the machine flashed a message I had never seen before: “ERROR: Unknown Species”
 

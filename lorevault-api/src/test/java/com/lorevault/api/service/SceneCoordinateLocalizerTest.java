@@ -37,9 +37,12 @@ class SceneCoordinateLocalizerTest {
     void localizeCoordinates_ShouldLocateAllAnchors() {
         // Create scene detection results with anchors
         List<SceneDetectionResult> sceneResults = List.of(
-            new SceneDetectionResult(1, "The morning sun", "8 AM.", "Initial scene", "First scene"),
-            new SceneDetectionResult(2, "An hour later", "the counter.", "Time jump", "Second scene"),
-            new SceneDetectionResult(3, "That evening", "twenty years ago.", "Evening scene", "Third scene")
+            new SceneDetectionResult(1, "The morning sun", "Initial scene", "First scene", 
+                                   "R:temporal.meets", "Heuristic", "Chapter beginning"),
+            new SceneDetectionResult(2, "An hour later", "Time jump", "Second scene", 
+                                   "R:temporal.after", "Explicit", "An hour later"),
+            new SceneDetectionResult(3, "That evening", "Evening scene", "Third scene", 
+                                   "R:temporal.after", "Explicit", "That evening")
         );
         
         // Localize the coordinates
@@ -57,31 +60,37 @@ class SceneCoordinateLocalizerTest {
         // Verify second scene
         SceneWithCoordinates second = coordinates.get(1);
         assertThat(second.sceneIndex()).isEqualTo(2);
-        assertThat(second.startCharacterOffset()).isGreaterThan(first.endCharacterOffset());
+        // With the new logic, second scene starts where first scene ends
+        assertThat(second.startCharacterOffset()).isEqualTo(first.endCharacterOffset());
         
         // Verify third scene
         SceneWithCoordinates third = coordinates.get(2);
         assertThat(third.sceneIndex()).isEqualTo(3);
-        assertThat(third.startCharacterOffset()).isGreaterThan(second.endCharacterOffset());
+        // Third scene starts where second scene ends
+        assertThat(third.startCharacterOffset()).isEqualTo(second.endCharacterOffset());
         
-        // Verify scene boundaries don't overlap
-        assertThat(first.endCharacterOffset()).isLessThanOrEqualTo(second.startCharacterOffset());
-        assertThat(second.endCharacterOffset()).isLessThanOrEqualTo(third.startCharacterOffset());
+        // Verify scenes are contiguous and don't overlap
+        assertThat(first.endCharacterOffset()).isEqualTo(second.startCharacterOffset());
+        assertThat(second.endCharacterOffset()).isEqualTo(third.startCharacterOffset());
+        // Last scene extends to end of chapter
+        assertThat(third.endCharacterOffset()).isEqualTo(sampleChapterText.length());
     }
     
     @Test
     void localizeCoordinates_ShouldHandleAnchorsNotFound() {
         // Create scene detection results with some non-existent anchors
         List<SceneDetectionResult> sceneResults = List.of(
-            new SceneDetectionResult(1, "The morning sun", "8 AM.", "Initial scene", "First scene"),
-            new SceneDetectionResult(2, "This doesn't exist", "also not found", "Invalid scene", "Nonexistent scene")
+            new SceneDetectionResult(1, "The morning sun", "Initial scene", "First scene", 
+                                   "R:temporal.meets", "Heuristic", "Chapter beginning"),
+            new SceneDetectionResult(2, "This doesn't exist", "Invalid scene", "Nonexistent scene", 
+                                   "R:temporal.after", "Heuristic", "Unknown")
         );
         
         // Localize the coordinates
         List<SceneWithCoordinates> coordinates = coordinateLocalizer.localizeCoordinates(
             sampleChapterText, sceneResults);
         
-        // Should only include scenes where both anchors were found
+        // Should only include scenes where anchors were found
         assertThat(coordinates).hasSize(1);
         assertThat(coordinates.get(0).sceneIndex()).isEqualTo(1);
     }

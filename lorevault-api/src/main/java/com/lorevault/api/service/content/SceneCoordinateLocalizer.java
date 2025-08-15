@@ -19,9 +19,12 @@ public class SceneCoordinateLocalizer {
     
     /**
      * Converts AI scene detection results with text anchors into precise character coordinates.
+     * Since the new format only provides start anchors, scene boundaries are calculated by:
+     * - Scene start: position of the start anchor
+     * - Scene end: position of the next scene's start anchor (or end of chapter for last scene)
      * 
      * @param chapterText The full chapter text to search within
-     * @param aiResults Scene detection results with start/end anchors
+     * @param aiResults Scene detection results with start anchors
      * @return List of scenes with calculated character coordinates, sorted by position
      */
     public List<SceneWithCoordinates> localizeCoordinates(String chapterText, List<SceneDetectionResult> aiResults) {
@@ -30,18 +33,45 @@ public class SceneCoordinateLocalizer {
         log.debug("Localizing coordinates for {} scene results in text of length {}", 
                  aiResults.size(), chapterText.length());
         
-        for (SceneDetectionResult result : aiResults) {
+        // First, sort the AI results by scene index to ensure proper ordering
+        List<SceneDetectionResult> sortedResults = aiResults.stream()
+            .sorted(Comparator.comparingInt(SceneDetectionResult::sceneIndex))
+            .toList();
+        
+        for (int i = 0; i < sortedResults.size(); i++) {
+            SceneDetectionResult result = sortedResults.get(i);
             try {
-                log.debug("Processing scene {}: startAnchor='{}', endAnchor='{}'", 
+                log.debug("Processing scene {}: startAnchor='{}'", 
                          result.sceneIndex(), 
-                         result.startAnchor().length() > 20 ? result.startAnchor().substring(0, 20) + "..." : result.startAnchor(),
-                         result.endAnchor().length() > 20 ? result.endAnchor().substring(0, 20) + "..." : result.endAnchor());
+                         result.startAnchor().length() > 20 ? result.startAnchor().substring(0, 20) + "..." : result.startAnchor());
                 
-                // Fix: When searching for start anchors, use the startAnchor field
+                // Find the start position for this scene
                 long startPos = findAnchorPosition(chapterText, result.startAnchor(), true);
-                long endPos = findAnchorPosition(chapterText, result.endAnchor(), false);
                 
-                if (startPos != -1 && endPos != -1 && startPos < endPos) {
+                if (startPos == -1) {
+                    log.warn("Skipping scene {} because start anchor '{}' was not found", 
+                            result.sceneIndex(), result.startAnchor());
+                    continue;
+                }
+                
+                // Determine the end position
+                long endPos;
+                if (i < sortedResults.size() - 1) {
+                    // Not the last scene: try to find the start of the next scene
+                    SceneDetectionResult nextResult = sortedResults.get(i + 1);
+                    endPos = findAnchorPosition(chapterText, nextResult.startAnchor(), true);
+                    if (endPos == -1) {
+                        // Next scene anchor not found, extend this scene to end of chapter
+                        log.warn("Next scene anchor '{}' not found, extending scene {} to end of chapter", 
+                                nextResult.startAnchor(), result.sceneIndex());
+                        endPos = chapterText.length();
+                    }
+                } else {
+                    // Last scene: extend to the end of the chapter
+                    endPos = chapterText.length();
+                }
+                
+                if (startPos < endPos) {
                     coordinatedScenes.add(new SceneWithCoordinates(
                         result.sceneIndex(),
                         startPos,
@@ -51,7 +81,7 @@ public class SceneCoordinateLocalizer {
                     log.debug("Localized scene {}: start={}, end={}, length={}", 
                              result.sceneIndex(), startPos, endPos, endPos - startPos);
                 } else {
-                    log.warn("Failed to localize scene {}: startPos={}, endPos={}", 
+                    log.warn("Failed to localize scene {}: invalid bounds startPos={}, endPos={}", 
                             result.sceneIndex(), startPos, endPos);
                 }
             } catch (Exception e) {

@@ -27,18 +27,22 @@ class SceneDetectionXmlParsingTest {
         String validXml = """
             <scenes>
               <scene>
-                <scene_index>1</scene_index>
+                <index>1</index>
                 <context_summary>The crew prepares for arrival on the ship's bridge.</context_summary>
-                <start_anchor>The crew gathered on the bridge</start_anchor>
-                <end_anchor>planet of Xylos grew larger.</end_anchor>
-                <scene_break_reason>Change in setting from ship to planet</scene_break_reason>
+                <start_anchor><![CDATA[The crew gathered on the bridge]]></start_anchor>
+                <break_reason>Opening scene of the chapter</break_reason>
+                <chronology>R:temporal.meets</chronology>
+                <chronology_certainty>Heuristic</chronology_certainty>
+                <chronology_marker>Chapter beginning</chronology_marker>
               </scene>
               <scene>
-                <scene_index>2</scene_index>
+                <index>2</index>
                 <context_summary>The landing party explores the jungle on Xylos.</context_summary>
-                <start_anchor>Three hours later, the landing party</start_anchor>
-                <end_anchor>cries of unseen aliens.</end_anchor>
-                <scene_break_reason>Change in time and location from bridge to jungle</scene_break_reason>
+                <start_anchor><![CDATA[Three hours later, the landing party]]></start_anchor>
+                <break_reason>Change in time and location from bridge to jungle</break_reason>
+                <chronology>R:temporal.after</chronology>
+                <chronology_certainty>Explicit</chronology_certainty>
+                <chronology_marker>Three hours later</chronology_marker>
               </scene>
             </scenes>
             """;
@@ -52,14 +56,20 @@ class SceneDetectionXmlParsingTest {
         assertThat(scene1.sceneIndex()).isEqualTo(1);
         assertThat(scene1.contextSummary()).contains("crew prepares for arrival");
         assertThat(scene1.startAnchor()).contains("The crew gathered on the bridge");
-        assertThat(scene1.endAnchor()).contains("planet of Xylos grew larger.");
+        assertThat(scene1.breakReason()).isEqualTo("Opening scene of the chapter");
+        assertThat(scene1.chronology()).isEqualTo("R:temporal.meets");
+        assertThat(scene1.chronologyCertainty()).isEqualTo("Heuristic");
+        assertThat(scene1.chronologyMarker()).isEqualTo("Chapter beginning");
         
         // Verify second scene
         SceneDetectionResult scene2 = results.get(1);
         assertThat(scene2.sceneIndex()).isEqualTo(2);
         assertThat(scene2.contextSummary()).contains("landing party explores");
         assertThat(scene2.startAnchor()).contains("Three hours later, the landing party");
-        assertThat(scene2.endAnchor()).contains("cries of unseen aliens.");
+        assertThat(scene2.breakReason()).contains("Change in time and location");
+        assertThat(scene2.chronology()).isEqualTo("R:temporal.after");
+        assertThat(scene2.chronologyCertainty()).isEqualTo("Explicit");
+        assertThat(scene2.chronologyMarker()).isEqualTo("Three hours later");
     }
 
     @Test
@@ -68,11 +78,13 @@ class SceneDetectionXmlParsingTest {
             ```xml
             <scenes>
               <scene>
-                <scene_index>1</scene_index>
+                <index>1</index>
                 <context_summary>A simple test scene.</context_summary>
-                <start_anchor>The beginning of text</start_anchor>
-                <end_anchor>the end of text.</end_anchor>
-                <scene_break_reason>Simple scene transition</scene_break_reason>
+                <start_anchor><![CDATA[The beginning of text]]></start_anchor>
+                <break_reason>Simple scene transition</break_reason>
+                <chronology>R:temporal.meets</chronology>
+                <chronology_certainty>Heuristic</chronology_certainty>
+                <chronology_marker>Beginning of narrative</chronology_marker>
               </scene>
             </scenes>
             ```
@@ -84,6 +96,8 @@ class SceneDetectionXmlParsingTest {
         SceneDetectionResult scene = results.get(0);
         assertThat(scene.sceneIndex()).isEqualTo(1);
         assertThat(scene.contextSummary()).isEqualTo("A simple test scene.");
+        assertThat(scene.startAnchor()).isEqualTo("The beginning of text");
+        assertThat(scene.breakReason()).isEqualTo("Simple scene transition");
     }
 
     @Test
@@ -91,16 +105,18 @@ class SceneDetectionXmlParsingTest {
         String xmlWithIncompleteScene = """
             <scenes>
               <scene>
-                <scene_index>1</scene_index>
+                <index>1</index>
                 <context_summary>Complete scene.</context_summary>
-                <start_anchor>Complete start</start_anchor>
-                <end_anchor>complete end.</end_anchor>
-                <scene_break_reason>Valid scene break</scene_break_reason>
+                <start_anchor><![CDATA[Complete start]]></start_anchor>
+                <break_reason>Valid scene break</break_reason>
+                <chronology>R:temporal.meets</chronology>
+                <chronology_certainty>Heuristic</chronology_certainty>
+                <chronology_marker>Chapter start</chronology_marker>
               </scene>
               <scene>
-                <scene_index>2</scene_index>
-                <context_summary>Incomplete scene missing snippets.</context_summary>
-                <!-- Missing start_anchor and end_anchor -->
+                <index>2</index>
+                <context_summary>Incomplete scene missing start anchor.</context_summary>
+                <!-- Missing start_anchor and other required fields -->
               </scene>
             </scenes>
             """;

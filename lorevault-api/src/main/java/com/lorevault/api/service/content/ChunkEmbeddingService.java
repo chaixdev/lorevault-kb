@@ -40,117 +40,275 @@ public class ChunkEmbeddingService {
     public void setBatchSize(int batchSize) { this.batchSize = batchSize; }
     public void setEmbeddingDim(int embeddingDim) { this.embeddingDim = embeddingDim; }
 
+    // =====================================
+    // Public API
+    // =====================================
+
     @Transactional
     public int generateEmbeddingsForChapter(UUID chapterId) {
-        if (batchSize <= 0) batchSize = 32; // normalize if not injected
-        if (embeddingDim <= 0) embeddingDim = 3072; // normalize if not injected
-        Instant overallStart = Instant.now();
+        normalizeConfiguration();
+        
+        EmbeddingContext context = new EmbeddingContext(chapterId, Instant.now());
+        
         log.info("[Embeddings] START chapter={}", chapterId);
-        List<ChunkNode> chunks = contentPersistencePort.findChunksByChapterId(chapterId);
-        log.debug("[Embeddings] Loaded {} chunks ({} ms) chapter={}", chunks.size(), Duration.between(overallStart, Instant.now()).toMillis(), chapterId);
+        
+        List<ChunkNode> chunks = loadChunks(context);
         if (chunks.isEmpty()) {
-            long totalMs = Duration.between(overallStart, Instant.now()).toMillis();
-            log.info("[Embeddings] DONE (no chunks) chapter={} totalMs={}", chapterId, totalMs);
-            Metrics.timer("embeddings.process.duration").record(totalMs, TimeUnit.MILLISECONDS);
-            return 0;
+            return finishWithNoWork(context, "no chunks");
         }
-        String modelId = embeddingPort.getModelId();
-        Instant selectionStart = Instant.now();
-        List<ChunkNode> targets = new ArrayList<>();
-        for (ChunkNode c : chunks) {
-            String sha = computeEmbeddingHash(modelId, c.getContentHash());
-            boolean needs = c.getEmbedding() == null || c.getEmbeddingHash() == null || !c.getEmbeddingHash().equals(sha);
-            if (log.isDebugEnabled()) {
-                log.debug("[Embeddings] Inspect chunk id={} contentHash={} hasVec={} storedHash={} expectedHash={} needs={}", c.getId(), c.getContentHash(), c.getEmbedding() != null, c.getEmbeddingHash(), sha, needs);
-            }
-            if (needs) targets.add(c);
-        }
-        log.debug("[Embeddings] Selection completed in {} ms (targets={} / {}) chapter={}", Duration.between(selectionStart, Instant.now()).toMillis(), targets.size(), chunks.size(), chapterId);
+        
+        List<ChunkNode> targets = selectTargetsNeedingEmbedding(chunks, context);
         if (targets.isEmpty()) {
-            long totalMs = Duration.between(overallStart, Instant.now()).toMillis();
-            log.info("[Embeddings] DONE (all up-to-date) chapter={} totalMs={}", chapterId, totalMs);
-            Metrics.counter("embeddings.skipped.count", "reason", "up_to_date").increment(chunks.size());
-            Metrics.timer("embeddings.process.duration").record(totalMs, TimeUnit.MILLISECONDS);
-            return 0;
+            return finishWithNoWork(context, "all up-to-date", chunks.size());
         }
+        
         log.info("[Embeddings] {} / {} chunks need embeddings (chapter {})", targets.size(), chunks.size(), chapterId);
-
-        // Real text reconstruction
-        String rawText = null;
-        try {
-            rawText = contentPersistencePort.findChapterById(chapterId).map(ChapterNode::getRawText).orElse(null);
-        } catch (Exception e) {
-            log.warn("[Embeddings] Failed to load chapter rawText chapter={} error={}", chapterId, e.getMessage());
+        
+        List<String> texts = extractTextsForEmbedding(targets, chapterId);
+        List<double[]> vectors = generateVectors(texts, context);
+        if (vectors.isEmpty()) {
+            return 0; // Error already logged and metrics recorded
         }
-        if (rawText == null) {
-            log.warn("[Embeddings] rawText unavailable for chapter {}, falling back to contentHash embedding (degraded)", chapterId);
-        }
-        List<String> texts = new ArrayList<>(targets.size());
-        for (ChunkNode target : targets) {
-            String text;
-            if (rawText != null && target.getStartCharInChapter() != null && target.getEndCharInChapter() != null) {
-                int start = target.getStartCharInChapter();
-                int end = target.getEndCharInChapter();
-                if (start >= 0 && end <= rawText.length() && start < end) {
-                    try {
-                        text = rawText.substring(start, end);
-                    } catch (Exception ex) {
-                        log.warn("[Embeddings] Substring extraction failed chunkId={} start={} end={} len={} error={} fallback=hash", target.getId(), start, end, rawText.length(), ex.getMessage());
-                        text = target.getContentHash();
-                    }
-                } else {
-                    log.warn("[Embeddings] Invalid offsets chunkId={} start={} end={} len={} fallback=hash", target.getId(), start, end, rawText.length());
-                    text = target.getContentHash();
-                }
-            } else {
-                text = target.getContentHash();
-            }
-            texts.add(text == null ? "" : text);
-        }
-
-        Instant embedStart = Instant.now();
-        List<double[]> vectors;
-        try {
-            vectors = batchEmbed(texts);
-        } catch (Exception e) {
-            long elapsed = Duration.between(embedStart, Instant.now()).toMillis();
-            log.error("[Embeddings] Batch embedding failed chapter={} stage=embedding elapsedMs={} error={}", chapterId, elapsed, e.getMessage(), e);
-            Metrics.counter("embeddings.skipped.count", "reason", "batch_failure").increment(targets.size());
-            Metrics.timer("embeddings.process.duration").record(Duration.between(overallStart, Instant.now()).toMillis(), TimeUnit.MILLISECONDS);
-            return 0;
-        }
-        long embedMs = Duration.between(embedStart, Instant.now()).toMillis();
-        log.info("[Embeddings] Generated {} vectors in {} ms (chapter {})", vectors.size(), embedMs, chapterId);
-
-        Instant persistStart = Instant.now();
-        int updated = 0;
-        int zeroLength = 0;
-        for (int i = 0; i < targets.size(); i++) {
-            ChunkNode target = targets.get(i);
-            double[] vec = vectors.get(i);
-            if (vec.length == 0) { zeroLength++; continue; } // skip failed
-            if (embeddingDim > 0 && vec.length != embeddingDim) {
-                log.warn("[Embeddings] Dimension mismatch chunkId={} expectedDim={} actualDim={} chapter={}", target.getId(), embeddingDim, vec.length, chapterId);
-            }
-            target.setEmbedding(vec);
-            target.setEmbeddingHash(computeEmbeddingHash(modelId, target.getContentHash()));
-            target.setEmbeddedAt(LocalDateTime.now());
-            updated++;
-        }
-        contentPersistencePort.updateChunks(targets);
-        long persistMs = Duration.between(persistStart, Instant.now()).toMillis();
-        long totalMs = Duration.between(overallStart, Instant.now()).toMillis();
-        log.info("[Embeddings] Persisted {} updated embeddings (persistMs={} totalMs={}) chapter={}", updated, persistMs, totalMs, chapterId);
-
-        // Metrics publishing
-        if (updated > 0) Metrics.counter("embeddings.generated.count").increment(updated);
-        int skipped = targets.size() - updated;
-        if (skipped > 0) Metrics.counter("embeddings.skipped.count", "reason", zeroLength > 0 ? "zero_length" : "other").increment(skipped);
-        Metrics.timer("embeddings.process.duration").record(totalMs, TimeUnit.MILLISECONDS);
-        Metrics.timer("embeddings.embedding.phase.duration").record(embedMs, TimeUnit.MILLISECONDS);
-
+        
+        int updated = updateChunksWithEmbeddings(targets, vectors, context);
+        recordFinalMetrics(context, updated, targets.size() - updated);
+        
         return updated;
     }
+
+    @Transactional(readOnly = true)
+    public List<org.springframework.ai.document.Document> search(String query, int limit, double threshold) {
+        return List.of();
+    }
+
+    // =====================================
+    // Context and Helper Classes  
+    // =====================================
+
+    private static class EmbeddingContext {
+        final UUID chapterId;
+        final Instant startTime;
+        long embeddingTimeMs = 0;
+
+        EmbeddingContext(UUID chapterId, Instant startTime) {
+            this.chapterId = chapterId;
+            this.startTime = startTime;
+        }
+
+        long elapsedMs() {
+            return Duration.between(startTime, Instant.now()).toMillis();
+        }
+
+        void recordEmbeddingTime(long ms) {
+            this.embeddingTimeMs = ms;
+        }
+    }
+
+    // =====================================
+    // Private Helper Methods
+    // =====================================
+
+    private void normalizeConfiguration() {
+        if (batchSize <= 0) batchSize = 32;
+        if (embeddingDim <= 0) embeddingDim = 3072;
+    }
+
+    private List<ChunkNode> loadChunks(EmbeddingContext context) {
+        List<ChunkNode> chunks = contentPersistencePort.findChunksByChapterId(context.chapterId);
+        long elapsed = context.elapsedMs();
+        log.debug("[Embeddings] Loaded {} chunks ({} ms) chapter={}", chunks.size(), elapsed, context.chapterId);
+        return chunks;
+    }
+
+    private int finishWithNoWork(EmbeddingContext context, String reason) {
+        return finishWithNoWork(context, reason, 0);
+    }
+
+    private int finishWithNoWork(EmbeddingContext context, String reason, int skippedCount) {
+        long totalMs = context.elapsedMs();
+        log.info("[Embeddings] DONE ({}) chapter={} totalMs={}", reason, context.chapterId, totalMs);
+        if (skippedCount > 0) {
+            Metrics.counter("embeddings.skipped.count", "reason", "up_to_date").increment(skippedCount);
+        }
+        Metrics.timer("embeddings.process.duration").record(totalMs, TimeUnit.MILLISECONDS);
+        return 0;
+    }
+
+    private List<ChunkNode> selectTargetsNeedingEmbedding(List<ChunkNode> chunks, EmbeddingContext context) {
+        Instant selectionStart = Instant.now();
+        String modelId = embeddingPort.getModelId();
+        List<ChunkNode> targets = new ArrayList<>();
+        
+        for (ChunkNode chunk : chunks) {
+            if (chunkNeedsEmbedding(chunk, modelId)) {
+                targets.add(chunk);
+            }
+        }
+        
+        long selectionMs = Duration.between(selectionStart, Instant.now()).toMillis();
+        log.debug("[Embeddings] Selection completed in {} ms (targets={} / {}) chapter={}", 
+                selectionMs, targets.size(), chunks.size(), context.chapterId);
+        
+        return targets;
+    }
+
+    private boolean chunkNeedsEmbedding(ChunkNode chunk, String modelId) {
+        String expectedHash = computeEmbeddingHash(modelId, chunk.getContentHash());
+        boolean needs = chunk.getEmbedding() == null || 
+                       chunk.getEmbeddingHash() == null || 
+                       !chunk.getEmbeddingHash().equals(expectedHash);
+        
+        if (log.isDebugEnabled()) {
+            log.debug("[Embeddings] Inspect chunk id={} contentHash={} hasVec={} storedHash={} expectedHash={} needs={}", 
+                    chunk.getId(), chunk.getContentHash(), chunk.getEmbedding() != null, 
+                    chunk.getEmbeddingHash(), expectedHash, needs);
+        }
+        
+        return needs;
+    }
+
+    private List<String> extractTextsForEmbedding(List<ChunkNode> targets, UUID chapterId) {
+        String rawText = loadChapterRawText(chapterId);
+        List<String> texts = new ArrayList<>(targets.size());
+        
+        for (ChunkNode target : targets) {
+            String text = extractTextForChunk(target, rawText);
+            texts.add(text == null ? "" : text);
+        }
+        
+        return texts;
+    }
+
+    private String loadChapterRawText(UUID chapterId) {
+        try {
+            return contentPersistencePort.findChapterById(chapterId)
+                    .map(ChapterNode::getRawText)
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("[Embeddings] Failed to load chapter rawText chapter={} error={}", chapterId, e.getMessage());
+            return null;
+        }
+    }
+
+    private String extractTextForChunk(ChunkNode chunk, String rawText) {
+        // Prefer directly stored chunk text when available (decouples from chapter/scene)
+        if (chunk.getText() != null && !chunk.getText().isEmpty()) {
+            return chunk.getText();
+        }
+        
+        // Fallback to coordinate-based extraction
+        if (rawText != null && chunk.getStartCharInChapter() != null && chunk.getEndCharInChapter() != null) {
+            return extractTextByCoordinates(chunk, rawText);
+        }
+        
+        // Final fallback to content hash
+        log.debug("[Embeddings] Using contentHash fallback for chunk {}", chunk.getId());
+        return chunk.getContentHash();
+    }
+
+    private String extractTextByCoordinates(ChunkNode chunk, String rawText) {
+        int start = chunk.getStartCharInChapter();
+        int end = chunk.getEndCharInChapter();
+        
+        if (start < 0 || end > rawText.length() || start >= end) {
+            log.warn("[Embeddings] Invalid offsets chunkId={} start={} end={} len={} fallback=hash", 
+                    chunk.getId(), start, end, rawText.length());
+            return chunk.getContentHash();
+        }
+        
+        try {
+            return rawText.substring(start, end);
+        } catch (Exception ex) {
+            log.warn("[Embeddings] Substring extraction failed chunkId={} start={} end={} len={} error={} fallback=hash", 
+                    chunk.getId(), start, end, rawText.length(), ex.getMessage());
+            return chunk.getContentHash();
+        }
+    }
+
+    private List<double[]> generateVectors(List<String> texts, EmbeddingContext context) {
+        if (texts.isEmpty()) {
+            return List.of();
+        }
+        
+        Instant embedStart = Instant.now();
+        try {
+            List<double[]> vectors = batchEmbed(texts);
+            long embedMs = Duration.between(embedStart, Instant.now()).toMillis();
+            log.info("[Embeddings] Generated {} vectors in {} ms (chapter {})", 
+                    vectors.size(), embedMs, context.chapterId);
+            context.recordEmbeddingTime(embedMs);
+            return vectors;
+        } catch (Exception e) {
+            long elapsed = Duration.between(embedStart, Instant.now()).toMillis();
+            log.error("[Embeddings] Batch embedding failed chapter={} stage=embedding elapsedMs={} error={}", 
+                    context.chapterId, elapsed, e.getMessage(), e);
+            Metrics.counter("embeddings.skipped.count", "reason", "batch_failure").increment(texts.size());
+            Metrics.timer("embeddings.process.duration").record(context.elapsedMs(), TimeUnit.MILLISECONDS);
+            return List.of();
+        }
+    }
+
+    private int updateChunksWithEmbeddings(List<ChunkNode> targets, List<double[]> vectors, EmbeddingContext context) {
+        Instant persistStart = Instant.now();
+        String modelId = embeddingPort.getModelId();
+        int updated = 0;
+        
+        for (int i = 0; i < targets.size(); i++) {
+            ChunkNode target = targets.get(i);
+            double[] vector = vectors.get(i);
+            
+            if (updateChunkWithVector(target, vector, modelId)) {
+                updated++;
+            }
+        }
+        
+        contentPersistencePort.updateChunks(targets);
+        
+        long persistMs = Duration.between(persistStart, Instant.now()).toMillis();
+        long totalMs = context.elapsedMs();
+        
+        log.info("[Embeddings] Persisted {} updated embeddings (persistMs={} totalMs={}) chapter={}", 
+                updated, persistMs, totalMs, context.chapterId);
+        
+        return updated;
+    }
+
+    private boolean updateChunkWithVector(ChunkNode chunk, double[] vector, String modelId) {
+        if (vector.length == 0) {
+            return false; // Skip failed embeddings
+        }
+        
+        if (embeddingDim > 0 && vector.length != embeddingDim) {
+            log.warn("[Embeddings] Dimension mismatch chunkId={} expectedDim={} actualDim={}", 
+                    chunk.getId(), embeddingDim, vector.length);
+        }
+        
+        chunk.setEmbedding(vector);
+        chunk.setEmbeddingHash(computeEmbeddingHash(modelId, chunk.getContentHash()));
+        chunk.setEmbeddedAt(LocalDateTime.now());
+        
+        return true;
+    }
+
+    private void recordFinalMetrics(EmbeddingContext context, int updated, int skipped) {
+        if (updated > 0) {
+            Metrics.counter("embeddings.generated.count").increment(updated);
+        }
+        if (skipped > 0) {
+            Metrics.counter("embeddings.skipped.count", "reason", "zero_length").increment(skipped);
+        }
+        
+        long totalMs = context.elapsedMs();
+        Metrics.timer("embeddings.process.duration").record(totalMs, TimeUnit.MILLISECONDS);
+        
+        if (context.embeddingTimeMs > 0) {
+            Metrics.timer("embeddings.embedding.phase.duration").record(context.embeddingTimeMs, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    // =====================================
+    // Embedding Generation
+    // =====================================
 
     private List<double[]> batchEmbed(List<String> texts) {
         if (texts == null || texts.isEmpty()) {
@@ -191,10 +349,9 @@ public class ChunkEmbeddingService {
         return sb.toString();
     }
 
-    @Transactional(readOnly = true)
-    public List<org.springframework.ai.document.Document> search(String query, int limit, double threshold) {
-        return List.of();
-    }
+    // =====================================
+    // Utility Methods
+    // =====================================
 
     private String computeEmbeddingHash(String modelId, String contentHash) {
         String material = modelId + ":" + contentHash;

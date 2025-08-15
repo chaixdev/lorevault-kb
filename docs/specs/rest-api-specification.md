@@ -212,7 +212,7 @@ universe: string (required) - Universe identifier
   "chapters": [
     {
       "chapterId": "123e4567-e89b-12d3-a456-426614174000",
-      "book": "The Fellowship of the Ring",
+      "book": "The Fellowsahip of the Ring",
       "title": "The Shadow of the Past",
       "chunkCount": 47,
       "processedAt": "2025-08-06T10:16:30Z"

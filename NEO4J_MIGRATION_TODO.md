@@ -43,6 +43,18 @@ Scope: Replace RDBMS (Postgres/JPA/Flyway) with Neo4j graph persistence while ke
 ## Nice-To-Have (Defer if Time-Pressed)
 - [x] Custom Cypher queries for efficient status record retrieval (jobs + status + scenes + chunks optimized)
 - [ ] Relationship property modeling for ordering (HAS_SCENE.index, HAS_CHUNK.index) instead of node fields
+	- [x] Introduced relationship entity `SceneHasChunk` with `chunkIndex`
+	- [x] Switched `SceneNode` to `List<SceneHasChunk>`; updated adapter to create it when linking chunks
+	- [x] Updated queries to order by `s.sceneIndex, r.chunkIndex`
+	- [ ] Backfill existing data: copy `Chunk.chunkNumberInChapter` to relationship `HAS_CHUNK.chunkIndex`
+	- [ ] Remove `chunkNumberInChapter` from `Chunk` nodes after backfill
+	- [ ] Update ingestion to set `chunkIndex` explicitly and stop populating legacy node field
+	- [ ] Update any sort-by-chunkNumber logic to use relationship ordering only
+  
+ - [ ] Deprecate coordinate fields on Chunk (startCharInChapter, endCharInChapter) once text is materialized
+	- [x] Embedding service prefers `Chunk.text` when present
+	- [ ] Provide migration to persist text for all existing chunks (compute from chapter rawText and offsets)
+	- [ ] Drop coordinate fields from `Chunk` nodes after migration
 - [ ] Add constraint automation via a lightweight startup initializer bean
 
 ## Decisions / Assumptions
