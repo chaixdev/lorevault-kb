@@ -6,6 +6,8 @@ import lombok.experimental.UtilityClass;
 import org.springframework.util.ResourceUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -14,8 +16,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Utility class for loading sample chapters from test resources.
- * Provides realistic test data for integration tests.
+ * Utility class for loading sample chapters and test data from test resources.
+ * Provides realistic test data for integration tests and unit test utilities.
+ * Consolidates all test data loading functionality following the testing strategy guidelines.
  */
 @UtilityClass
 public class SampleChapterLoader {
@@ -126,5 +129,58 @@ public class SampleChapterLoader {
                 .toList());
 
         return stats;
+    }
+
+    // Additional Test Data Loading Functionality
+    // =========================================
+
+    /**
+     * Load XML test data from the scene-detection test resources.
+     * 
+     * @param filename The filename to load (e.g., "000_pass1.xml", "000_pass2.xml")
+     * @return The XML content as a string
+     */
+    public static String loadSceneDetectionXml(String filename) {
+        return loadResourceAsString("scene-detection/" + filename);
+    }
+
+    /**
+     * Load a resource file as a string using InputStream (more reliable than ResourceUtils).
+     * 
+     * @param resourcePath The path to the resource file
+     * @return The file content as a string
+     * @throws RuntimeException if the file cannot be loaded
+     */
+    public static String loadResourceAsString(String resourcePath) {
+        try (InputStream inputStream = SampleChapterLoader.class.getClassLoader().getResourceAsStream(resourcePath)) {
+            if (inputStream == null) {
+                throw new RuntimeException("Resource not found: " + resourcePath);
+            }
+            return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load resource: " + resourcePath, e);
+        }
+    }
+
+    /**
+     * Get sample chapter text for testing (first 1000 chars of Kevin Jenkins).
+     * Useful for unit tests that need realistic data but want to keep tests fast.
+     * 
+     * @return Sample chapter text (truncated for performance)
+     */
+    public static String getSampleChapterText() {
+        String fullText = loadResourceAsString("sample-chapters/000_deathworlders - The Kevin Jenkins Experience.txt");
+        // Return first 1000 characters for unit tests to keep them fast
+        return fullText.length() > 1000 ? fullText.substring(0, 1000) : fullText;
+    }
+
+    /**
+     * Get full chapter text for a specific sample chapter (for integration tests).
+     * 
+     * @param chapterName The name of the chapter ("kevin_jenkins", "aftermath", "run_little_monster")
+     * @return Full chapter text
+     */
+    public static String getFullChapterText(String chapterName) {
+        return loadSampleChapter(chapterName).getChapterText();
     }
 }

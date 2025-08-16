@@ -74,15 +74,15 @@ public class RetryAwareSceneDetectionService {
     }
     
     /**
-     * Perform the complete scene detection pipeline (LLM call + parsing + localization)
+     * Perform the complete scene detection pipeline (Two-pass LLM call + parsing + localization)
      */
     private List<SceneWithCoordinates> performFullSceneDetection(UUID chapterId, String chapterText) {
         try {
-            // Step 1: Call LLM for scene detection XML
-            String xmlResponse = sceneDetectionClient.detectScenes(chapterText);
+            // Two-pass scene detection: Pass 1 (segmentation) -> Pass 2 (normalization)
+            String finalXmlResponse = sceneDetectionClient.detectScenesTwoPass(chapterText);
             
             // Step 2: Parse XML response 
-            List<SceneDetectionResult> sceneResults = xmlParser.parseResponse(xmlResponse, chapterText.length());
+            List<SceneDetectionResult> sceneResults = xmlParser.parseResponse(finalXmlResponse, chapterText.length());
             
             // Validate parsing results - throw exception if empty to trigger retry
             if (sceneResults.isEmpty()) {
@@ -97,12 +97,12 @@ public class RetryAwareSceneDetectionService {
                 throw new RuntimeException("Scene coordinate localization returned empty results");
             }
             
-            log.debug("Successfully completed scene detection pipeline: {} scenes detected", scenes.size());
+            log.debug("Successfully completed two-pass scene detection pipeline: {} scenes detected", scenes.size());
             return scenes;
             
         } catch (Exception e) {
             // Log the specific stage that failed for debugging
-            log.warn("Scene detection pipeline failed: {}", e.getMessage());
+            log.warn("Two-pass scene detection pipeline failed: {}", e.getMessage());
             throw e; // Re-throw to trigger retry
         }
     }
