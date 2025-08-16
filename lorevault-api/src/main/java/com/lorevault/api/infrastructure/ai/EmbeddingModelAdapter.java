@@ -3,7 +3,7 @@ package com.lorevault.api.infrastructure.ai;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.application.port.EmbeddingPort;
-import com.lorevault.api.config.EmbeddingProperties;
+import com.lorevault.api.configuration.properties.LoreVaultEmbeddingProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -25,7 +25,7 @@ import java.util.List;
 @Slf4j
 public class EmbeddingModelAdapter implements EmbeddingPort {
 
-    private final EmbeddingProperties embeddingProperties;
+    private final LoreVaultEmbeddingProperties embeddingProperties;
     private final RestTemplate restTemplate; // injected for testability
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -38,7 +38,7 @@ public class EmbeddingModelAdapter implements EmbeddingPort {
     @Value("${spring.ai.openai.api-key}")
     private String apiKey;
 
-    public EmbeddingModelAdapter(EmbeddingProperties embeddingProperties, RestTemplate restTemplate) {
+    public EmbeddingModelAdapter(LoreVaultEmbeddingProperties embeddingProperties, RestTemplate restTemplate) {
         this.embeddingProperties = embeddingProperties;
         this.restTemplate = restTemplate;
     }
@@ -54,8 +54,8 @@ public class EmbeddingModelAdapter implements EmbeddingPort {
     public List<double[]> embedBatch(List<String> texts) {
         if (texts == null || texts.isEmpty()) return List.of();
         int attempts = 0;
-        long delay = embeddingProperties.getInitialDelayMillis();
-        while (attempts < embeddingProperties.getMaxAttempts()) {
+        long delay = embeddingProperties.processing().initialDelayMillis();
+        while (attempts < embeddingProperties.processing().maxAttempts()) {
             attempts++;
             try {
                 return invokeRemote(texts, attempts);
@@ -65,13 +65,13 @@ public class EmbeddingModelAdapter implements EmbeddingPort {
                     log.error("[Embeddings] Non-retryable failure attempt={} model={} size={} error={}", attempts, modelId, texts.size(), e.getMessage());
                     break;
                 }
-                if (attempts >= embeddingProperties.getMaxAttempts()) {
+                if (attempts >= embeddingProperties.processing().maxAttempts()) {
                     log.error("[Embeddings] Exhausted retries attempts={} model={} size={} lastError={}", attempts, modelId, texts.size(), e.getMessage());
                     break;
                 }
-                log.warn("[Embeddings] Retry attempt {}/{} in {} ms (model={} size={} error={})", attempts, embeddingProperties.getMaxAttempts(), delay, modelId, texts.size(), e.getMessage());
+                log.warn("[Embeddings] Retry attempt {}/{} in {} ms (model={} size={} error={})", attempts, embeddingProperties.processing().maxAttempts(), delay, modelId, texts.size(), e.getMessage());
                 sleep(delay);
-                delay = Math.min((long) (delay * embeddingProperties.getBackoffMultiplier()), embeddingProperties.getMaxDelayMillis());
+                delay = Math.min((long) (delay * embeddingProperties.processing().backoffMultiplier()), embeddingProperties.processing().maxDelayMillis());
             }
         }
         // Failure path: return empty vectors to keep alignment
@@ -135,6 +135,6 @@ public class EmbeddingModelAdapter implements EmbeddingPort {
 
     @Override
     public int getDimension() {
-        return embeddingProperties.getDim();
+        return embeddingProperties.model().dimensions();
     }
 }

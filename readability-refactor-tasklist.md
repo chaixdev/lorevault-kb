@@ -1,6 +1,8 @@
-# Readability Refactor Tasklist
+# Readabili## 🔄 In Progress
+_Currently empty - ready to take on next task_
 
-> **Goal**: Improve code readability and maintainability by breaking down monolithic services into focused, single-responsibility components following ports & adapters architecture principles.
+## 🚫 Blocked
+_Currently empty_
 
 ## 🏁 Done
 - [x] **[refactor]** ChunkEmbeddingService - Refactored 300+ line monolithic method into 15+ focused helpers with EmbeddingContext
@@ -8,6 +10,7 @@
 - [x] **[refactor]** ContentIngestionController - Reduced from ~240 lines to ~95 lines (60% reduction), extracted 4 specialized services
 - [x] **[refactor]** LlmHealthCheckService - Decomposed into 3 specialized services with context objects, all 39 tests passing
 - [x] **[infra]** Better LLM Retry Handling - Enhanced resilience with exponential backoff + jitter, job status communication, transaction rollback fix
+- [x] **[infra]** Configuration Modernization - Migrated to YAML with type-safe @ConfigurationProperties validation, organized lorevault.* namespace
 
 ## � In Progress
 _Currently empty - ready to take on next task_
@@ -30,13 +33,6 @@ _Currently empty_
   - Implement provider-specific configuration properties (e.g., `lorevault.llm.chat.provider=groq`)
   - Add provider failover logic for high availability
   - Update health checks to monitor multiple providers
-
-- [ ] **[chore]** Configuration Modernization - Convert to YAML and consolidate properties
-  - Convert `application.properties` to `application.yml` format
-  - Consolidate all custom properties under `lorevault.*` namespace
-  - Organize properties by functional area (e.g., `lorevault.llm.*`, `lorevault.embedding.*`, `lorevault.ingestion.*`)
-  - Add property validation with `@ConfigurationProperties` classes
-  - Update environment-specific overrides (dev, test profiles)
 
 ### Medium Priority
 - [ ] **[refactor]** SceneDetectionXmlParser - Stage-based processing

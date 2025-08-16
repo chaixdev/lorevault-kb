@@ -1,0 +1,112 @@
+# LoreVault API Configuration
+server:
+  port: 18080
+  servlet:
+    context-path: /
+  tomcat:
+    threads:
+      max: 20
+      min-spare: 5
+    accept-count: 100
+
+# Database Configuration
+spring:
+  neo4j:
+    uri: bolt://localhost:7687
+    authentication:
+      username: ${NEO4J_USERNAME}
+      password: ${NEO4J_PASSWORD}
+    pool:
+      metrics-enabled: false
+
+  # Spring AI Configuration - Gemini via OpenAI compatibility endpoint
+  ai:
+    openai:
+      api-key: ${GEMINI_AI_API_KEY:your-api-key-here}
+      base-url: https://generativelanguage.googleapis.com/v1beta/openai
+      chat:
+        completions-path: /chat/completions
+        options:
+          model: gemini-2.5-flash-lite
+      embedding:
+        options:
+          model: gemini-embedding-001
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# LoreVault Configuration
+lorevault:
+  # LLM Configuration
+  llm:
+    # Scene Detection Configuration
+    scene-detection:
+      provider: openai
+      openai:
+        model: gpt-4o-mini
+        temperature: 0.1
+        max-tokens: 4000
+        base-url: https://api.openai.com/v1
+        api-key: ${OPENAI_API_KEY:}
+    
+    # LLM Retry Configuration
+    retry:
+      max-attempts: 3
+      base-delay-ms: 1000
+      backoff-multiplier: 2.0
+      max-delay-ms: 10000
+      jitter-factor: 0.1
+    
+    # Prompt Configuration
+    prompts:
+      base-path: classpath:prompts
+      scene-detection: scene-detection-v2.txt
+      
+  # Embedding Configuration
+  embedding:
+    model:
+      provider: openai
+      model: text-embedding-3-small
+      dimensions: 3072
+      batch-size: 32
+    processing:
+      parallel: true
+      max-concurrency: 5
+      timeout-ms: 30000
+      # Retry settings (from old EmbeddingProperties)
+      max-attempts: 3
+      initial-delay-millis: 200
+      backoff-multiplier: 2.0
+      max-delay-millis: 2000
+    
+  # Content Processing Configuration
+  content:
+    # Text chunking settings
+    chunking:
+      decision-threshold: 5000
+      target-size: 3000
+      overlap-percentage: 15
+      min-chunk-size: 2000
+      max-chunk-size: 4000
+      
+  # AI Prompts Configuration
+  ai:
+    prompts:
+      base-path: classpath:prompts
+      scene-detection: scene-detection-v2.txt
+      
+  # Ingestion Configuration (for future expansion)
+  ingestion:
+    # async:
+    #   pool-size: 5
+    #   queue-capacity: 100
+    # validation:
+    #   max-file-size: 10MB
+    #   allowed-types: txt,md,pdf

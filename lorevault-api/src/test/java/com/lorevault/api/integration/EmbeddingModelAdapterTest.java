@@ -1,7 +1,7 @@
 package com.lorevault.api.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lorevault.api.config.EmbeddingProperties;
+import com.lorevault.api.configuration.properties.LoreVaultEmbeddingProperties;
 import com.lorevault.api.infrastructure.ai.EmbeddingModelAdapter;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpEntity;
@@ -23,8 +23,9 @@ class EmbeddingModelAdapterTest {
 
     @Test
     void embedBatch_parsesVectorsFromMockResponse() throws Exception {
-        EmbeddingProperties props = new EmbeddingProperties();
-        props.setDim(5);
+        var modelProps = new LoreVaultEmbeddingProperties.ModelProperties("openai", "test", 5, 32);
+        var processingProps = new LoreVaultEmbeddingProperties.ProcessingProperties(true, 5, 30000L, 3, 200L, 2.0, 2000L);
+        var props = new LoreVaultEmbeddingProperties(modelProps, processingProps);
         RestTemplate mockRest = mock(RestTemplate.class);
         EmbeddingModelAdapter adapter = new EmbeddingModelAdapter(props, mockRest);
 
