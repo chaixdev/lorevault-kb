@@ -44,7 +44,7 @@ lorevault:
       jitter-factor: 0.1
 
     models:
-    # Embeddings slot — currently fulfilled via Spring AI OpenAI config above (Gemini OpenAI-compatible)
+    # Embedding model configuration (Gemini OpenAI-compatible)
       embedding:
         provider: openai-compatible
         base-url: https://generativelanguage.googleapis.com/v1beta/openai
