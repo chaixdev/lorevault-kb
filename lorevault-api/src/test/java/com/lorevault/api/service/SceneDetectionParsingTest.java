@@ -66,7 +66,7 @@ class SceneDetectionParsingTest {
         assertThat(secondScene.sceneIndex()).isEqualTo(2);
         assertThat(secondScene.contextSummary()).isEqualTo("The landing party explores the jungle on Xylos.");
         assertThat(secondScene.startAnchor()).isEqualTo("Three hours later, the landing party");
-  assertThat(secondScene.breakReason()).isEqualTo("Time jump and location change to planet surface.");
+        assertThat(secondScene.breakReason()).isEqualTo("Time jump and location change to planet surface.");
     }
 
     @Test
