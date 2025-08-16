@@ -30,7 +30,7 @@ public class LlmHealthCheckService {
     private final ModelHealthValidator modelHealthValidator;
     private final HealthMetricsCollector healthMetricsCollector;
     
-        @Value("${lorevault.ai.models.nlp-big.model:unknown}")
+    @Value("${lorevault.ai.models.nlp-big.model:unknown}")
     private String modelId;
 
     @Value("${lorevault.llm.health.enabled:true}")
