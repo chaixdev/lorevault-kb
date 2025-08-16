@@ -30,8 +30,8 @@ public class LlmHealthCheckService {
     private final ModelHealthValidator modelHealthValidator;
     private final HealthMetricsCollector healthMetricsCollector;
     
-    @Value("${spring.ai.openai.chat.options.model:unknown}")
-    private String currentModelId;
+        @Value("${lorevault.ai.models.nlp-big.model:unknown}")
+    private String modelId;
 
     @Value("${lorevault.llm.health.enabled:true}")
     private boolean healthEnabled;
@@ -48,16 +48,16 @@ public class LlmHealthCheckService {
         }
         
         Instant overallStart = Instant.now();
-        log.info("Performing LLM service health check for model: {}", currentModelId);
+        log.info("Performing LLM service health check for model: {}", modelId);
         
         HealthMetricsCollector.ModelHealthStatus healthResult = checkCurrentModel();
         long totalMs = Duration.between(overallStart, Instant.now()).toMillis();
         
         if (healthResult.isHealthy()) {
-            log.info("✅ LLM model '{}' is healthy ({} ms total)", currentModelId, totalMs);
+            log.info("✅ LLM model '{}' is healthy ({} ms total)", modelId, totalMs);
         } else {
             log.error("❌ LLM model '{}' health check FAILED after {} ms: {}", 
-                     currentModelId, totalMs, healthResult.getErrorMessage());
+                     modelId, totalMs, healthResult.getErrorMessage());
         }
     }
     
@@ -68,7 +68,7 @@ public class LlmHealthCheckService {
      * @return Health status of the current model
      */
     public HealthMetricsCollector.ModelHealthStatus checkCurrentModel() {
-        return checkSingleModel(currentModelId);
+        return checkSingleModel(modelId);
     }
     
     /**
@@ -79,7 +79,7 @@ public class LlmHealthCheckService {
      */
     public Map<String, HealthMetricsCollector.ModelHealthStatus> checkAllModels() {
         Map<String, HealthMetricsCollector.ModelHealthStatus> results = new LinkedHashMap<>();
-        results.put(currentModelId, checkCurrentModel());
+        results.put(modelId, checkCurrentModel());
         return results;
     }
     
@@ -147,14 +147,14 @@ public class LlmHealthCheckService {
      * Get detailed metrics for the current model
      */
     public HealthMetricsCollector.ModelMetrics getCurrentModelMetrics() {
-        return healthMetricsCollector.getModelMetrics(currentModelId);
+        return healthMetricsCollector.getModelMetrics(modelId);
     }
 
     /**
      * Get the last health status for the current model
      */
     public HealthMetricsCollector.ModelHealthStatus getLastHealthStatus() {
-        return healthMetricsCollector.getLastStatus(currentModelId);
+        return healthMetricsCollector.getLastStatus(modelId);
     }
 
     /**
