@@ -48,7 +48,7 @@ lorevault:
       embedding:
         provider: openai-compatible
         base-url: https://generativelanguage.googleapis.com/v1beta/openai
-        api-key: ${GEMINI_AI_API_KEY}
+        api-key: ${GEMINI_AI_API_KEY:}
         model: gemini-embedding-001
         # Embedding-specific options can be added here in the future if needed
 
