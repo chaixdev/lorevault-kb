@@ -1,0 +1,47 @@
+<scenes>
+  <scene>
+    <index>1</index>
+    <start_anchor><![CDATA[“Next!” I ordered.]]></start_anchor>
+    <context_summary>A customs officer, Krrkktnkk a'ktnnzzik'tk, processes an alien abductee, Kevin Jenkins, who claims to be a human from a category twelve temperate planet. The officer is confused by the human's species and the fact that it is considered a non-sentient specimen under the Galactic Treaty of Laws.</context_summary>
+    <break_reason>The scene shifts from the customs desk to a violent attack by Hunters, a carnivorous species that prefers the meat of fellow sentients.</break_reason>
+    <timeline_order>R:temporal.meets</timeline_order>
+    <timeline_order_certainty>Explicit</timeline_order_certainty>
+    <timeline_marker><![CDATA[Contemporary scene]]></timeline_marker>
+  </scene>
+  <scene>
+    <index>2</index>
+    <start_anchor><![CDATA[It was suicide. The Hunter had a clear shot and took it.]]></start_anchor>
+    <context_summary>Krrkktnkk a'ktnnzzik'tk and Kevin Jenkins are attacked by Hunters, and Jenkins single-handedly defeats three of the alien warriors using his strength and agility.</context_summary>
+    <break_reason>The scene shifts from the aftermath of the Hunter attack to a conversation between Krrkktnkk a'ktnnzzik'tk and Kevin Jenkins on the public promenade deck of the station.</break_reason>
+    <timeline_order>R:temporal.after</timeline_order>
+    <timeline_order_certainty>StronglyImplied</timeline_order_certainty>
+    <timeline_marker><![CDATA[During the Hunter attack]]></timeline_marker>
+  </scene>
+  <scene>
+    <index>3</index>
+    <start_anchor><![CDATA[I found the human Kevin Jenkins in conversation with one of the station’s senior lawyers on the public promenade deck.]]></start_anchor>
+    <context_summary>Krrkktnkk a'ktnnzzik'tk encounters Kevin Jenkins and a lawyer, Vedreg, discussing a petition to reclassify humans as sentient. Jenkins explains his species' biology and behavior, including their strength, resilience, and unique gland that generates combat drugs.</context_summary>
+    <break_reason>The scene shifts from the conversation between Krrkktnkk a'ktnnzzik'tk, Jenkins, and Vedreg to a description of the events that followed, including the council's decision to send a civilian fleet to Earth and the subsequent conflict.</break_reason>
+    <timeline_order>R:temporal.meets</timeline_order>
+    <timeline_order_certainty>Heuristic</timeline_order_certainty>
+    <timeline_marker><![CDATA[Twenty diurnals after the Hunter attack]]></timeline_marker>
+  </scene>
+  <scene>
+    <index>4</index>
+    <start_anchor><![CDATA[Within hours, our conversation was the big talking point on a major interstellar newsfeed complete with an alarmist headline.]]></start_anchor>
+    <context_summary>The conversation between Krrkktnkk a'ktnnzzik'tk, Jenkins, and Vedreg becomes a major news story, and the council convenes a special meeting to discuss the implications of Jenkins' words. A civilian fleet is sent to Earth, and a conflict ensues.</context_summary>
+    <break_reason>The scene shifts from the council's decision to send a civilian fleet to Earth to a description of the events that followed, including the research mission to Earth and Krrkktnkk a'ktnnzzik'tk's transfer to head of security on the research station.</break_reason>
+    <timeline_order>R:temporal.meets</timeline_order>
+    <timeline_order_certainty>Heuristic</timeline_order_certainty>
+    <timeline_marker><![CDATA[After the conversation between Krrkktnkk a'ktnnzzik'tk, Jenkins, and Vedreg]]></timeline_marker>
+  </scene>
+  <scene>
+    <index>5</index>
+    <start_anchor><![CDATA[The station displaced into the Earth system five eight-diurnals after the mission was announced, using the bulk of a large ringed gas world known as “Saturn” to mask the neutrino burst of its arrival.]]></start_anchor>
+    <context_summary>Krrkktnkk a'ktnnzzik'tk is transferred to head of security on the research station, which is sent to Earth to study the human species. The station is designed to go undetected, and Krrkktnkk a'ktnnzzik'tk begins to learn more about human culture and society.</context_summary>
+    <break_reason>The scene shifts from the research station to a description of Krrkktnkk a'ktnnzzik'tk's experiences on the station, including his interactions with the human abductees and his observations of human culture and society.</break_reason>
+    <timeline_order>R:temporal.meets</timeline_order>
+    <timeline_order_certainty>Heuristic</timeline_order_certainty>
+    <timeline_marker><![CDATA[Five eight-diurnals after the mission was announced]]></timeline_marker>
+  </scene>
+</scenes>

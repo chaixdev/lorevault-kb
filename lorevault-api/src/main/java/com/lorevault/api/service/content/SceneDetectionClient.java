@@ -15,6 +15,7 @@ import java.util.Map;
 
 /**
  * Client responsible for making AI calls for scene detection.
+ * Supports both single-pass (legacy) and two-pass scene detection workflows.
  * Encapsulates the AI model configuration, prompt loading, and retry logic.
  */
 @Component
@@ -27,14 +28,64 @@ public class SceneDetectionClient {
     
     @Qualifier("llmRetryTemplate")
     private final RetryTemplate retryTemplate;
-    
-    @Value("${lorevault.ai.models.nlp-big.model:unknown}")
+
+    @Value("${lorevault.ai.models.nlp-small.model:llama-3.1-8b-instant}")
     private String currentModelId;
-    
+
     /**
-     * Calls the configured AI model to analyze chapter text and detect scene boundaries.
-     * Uses system prompt + user message pattern with optimized parameters for consistent results.
-     * Leverages Spring RetryTemplate for robust retry handling.
+     * Perform two-pass scene detection on chapter text.
+     * Pass 1: Initial scene segmentation and rich hints.
+     * Pass 2: Schema normalization of pass 1 results.
+     * 
+     * @param chapterText The full chapter text to analyze
+     * @return Raw XML response from Pass 2 (normalized scenes)
+     * @throws RuntimeException if either pass fails after retries
+     */
+    public String detectScenesTwoPass(String chapterText) {
+        log.debug("[LLM] Starting two-pass scene detection: inputLength={} chars, model={}", 
+                 chapterText == null ? 0 : chapterText.length(), currentModelId);
+        
+        // Pass 1: Initial scene detection with rich hints
+        String pass1Result = detectScenesPass1(chapterText);
+        log.debug("[LLM] Pass 1 completed, result length={} chars", pass1Result.length());
+        
+        // Pass 2: Schema normalization using pass 1 results
+        String pass2Result = detectScenesPass2(pass1Result);
+        log.debug("[LLM] Pass 2 completed, final result length={} chars", pass2Result.length());
+        
+        return pass2Result;
+    }
+
+    /**
+     * Pass 1: Initial scene segmentation with rich hints.
+     * 
+     * @param chapterText The full chapter text to analyze
+     * @return Raw XML response from Pass 1
+     * @throws RuntimeException if pass 1 fails after retries
+     */
+    public String detectScenesPass1(String chapterText) {
+        PromptTemplate template = promptLoaderService.getSceneDetectionPass1PromptTemplate();
+        String systemPrompt = template.render(Map.of());
+        
+        return executeSceneDetectionCall("Pass 1", systemPrompt, chapterText);
+    }
+
+    /**
+     * Pass 2: Schema normalization of Pass 1 results.
+     * 
+     * @param pass1XmlResult The XML output from Pass 1
+     * @return Raw XML response from Pass 2 (normalized)
+     * @throws RuntimeException if pass 2 fails after retries  
+     */
+    public String detectScenesPass2(String pass1XmlResult) {
+        PromptTemplate template = promptLoaderService.getSceneDetectionPass2PromptTemplate();
+        String systemPrompt = template.render(Map.of());
+        
+        return executeSceneDetectionCall("Pass 2", systemPrompt, pass1XmlResult);
+    }
+
+    /**
+     * Legacy method: single-pass scene detection using the v2 prompt.
      * 
      * @param chapterText The full chapter text to analyze
      * @return Raw XML response from the AI model
@@ -43,49 +94,66 @@ public class SceneDetectionClient {
     public String detectScenes(String chapterText) {
         // Load the system prompt (instructions) from resources
         PromptTemplate template = promptLoaderService.getSceneDetectionPromptTemplate();
-        String systemPrompt = template.render(Map.of()); // No variables needed for system prompt
-        log.debug("[LLM] Scene detection request: inputLength={} chars, model={}", chapterText == null ? 0 : chapterText.length(), currentModelId);
+        String systemPrompt = template.render(Map.of());
+        
+        return executeSceneDetectionCall("Single-pass", systemPrompt, chapterText);
+    }
+
+    private String executeSceneDetectionCall(String passName, String systemPrompt, String userInput) {
+        log.debug("[LLM] {} scene detection request: inputLength={} chars, model={}", 
+                 passName, userInput == null ? 0 : userInput.length(), currentModelId);
         log.trace("[LLM] System prompt ({} chars): {}", systemPrompt.length(), systemPrompt);
-        // Create options for consistent, deterministic results
+        
         OpenAiChatOptions options = OpenAiChatOptions.builder()
             .temperature(0.1)
             .topP(0.9)
             .maxTokens(6000)
             .build();
-        final String safeText = chapterText == null ? "" : chapterText;
+            
+        final String safeInput = userInput == null ? "" : userInput;
+        
         try {
             long start = System.nanoTime();
             return retryTemplate.execute(retryContext -> {
                 int retryCount = retryContext.getRetryCount();
                 String attemptMsg = retryCount > 0 ? " (retry=" + retryCount + ")" : "";
-                log.debug("[LLM] Calling model={}{}", currentModelId, attemptMsg);
+                log.debug("[LLM] Calling model={} for {}{}", currentModelId, passName, attemptMsg);
+                
                 String response = chatClient.prompt()
                     .system(systemPrompt)
-                    .user(safeText)
+                    .user(safeInput)
                     .options(options)
                     .call()
                     .content();
+                    
                 long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
                 if (response == null || response.trim().isEmpty()) {
-                    log.warn("[LLM] Empty response (elapsed={}ms) model={}", elapsedMs, currentModelId);
-                    throw new RuntimeException("Empty response from " + currentModelId);
+                    log.warn("[LLM] Empty response from {} (elapsed={}ms) model={}", 
+                            passName, elapsedMs, currentModelId);
+                    throw new RuntimeException("Empty response from " + currentModelId + " during " + passName);
                 }
+                
                 int len = response.length();
                 String preview = response.substring(0, Math.min(400, len)).replaceAll("\n", "\\n");
-                log.debug("[LLM] Raw response length={} elapsed={}ms model={}", len, elapsedMs, currentModelId);
+                log.debug("[LLM] {} response length={} elapsed={}ms model={}", 
+                         passName, len, elapsedMs, currentModelId);
                 log.trace("[LLM] Full raw response:{}\n{}", System.lineSeparator(), response);
                 log.debug("[LLM] Response preview (first {} chars): {}", preview.length(), preview);
+                
                 return response;
+                
             }, recoveryContext -> {
                 Throwable lastError = recoveryContext.getLastThrowable();
                 String errorMsg = lastError != null ? lastError.getMessage() : "Unknown error";
-                log.error("[LLM] All attempts failed after {} retries: {}", recoveryContext.getRetryCount(), errorMsg);
-                throw new RuntimeException("Scene detection failed permanently after multiple attempts: " + errorMsg,
+                log.error("[LLM] {} failed after {} retries: {}", 
+                         passName, recoveryContext.getRetryCount(), errorMsg);
+                throw new RuntimeException(passName + " scene detection failed permanently after multiple attempts: " + errorMsg,
                         recoveryContext.getLastThrowable());
             });
+            
         } catch (Exception e) {
-            log.error("[LLM] Unexpected error during scene detection: {}", e.getMessage(), e);
-            throw new RuntimeException("Scene detection failed: " + e.getMessage(), e);
+            log.error("[LLM] Unexpected error during {} scene detection: {}", passName, e.getMessage(), e);
+            throw new RuntimeException(passName + " scene detection failed: " + e.getMessage(), e);
         }
     }
 }

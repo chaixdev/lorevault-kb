@@ -36,13 +36,36 @@ public class PromptLoaderService {
     public void initialize() {
         log.info("Initializing PromptLoaderService with base path: {}", llmProperties.prompts().basePath());
         
-        // Pre-load scene detection prompt
+        // Pre-load scene detection prompts
         try {
-            getSceneDetectionPromptTemplate();
-            log.info("Successfully pre-loaded scene detection prompt template");
+            getSceneDetectionPass1PromptTemplate();
+            getSceneDetectionPass2PromptTemplate();
+            log.info("Successfully pre-loaded scene detection pass 1 & 2 prompt templates");
         } catch (Exception e) {
-            log.error("Failed to pre-load scene detection prompt template: {}", e.getMessage());
+            log.error("Failed to pre-load scene detection prompt templates: {}", e.getMessage());
         }
+    }
+
+    /**
+     * Get scene detection pass 1 prompt template from configured location.
+     * 
+     * @return Configured PromptTemplate for scene detection pass 1
+     * @throws RuntimeException if prompt cannot be loaded
+     */
+    public PromptTemplate getSceneDetectionPass1PromptTemplate() {
+        String promptPath = llmProperties.prompts().basePath() + "/scene-detection-pass1.txt";
+        return getPromptTemplate("scene-detection-pass1", promptPath);
+    }
+
+    /**
+     * Get scene detection pass 2 prompt template from configured location.
+     * 
+     * @return Configured PromptTemplate for scene detection pass 2
+     * @throws RuntimeException if prompt cannot be loaded
+     */
+    public PromptTemplate getSceneDetectionPass2PromptTemplate() {
+        String promptPath = llmProperties.prompts().basePath() + "/scene-detection-pass2.txt";
+        return getPromptTemplate("scene-detection-pass2", promptPath);
     }
 
     /**
