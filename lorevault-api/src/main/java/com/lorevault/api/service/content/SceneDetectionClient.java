@@ -28,7 +28,7 @@ public class SceneDetectionClient {
     @Qualifier("llmRetryTemplate")
     private final RetryTemplate retryTemplate;
     
-    @Value("${spring.ai.openai.chat.options.model:unknown}")
+    @Value("${lorevault.ai.models.nlp-big.model:unknown}")
     private String currentModelId;
     
     /**

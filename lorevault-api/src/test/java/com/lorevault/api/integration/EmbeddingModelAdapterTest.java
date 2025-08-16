@@ -2,6 +2,7 @@ package com.lorevault.api.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.configuration.properties.LoreVaultEmbeddingProperties;
+import com.lorevault.api.configuration.properties.LoreVaultModelsProperties;
 import com.lorevault.api.infrastructure.ai.EmbeddingModelAdapter;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpEntity;
@@ -26,8 +27,15 @@ class EmbeddingModelAdapterTest {
         var modelProps = new LoreVaultEmbeddingProperties.ModelProperties("openai", "test", 5, 32);
         var processingProps = new LoreVaultEmbeddingProperties.ProcessingProperties(true, 5, 30000L, 3, 200L, 2.0, 2000L);
         var props = new LoreVaultEmbeddingProperties(modelProps, processingProps);
+        
+        // Create mock models properties for the new constructor parameter
+        var embeddingModel = new LoreVaultModelsProperties.ModelProperties("openai-compatible", "https://example.com/v1beta/openai", "/embeddings", "DUMMY", "gemini-embedding-001", 0.3, 1.0, 512);
+        var nlpSmall = new LoreVaultModelsProperties.ModelProperties("openai-compatible", "http://test", "/chat/completions", "test-key", "test-model", 0.3, 1.0, 2048);
+        var nlpBig = new LoreVaultModelsProperties.ModelProperties("openai-compatible", "http://test", "/chat/completions", "test-key", "test-model", 0.2, 1.0, 4096);
+        var modelsProps = new LoreVaultModelsProperties(embeddingModel, nlpSmall, nlpBig);
+        
         RestTemplate mockRest = mock(RestTemplate.class);
-        EmbeddingModelAdapter adapter = new EmbeddingModelAdapter(props, mockRest);
+        EmbeddingModelAdapter adapter = new EmbeddingModelAdapter(props, modelsProps, mockRest);
 
         String json = "{\n" +
                 "  \"data\": [\n" +
@@ -39,11 +47,6 @@ class EmbeddingModelAdapterTest {
         var node = mapper.readTree(json);
         when(mockRest.postForEntity(anyString(), any(HttpEntity.class), eq(com.fasterxml.jackson.databind.JsonNode.class)))
                 .thenReturn(ResponseEntity.ok(node));
-
-        // Inject @Value fields
-        org.springframework.test.util.ReflectionTestUtils.setField(adapter, "modelId", "gemini-embedding-001");
-        org.springframework.test.util.ReflectionTestUtils.setField(adapter, "baseUrl", "https://example.com/v1beta/openai");
-        org.springframework.test.util.ReflectionTestUtils.setField(adapter, "apiKey", "DUMMY");
 
         List<double[]> result = adapter.embedBatch(List.of("a","b"));
         assertThat(result).hasSize(2);
