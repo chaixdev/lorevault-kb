@@ -48,6 +48,13 @@ public class Scene {
      */
     private Long endCharacterOffset;
 
+    /**
+     * The actual text content of this scene, materialized for traceability and context
+     * This supports the distributed content storage model where scenes store their own
+     * text content to enable independent access without requiring chapter materialization.
+     */
+    private String text;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

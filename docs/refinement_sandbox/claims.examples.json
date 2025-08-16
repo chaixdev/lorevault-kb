@@ -1,0 +1,42 @@
+{
+  "context": {
+    "source": { "role": "narrator" },
+    "pub": {
+      "universe": "jenkinsverse",
+      "series": "tdw",
+      "bookNumber": 1,
+      "chapterNumber": 1,
+      "sceneIndex": 0
+    },
+    "chapterId": "bk1-ch1",
+    "sceneIndex": 0
+  },
+  "claims": [
+    {
+      "id": "bk1-ch1-s0-0001",
+      "type": "ascription",
+      "subjectId": "E:concept/unknown_species",
+      "propertyDescription": "body composition",
+      "value": "silica",
+      "certainty": 0.6,
+      "qualifiers": { "part": "endoskeleton" }
+    },
+    {
+      "id": "bk1-ch1-s0-0002",
+      "type": "relation",
+      "subjectId": "E:concept/unknown_species",
+      "relationDescription": "appeared at",
+      "objectId": "E:location/vancouver",
+      "certainty": 0.9
+    },
+    {
+      "id": "bk1-ch1-s0-0003",
+      "type": "comparison",
+      "subjectId": "E:concept/unknown_species",
+      "propertyDescription": "strength",
+      "op": "lt",
+      "targetId": "E:concept/human",
+      "certainty": 0.8
+    }
+  ]
+}

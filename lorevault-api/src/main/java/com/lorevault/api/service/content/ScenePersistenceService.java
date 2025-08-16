@@ -41,12 +41,40 @@ public class ScenePersistenceService {
             log.info("Chapter {} already has scenes; returning existing", chapterId);
             return contentPersistencePort.findScenesByChapterId(chapterId);
         }
+        
+        // Fetch chapter text to extract scene content
+        String chapterText = null;
+        var chapterNode = contentPersistencePort.findChapterById(chapterId);
+        if (chapterNode.isPresent()) {
+            chapterText = chapterNode.get().getRawText();
+        }
+        
+        final String finalChapterText = chapterText;
         List<SceneNode> nodes = scenesWithCoords.stream().map(s -> {
             SceneNode n = new SceneNode();
             n.setSceneIndex(s.sceneIndex());
             n.setStartOffset(s.startCharacterOffset());
             n.setEndOffset(s.endCharacterOffset());
             n.setContextSummary(s.contextSummary());
+            
+            // Extract and set the scene text
+            if (finalChapterText != null) {
+                try {
+                    int start = (int) s.startCharacterOffset();
+                    int end = (int) s.endCharacterOffset();
+                    if (start >= 0 && end <= finalChapterText.length() && start < end) {
+                        String sceneText = finalChapterText.substring(start, end);
+                        n.setText(sceneText);
+                        log.trace("Extracted scene text for scene {}: {} chars", s.sceneIndex(), sceneText.length());
+                    } else {
+                        log.warn("Invalid scene coordinates for scene {}: start={}, end={}, chapterLen={}", 
+                               s.sceneIndex(), start, end, finalChapterText.length());
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to extract scene text for scene {}: {}", s.sceneIndex(), e.getMessage());
+                }
+            }
+            
             return n;
         }).collect(Collectors.toList());
         return contentPersistencePort.addScenesToChapter(chapterId, nodes);

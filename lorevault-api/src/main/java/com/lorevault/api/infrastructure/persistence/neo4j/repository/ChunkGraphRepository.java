@@ -20,4 +20,35 @@ public interface ChunkGraphRepository extends Neo4jRepository<ChunkNode, UUID> {
 
     @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_CHUNK]->(ch:Chunk) DETACH DELETE ch")
     void deleteByChapterId(UUID chapterId);
+
+    // Scene-based patterns (new scene->chunk model)
+        @Query("""
+                        MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene)-[r:HAS_CHUNK]->(ch:Chunk)
+                        RETURN ch ORDER BY s.sceneIndex, r.chunkIndex
+                        """)
+    List<ChunkNode> findByChapterIdViaScenes(UUID chapterId);
+
+    @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(ch:Chunk) RETURN count(ch) > 0")
+    boolean existsForChapterViaScenes(UUID chapterId);
+
+    @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(ch:Chunk) RETURN count(ch)")
+    int countByChapterIdViaScenes(UUID chapterId);
+
+    @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(ch:Chunk) DETACH DELETE ch")
+    void deleteByChapterIdViaScenes(UUID chapterId);
+
+    // Embedding targeting queries
+    @Query("""
+            MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene)-[r:HAS_CHUNK]->(ch:Chunk)
+            WHERE ch.embedding IS NULL OR ch.embeddingHash IS NULL
+            RETURN ch ORDER BY s.sceneIndex, r.chunkIndex
+            """)
+    List<ChunkNode> findUnembeddedByChapterId(UUID chapterId);
+
+    @Query("""
+            MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene)-[r:HAS_CHUNK]->(ch:Chunk)
+            WHERE ch.embeddingHash <> $expectedHash
+            RETURN ch ORDER BY s.sceneIndex, r.chunkIndex
+            """)
+    List<ChunkNode> findStaleEmbeddingsByChapterId(UUID chapterId, String expectedHash);
 }

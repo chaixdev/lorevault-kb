@@ -16,7 +16,7 @@ import java.util.Map;
 public class LlmModelInfoService {
 
     @Getter
-    @Value("${spring.ai.openai.chat.options.model:unknown}")
+    @Value("${lorevault.ai.models.nlp-big.model:unknown}")
     private String currentModelId;
 
     // Static mapping of model IDs to human-readable names

@@ -3,7 +3,6 @@ package com.lorevault.api.infrastructure.config;
 import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.infrastructure.ai.openai.OpenAiSceneDetectionAdapter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,14 +16,10 @@ public class PortsAdaptersConfiguration {
     
     /**
      * Configure the scene detection port implementation.
-     * Defaults to OpenAI implementation but can be switched via configuration.
+     * Currently uses OpenAI implementation with enhanced retry handling.
+     * Multi-provider support will be added after properties to YAML migration.
      */
     @Bean
-    @ConditionalOnProperty(
-        name = "lorevault.ai.scene-detection.provider", 
-        havingValue = "openai", 
-        matchIfMissing = true  // Default to OpenAI if not specified
-    )
     public SceneDetectionPort sceneDetectionPort(OpenAiSceneDetectionAdapter adapter) {
         return adapter;
     }

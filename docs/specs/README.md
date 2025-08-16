@@ -5,19 +5,16 @@ This directory contains detailed technical specifications that bridge the gap be
 ## Core Specifications
 
 ### Data Model & Storage
-- **[Core Data Model](core-data-model.md)**: Hierarchical model for chapters, scenes, and chunks
+- **[Neo4j Content Data Model](neo4j-content-data-model.md)**: Hierarchical model for chapters, scenes, and chunks
 - **[Text Chunking Specification](text-chunking-specification.md)**: Rolling window algorithm for breaking down content into overlapping segments
+- **[Content Hierarchy Integration](content-hierarchy-integration.md)**: Integration patterns and performance optimizations for publication hierarchies
 
 ### AI & Intelligence
 - **[Scene Detection Specification](scene-detection-specification.md)**: XML-based AI scene boundary detection with two-stage processing
-
-### Process & Workflow
-- **[Content Ingestion Process](content-ingestion-process.md)**: Complete pipeline from HTTP request to entity storage
-- **[Ingestion Job Lifecycle](ingestion-job-lifecycle.md)**: Job tracking and status management with event-sourcing pattern
+- **[Spoiler-Aware Retrieval Process](spoiler-aware-retrieval-process.md)**: Query processing workflows with spoiler protection
 
 ### API & Integration
 - **[REST API Specification](rest-api-specification.md)**: HTTP endpoints, request/response formats, and error handling
-- **[API Structure Specification](api-structure-specification.md)**: Service layer organization and component interaction
 - **[Health Endpoint Specification](health-endpoint-specification.md)**: Service health monitoring and LLM connectivity validation
 
 ### Quality & Testing
@@ -33,8 +30,8 @@ See **[SPEC_DOCUMENTATION_GUIDELINES.md](SPEC_DOCUMENTATION_GUIDELINES.md)** for
 ┌─────────────────────────────────────────┐
 │            Process Layer                │
 ├─────────────────────────────────────────┤
-│ content-ingestion-process.md            │
-│ ingestion-job-lifecycle.md              │
+│ spoiler-aware-retrieval-process.md      │
+│ content-hierarchy-integration.md        │
 └─────────────────┬───────────────────────┘
                   │
 ┌─────────────────▼───────────────────────┐
@@ -47,14 +44,13 @@ See **[SPEC_DOCUMENTATION_GUIDELINES.md](SPEC_DOCUMENTATION_GUIDELINES.md)** for
 ┌─────────────────▼───────────────────────┐
 │            Data Layer                   │
 ├─────────────────────────────────────────┤
-│ core-data-model.md                      │
+│ neo4j-content-data-model.md             │
 └─────────────────┬───────────────────────┘
                   │
 ┌─────────────────▼───────────────────────┐
 │            Interface Layer              │
 ├─────────────────────────────────────────┤
 │ rest-api-specification.md               │
-│ api-structure-specification.md          │
 │ health-endpoint-specification.md        │
 └─────────────────────────────────────────┘
 ```
@@ -63,4 +59,5 @@ See **[SPEC_DOCUMENTATION_GUIDELINES.md](SPEC_DOCUMENTATION_GUIDELINES.md)** for
 
 - **v0.2.0**: Core content storage and segmentation specifications
 - **v0.3.0**: ✅ Scene detection and hierarchical structure implementation
-- **v0.4.0+**: Future AI enhancement and vector embeddings
+- **v0.4.0**: ✅ Clean three-slot LLM configuration (embedding, nlp-small, nlp-big) with manual Spring AI beans
+- **v0.5.0+**: Future enhancements and semantic search capabilities

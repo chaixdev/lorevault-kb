@@ -6,8 +6,8 @@
 
 **Dependencies**: 
 - Architecture Document: Functional Viewpoint (02-functional-viewpoint.md) - CQRS patterns
-- Content Ingestion Process (content-ingestion-process.md) - Processing workflow
-- Core Data Model (core-data-model.md) - Entity structures
+- Neo4j Content Data Model (neo4j-content-data-model.md) - Entity structures
+- Scene Detection Specification (scene-detection-specification.md) - Processing workflow
 
 ## Process Overview
 
@@ -212,7 +212,7 @@ universe: string (required) - Universe identifier
   "chapters": [
     {
       "chapterId": "123e4567-e89b-12d3-a456-426614174000",
-      "book": "The Fellowship of the Ring",
+      "book": "The Fellowsahip of the Ring",
       "title": "The Shadow of the Past",
       "chunkCount": 47,
       "processedAt": "2025-08-06T10:16:30Z"
@@ -365,7 +365,7 @@ flowchart TD
 ### External Service Integration
 
 **Future Integrations** (v0.3.0+):
-- Local AI service (Gemma 3B): Scene detection and entity extraction
+- LLM service (three-slot configuration): Scene detection and entity extraction
 - External AI services (GPT-4/Claude): Advanced synthesis
 - Vector database (pgvector): Semantic search capabilities
 

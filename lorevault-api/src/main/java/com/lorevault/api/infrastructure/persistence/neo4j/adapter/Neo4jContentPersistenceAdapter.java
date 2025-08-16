@@ -1,16 +1,13 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.adapter;
 
-import com.lorevault.api.infrastructure.persistence.neo4j.model.*;
 import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.*;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -83,7 +80,7 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     }
 
     @Override
-    public List<ChunkNode> addChunksToChapter(UUID chapterId, List<ChunkNode> chunks) {
+    public List<ChunkNode> addChunksToChapter(UUID chapterId, List<ChunkNode> chunks) { /* deprecated path, keep for backward compatibility */
         ChapterNode chapter = chapterRepo.findById(chapterId).orElseThrow();
         for (ChunkNode chunk : chunks) {
             if (chunk.getId() == null) chunk.setId(UUID.randomUUID());
@@ -99,25 +96,25 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     }
 
     @Override
-    public List<ChunkNode> findChunksByChapterId(UUID chapterId) {
-        return chunkRepo.findByChapterId(chapterId);
+    public ChunkNode addChunkToScene(UUID sceneId, ChunkNode chunk) {
+        SceneNode scene = sceneRepo.findById(sceneId).orElseThrow();
+        if (chunk.getId() == null) chunk.setId(UUID.randomUUID());
+        chunk = chunkRepo.save(chunk);
+    if (scene.getChunks() == null) scene.setChunks(new ArrayList<>());
+        SceneHasChunk rel = new SceneHasChunk();
+        rel.setChunk(chunk);
+        // Set index from legacy node field when available (migration path)
+        try {
+            rel.setChunkIndex(chunk.getChunkNumberInChapter());
+        } catch (Exception ignored) {}
+    scene.getChunks().add(rel);
+        sceneRepo.save(scene);
+        return chunk;
     }
 
     @Override
-    public int deleteChunksByChapterId(UUID chapterId) {
-        int existing = chunkRepo.countByChapterId(chapterId);
-        chunkRepo.deleteByChapterId(chapterId);
-        return existing;
-    }
-
-    @Override
-    public boolean chunksExistForChapter(UUID chapterId) {
-        return chunkRepo.existsForChapter(chapterId);
-    }
-
-    @Override
-    public int countChunksByChapterId(UUID chapterId) {
-        return chunkRepo.countByChapterId(chapterId);
+    public List<ChunkNode> addChunksToScene(UUID sceneId, List<ChunkNode> chunks) {
+        return chunks.stream().map(c -> addChunkToScene(sceneId, c)).toList();
     }
 
     @Override
@@ -169,11 +166,85 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     public StatusRecordNode addStatusRecord(UUID jobId, StatusRecordNode recordNode) {
         if (recordNode.getId() == null) recordNode.setId(UUID.randomUUID());
         if (recordNode.getJobId() == null) recordNode.setJobId(jobId);
-        return statusRepo.save(recordNode);
+
+        // Save the status record first
+        recordNode = statusRepo.save(recordNode);
+
+        // Ensure the job exists; fail fast if not
+        jobRepo.findById(jobId)
+                .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+
+        // Atomic pointer swap via repository method
+        jobRepo.swapCurrentStatus(jobId, recordNode.getId());
+
+        return recordNode;
     }
 
     @Override
-    public List<StatusRecordNode> findRecentStatusRecords(UUID jobId, int limit) {
-        return statusRepo.findRecentForJob(jobId, limit);
+    public List<StatusRecordNode> findStatusHistoryForJob(UUID jobId) {
+        return statusRepo.findStatusHistoryForJob(jobId);
+    }
+
+    @Override
+    public List<ChunkNode> findChunksByChapterId(UUID chapterId) {
+        long start = System.currentTimeMillis();
+        List<ChunkNode> viaScenes = chunkRepo.findByChapterIdViaScenes(chapterId);
+        if (!viaScenes.isEmpty()) {
+            long ms = System.currentTimeMillis() - start;
+            // simple debug log without introducing log dependency changes
+            System.out.println("[Neo4jAdapter] findChunksByChapterId viaScenes size=" + viaScenes.size() + " ms=" + ms + " chapter=" + chapterId);
+            return viaScenes;
+        }
+        List<ChunkNode> legacy = chunkRepo.findByChapterId(chapterId);
+        long ms = System.currentTimeMillis() - start;
+        System.out.println("[Neo4jAdapter] findChunksByChapterId legacy size=" + legacy.size() + " ms=" + ms + " chapter=" + chapterId);
+        return legacy;
+    }
+
+    @Override
+    public int deleteChunksByChapterId(UUID chapterId) {
+        int count = chunkRepo.countByChapterIdViaScenes(chapterId);
+        if (count > 0) {
+            chunkRepo.deleteByChapterIdViaScenes(chapterId);
+            return count;
+        }
+        int legacy = chunkRepo.countByChapterId(chapterId);
+        if (legacy > 0) chunkRepo.deleteByChapterId(chapterId);
+        return legacy;
+    }
+
+    @Override
+    public boolean chunksExistForChapter(UUID chapterId) {
+        return chunkRepo.existsForChapterViaScenes(chapterId) || chunkRepo.existsForChapter(chapterId);
+    }
+
+    @Override
+    public int countChunksByChapterId(UUID chapterId) {
+        int via = chunkRepo.countByChapterIdViaScenes(chapterId);
+        return via > 0 ? via : chunkRepo.countByChapterId(chapterId);
+    }
+
+    @Override
+    public IngestionJobNode createJobWithChapter(IngestionJobNode jobNode, UUID chapterId) {
+        if (jobNode.getId() == null) jobNode.setId(UUID.randomUUID());
+        ChapterNode chapter = chapterRepo.findById(chapterId).orElseThrow();
+        jobNode.setChapter(chapter);
+        jobNode.setChapterId(chapter.getId());
+        return jobRepo.save(jobNode);
+    }
+
+    @Override
+    public ChunkNode updateChunk(ChunkNode chunk) {
+        return chunkRepo.save(chunk);
+    }
+
+    @Override
+    public List<ChunkNode> updateChunks(List<ChunkNode> chunks) {
+        long start = System.currentTimeMillis();
+        if (chunks == null || chunks.isEmpty()) return List.of();
+        List<ChunkNode> saved = chunks.stream().map(chunkRepo::save).toList();
+        long ms = System.currentTimeMillis() - start;
+        System.out.println("[Neo4jAdapter] updateChunks persisted=" + saved.size() + " ms=" + ms);
+        return saved;
     }
 }
