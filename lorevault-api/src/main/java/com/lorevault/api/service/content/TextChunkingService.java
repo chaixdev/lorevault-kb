@@ -127,6 +127,7 @@ public class TextChunkingService {
         chunk.setChunkNumberInChapter(chunkNumber);
         chunk.setStartCharInChapter(startChar);
         chunk.setEndCharInChapter(endChar);
+        chunk.setText(content); // Store the actual chunk text for embedding independence
         return chunk;
     }
 

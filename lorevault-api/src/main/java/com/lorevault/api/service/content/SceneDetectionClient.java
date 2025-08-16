@@ -99,11 +99,22 @@ public class SceneDetectionClient {
         return executeSceneDetectionCall("Single-pass", systemPrompt, chapterText);
     }
 
+    /**
+     * Execute a scene detection call with retry logic.
+     * Common implementation for both passes and legacy single-pass.
+     * 
+     * @param passName Descriptive name for logging (e.g., "Pass 1", "Pass 2", "Single-pass")
+     * @param systemPrompt The system prompt to use
+     * @param userInput The user input (chapter text or pass 1 results)
+     * @return Raw XML response from the AI model
+     * @throws RuntimeException if all retry attempts fail
+     */
     private String executeSceneDetectionCall(String passName, String systemPrompt, String userInput) {
         log.debug("[LLM] {} scene detection request: inputLength={} chars, model={}", 
                  passName, userInput == null ? 0 : userInput.length(), currentModelId);
         log.trace("[LLM] System prompt ({} chars): {}", systemPrompt.length(), systemPrompt);
         
+        // Create options for consistent, deterministic results
         OpenAiChatOptions options = OpenAiChatOptions.builder()
             .temperature(0.1)
             .topP(0.9)
