@@ -1,4 +1,6 @@
-# Readabili## 🔄 In Progress
+# Readability Refactor Task List
+
+## 🔄 In Progress
 _Currently empty - ready to take on next task_
 
 ## 🚫 Blocked
