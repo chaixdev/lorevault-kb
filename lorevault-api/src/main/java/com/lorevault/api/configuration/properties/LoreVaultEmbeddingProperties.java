@@ -4,7 +4,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 
 /**
  * Configuration properties for embedding operations.
@@ -13,9 +12,18 @@ import jakarta.validation.constraints.NotNull;
 @ConfigurationProperties(prefix = "lorevault.embedding")
 @Validated
 public record LoreVaultEmbeddingProperties(
-    @Valid @NotNull ModelProperties model,
-    @Valid @NotNull ProcessingProperties processing
+    @Valid ModelProperties model,
+    @Valid ProcessingProperties processing
 ) {
+    public LoreVaultEmbeddingProperties {
+        // Provide sane defaults when properties are absent (e.g., in tests)
+        if (model == null) {
+            model = new ModelProperties(null, null, null, null);
+        }
+        if (processing == null) {
+            processing = new ProcessingProperties(null, null, null, null, null, null, null);
+        }
+    }
     
     /**
      * Configuration for embedding model settings.
@@ -35,7 +43,7 @@ public record LoreVaultEmbeddingProperties(
                 model = "text-embedding-3-small";
             }
             if (dimensions == null) {
-                dimensions = 3072; // Match existing default
+                dimensions = 1536; // Default for small embedding model
             }
             if (batchSize == null) {
                 batchSize = 32; // Match existing default
