@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.application.port.EmbeddingPort;
 import com.lorevault.api.configuration.properties.LoreVaultEmbeddingProperties;
+import com.lorevault.api.configuration.properties.LoreVaultModelsProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Embedding adapter invoking Gemini embedding model via OpenAI-compatible endpoint.
+ * Embedding adapter invoking embedding model via OpenAI-compatible endpoint.
  * Falls back to empty vectors on failure (service will skip persistence for zero-length vectors).
  */
 @Component
@@ -26,20 +26,15 @@ import java.util.List;
 public class EmbeddingModelAdapter implements EmbeddingPort {
 
     private final LoreVaultEmbeddingProperties embeddingProperties;
+    private final LoreVaultModelsProperties modelsProperties;
     private final RestTemplate restTemplate; // injected for testability
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${spring.ai.openai.embedding.options.model:gemini-embedding-001}")
-    private String modelId;
-
-    @Value("${spring.ai.openai.base-url}")
-    private String baseUrl; // e.g. https://generativelanguage.googleapis.com/v1beta/openai
-
-    @Value("${spring.ai.openai.api-key}")
-    private String apiKey;
-
-    public EmbeddingModelAdapter(LoreVaultEmbeddingProperties embeddingProperties, RestTemplate restTemplate) {
+    public EmbeddingModelAdapter(LoreVaultEmbeddingProperties embeddingProperties, 
+                                LoreVaultModelsProperties modelsProperties,
+                                RestTemplate restTemplate) {
         this.embeddingProperties = embeddingProperties;
+        this.modelsProperties = modelsProperties;
         this.restTemplate = restTemplate;
     }
 
@@ -55,6 +50,8 @@ public class EmbeddingModelAdapter implements EmbeddingPort {
         if (texts == null || texts.isEmpty()) return List.of();
         int attempts = 0;
         long delay = embeddingProperties.processing().initialDelayMillis();
+        String modelId = modelsProperties.embedding().model();
+        
         while (attempts < embeddingProperties.processing().maxAttempts()) {
             attempts++;
             try {
@@ -80,6 +77,10 @@ public class EmbeddingModelAdapter implements EmbeddingPort {
 
     private List<double[]> invokeRemote(List<String> texts, int attempt) throws Exception {
         long start = System.currentTimeMillis();
+        String baseUrl = modelsProperties.embedding().baseUrl();
+        String apiKey = modelsProperties.embedding().apiKey();
+        String modelId = modelsProperties.embedding().model();
+        
         String url = normalizeBase(baseUrl) + "/embeddings";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -87,6 +88,13 @@ public class EmbeddingModelAdapter implements EmbeddingPort {
         var body = objectMapper.createObjectNode();
         body.put("model", modelId);
         body.set("input", objectMapper.valueToTree(texts));
+        
+        // Add dimensions parameter if configured
+        int configuredDimensions = embeddingProperties.model().dimensions();
+        if (configuredDimensions > 0) {
+            body.put("dimensions", configuredDimensions);
+        }
+        
         ResponseEntity<JsonNode> resp = restTemplate.postForEntity(url, new HttpEntity<>(body, headers), JsonNode.class);
         JsonNode root = resp.getBody();
         List<double[]> vectors = new ArrayList<>();
@@ -130,7 +138,7 @@ public class EmbeddingModelAdapter implements EmbeddingPort {
 
     @Override
     public String getModelId() {
-        return modelId;
+        return modelsProperties.embedding().model();
     }
 
     @Override
