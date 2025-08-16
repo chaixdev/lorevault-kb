@@ -1,7 +1,7 @@
 package com.lorevault.api.util;
 
 public class StringSanitizer {
-        public static  String toSnakeCase(String input) {
+        public static String toSnakeCase(String input) {
         if (input == null || input.isBlank()) {
             return "";
         }
