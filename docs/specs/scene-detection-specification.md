@@ -24,10 +24,10 @@ Defines the AI-powered scene detection system that analyzes narrative text to id
 
 ## Key Dependencies
 
-- External Services: Spring AI ChatClient targeting Gemma/Gemini models for scene analysis
+- External Services: Spring AI ChatClient with manual configuration targeting nlp-small slot for scene analysis
 - Core Components: PromptLoaderService, SceneDetectionService, ChapterRepository
 - Data Model: Chapter aggregate, Scene entity
-- Configuration: Spring AI with retry mechanisms
+- Configuration: Manual Spring AI bean configuration with three-slot model structure (embedding, nlp-small, nlp-big)
 
 ## Overview
 

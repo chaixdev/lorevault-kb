@@ -20,7 +20,7 @@ The process consists of four sequential stages.
 ##### Stage 1: Scene Identification (AI-powered)
 
   * Input: Full, unmodified text of a single `Chapter`.
-  * Action: The chapter text is passed to the LLM (Gemma 3 Instruct) using an XML output template. The model returns scene candidates with snippet boundaries.
+  * Action: The chapter text is passed to the nlp-small model using an XML output template. The model returns scene candidates with snippet boundaries.
   * Output: XML containing a list of scenes with fields: `scene_index`, `context_summary`, `start_snippet`, `end_snippet`.
 
 ##### Stage 2: Coordinate Localization (Code-powered)

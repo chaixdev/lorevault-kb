@@ -6,14 +6,18 @@ package com.lorevault.api.dto.content;
  * 
  * @param sceneIndex The 1-based index of the scene within the chapter
  * @param startAnchor Text fragment marking the beginning of the scene
- * @param endAnchor Text fragment marking the end of the scene
  * @param contextSummary Brief description of what happens in this scene
- * @param sceneBreakReason Why the AI determined this is a scene boundary
+ * @param breakReason Why the AI determined this is a scene boundary
+ * @param chronology Temporal relationship to the previous scene using Allen's Interval Algebra
+ * @param chronologyCertainty Level of certainty about the temporal relationship
+ * @param chronologyMarker Text evidence that supports the temporal relationship
  */
 public record SceneDetectionResult(
     int sceneIndex,
     String startAnchor,
-    String endAnchor,
     String contextSummary,
-    String sceneBreakReason
+    String breakReason,
+    String chronology,
+    String chronologyCertainty,
+    String chronologyMarker
 ) {}

@@ -53,6 +53,7 @@ The LLM MUST consider at least 2-3 different implementation approaches:
 ### Approach 1: [Name]
 **Description**: [Technical approach with key architectural decisions]
 **Files**: [Specific files to modify]
+**Testing Strategy**: [Service-level tests, integration needs, mock requirements]
 **Pros**: [Key advantages]
 **Cons**: [Key limitations]  
 **Complexity**: [Low/Medium/High]
@@ -60,10 +61,10 @@ The LLM MUST consider at least 2-3 different implementation approaches:
 **CQRS Impact**: [Command/Query/Both]
 
 ### Approach 2: [Name]
-[Same format as above]
+[Same format as above - include Testing Strategy for each approach]
 
 ### Approach 3: [Name]
-[Same format as above]
+[Same format as above - include Testing Strategy for each approach]
 ```
 
 #### 2.2 Solution Selection & Recommendation
@@ -150,69 +151,129 @@ Please provide guidance on: [Specific questions]
 
 **NEVER**: Make assumptions when requirements are unclear.
 
-### Phase 4: Implementation (SYSTEMATIC)
+### Phase 4: Test-Driven Implementation (SYSTEMATIC)
 
 **⚠️ PREREQUISITE**: Implementation may ONLY begin after receiving explicit user approval from Phase 2.3.
 
-**Follow the Testing Strategy**: Implement according to `/docs/spec/testing-strategy.md`:
-1. **Service Tests First**: Write service-level tests that define business behavior
-2. **Implementation**: Implement the business logic to satisfy service tests  
-3. **Integration Tests**: Add integration tests for persistence interactions if needed
-4. **Edge Case Coverage**: Add specific contract tests for complex edge cases
+#### 4.1 Test Design First (MANDATORY)
+
+**Follow the Testing Strategy** from `/docs/spec/testing-strategy.md`:
+
+```markdown
+🧪 TEST DESIGN PHASE:
+
+### Service-Level Tests (Primary Focus)
+1. **Identify Business Behaviors**: What business rules and workflows need validation?
+2. **Design Test Scenarios**: Happy path, edge cases, error conditions
+3. **Mock Strategy**: Which dependencies to mock vs. real implementations
+4. **Test Data Strategy**: Realistic test data setup using existing utilities
+
+### Integration Tests (If Needed)
+1. **Database Interactions**: Use Testcontainers only for actual persistence logic
+2. **External Service Integration**: Real calls only when testing integration contracts
+3. **Resource Optimization**: Minimize infrastructure overhead
+
+### Test Structure Template:
+```java
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT) // If needed for complex scenarios
+class [ServiceName]Test {
+    @Mock private [Repository] repository;
+    @Mock private [ExternalService] externalService;
+    @InjectMocks private [ServiceName] service;
+    
+    // Test business logic, state transitions, error handling
+}
+```
+
+#### 4.2 Implementation Workflow
+
+1. **Write Service Tests First**: Define expected business behavior through tests
+2. **Implement Business Logic**: Code to satisfy service tests
+3. **Add Integration Tests**: Only if persistence/external integration is core to the feature
+4. **Edge Case Coverage**: Add specific tests for complex edge cases
+5. **Test Cleanup**: Ensure no unnecessary mocking, clean test structure
 
 **Persistence Changes**: If needed, create appropriate migration or schema update artifacts (e.g., graph refactor scripts, index creation guidance). Avoid premature vector/embedding scaffolding before v0.5.0.
 
 **Spring Boot Patterns**: Follow existing patterns for Controllers, Services, Repositories, DTOs
 
-### Phase 5: User Verification & Testing (MANDATORY)
+### Phase 5: Test Verification & Validation (MANDATORY)
 
-**⚠️ CRITICAL**: Before documentation, the user MUST be able to build, run, and see the feature working.
+**⚠️ CRITICAL**: All tests must pass and provide meaningful coverage before user verification.
 
-#### 5.1 🛑 VERIFICATION GATE: "Show Me It Works"
+#### 5.1 🧪 TEST VALIDATION GATE: "Tests Define and Verify Behavior"
 
-**The LLM MUST provide specific verification instructions**:
+**The LLM MUST verify test quality and coverage**:
 
 ```markdown
-🔍 VERIFICATION INSTRUCTIONS FOR ISSUE [Issue Number]
+🔍 TEST VALIDATION CHECKLIST FOR ISSUE [Issue Number]
+
+### Test Execution
+1. **Run Tests**: `mvn test` (all tests must pass)
+2. **Service Tests**: Verify business logic tests cover main scenarios
+3. **Integration Tests**: Verify persistence/external integration tests (if applicable)
+4. **Edge Cases**: Verify error conditions and boundary cases are tested
+
+### Test Quality Assessment
+1. **Business Intent**: Do tests clearly communicate what the feature does?
+2. **Realistic Data**: Are tests using realistic test data scenarios?
+3. **Mock Strategy**: Are mocks used appropriately (repositories, external services)?
+4. **Test Maintenance**: Are tests structured for easy maintenance and understanding?
+
+### Test Coverage Indicators
+- ✅ **Service-Level Coverage**: Main business workflows tested
+- ✅ **Error Handling**: Exception scenarios and edge cases covered  
+- ✅ **Integration Points**: Database/external service interactions validated
+- ✅ **Test Clarity**: Tests serve as living documentation of requirements
+```
+
+#### 5.2 🛑 USER VERIFICATION GATE: "Show Me It Works"
+
+**After test validation passes, provide user verification instructions**:
+
+```markdown
+🔍 USER VERIFICATION INSTRUCTIONS FOR ISSUE [Issue Number]
 
 ### Build & Run
-1. Build: `mvn clean install` (from project root)
+1. Build: `mvn clean install` (from project root) 
 2. Run: `mvn -pl lorevault-api spring-boot:run` (start the application)
 3. Test API: Use provided curl commands or test endpoints
 4. Monitor: Check application logs for expected behavior
 
-### Verification Steps
+### Verification Steps  
 1. **[Step 1]**: [Action] → [Expected result]
-2. **[Step 2]**: [Action] → [Expected result]  
+2. **[Step 2]**: [Action] → [Expected result]
 3. **[Step 3]**: [Action] → [Expected result]
 
-### Success Indicators  
+### Success Indicators
 - ✅ [Observable success indicator 1]
-- ✅ [Observable success indicator 2]
+- ✅ [Observable success indicator 2] 
 - ✅ [Observable success indicator 3]
 ```
 
-#### 5.2 User Confirmation Protocol
+#### 5.3 User Confirmation Protocol
 
 **User must confirm before documentation**:
+- ✅ "All tests pass with good coverage and clear business intent"
 - ✅ "I can build and run the application successfully"
-- ✅ "I can see the expected API behavior"
+- ✅ "I can see the expected API behavior" 
 - ✅ "Feature works as specified"
-- ✅ "Tests pass and provide good coverage"
 
 **If verification fails**: LLM must debug and fix before documentation.
 
 ### Phase 6: Documentation Update (FINAL STEP)
 
-**⚠️ PREREQUISITE**: Documentation may ONLY begin after successful user verification from Phase 5.2.
+**⚠️ PREREQUISITE**: Documentation may ONLY begin after successful test validation and user verification from Phase 5.
 
 **Update relevant documentation**:
 - **Architecture docs** (`/docs/architecture/`): If architectural impact
-- **Spec docs** (`/docs/spec/`): If data model or process changes  
-- **API documentation**: If new endpoints or changes (e.g., placeholder behaviors)
+- **Spec docs** (`/docs/spec/`): If data model or process changes
+- **API documentation**: If new endpoints or changes (e.g., placeholder behaviors)  
+- **Testing documentation**: Update testing examples if new patterns introduced
 - **README**: If user-facing changes
 
-**Documentation focus**: Why decisions were made, architectural impact, integration points
+**Documentation focus**: Why decisions were made, architectural impact, integration points, testing approach
 
 ### Phase 7: Git Commit (MANDATORY)
 
@@ -228,7 +289,12 @@ feat: implement issue [Issue Number] - [Brief description]
 ✅ IMPLEMENTED:
 - [Key feature 1 - e.g., new REST endpoint, service layer logic]
 - [Key feature 2 - e.g., schema changes, integration logic] 
-- [Key feature 3 - e.g., validation, error handling, testing]
+- [Key feature 3 - e.g., validation, error handling]
+
+🧪 TESTING:
+- [Service-level tests with business behavior coverage]
+- [Integration tests for persistence/external services (if applicable)]
+- [Edge case and error handling test coverage]
 
 🔍 VERIFICATION:
 - [How user can verify it works - API calls, queries]
@@ -237,7 +303,7 @@ feat: implement issue [Issue Number] - [Brief description]
 📋 INTEGRATION:
 - [How it integrates with existing Spring Boot architecture]
 - [Any dependencies or configuration requirements]
-- [Testing approach and coverage]
+- [Testing approach and maintainability notes]
 ```
 
 #### 7.2 Commit Instructions
@@ -248,16 +314,19 @@ feat: implement issue [Issue Number] - [Brief description]
 # Stage all changes
 git add .
 
-# Commit with template message
+# Commit with template message  
 git commit -m "feat: implement issue [Issue Number] - [Brief description]
 
 ✅ IMPLEMENTED:
 - [List key features implemented]
 
+🧪 TESTING:
+- [Testing approach and coverage details]
+
 🔍 VERIFICATION:
 - [How to verify it works]
 
-📋 INTEGRRATION:
+📋 INTEGRATION:
 - [Integration details]"
 
 # Push changes (if working with remote)
@@ -275,6 +344,12 @@ feat: implement issue 0.1.1 - basic chapter ingestion endpoint
 - IngestionJob entity with status tracking
 - Input validation and error handling with proper HTTP status codes
 
+🧪 TESTING:
+- ChapterServiceTest covering business logic (deduplication, job creation)
+- IngestionEndpointTest for input validation and error scenarios
+- Integration tests for persistence layer interactions
+- 90%+ service-level test coverage with clear business intent
+
 🔍 VERIFICATION:
 - Build: mvn clean install
 - Run: mvn -pl lorevault-api spring-boot:run
@@ -284,7 +359,7 @@ feat: implement issue 0.1.1 - basic chapter ingestion endpoint
 📋 INTEGRATION:
 - Follows CQRS pattern (command path implementation)
 - Uses current persistence layer with job tracking
-- Service-level tests with 90%+ coverage
+- Test-driven development approach with comprehensive coverage
 - Ready for async processing pipeline integration
 ```
 
@@ -298,12 +373,25 @@ feat: implement issue 0.1.1 - basic chapter ingestion endpoint
 
 ## Quality Assurance
 
-**Definition of Done**: Meets requirements → Works with existing system → Tests provide good coverage → Documentation updated → Follows project patterns → Integration verified.
+**Definition of Done**: Meets requirements → **Tests define and verify business behavior** → Works with existing system → **Test coverage provides confidence and documentation** → Documentation updated → Follows project patterns → Integration verified.
+
+**Testing Quality Standards**:
+- Service-level tests communicate business intent clearly
+- Tests use realistic data and scenarios
+- Mock strategy follows testing-strategy.md guidelines  
+- Integration tests only where persistence/external contracts matter
+- Test maintenance considerations (readability, stability)
 
 ## Anti-Patterns to Avoid
 
-**❌ Don't**: Assume requirements, skip context gathering, implement without alternatives, ignore architectural patterns, skip testing.
+**❌ Don't**: Assume requirements, skip context gathering, implement without alternatives, ignore architectural patterns, **implement before writing tests**, **over-mock or under-mock dependencies**.
 
-**✅ Do**: Ask for clarification, gather full context, present alternatives with trade-offs, follow existing patterns, implement comprehensive testing.
+**✅ Do**: Ask for clarification, gather full context, present alternatives with trade-offs, follow existing patterns, **write service tests first**, **implement comprehensive but practical testing**.
 
-**Remember**: The goal is shipping working features that integrate well with the existing architecture, not theoretical perfection.
+**Testing Anti-Patterns**:
+- ❌ **Testing implementation details** instead of business behavior
+- ❌ **Excessive unit testing** without service-level coverage  
+- ❌ **Infrastructure overuse** (Testcontainers everywhere)
+- ❌ **Unmaintainable test code** with complex setup
+
+**Remember**: The goal is shipping working features with **test-verified business behavior** that integrate well with the existing architecture, not theoretical perfection.

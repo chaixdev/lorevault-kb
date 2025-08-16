@@ -1,56 +1,74 @@
 package com.lorevault.api.service.system;
 
+import com.lorevault.api.service.system.metrics.HealthMetricsCollector;
+import com.lorevault.api.service.system.retry.RetryableHealthChecker;
+import com.lorevault.api.service.system.validator.ModelHealthValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
  * Service for monitoring the health of external LLM services.
  * Performs health checks on startup to fail early if services are unavailable.
- * Supports checking multiple models individually.
+ * Delegates retry logic, validation, and metrics collection to focused services.
+ * Refactored to improve single responsibility and testability.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class LlmHealthCheckService {
 
-    private final ChatClient chatClient;
+    private final RetryableHealthChecker retryableHealthChecker;
+    private final ModelHealthValidator modelHealthValidator;
+    private final HealthMetricsCollector healthMetricsCollector;
     
-    @Value("${spring.ai.openai.chat.options.model:unknown}")
-    private String currentModelId;
+    @Value("${lorevault.ai.models.nlp-big.model:unknown}")
+    private String modelId;
+
+    @Value("${lorevault.llm.health.enabled:true}")
+    private boolean healthEnabled;
 
     /**
      * Performs health check on the configured LLM model after application startup.
-     * Fails early if the service is not accessible.
+     * Delegates to extracted services for retry logic, validation, and metrics collection.
      */
     @EventListener(ApplicationReadyEvent.class)
     public void performStartupHealthCheck() {
-        log.info("Performing LLM service health check for model: {}", currentModelId);
+        if (!healthEnabled) {
+            log.info("LLM health check disabled via lorevault.llm.health.enabled=false");
+            return;
+        }
         
-        ModelHealthStatus healthResult = checkCurrentModel();
+        Instant overallStart = Instant.now();
+        log.info("Performing LLM service health check for model: {}", modelId);
+        
+        HealthMetricsCollector.ModelHealthStatus healthResult = checkCurrentModel();
+        long totalMs = Duration.between(overallStart, Instant.now()).toMillis();
         
         if (healthResult.isHealthy()) {
-            log.info("✅ LLM model '{}' is healthy", currentModelId);
+            log.info("✅ LLM model '{}' is healthy ({} ms total)", modelId, totalMs);
         } else {
-            log.error("❌ LLM model '{}' health check FAILED: {}", currentModelId, healthResult.getErrorMessage());
+            log.error("❌ LLM model '{}' health check FAILED after {} ms: {}", 
+                     modelId, totalMs, healthResult.getErrorMessage());
         }
     }
     
     /**
      * Checks the health of the currently configured model.
+     * Uses extracted services for retry logic, validation, and metrics collection.
      * 
      * @return Health status of the current model
      */
-    public ModelHealthStatus checkCurrentModel() {
-        return checkSingleModel(currentModelId);
+    public HealthMetricsCollector.ModelHealthStatus checkCurrentModel() {
+        return checkSingleModel(modelId);
     }
     
     /**
@@ -59,110 +77,106 @@ public class LlmHealthCheckService {
      * 
      * @return Map of model names to their health status
      */
-    public Map<String, ModelHealthStatus> checkAllModels() {
-        Map<String, ModelHealthStatus> results = new LinkedHashMap<>();
-        results.put(currentModelId, checkCurrentModel());
+    public Map<String, HealthMetricsCollector.ModelHealthStatus> checkAllModels() {
+        Map<String, HealthMetricsCollector.ModelHealthStatus> results = new LinkedHashMap<>();
+        results.put(modelId, checkCurrentModel());
         return results;
     }
     
     /**
-     * Checks the health of a specific model.
+     * Checks the health of a specific model using extracted services.
+     * Combines retry logic, validation, and metrics collection.
      * 
      * @param modelId The model identifier (e.g., "gemini-2.5-flash-lite")
      * @return Health status for the model
      */
-    public ModelHealthStatus checkSingleModel(String modelId) {
-        // Retry configuration for robustness during health checks
-        int maxRetries = 3;
-        long baseDelayMs = 1000;
+    public HealthMetricsCollector.ModelHealthStatus checkSingleModel(String modelId) {
+        String operationName = "health-check-" + modelId;
+        RetryableHealthChecker.RetryConfig retryConfig = RetryableHealthChecker.RetryConfig.defaultConfig();
         
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                log.debug("Checking health of model: {} - attempt {}/{}", modelId, attempt, maxRetries);
-                
-                // Create a simple health check prompt
-                Prompt healthCheckPrompt = new Prompt("Respond with 'OK' if you can process this message.");
-                
-                // Make the call (the model is already configured in the ChatClient)
-                String response = chatClient.prompt(healthCheckPrompt)
-                        .call()
-                        .content();
-                
-                // Log full response at trace level for debugging
-                log.trace("Full LLM API response for health check (attempt {}): {}", attempt, response);
-                
-                if (response != null && !response.trim().isEmpty()) {
-                    log.debug("✅ Model '{}' health check PASSED on attempt {}", modelId, attempt);
-                    return new ModelHealthStatus(true, modelId, response.trim());
-                } else {
-                    String error = "Empty response received";
-                    throw new RuntimeException(error);
-                }
-                
-            } catch (Exception e) {
-                log.warn("Health check attempt {}/{} failed for model '{}': {}", attempt, maxRetries, modelId, e.getMessage());
-                
-                if (attempt == maxRetries) {
-                    String error = e.getMessage();
-                    log.debug("❌ Model '{}' health check FAILED after {} attempts: {}", modelId, maxRetries, error);
-                    return new ModelHealthStatus(false, modelId, error);
-                }
-                
-                // Exponential backoff delay before retry
-                long delayMs = baseDelayMs * (long) Math.pow(2, attempt - 1);
+        // Use retry checker to execute health validation with backoff
+        RetryableHealthChecker.RetryResult<ModelHealthValidator.HealthCheckResult> retryResult = 
+            retryableHealthChecker.executeWithRetry(operationName, retryConfig, () -> {
                 try {
-                    log.debug("Waiting {}ms before retry attempt {} for model '{}'", delayMs, attempt + 1, modelId);
-                    Thread.sleep(delayMs);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    log.warn("Health check interrupted for model '{}'", modelId);
-                    return new ModelHealthStatus(false, modelId, "Health check interrupted");
+                    return modelHealthValidator.performConnectivityTest(modelId);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
                 }
-            }
-        }
+            });
         
-        // This should never be reached due to the return in the catch block
-        return new ModelHealthStatus(false, modelId, "Unexpected end of retry loop");
+        // Convert retry result to health status using metrics collector
+        if (retryResult.isSuccess()) {
+            ModelHealthValidator.HealthCheckResult validationResult = retryResult.getResult();
+            return healthMetricsCollector.recordSuccess(
+                modelId, 
+                validationResult.getResponse(),
+                retryResult.getLastAttemptDurationMs(),
+                retryResult.getTotalDurationMs(),
+                retryResult.getAttemptsUsed()
+            );
+        } else {
+            String errorMessage = retryResult.getLastException() != null 
+                ? retryResult.getLastException().getMessage() 
+                : "Unknown error";
+            return healthMetricsCollector.recordFailure(
+                modelId,
+                errorMessage,
+                retryResult.getLastAttemptDurationMs(),
+                retryResult.getTotalDurationMs(),
+                retryResult.getAttemptsUsed()
+            );
+        }
     }
     
     /**
      * Performs an on-demand health check of the configured LLM service.
+     * Uses metrics collector to check current health status.
      * 
      * @return true if the service is healthy, false otherwise
      */
     public boolean isLlmServiceHealthy() {
-        ModelHealthStatus status = checkCurrentModel();
+        if (!healthEnabled) {
+            return true; // treat disabled as healthy to not fail readiness
+        }
+        
+        HealthMetricsCollector.ModelHealthStatus status = checkCurrentModel();
         return status.isHealthy();
     }
-    
+
     /**
-     * Data class to hold the health status of a specific model.
+     * Get detailed metrics for the current model
      */
+    public HealthMetricsCollector.ModelMetrics getCurrentModelMetrics() {
+        return healthMetricsCollector.getModelMetrics(modelId);
+    }
+
+    /**
+     * Get the last health status for the current model
+     */
+    public HealthMetricsCollector.ModelHealthStatus getLastHealthStatus() {
+        return healthMetricsCollector.getLastStatus(modelId);
+    }
+
+    /**
+     * @deprecated Use HealthMetricsCollector.ModelHealthStatus instead
+     * Maintained for backwards compatibility
+     */
+    @Deprecated
     public static class ModelHealthStatus {
-        private final boolean healthy;
-        private final String modelName;
-        private final String message;
-        
-        public ModelHealthStatus(boolean healthy, String modelName, String message) {
-            this.healthy = healthy;
-            this.modelName = modelName;
-            this.message = message;
+        private final HealthMetricsCollector.ModelHealthStatus delegate;
+
+        public ModelHealthStatus(boolean healthy, String modelName, String message, 
+                               long lastAttemptDurationMs, int attemptsUsed) {
+            // Convert to new format with total duration = last attempt duration for compatibility
+            this.delegate = new HealthMetricsCollector.ModelHealthStatus(
+                healthy, modelName, message, lastAttemptDurationMs, lastAttemptDurationMs, attemptsUsed);
         }
-        
-        public boolean isHealthy() {
-            return healthy;
-        }
-        
-        public String getModelName() {
-            return modelName;
-        }
-        
-        public String getErrorMessage() {
-            return healthy ? null : message;
-        }
-        
-        public String getSuccessMessage() {
-            return healthy ? message : null;
-        }
+
+        public boolean isHealthy() { return delegate.isHealthy(); }
+        public String getModelName() { return delegate.getModelName(); }
+        public String getErrorMessage() { return delegate.getErrorMessage(); }
+        public String getSuccessMessage() { return delegate.getSuccessMessage(); }
+        public long getLastAttemptDurationMs() { return delegate.getLastAttemptDurationMs(); }
+        public int getAttemptsUsed() { return delegate.getAttemptsUsed(); }
     }
 }

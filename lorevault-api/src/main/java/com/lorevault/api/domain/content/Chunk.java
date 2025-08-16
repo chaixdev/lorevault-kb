@@ -17,6 +17,14 @@ public class Chunk {
     private Integer chunkNumberInChapter;
     private Integer startCharInChapter;
     private Integer endCharInChapter;
+    
+    /**
+     * The actual text content of this chunk, materialized for embedding independence
+     * This supports the distributed content storage model where chunks are decoupled
+     * from their source chapter and store their own embeddable text content.
+     */
+    private String text;
+    
     private String contentHash;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

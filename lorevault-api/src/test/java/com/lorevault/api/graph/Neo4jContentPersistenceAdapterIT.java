@@ -20,7 +20,7 @@ public class Neo4jContentPersistenceAdapterIT extends IntegrationTestBase {
 
     @Autowired
     private ContentPersistencePort port;
-    
+
     @Autowired
     private IngestionService ingestionService;
 
@@ -56,7 +56,7 @@ public class Neo4jContentPersistenceAdapterIT extends IntegrationTestBase {
 
         // Use the production service to create a job with proper initialization
         SubmitChapterRequest request = new SubmitChapterRequest();
-        request.setCoordinates(new PublicationCoordinates("TestU", "Series", 1, null, 1));
+        request.setCoordinates(new PublicationCoordinates("TestU", "Series", "Book", "Chapter", 1, 1));
         request.setChapterTitle("Ch1");
         request.setChapterText("Some raw text for testing scenes and chunks.");
         SubmitChapterResponse response = ingestionService.submitChapter(request);
@@ -66,7 +66,7 @@ public class Neo4jContentPersistenceAdapterIT extends IntegrationTestBase {
         // Verify the job was created with proper status
         var createdJob = port.findJob(response.getJobId());
         assertThat(createdJob).isPresent();
-        assertThat(createdJob.get().getCurrentStatus()).isEqualTo(IngestionStatus.QUEUED);
+        assertThat(createdJob.get().getCurrentStatusRecord()).isEqualTo(IngestionStatus.QUEUED);
 
         assertThat(port.hasActiveJobForChapter(response.getChapterId())).isTrue();
         assertThat(port.findMostRecentJobForChapter(response.getChapterId())).isPresent();

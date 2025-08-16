@@ -23,13 +23,18 @@ public interface ContentPersistencePort {
 
     // Chunks
     List<ChunkNode> addChunksToChapter(UUID chapterId, List<ChunkNode> chunks);
+    ChunkNode addChunkToScene(UUID sceneId, ChunkNode chunk);
+    List<ChunkNode> addChunksToScene(UUID sceneId, List<ChunkNode> chunks);
     List<ChunkNode> findChunksByChapterId(UUID chapterId);
     int deleteChunksByChapterId(UUID chapterId);
     boolean chunksExistForChapter(UUID chapterId);
     int countChunksByChapterId(UUID chapterId);
+    ChunkNode updateChunk(ChunkNode chunk);
+    List<ChunkNode> updateChunks(List<ChunkNode> chunks);
 
     // Jobs
     IngestionJobNode createJob(IngestionJobNode jobNode);
+    IngestionJobNode createJobWithChapter(IngestionJobNode jobNode, UUID chapterId);
     Optional<IngestionJobNode> findJob(UUID id);
     IngestionJobNode updateJob(IngestionJobNode jobNode);
     Optional<IngestionJobNode> findMostRecentJobForChapter(UUID chapterId);
@@ -39,7 +44,7 @@ public interface ContentPersistencePort {
 
     // Status Records
     StatusRecordNode addStatusRecord(UUID jobId, StatusRecordNode recordNode);
-    List<StatusRecordNode> findRecentStatusRecords(UUID jobId, int limit);
+    List<StatusRecordNode> findStatusHistoryForJob(UUID jobId);
 
     // Queries
     List<ChapterNode> findChaptersByUniverse(String universe);

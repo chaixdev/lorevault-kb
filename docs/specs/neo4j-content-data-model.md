@@ -16,9 +16,9 @@ The LoreVault system stores narrative content as a hierarchical graph structure:
 ### Data Model Design Principles
 
 1. **Hierarchical Organization**: Content organized in publication order with numeric sequencing
-2. **Single Source of Truth**: Verbatim text stored once at Chapter level, referenced by lower levels
+2. **Distributed Content Storage**: Verbatim text at Chapter level, extracted text materialized at Scene and Chunk levels for traceability and embedding
 3. **Publication Coordinates**: Numeric ordering enables deterministic position comparison
-4. **Atomic Content Units**: Chunks serve as smallest retrievable units for search and processing
+4. **Decoupled Chunk Units**: Chunks are context-agnostic embeddable units storing their own text, with sequence information on relationships
 5. **Referential Integrity**: All relationships maintain parent-child hierarchy constraints
 
 ## Data Structure Specifications
@@ -57,8 +57,8 @@ graph TD
 ### Text Storage and Organization
 
 **Chapter Level**: Complete verbatim text stored with original formatting and metadata
-**Scene Level**: Character offset boundaries (start/end positions) referencing Chapter text  
-**Chunk Level**: Normalized text segments extracted from Scene boundaries for search indexing
+**Scene Level**: Extracted text content materialized from Chapter offsets for traceability and processing  
+**Chunk Level**: Normalized text segments materialized and stored directly for embedding independence
 
 ### Publication Coordinate System
 
@@ -87,9 +87,10 @@ graph TD
 - Chunk indices must be sequential within each scene (0, 1, 2, ...)
 
 **Text Boundary Consistency**:
-- Scene start/end offsets must align with chapter text boundaries
-- Chunk text boundaries must align with scene text boundaries
-- No gaps or overlaps in text coverage allowed
+- Scene startOffset/endOffset must align with chapter text boundaries
+- Scene text must match Chapter.rawText[startOffset:endOffset] 
+- Chunk text must be materialized and stored independently
+- Chunk content derived from scene text boundaries but stored for embedding independence
 - All offset values must be non-negative integers
 
 **Coordinate Consistency**:
@@ -165,29 +166,35 @@ Constraints:
 Properties:
 - id: UUID (required, unique)
 - sceneIndex: Integer (0-based index within chapter)
-- start: Integer (inclusive offset into Chapter.raw_text)
-- end: Integer (exclusive offset into Chapter.raw_text)
+- startOffset: Long (inclusive offset into Chapter.rawText)
+- endOffset: Long (exclusive offset into Chapter.rawText)
+- text: String (extracted scene text for traceability and processing)
+- contextSummary: String (optional AI-generated scene summary)
 - createdAt: DateTime (required)
+- updatedAt: DateTime (optional)
 
 Constraints:
 - id must be unique across all Scene nodes
-- start < end (valid character range)
+- startOffset < endOffset (valid character range)
 - sceneIndex must be sequential within chapter (0, 1, 2, ...)
-- start/end must align with Chapter text boundaries
+- startOffset/endOffset must align with Chapter text boundaries
+- text content must match Chapter.rawText[startOffset:endOffset]
 ```
 
 #### Chunk Node
 ```
 Properties:
 - id: UUID (required, unique)
-- text: String (normalized for embedding)
-- embedding: FloatArray (vector representation)
-- contentHash: String (hash of normalized text)
+- text: String (materialized chunk text for embedding independence)
+- contentHash: String (hash of normalized text for deduplication)
+- embedding: FloatArray (vector representation, null until generated)
+- embeddingHash: String (SHA256 of model:contentHash for idempotency)
+- embeddedAt: DateTime (timestamp when embedding was generated)
 - lang: String (ISO language code, default: 'en')
 - createdAt: DateTime (required)
 - updatedAt: DateTime (updated on reembedding)
 
-// Materialized coordinates for spoiler filtering performance
+// Materialized coordinates for spoiler filtering performance (optional optimization)
 - seriesId: UUID (series this chunk belongs to)
 - bookOrder_min: Integer (earliest book containing this chunk)
 - chapterOrder_min: Integer (earliest chapter containing this chunk)
@@ -195,10 +202,10 @@ Properties:
 
 Constraints:
 - id must be unique across all Chunk nodes
-- contentHash enables deduplication
-- embedding array must match configured dimensions
-- text cannot be null or empty after normalization
-- materialized coordinates must align with actual hierarchy
+- text cannot be null or empty - chunk stores its own content for embedding
+- contentHash enables deduplication across different contexts
+- embedding array must match configured dimensions when present
+- materialized coordinates must align with actual hierarchy if present
 ```
 
 #### Entity Node
@@ -261,14 +268,15 @@ Constraints:
 #### Scene-Chunk Relationship: `HAS_CHUNK`
 ```
 Properties:
-- chunkIndex: Integer (0-based index within scene)
-- start: Integer (offset into Scene text)
-- end: Integer (exclusive offset into Scene text)
+- chunkIndex: Integer (0-based sequential index within scene)
+- startOffset: Long (optional: offset into Scene text where chunk begins)
+- endOffset: Long (optional: offset into Scene text where chunk ends)
 
 Constraints:
 - chunkIndex must be sequential within scene (0, 1, 2, ...)
-- start/end must align with chunk text boundaries
-- Chunks must have exactly one parent Scene
+- startOffset < endOffset if both specified
+- Chunks must have exactly one parent Scene via this relationship
+- Chunks are context-agnostic - sequencing lives on the relationship edge
 ```
 
 #### Scene-Character Relationship: `FEATURES`
@@ -338,8 +346,10 @@ Usage Pattern:
 ### Data Type Validation Rules
 
 **Text Content Validation**:
-- Chapter raw_text cannot be null, empty, or contain only whitespace
-- Text length must match declared character count
+- Chapter rawText cannot be null, empty, or contain only whitespace
+- Scene text must be extracted and materialized from Chapter rawText
+- Chunk text must be materialized and stored independently for embedding
+- Text length must match declared character count where applicable
 - Character encoding must be UTF-8 compatible
 
 **Numeric Validation**:

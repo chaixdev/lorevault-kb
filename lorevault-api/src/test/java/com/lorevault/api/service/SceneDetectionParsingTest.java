@@ -29,18 +29,22 @@ class SceneDetectionParsingTest {
         String validXml = """
             <scenes>
               <scene>
-                <scene_index>1</scene_index>
+                <index>1</index>
                 <context_summary>The crew prepares for arrival on the ship's bridge.</context_summary>
-                <scene_break_reason>Initial scene of the chapter.</scene_break_reason>
+                <break_reason>Initial scene of the chapter.</break_reason>
                 <start_anchor><![CDATA[The crew gathered on the bridge]]></start_anchor>
-                <end_anchor><![CDATA[planet of Xylos grew larger.]]></end_anchor>
+                <chronology>R:temporal.meets</chronology>
+                <chronology_certainty>Heuristic</chronology_certainty>
+                <chronology_marker>Chapter beginning</chronology_marker>
               </scene>
               <scene>
-                <scene_index>2</scene_index>
+                <index>2</index>
                 <context_summary>The landing party explores the jungle on Xylos.</context_summary>
-                <scene_break_reason>Time jump and location change to planet surface.</scene_break_reason>
+                <break_reason>Time jump and location change to planet surface.</break_reason>
                 <start_anchor><![CDATA[Three hours later, the landing party]]></start_anchor>
-                <end_anchor><![CDATA[cries of unseen aliens.]]></end_anchor>
+                <chronology>R:temporal.after</chronology>
+                <chronology_certainty>Explicit</chronology_certainty>
+                <chronology_marker>Three hours later</chronology_marker>
               </scene>
             </scenes>
             """;
@@ -55,16 +59,14 @@ class SceneDetectionParsingTest {
         assertThat(firstScene.sceneIndex()).isEqualTo(1);
         assertThat(firstScene.contextSummary()).isEqualTo("The crew prepares for arrival on the ship's bridge.");
         assertThat(firstScene.startAnchor()).isEqualTo("The crew gathered on the bridge");
-        assertThat(firstScene.endAnchor()).isEqualTo("planet of Xylos grew larger.");
-        assertThat(firstScene.sceneBreakReason()).isEqualTo("Initial scene of the chapter.");
+  assertThat(firstScene.breakReason()).isEqualTo("Initial scene of the chapter.");
         
         // Verify second scene
         SceneDetectionResult secondScene = results.get(1);
         assertThat(secondScene.sceneIndex()).isEqualTo(2);
         assertThat(secondScene.contextSummary()).isEqualTo("The landing party explores the jungle on Xylos.");
         assertThat(secondScene.startAnchor()).isEqualTo("Three hours later, the landing party");
-        assertThat(secondScene.endAnchor()).isEqualTo("cries of unseen aliens.");
-        assertThat(secondScene.sceneBreakReason()).isEqualTo("Time jump and location change to planet surface.");
+        assertThat(secondScene.breakReason()).isEqualTo("Time jump and location change to planet surface.");
     }
 
     @Test
@@ -73,11 +75,13 @@ class SceneDetectionParsingTest {
             ```xml
             <scenes>
               <scene>
-                <scene_index>1</scene_index>
+                <index>1</index>
                 <context_summary>A test scene.</context_summary>
-                <scene_break_reason>Initial scene.</scene_break_reason>
+                <break_reason>Initial scene.</break_reason>
                 <start_anchor><![CDATA[Once upon a time]]></start_anchor>
-                <end_anchor><![CDATA[the end.]]></end_anchor>
+                <chronology>R:temporal.meets</chronology>
+                <chronology_certainty>Heuristic</chronology_certainty>
+                <chronology_marker>Beginning</chronology_marker>
               </scene>
             </scenes>
             ```
@@ -98,11 +102,13 @@ class SceneDetectionParsingTest {
             ```
             <scenes>
               <scene>
-                <scene_index>1</scene_index>
+                <index>1</index>
                 <context_summary>A test scene.</context_summary>
-                <scene_break_reason>Initial scene.</scene_break_reason>
+                <break_reason>Initial scene.</break_reason>
                 <start_anchor><![CDATA[Once upon a time]]></start_anchor>
-                <end_anchor><![CDATA[the end.]]></end_anchor>
+                <chronology>R:temporal.meets</chronology>
+                <chronology_certainty>Heuristic</chronology_certainty>
+                <chronology_marker>Beginning</chronology_marker>
               </scene>
             </scenes>
             ```
@@ -117,28 +123,26 @@ class SceneDetectionParsingTest {
     }
 
     @Test
-    void parseSceneDetectionResponse_ShouldSkipIncompleteScenes() {
+  void parseSceneDetectionResponse_ShouldSkipIncompleteScenes() {
         String xmlWithIncompleteScene = """
             <scenes>
               <scene>
-                <scene_index>1</scene_index>
+        <index>1</index>
                 <context_summary>Complete scene.</context_summary>
-                <scene_break_reason>Initial scene.</scene_break_reason>
+        <break_reason>Initial scene.</break_reason>
                 <start_anchor><![CDATA[Complete start]]></start_anchor>
-                <end_anchor><![CDATA[Complete end.]]></end_anchor>
               </scene>
               <scene>
-                <scene_index>2</scene_index>
-                <context_summary>Incomplete scene missing end anchor.</context_summary>
-                <scene_break_reason>Location change.</scene_break_reason>
-                <start_anchor><![CDATA[Incomplete start]]></start_anchor>
+        <index>2</index>
+        <context_summary>Incomplete scene missing start anchor.</context_summary>
+        <break_reason>Location change.</break_reason>
+        <!-- Missing start_anchor makes this scene incomplete under new schema -->
               </scene>
               <scene>
-                <scene_index>3</scene_index>
+        <index>3</index>
                 <context_summary>Another complete scene.</context_summary>
-                <scene_break_reason>Time jump.</scene_break_reason>
+        <break_reason>Time jump.</break_reason>
                 <start_anchor><![CDATA[Another start]]></start_anchor>
-                <end_anchor><![CDATA[Another end.]]></end_anchor>
               </scene>
             </scenes>
             """;
@@ -157,11 +161,13 @@ class SceneDetectionParsingTest {
         String xmlWithCData = """
             <scenes>
               <scene>
-                <scene_index>1</scene_index>
+                <index>1</index>
                 <context_summary><![CDATA[A scene with "quotes" and <special> characters.]]></context_summary>
-                <scene_break_reason><![CDATA[Initial scene with complex dialogue.]]></scene_break_reason>
+                <break_reason><![CDATA[Initial scene with complex dialogue.]]></break_reason>
                 <start_anchor><![CDATA["Hello," she said]]></start_anchor>
-                <end_anchor><![CDATA[he replied, "Goodbye."]]></end_anchor>
+                <chronology>R:temporal.meets</chronology>
+                <chronology_certainty>Heuristic</chronology_certainty>
+                <chronology_marker>Dialogue start</chronology_marker>
               </scene>
             </scenes>
             """;
@@ -173,8 +179,7 @@ class SceneDetectionParsingTest {
         SceneDetectionResult scene = results.get(0);
         assertThat(scene.contextSummary()).isEqualTo("A scene with \"quotes\" and <special> characters.");
         assertThat(scene.startAnchor()).isEqualTo("\"Hello,\" she said");
-        assertThat(scene.endAnchor()).isEqualTo("he replied, \"Goodbye.\"");
-        assertThat(scene.sceneBreakReason()).isEqualTo("Initial scene with complex dialogue.");
+        assertThat(scene.breakReason()).isEqualTo("Initial scene with complex dialogue.");
     }
 
     @Test
@@ -200,11 +205,10 @@ class SceneDetectionParsingTest {
         String xmlWithWhitespace = """
             <scenes>
               <scene>
-                <scene_index>  1  </scene_index>
+                <index>  1  </index>
                 <context_summary>  A scene with whitespace.  </context_summary>
-                <scene_break_reason>  Initial scene.  </scene_break_reason>
+                <break_reason>  Initial scene.  </break_reason>
                 <start_anchor><![CDATA[Start with spaces]]></start_anchor>
-                <end_anchor><![CDATA[End with spaces]]></end_anchor>
               </scene>
             </scenes>
             """;
@@ -217,7 +221,6 @@ class SceneDetectionParsingTest {
         assertThat(scene.sceneIndex()).isEqualTo(1);
         assertThat(scene.contextSummary()).isEqualTo("A scene with whitespace.");
         assertThat(scene.startAnchor()).isEqualTo("Start with spaces");
-        assertThat(scene.endAnchor()).isEqualTo("End with spaces");
-        assertThat(scene.sceneBreakReason()).isEqualTo("Initial scene.");
+        assertThat(scene.breakReason()).isEqualTo("Initial scene.");
     }
 }

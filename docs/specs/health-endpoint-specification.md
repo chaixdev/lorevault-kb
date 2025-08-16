@@ -35,9 +35,20 @@ Response:
   "timestamp": "2025-08-08T10:30:00Z",
   "description": "All models operational" | "One or more models have issues",
   "models": {
-    "gemma-3-4b-it": {
+    "embedding": {
       "healthy": boolean,
-      "name": "Gemma 3 4B Instruct",
+      "name": "Embedding Model",
+      "status": "operational" | "error",
+      "dimensions": 1536
+    },
+    "nlp-small": {
+      "healthy": boolean,
+      "name": "NLP Small Model",
+      "status": "operational" | "error"
+    },
+    "nlp-big": {
+      "healthy": boolean,
+      "name": "NLP Big Model", 
       "status": "operational" | "error"
     }
   }
