@@ -1,7 +1,5 @@
-package com.lorevault.api.configuration;
+package com.lorevault.api.schema;
 
-import com.lorevault.api.schema.GraphSchemaInitializer;
-import com.lorevault.api.schema.SchemaConfigurationProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;
