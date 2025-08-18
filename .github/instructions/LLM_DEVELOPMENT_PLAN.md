@@ -6,8 +6,6 @@
 
 **Quick Reference**: Balance clean, robust enterprise code with pragmatic delivery. Consider multiple approaches and select based on maintainability, robustness, complexity, and architectural alignment.
 
-> NOTE (v0.4.0 pivot): The project has migrated from an RDBMS approach to a graph-based persistence layer (Neo4j). All plan language is now persistence-neutral. Semantic embeddings and true semantic/vector search are explicitly deferred to v0.5.0. Until then, the semantic search endpoint is retained but returns a Not Implemented response.
-
 ## Issue Implementation Workflow
 
 ### Phase 1: Context Gathering (MANDATORY)

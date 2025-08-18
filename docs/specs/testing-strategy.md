@@ -169,6 +169,19 @@ public abstract class IntegrationTestBase {
             
     // Common setup for all database-dependent tests
 }
+
+// Focused test base for specific infrastructure (Neo4j example)
+@DataNeo4jTest
+public abstract class Neo4jIntegrationTestBase {
+    private static final Neo4jContainer<?> neo4j = SharedNeo4jTestContainer.getInstance();
+    
+    @DynamicPropertySource
+    static void configureNeo4j(DynamicPropertyRegistry registry) {
+        registry.add("spring.neo4j.uri", neo4j::getBoltUrl);
+        registry.add("spring.neo4j.authentication.username", () -> "neo4j");
+        registry.add("spring.neo4j.authentication.password", () -> "password");
+    }
+}
 ```
 
 **Container Reuse Configuration**:
@@ -199,7 +212,8 @@ src/test/java/
 │   │   ├── TestDataBuilder.java
 │   │   └── MockConfigurationHelper.java
 │   └── test/                       # Base test classes
-│       └── IntegrationTestBase.java
+│       ├── IntegrationTestBase.java
+│       └── Neo4jIntegrationTestBase.java
 ```
 
 ### Naming Conventions
