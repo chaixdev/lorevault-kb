@@ -1,4 +1,4 @@
-package com.lorevault.api.infrastructure.graph;
+package com.lorevault.api.schema.neo4j;
 
 import com.lorevault.api.schema.GraphSchemaInitializer;
 import lombok.RequiredArgsConstructor;
