@@ -43,20 +43,24 @@ The project will be developed in major versions, each delivering a significant p
     - **Deliverable:** Vector embeddings stored in Neo4j, basic semantic search API endpoint
     - **Tasks:** Embedding generation pipeline, Neo4j vector index setup, semantic search service, search API implementation
 
-- **v0.8.0: Spoiler-Aware Search** 📋
+- **v0.8.0: Timeline construction with Scenes as Event Entities**
+
+- **v0.9.0: Spoiler-Aware Search** 📋
     - **Goal:** Implement publication coordinate filtering for spoiler-safe search
     - **Deliverable:** Search API that respects user reading progress and filters results appropriately
     - **Tasks:** User progress tracking, spoiler filtering logic, oversample-and-filter search pipeline, progress-aware APIs
 
-- **v0.9.0: Fulltext Search & Performance** 📋
-    - **Goal:** Add Lucene fulltext search and optimize performance for production
-    - **Deliverable:** Combined semantic + fulltext search with performance optimizations
-    - **Tasks:** Neo4j Lucene integration, hybrid search implementation, performance tuning, comprehensive testing
-
-- **v1.0.0: Content Graph & Search** 📋
-    - **Goal:** Production-ready content ingestion and retrieval system
+- **v1.0.0: MVP with vector search** 📋
+    - **Goal:** NLQ on chapter content
     - **Deliverable:** Complete API for chapter ingestion, hierarchical storage, and spoiler-aware search
     - **Tasks:** API documentation, performance validation, error handling polish, deployment readiness
+- **v1.0.1: separate raw chapter & chunks & embeddings into postgres/pgvector as dedicated vector store, organise code around projection rerun for updated projection logic. keep neo nodes only with**
+- **v1.1.0: Individual` Entity Extraction**
+- **v1.2.0: Entity Projection**
+- **v1.2.0: Actions modelling and projection**
+- **v1.3.0: Claims modelling and projection**
+- **v1.4.0: aggregate claims**
+- **v1.5.0: Edge materialization for aggregate claims (canonical consensus graph)**
 
 - **v2.0.0: Entity Knowledge Graph Foundation** 📋
     - **Goal:** Establish entity extraction and graph relationship patterns using Characters as the primary entity type
