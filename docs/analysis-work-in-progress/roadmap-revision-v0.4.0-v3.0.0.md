@@ -1,3 +1,6 @@
+###
+THIS ANALYSIS IS WORK IN PROGRESS AND SUBJECT TO BE DISCARDED COMPLETELY
+###
 # LoreVault Roadmap Revision: v0.4.0–v3.0.0
 
 **Date:** August 17, 2025  

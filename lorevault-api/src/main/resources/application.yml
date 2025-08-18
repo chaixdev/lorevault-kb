@@ -33,6 +33,13 @@ management:
 
 # LoreVault Configuration (cleaned)
 lorevault:
+  # Schema initialization - disabled by default (enabled in dev profile)
+  schema:
+    enabled: false
+    mode: none
+    backend: neo4j
+    fail-on-error: false
+  
   # LLM settings used by existing services
   ai:
     # Retry config (for repeating failed requests)
