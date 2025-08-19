@@ -31,6 +31,7 @@ public interface ContentPersistencePort {
     int countChunksByChapterId(UUID chapterId);
     ChunkNode updateChunk(ChunkNode chunk);
     List<ChunkNode> updateChunks(List<ChunkNode> chunks);
+    List<ChunkNode> findAllChunksWithEmbeddings();
 
     // Jobs
     IngestionJobNode createJob(IngestionJobNode jobNode);

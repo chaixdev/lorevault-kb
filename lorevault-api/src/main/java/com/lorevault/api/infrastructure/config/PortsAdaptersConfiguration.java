@@ -1,7 +1,9 @@
 package com.lorevault.api.infrastructure.config;
 
 import com.lorevault.api.application.port.SceneDetectionPort;
+import com.lorevault.api.application.port.SemanticSearchPort;
 import com.lorevault.api.infrastructure.ai.openai.OpenAiSceneDetectionAdapter;
+import com.lorevault.api.infrastructure.search.InMemorySemanticSearchAdapter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +23,16 @@ public class PortsAdaptersConfiguration {
      */
     @Bean
     public SceneDetectionPort sceneDetectionPort(OpenAiSceneDetectionAdapter adapter) {
+        return adapter;
+    }
+
+    /**
+     * Configure the semantic search port implementation.
+     * Uses in-memory cosine similarity for v0.7.0.
+     * Future versions will support database-native vector search.
+     */
+    @Bean
+    public SemanticSearchPort semanticSearchPort(InMemorySemanticSearchAdapter adapter) {
         return adapter;
     }
     

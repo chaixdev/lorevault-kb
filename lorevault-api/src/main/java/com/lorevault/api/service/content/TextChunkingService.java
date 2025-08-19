@@ -136,10 +136,12 @@ public class TextChunkingService {
      */
     private String normalizeText(String text) {
         return text.trim()
-                   .replaceAll("\\r\\n", "\n")  // Normalize line endings
-                   .replaceAll("\\r", "\n")     // Handle old Mac line endings
-                   .replaceAll("\\s+", " ")     // Collapse multiple spaces
-                   .replaceAll("\\n\\s*\\n", "\n\n"); // Preserve paragraph breaks
+                   .replaceAll("\\r\\n", "\n")          // Normalize line endings 
+                   .replaceAll("\\r", "\n")             // Handle old Mac line endings
+                   .replaceAll("\\n{3,}", "\n\n")       // Collapse 3+ newlines to 2 (preserve paragraphs)
+                   .replaceAll("[ \\t]+", " ")          // Collapse spaces/tabs only (preserve newlines)
+                   .replaceAll("\\n ", "\n")            // Remove spaces after newlines  
+                   .replaceAll(" \\n", "\n");           // Remove spaces before newlines
     }
 
     /**
