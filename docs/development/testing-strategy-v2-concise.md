@@ -185,23 +185,6 @@ mvn verify -Dgroups="unit,integration,system" -Dpitest.mutationThreshold=80
 - Use `@Timeout` annotations for SLA validation
 - Test scalability with parameterized result counts
 
-## Migration from v1.0
-
-### Phase 1: Foundation
-1. Add `@Tag` and `@DisplayName` annotations to existing tests
-2. Create Port TCK base classes for main repository interfaces
-3. Enable Testcontainers reuse configuration
-
-### Phase 2: Organization  
-1. Implement `@Nested` test organization patterns
-2. Create centralized `TestDataBuilder` with deterministic data
-3. Convert service tests to use fakes instead of mocks where possible
-
-### Phase 3: Quality Gates
-1. Configure PIT mutation testing in Maven
-2. Add ArchUnit rules for architectural boundaries
-3. Set up CI pipeline with tagged test execution phases
-
 ### Test Maintenance Guidelines
 
 **When to Update Tests**:
