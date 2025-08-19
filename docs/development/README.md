@@ -1,5 +1,9 @@
 # Development Resources
 
+## Configuration & Setup
+
+- **[Multi-Provider LLM Configuration](multi-provider-llm-configuration.md)** - AI provider setup and configuration
+
 ## Testing & Quality
 
 - **[Testing Strategy](testing-strategy.md)** - Service-level testing approach with minimal infrastructure
