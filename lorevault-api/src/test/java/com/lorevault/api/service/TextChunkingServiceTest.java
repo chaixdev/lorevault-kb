@@ -203,4 +203,22 @@ class TextChunkingServiceTest {
         Chunk chunk = result.get(0);
         assertThat(chunk.getEndCharInChapter()).isLessThan(messyText.length());
     }
+
+    @Test
+    void extractChunks_ShouldPreserveParagraphStructure() {
+        // Given - Text with paragraph breaks and Unicode characters
+        String textWithParagraphs = "\"Shoo! Woh kan i! Woh kan i!\"\n\nXiù giggled as the little alien kid ran over.";
+        
+        // When
+        List<Chunk> result = textChunkingService.extractChunks(textWithParagraphs);
+        
+        // Then
+        assertThat(result).hasSize(1);
+        Chunk chunk = result.get(0);
+        
+        // Verify paragraph breaks are preserved and Unicode characters are intact
+        assertThat(chunk.getText()).contains("\"Shoo! Woh kan i! Woh kan i!\"\n\nXiù giggled");
+        assertThat(chunk.getText()).contains("Xiù"); // Unicode character preserved
+        assertThat(chunk.getText()).doesNotContain("nnXiù"); // No corruption
+    }
 }

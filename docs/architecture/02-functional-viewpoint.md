@@ -1,14 +1,14 @@
-# Functional Viewpoint (v0.4.0 Current State)
+# Functional Viewpoint (v0.7.0 Current State)
 
 **Stakeholders:** Developers, architects, testers  
 **Concerns:** Implemented system functionality, component responsibilities, interfaces, deferred roadmap items
 
 ## Scope Clarification
-Current release (v0.4.0) delivers: chapter ingestion, scene detection, text chunking, ingestion job + status tracking, and graph persistence in Neo4j.  
-Deferred to v0.5.0+: embeddings, semantic/vector search, knowledge entity extraction, hybrid AI (local + external) orchestration, CQRS read model specialization.
+Current release (v0.7.0) delivers: chapter ingestion, scene detection, text chunking, embedding generation, semantic search, ingestion job + status tracking, and graph persistence in Neo4j.  
+Deferred to v0.8.0+: knowledge entity extraction, RAG-based question answering, hybrid AI orchestration, CQRS read model specialization.
 
 ## Overview
-The current functional architecture is intentionally minimal: a synchronous REST submission triggers creation of an ingestion job; background processing (within the same service for now) performs scene detection and chunking, persisting results as graph nodes. Query endpoints are limited to retrieving submission/job status and basic stored structural content. A Not Implemented (501) response placeholder exists for semantic search.
+The functional architecture provides chapter ingestion with hierarchical decomposition and semantic search capabilities. A synchronous REST submission triggers creation of an ingestion job; background processing performs scene detection, chunking, and embedding generation, persisting results as graph nodes. Semantic search endpoints enable natural language queries over chunk content using vector similarity.
 
 ## Implemented Components
 
@@ -17,7 +17,8 @@ The current functional architecture is intentionally minimal: a synchronous REST
   - POST /api/v1/chapters : submit chapter content (idempotent via contentHash)
   - GET  /api/v1/chapters/{id} : fetch stored chapter (basic)
   - GET  /api/v1/ingestion/jobs/{id}/status : job + recent status records
-  - GET  /api/v1/search/semantic : returns 501 (deferred)
+  - POST /api/search/semantic : semantic search over chunk content using natural language queries
+  - GET  /api/search/semantic/status : availability status for semantic search functionality
 
 ### IngestionService
 - Orchestrates chapter submission workflow
@@ -83,21 +84,22 @@ sequenceDiagram
 - Observability: Basic status records (no distributed tracing yet)
 - Testability: Unit tests + Neo4j Testcontainer integration tests
 
-## Deferred Components (v0.5.0+ Roadmap)
+## Deferred Components (v0.8.0+ Roadmap)
 (Original design elements retained here for continuity; not yet implemented)
 - CQRS specialization (separate optimized query services)
 - Hybrid Local + External AI orchestration layer
-- Embedding generation & vector-backed semantic search
 - Knowledge entity extraction & graph enrichment pipeline
+- RAG-based question answering over retrieved chunks
 - Event / job queue abstraction (currently inline method calls)
 
 ### Deferred Diagram References (Removed for Clarity)
 Previous diagrams showing: full CQRS gateway, job queue/worker pool, multi-tier AI pipeline, vector-enhanced RAG flow. These will be reinstated once corresponding capabilities are implemented.
 
-## Rationale for Deferral
-- Priority was reliable migration from RDBMS to Neo4j with no functional regression
-- Embeddings & semantic search introduce additional storage/index complexity best added atop stable graph persistence
-- Early delivery enables iterative optimization of current adapter queries before layering advanced retrieval
+## Rationale for Current Scope
+- Semantic search provides foundation for future RAG-based question answering
+- Linear in-memory scoring establishes ports & adapters pattern for future optimization
+- Embeddings infrastructure enables knowledge entity extraction in next milestone
+- Early delivery enables iterative optimization before adding complex reasoning layers
 
 ## Risks & Mitigations (Current Scope)
 - Adapter inefficiency (in-memory filtering) → Plan: replace with targeted Cypher (next iteration)
@@ -106,9 +108,9 @@ Previous diagrams showing: full CQRS gateway, job queue/worker pool, multi-tier 
 
 ## Planned Near-Term Improvements
 1. Replace adapter in-memory filtering with Cypher queries
-2. Remove unused legacy repository stubs & deprecated ChunkService
+2. Remove unused legacy repository stubs & deprecated ChunkService  
 3. Inline node creation (drop GraphModelMapper)
-4. Expand status model (timestamps on scenes/chunks) [optional]
+4. Add RAG-based question answering endpoint (v0.8.0)
 
 ---
-(Updated for v0.4.0 to reflect implemented subset; future sections clearly marked as deferred.)
+(Updated for v0.7.0 to reflect semantic search implementation; future sections clearly marked as deferred.)

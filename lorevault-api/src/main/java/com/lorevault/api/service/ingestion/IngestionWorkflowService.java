@@ -205,10 +205,8 @@ public class IngestionWorkflowService {
     }
 
     private ChunkNode createChunkNode(WorkflowContext context, Chunk chunk) {
-        String chunkContent = context.getChapterText().substring(
-                chunk.getStartCharInChapter(), 
-                chunk.getEndCharInChapter()
-        );
+        // Use the normalized chunk text from TextChunkingService instead of raw chapter substring
+        String chunkContent = chunk.getText(); // This contains the properly normalized text
         String contentHash = hashService.generateSha256Hash(chunkContent);
         
         ChunkNode node = new ChunkNode();
@@ -217,7 +215,7 @@ public class IngestionWorkflowService {
         node.setStartCharInChapter(chunk.getStartCharInChapter());
         node.setEndCharInChapter(chunk.getEndCharInChapter());
         node.setContentHash(contentHash);
-        node.setText(chunkContent); // Store the actual chunk text for debugging
+        node.setText(chunkContent); // Store the normalized chunk text from TextChunkingService
         
         return node;
     }

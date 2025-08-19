@@ -51,4 +51,12 @@ public interface ChunkGraphRepository extends Neo4jRepository<ChunkNode, UUID> {
             RETURN ch ORDER BY s.sceneIndex, r.chunkIndex
             """)
     List<ChunkNode> findStaleEmbeddingsByChapterId(UUID chapterId, String expectedHash);
+
+    // Global embedding queries for semantic search
+    @Query("""
+            MATCH (ch:Chunk)
+            WHERE ch.embedding IS NOT NULL AND ch.embeddingHash IS NOT NULL
+            RETURN ch
+            """)
+    List<ChunkNode> findAllWithEmbeddings();
 }

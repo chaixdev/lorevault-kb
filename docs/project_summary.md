@@ -38,14 +38,20 @@ The project will be developed in major versions, each delivering a significant p
     - **Deliverable:** Complete hierarchy with bookOrder, chapterOrder, sceneIndex, and materialized coordinates on chunks
     - **Tasks:** Coordinate calculation logic, hierarchy validation, coordinate materialization service, basic hierarchy APIs
 
-- **v0.7.0: Vector Search Integration** 📋
+- **v0.7.0: Vector Search Integration** ✅ **COMPLETED**
     - **Goal:** Add semantic search capabilities without spoiler filtering
     - **Deliverable:** Vector embeddings stored in Neo4j, basic semantic search API endpoint
-    - **Tasks:** Embedding generation pipeline, Neo4j vector index setup, semantic search service, search API implementation
+    - **Tasks:** ✅ Embedding generation pipeline, ✅ Linear in-memory semantic search, ✅ Search API implementation
+    - **Achievement:** POST /api/search/semantic endpoint with natural language query support
 
-- **v0.8.0: Timeline construction with Scenes as Event Entities**
+- **v0.8.0: RAG Question Answering** 📋
+    - **Goal:** Add intelligent question answering over retrieved chunk content
+    - **Deliverable:** Natural language question answering with source attribution
+    - **Tasks:** LLM integration port, RAG service implementation, POST /api/ask endpoint, citation logic
 
-- **v0.9.0: Spoiler-Aware Search** 📋
+- **v0.9.0 Timeline construction with Scenes as Event entities**
+
+- **v0.10.0: Spoiler-Aware Search** 📋
     - **Goal:** Implement publication coordinate filtering for spoiler-safe search
     - **Deliverable:** Search API that respects user reading progress and filters results appropriately
     - **Tasks:** User progress tracking, spoiler filtering logic, oversample-and-filter search pipeline, progress-aware APIs

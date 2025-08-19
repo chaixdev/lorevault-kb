@@ -247,4 +247,13 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
         System.out.println("[Neo4jAdapter] updateChunks persisted=" + saved.size() + " ms=" + ms);
         return saved;
     }
+
+    @Override
+    public List<ChunkNode> findAllChunksWithEmbeddings() {
+        long start = System.currentTimeMillis();
+        List<ChunkNode> chunks = chunkRepo.findAllWithEmbeddings();
+        long ms = System.currentTimeMillis() - start;
+        System.out.println("[Neo4jAdapter] findAllChunksWithEmbeddings size=" + chunks.size() + " ms=" + ms);
+        return chunks;
+    }
 }

@@ -92,8 +92,8 @@ public class FileContentExtractor {
      */
     private String normalizeContent(String content) {
         return content
-            .replaceAll("\\r\\n", "\\n")  // Windows line endings to Unix
-            .replaceAll("\\r", "\\n")     // Mac classic line endings to Unix
+            .replaceAll("\\r\\n", "\n")  // Windows line endings to Unix (actual newline)
+            .replaceAll("\\r", "\n")     // Mac classic line endings to Unix (actual newline)
             .trim();                      // Remove leading/trailing whitespace
     }
 
