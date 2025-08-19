@@ -84,12 +84,12 @@ lorevault:
     # Prompt locations (used by PromptLoaderService)
     prompts:
       base-path: classpath:prompts
-      scene-detection: 
-        system-prompt: scene-detection-v2.txt
-        model: nlp-small
+      # scene-detection: 
+      #   system-prompt: scene-detection-v2.txt
+      #   model: nlp-small
       scene-detection-pass1: 
         system-prompt: scene-detection-pass1.txt
-        model: nlp-small
+        model: nlp-big
       scene-detection-pass2: 
         system-prompt: scene-detection-pass2.txt
         model: nlp-small

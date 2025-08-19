@@ -2,9 +2,11 @@ package com.lorevault.api.test.config;
 
 import org.mockito.Mockito;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 
 import static org.mockito.ArgumentMatchers.*;
 
@@ -13,6 +15,7 @@ import static org.mockito.ArgumentMatchers.*;
  * no real external LLM calls are made and health checks pass fast.
  */
 @Configuration
+@Profile("test")
 public class MockLlmConfig {
 
     @Bean
@@ -33,5 +36,17 @@ public class MockLlmConfig {
                 .content())
                 .thenReturn("<scenes></scenes>");
         return mock;
+    }
+
+    @Bean
+    @Qualifier("nlpSmall")
+    public ChatClient nlpSmallChatClient() {
+        return mockChatClient();
+    }
+
+    @Bean
+    @Qualifier("nlpBig")
+    public ChatClient nlpBigChatClient() {
+        return mockChatClient();
     }
 }
