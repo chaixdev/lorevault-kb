@@ -1,4 +1,4 @@
-package com.lorevault.api.web.ingestion.extractor;
+package com.lorevault.api.web.command.ingestion.extractor;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;

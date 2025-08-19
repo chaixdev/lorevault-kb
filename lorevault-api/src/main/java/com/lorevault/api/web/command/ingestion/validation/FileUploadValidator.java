@@ -1,4 +1,4 @@
-package com.lorevault.api.web.ingestion.validation;
+package com.lorevault.api.web.command.ingestion.validation;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;

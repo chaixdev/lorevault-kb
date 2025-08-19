@@ -2,22 +2,54 @@
 
 **Purpose**: Define the complete REST API interface for the LoreVault content ingestion and lore exploration system, implementing CQRS patterns with clear command/query separation.
 
-**Scope**: All public HTTP endpoints, request/response formats, error handling, and integration patterns for the LoreVault API. Covers current v0.3.x implementation and planned expansion through v1.0.0.
+**Scope**: All public HTTP endpoints, request/response formats, error handling, and integration patterns for the LoreVault API. Covers current v0.8.0 implementation and planned expansion through v1.0.0.
 
 **Dependencies**: 
-- Architecture Document: Functional Viewpoint (02-functional-viewpoint.md) - CQRS patterns
+- Architecture Document: ### Performance Requirements
+
+### Response Time Targets
+
+| Operation | Target | Maximum |
+|-----------|--------|---------|
+| File submission | < 200ms | 500ms |
+| Job status query | < 100ms | 200ms |
+| Job list query | < 300ms | 1000ms |
+| Semantic search | < 500ms | 2000ms |
+| RAG question answering | < 3000ms | 8000ms |
+
+### Throughput Specifications
+
+| Operation | Peak Load | Sustained Load |
+|-----------|-----------|----------------|
+| File submissions | 10/minute | 100/hour |
+| Status queries | 100/minute | 1000/hour |
+| Search queries | 50/minute | 500/hour |
+| RAG queries | 20/minute | 200/hour |oint (02-functional-viewpoint.md) - CQRS patterns
 - Neo4j Content Data Model (neo4j-content-data-model.md) - Entity structures
 - Scene Detection Specification (scene-detection-specification.md) - Processing workflow
 
 ## Process Overview
 
-The LoreVault API implements a CQRS-aligned design that separates content ingestion commands from lore exploration queries. The API supports the complete workflow from content submission through processing job monitoring to structured lore access.
+The LoreVault API implements a strict CQRS design that separates content ingestion commands from lore exploration queries. The API supports the complete workflow from content submission through processing job monitoring to structured lore access and intelligent question answering.
 
 ### Core API Domains
 
-1. **Content Ingestion** (`/api/ingest/`): Command operations for submitting narrative content
-2. **Job Monitoring** (`/api/jobs/`): Query operations for tracking processing status  
-3. **Lore Exploration** (`/api/lore/`): Query operations for accessing structured knowledge
+1. **Content Commands** (`/api/command/`): Command operations for content modification
+2. **Query Operations** (`/api/query/`): All read operations including job monitoring, search, and QA
+
+## CQRS Endpoint Structure
+
+### Command Operations
+- `POST /api/command/ingest` - Submit content for processing
+
+### Query Operations  
+- `GET /api/query/jobs/{jobId}` - Get job status
+- `GET /api/query/jobs` - List jobs with filtering
+- `POST /api/query/search/semantic` - Vector similarity search
+- `GET /api/query/search/semantic/status` - Search availability
+- `POST /api/query/ask/vector` - Vector-based question answering
+- `POST /api/query/ask/rag` - RAG-powered question answering with citations
+- `GET /api/query/health` - System health and service status
 
 ## Detailed Workflow
 
@@ -26,12 +58,12 @@ The LoreVault API implements a CQRS-aligned design that separates content ingest
 ```mermaid
 sequenceDiagram
     participant Client
-    participant IngestAPI as Ingest API
+    participant IngestAPI as Command API
     participant JobService as Job Service
     participant EventBus as Event Bus
     participant Processor as Chapter Processor
     
-    Client->>IngestAPI: POST /api/ingest/submit-file
+    Client->>IngestAPI: POST /api/command/ingest
     IngestAPI->>IngestAPI: Validate file type (.txt/.md)
     IngestAPI->>IngestAPI: Extract content & metadata
     IngestAPI->>JobService: Create ingestion job
@@ -42,14 +74,14 @@ sequenceDiagram
     Processor->>Processor: Process chapter content
     Processor->>JobService: Update job status
     
-    Client->>JobService: GET /api/jobs/{jobId}
+    Client->>JobService: GET /api/query/jobs/{jobId}
     JobService-->>Client: Job status & progress
 ```
 
 
 #### Submit File Endpoint
 
-**Endpoint**: `POST /api/ingest/submit-file`  
+**Endpoint**: `POST /api/command/ingest`  
 **Purpose**: Submit narrative content files for processing  
 **Content-Type**: `multipart/form-data`
 
@@ -67,7 +99,7 @@ title: string                (optional) - Chapter title (auto-extracted if omitt
 **Request Example**:
 ```bash
 # Standalone book in a universe
-curl -X POST /api/ingest/submit-file \
+curl -X POST /api/command/ingest \
   -F "file=@chapter1.md" \
   -F "universe=Cosmere" \
   -F "bookNumber=1" \
@@ -75,7 +107,7 @@ curl -X POST /api/ingest/submit-file \
   -F "title=Warbreaker - Chapter 1"
 
 # Book in a series
-curl -X POST /api/ingest/submit-file \
+curl -X POST /api/command/ingest \
   -F "file=@chapter1.md" \
   -F "universe=Cosmere" \
   -F "series=Mistborn" \
@@ -107,7 +139,7 @@ curl -X POST /api/ingest/submit-file \
 
 #### Get Job Status
 
-**Endpoint**: `GET /api/jobs/{jobId}`  
+**Endpoint**: `GET /api/query/jobs/{jobId}`  
 **Purpose**: Retrieve processing status for a specific job
 
 **Path Parameters**:
@@ -150,7 +182,7 @@ jobId: UUID (required) - Unique job identifier
 
 #### List Jobs
 
-**Endpoint**: `GET /api/jobs`  
+**Endpoint**: `GET /api/query/jobs`  
 **Purpose**: Retrieve list of jobs with optional filtering
 
 **Query Parameters**:
@@ -191,6 +223,139 @@ offset: integer (optional, default: 0, min: 0) - Pagination offset
 
 - ACTIVE returns jobs whose current status is not in [COMPLETE, FAILED].
 - Results are ordered by `createdAt` desc.
+
+### Search & QA Domain
+
+#### Semantic Search
+
+**Endpoint**: `POST /api/query/search/semantic`  
+**Purpose**: Perform vector-based similarity search across chunk content  
+**Status**: Available in v0.7.0+
+
+**Request Format**:
+```json
+{
+  "query": "What is Kaladin's relationship with Bridge Four?",
+  "topK": 5,
+  "threshold": 0.7,
+  "filters": {
+    "universe": "Cosmere",
+    "series": "Stormlight Archive", 
+    "bookNumber": 1,
+    "chapterNumber": null
+  }
+}
+```
+
+**Response Format**:
+```json
+{
+  "results": [
+    {
+      "chunkId": "789e0123-e89b-12d3-a456-426614174000",
+      "score": 0.89,
+      "snippet": "Kaladin looked at the men of Bridge Four, his crew, his responsibility...",
+      "chapterId": "456e7890-e89b-12d3-a456-426614174000", 
+      "bookNumber": 1,
+      "chapterNumber": 15
+    }
+  ],
+  "metadata": {
+    "query": "What is Kaladin's relationship with Bridge Four?",
+    "totalResults": 1,
+    "returnedResults": 1,
+    "processingTimeMs": 145
+  }
+}
+```
+
+#### Search Status
+
+**Endpoint**: `GET /api/query/search/semantic/status`  
+**Purpose**: Check availability of semantic search functionality
+
+**Response Format**:
+```json
+{
+  "available": true,
+  "message": "Semantic search is available"
+}
+```
+
+#### Ask Vector
+
+**Endpoint**: `POST /api/query/ask/vector`  
+**Purpose**: Vector-only question answering (mirrors semantic search for comparison)  
+**Status**: Available in v0.8.0+
+
+**Request/Response**: Same format as semantic search endpoint
+
+#### Ask RAG
+
+**Endpoint**: `POST /api/query/ask/rag`  
+**Purpose**: RAG-based question answering with synthesized answers and citations  
+**Status**: Available in v0.8.0+
+
+**Request Format**:
+```json
+{
+  "question": "How does Vin learn about Allomancy?",
+  "topK": 5,
+  "threshold": 0.6,
+  "filters": {
+    "universe": "Cosmere",
+    "series": "Mistborn",
+    "bookNumber": 1
+  }
+}
+```
+
+**Response Format**:
+```json
+{
+  "answer": "Vin learns about Allomancy through several key experiences. Initially, she discovers her abilities accidentally when she instinctively burns pewter during a fight. Kelsior then becomes her primary teacher, explaining the fundamentals of Allomantic metals and their effects.",
+  "citations": [
+    {
+      "chunkId": "abc12345-e89b-12d3-a456-426614174000",
+      "snippet": "'You're an Allomancer, Vin,' Kelsior said. 'The metal you've been burning is pewter...'",
+      "score": 0.92
+    }
+  ],
+  "metadata": {
+    "question": "How does Vin learn about Allomancy?",
+    "retrieved": 5,
+    "used": 2,
+    "processingTimeMs": 2340
+  }
+}
+```
+
+### System Health Domain
+
+#### Health Check
+
+**Endpoint**: `GET /api/health`  
+**Purpose**: System health status including AI service connectivity
+
+**Response Format**:
+```json
+{
+  "healthy": true,
+  "timestamp": "2025-08-19T10:30:00Z",
+  "version": "0.8.0",
+  "checks": {
+    "llm": {
+      "healthy": true,
+      "description": "Large Language Model API connectivity"
+    },
+    "embeddings": {
+      "healthy": true,
+      "dimension": 3072,
+      "durationMs": 145
+    }
+  }
+}
+```
 
 ### Lore Exploration Domain
 
@@ -402,19 +567,21 @@ flowchart TD
 
 ### Version Compatibility
 
-**Current Version**: v0.3.x (Scene Detection & Chunking)  
-**API Stability**: File upload, job status, and job listing endpoints are stable for v0.3.x  
-**Breaking Changes**: None planned for v0.3.x series
+**Current Version**: v0.8.0 (Vector Search Integration & RAG QA)  
+**API Stability**: CQRS endpoints are stable for v0.8.x series  
+**Breaking Changes**: Endpoint restructure from v0.7.0 (legacy endpoints removed)
 
 ### Future Enhancements
 
-**v0.4.0 Additions**:
-- Entity extraction and synthesis endpoints (spec to be finalized)
-- Vector embeddings and semantic search endpoints
+**v0.9.0 Additions**:
+- Spoiler-aware search filtering
+- Advanced entity relationship queries
+- Graph traversal endpoints
 
 **v1.0.0 Additions**:
-- `/api/lore/{universe}/characters` endpoint
+- `/api/query/lore/{universe}/characters` endpoint
 - Full entity relationship queries
+- Production authentication/authorization
 
 ### Deprecation Policy
 

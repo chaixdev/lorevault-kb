@@ -1,0 +1,512 @@
+{
+	"info": {
+		"_postman_id": "d4b2c15e-f5b2-4c93-b3f4-12345abcdef0",
+		"name": "LoreVault API v0.8.0 CQRS",
+		"description": "REST API collection for LoreVault - Agentic Knowledge Ingestion Service\nFollows CQRS pattern with /api/command/* and /api/query/* endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12345"
+	},
+	"item": [
+		{
+			"name": "Commands",
+			"item": [
+				{
+					"name": "Content Ingestion",
+					"item": [
+						{
+							"name": "Submit Chapter File",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": "/path/to/sample-chapter.txt"
+										},
+										{
+											"key": "universe",
+											"value": "Cosmere",
+											"type": "text"
+										},
+										{
+											"key": "series",
+											"value": "The Stormlight Archive",
+											"type": "text"
+										},
+										{
+											"key": "bookNumber",
+											"value": "1",
+											"type": "text"
+										},
+										{
+											"key": "chapterNumber",
+											"value": "1",
+											"type": "text"
+										},
+										{
+											"key": "title",
+											"value": "Kaladin",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/command/ingest",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"command",
+										"ingest"
+									]
+								},
+								"description": "Submit a chapter file for processing. Returns a job ID for tracking."
+							},
+							"response": [
+								{
+									"name": "Success Response",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "formdata",
+											"formdata": [
+												{
+													"key": "file",
+													"type": "file",
+													"src": "/path/to/sample-chapter.txt"
+												},
+												{
+													"key": "universe",
+													"value": "Cosmere",
+													"type": "text"
+												},
+												{
+													"key": "series",
+													"value": "The Stormlight Archive",
+													"type": "text"
+												},
+												{
+													"key": "bookNumber",
+													"value": "1",
+													"type": "text"
+												},
+												{
+													"key": "chapterNumber",
+													"value": "1",
+													"type": "text"
+												}
+											]
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/command/ingest",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"command",
+												"ingest"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"status\": \"success\",\n    \"message\": \"File submitted for processing\",\n    \"jobId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"\n}"
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Queries",
+			"item": [
+				{
+					"name": "Job Management",
+					"item": [
+						{
+							"name": "Get Job Status",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/query/jobs/{{jobId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"query",
+										"jobs",
+										"{{jobId}}"
+									]
+								},
+								"description": "Get the status of a specific ingestion job"
+							},
+							"response": [
+								{
+									"name": "Job Status Response",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/query/jobs/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"query",
+												"jobs",
+												"a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"jobId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"currentStatus\": \"COMPLETED\",\n    \"chapterId\": \"b2c3d4e5-f6a7-8901-bcde-f23456789012\",\n    \"submittedAt\": \"2025-08-19T10:30:00Z\",\n    \"completedAt\": \"2025-08-19T10:32:15Z\",\n    \"statusHistory\": [\n        {\n            \"status\": \"SUBMITTED\",\n            \"timestamp\": \"2025-08-19T10:30:00Z\"\n        },\n        {\n            \"status\": \"PROCESSING\",\n            \"timestamp\": \"2025-08-19T10:30:05Z\"\n        },\n        {\n            \"status\": \"COMPLETED\",\n            \"timestamp\": \"2025-08-19T10:32:15Z\",\n            \"details\": {\n                \"scenesDetected\": 3,\n                \"chunksCreated\": 12,\n                \"embeddingsGenerated\": 12\n            }\n        }\n    ]\n}"
+								}
+							]
+						},
+						{
+							"name": "List Jobs",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/query/jobs?limit=10&offset=0&universe=Cosmere&status=COMPLETED",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"query",
+										"jobs"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "offset",
+											"value": "0"
+										},
+										{
+											"key": "universe",
+											"value": "Cosmere"
+										},
+										{
+											"key": "status",
+											"value": "COMPLETED"
+										}
+									]
+								},
+								"description": "List jobs with optional filters and pagination"
+							}
+						}
+					]
+				},
+				{
+					"name": "Search & QA",
+					"item": [
+						{
+							"name": "Semantic Search",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"query\": \"What is Kaladin's relationship with Bridge Four?\",\n    \"topK\": 5,\n    \"threshold\": 0.7,\n    \"filters\": {\n        \"universe\": \"Cosmere\",\n        \"series\": \"The Stormlight Archive\",\n        \"bookNumber\": 1\n    }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/query/search/semantic",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"query",
+										"search",
+										"semantic"
+									]
+								},
+								"description": "Perform semantic search using vector embeddings"
+							},
+							"response": [
+								{
+									"name": "Search Results",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"query\": \"What is Kaladin's relationship with Bridge Four?\",\n    \"topK\": 5\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/query/search/semantic",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"query",
+												"search",
+												"semantic"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"results\": [\n        {\n            \"chunkId\": \"c3d4e5f6-a7b8-9012-cdef-345678901234\",\n            \"score\": 0.89,\n            \"snippet\": \"Kaladin looked at his men—Bridge Four. They weren't just bridgemen anymore. They were soldiers, and more than that, they were family...\",\n            \"chapterId\": \"b2c3d4e5-f6a7-8901-bcde-f23456789012\",\n            \"bookNumber\": 1,\n            \"chapterNumber\": 17\n        }\n    ],\n    \"metadata\": {\n        \"query\": \"What is Kaladin's relationship with Bridge Four?\",\n        \"totalResults\": 5,\n        \"returnedResults\": 1,\n        \"processingTimeMs\": 245\n    }\n}"
+								}
+							]
+						},
+						{
+							"name": "Search Status",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/query/search/semantic/status",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"query",
+										"search",
+										"semantic",
+										"status"
+									]
+								},
+								"description": "Check if semantic search is available"
+							}
+						},
+						{
+							"name": "Ask (Vector)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"query\": \"What is Kaladin's relationship with Bridge Four?\",\n    \"topK\": 5,\n    \"threshold\": 0.7\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/query/ask/vector",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"query",
+										"ask",
+										"vector"
+									]
+								},
+								"description": "Vector-only QA that returns chunk results (mirrors semantic search for comparison)"
+							}
+						},
+						{
+							"name": "Ask (RAG)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"question\": \"What is Kaladin's relationship with Bridge Four?\",\n    \"topK\": 5,\n    \"threshold\": 0.7,\n    \"filters\": {\n        \"universe\": \"Cosmere\",\n        \"series\": \"The Stormlight Archive\"\n    }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/query/ask/rag",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"query",
+										"ask",
+										"rag"
+									]
+								},
+								"description": "RAG-powered QA that synthesizes answers from retrieved chunks with citations (v0.8.0)"
+							},
+							"response": [
+								{
+									"name": "RAG Answer (v0.8.0)",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"question\": \"What is Kaladin's relationship with Bridge Four?\",\n    \"topK\": 5\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/query/ask/rag",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"query",
+												"ask",
+												"rag"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"answer\": \"Kaladin has a deep, familial relationship with Bridge Four. Initially brought together as bridgemen in the worst assignment possible, they evolved from a group of broken men into a tight-knit unit under Kaladin's leadership. He sees them not just as soldiers but as family, and they reciprocate this bond through unwavering loyalty and trust.\",\n    \"citations\": [\n        {\n            \"chunkId\": \"c3d4e5f6-a7b8-9012-cdef-345678901234\",\n            \"snippet\": \"Kaladin looked at his men—Bridge Four. They weren't just bridgemen anymore...\",\n            \"score\": 0.89\n        },\n        {\n            \"chunkId\": \"d4e5f6a7-b8c9-0123-def4-56789012345a\",\n            \"snippet\": \"The men of Bridge Four had become something more than soldiers to him...\",\n            \"score\": 0.85\n        }\n    ],\n    \"metadata\": {\n        \"question\": \"What is Kaladin's relationship with Bridge Four?\",\n        \"retrieved\": 5,\n        \"used\": 2,\n        \"processingTimeMs\": 1240\n    }\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "System",
+					"item": [
+						{
+							"name": "Health Check",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/query/health",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"query",
+										"health"
+									]
+								},
+								"description": "Get system health status including LLM and embedding service availability"
+							},
+							"response": [
+								{
+									"name": "Health Status",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/query/health",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"query",
+												"health"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"healthy\": true,\n    \"checks\": {\n        \"llm\": {\n            \"healthy\": true,\n            \"description\": \"Large Language Model API connectivity\"\n        },\n        \"embeddings\": {\n            \"healthy\": true,\n            \"dimension\": 3072,\n            \"durationMs\": 234\n        }\n    },\n    \"buildInfo\": {\n        \"version\": \"0.8.0\",\n        \"buildTime\": \"2025-08-19T08:15:30.123Z\"\n    },\n    \"timestamp\": \"2025-08-19T15:45:12.345Z\"\n}"
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		}
+	]
+}

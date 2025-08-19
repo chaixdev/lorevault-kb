@@ -1,0 +1,580 @@
+{
+	"info": {
+		"_postman_id": "lorevault-api-collection",
+		"name": "LoreVault API Collection",
+		"description": "Complete API collection for LoreVault CQRS endpoints. Covers content ingestion commands, job monitoring queries, and ask/search queries for v0.8.0+.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "lorevault"
+	},
+	"item": [
+		{
+			"name": "Commands",
+			"description": "CQRS Command operations - content ingestion and modifications",
+			"item": [
+				{
+					"name": "Ingest Content",
+					"item": [
+						{
+							"name": "Submit Chapter File",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": [],
+											"description": "Chapter text file (.txt or .md)"
+										},
+										{
+											"key": "universe",
+											"value": "Cosmere",
+											"type": "text",
+											"description": "Universe name (required)"
+										},
+										{
+											"key": "series",
+											"value": "Mistborn",
+											"type": "text",
+											"description": "Series name (optional)"
+										},
+										{
+											"key": "bookNumber",
+											"value": "1",
+											"type": "text",
+											"description": "Book number (required, 1-based)"
+										},
+										{
+											"key": "chapterNumber",
+											"value": "1",
+											"type": "text",
+											"description": "Chapter number (required, 1-based)"
+										},
+										{
+											"key": "partNumber",
+											"value": "",
+											"type": "text",
+											"description": "Part number (optional, 1-based)"
+										},
+										{
+											"key": "title",
+											"value": "The Final Empire - Chapter 1",
+											"type": "text",
+											"description": "Chapter title (optional, auto-extracted if omitted)"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/command/ingest",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"command",
+										"ingest"
+									]
+								},
+								"description": "Submit a chapter file for processing. Returns jobId and chapterId for tracking."
+							},
+							"response": [
+								{
+									"name": "Success Response",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "formdata",
+											"formdata": [
+												{
+													"key": "file",
+													"type": "file",
+													"src": []
+												},
+												{
+													"key": "universe",
+													"value": "Cosmere",
+													"type": "text"
+												},
+												{
+													"key": "series",
+													"value": "Mistborn",
+													"type": "text"
+												},
+												{
+													"key": "bookNumber",
+													"value": "1",
+													"type": "text"
+												},
+												{
+													"key": "chapterNumber",
+													"value": "1",
+													"type": "text"
+												},
+												{
+													"key": "title",
+													"value": "The Final Empire - Chapter 1",
+													"type": "text"
+												}
+											]
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/command/ingest",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"command",
+												"ingest"
+											]
+										}
+									},
+									"status": "Accepted",
+									"code": 202,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"jobId\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"chapterId\": \"123e4567-e89b-12d3-a456-426614174000\",\n  \"status\": \"submitted\",\n  \"message\": \"Chapter submitted successfully for processing\"\n}"
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Queries",
+			"description": "CQRS Query operations - job monitoring, search, and ask endpoints",
+			"item": [
+				{
+					"name": "Job Monitoring",
+					"item": [
+						{
+							"name": "Get Job Status",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/query/jobs/{{jobId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"query",
+										"jobs",
+										"{{jobId}}"
+									]
+								},
+								"description": "Get detailed status and progress for a specific job"
+							},
+							"response": [
+								{
+									"name": "Job Status Response",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/query/jobs/550e8400-e29b-41d4-a716-446655440000",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"query",
+												"jobs",
+												"550e8400-e29b-41d4-a716-446655440000"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"jobId\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"chapterId\": \"123e4567-e89b-12d3-a456-426614174000\",\n  \"status\": \"EMBEDDING_CHUNKS\",\n  \"progress\": 45,\n  \"createdAt\": \"2025-08-19T10:15:00Z\",\n  \"completedAt\": null,\n  \"isComplete\": false,\n  \"statusHistory\": [\n    {\n      \"status\": \"QUEUED\",\n      \"stepDescription\": \"Chapter submitted and queued for processing\",\n      \"timestamp\": \"2025-08-19T10:15:00Z\",\n      \"progressPercent\": 0\n    },\n    {\n      \"status\": \"DETECTING_SCENES\",\n      \"stepDescription\": \"Performing deterministic text segmentation\",\n      \"timestamp\": \"2025-08-19T10:15:30Z\",\n      \"progressPercent\": 15\n    },\n    {\n      \"status\": \"EMBEDDING_CHUNKS\",\n      \"stepDescription\": \"Created 47 chunks from chapter content\",\n      \"timestamp\": \"2025-08-19T10:16:00Z\",\n      \"progressPercent\": 45\n    }\n  ]\n}"
+								}
+							]
+						},
+						{
+							"name": "List Jobs",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/query/jobs?universe={{universe}}&status=ACTIVE&limit=20&offset=0",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"query",
+										"jobs"
+									],
+									"query": [
+										{
+											"key": "universe",
+											"value": "{{universe}}",
+											"description": "Filter by universe"
+										},
+										{
+											"key": "status",
+											"value": "ACTIVE",
+											"description": "Filter by status (ACTIVE, QUEUED, COMPLETE, FAILED, etc.)"
+										},
+										{
+											"key": "limit",
+											"value": "20",
+											"description": "Page size (1-100)"
+										},
+										{
+											"key": "offset",
+											"value": "0",
+											"description": "Pagination offset"
+										}
+									]
+								},
+								"description": "List jobs with optional filtering and pagination"
+							}
+						}
+					]
+				},
+				{
+					"name": "Search & Ask",
+					"item": [
+						{
+							"name": "Semantic Search",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"query\": \"What is Kaladin's relationship with Bridge Four?\",\n  \"topK\": 5,\n  \"threshold\": 0.7,\n  \"filters\": {\n    \"universe\": \"Cosmere\",\n    \"series\": \"Stormlight Archive\",\n    \"bookNumber\": 1\n  }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/query/search/semantic",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"query",
+										"search",
+										"semantic"
+									]
+								},
+								"description": "Perform semantic search using natural language queries"
+							},
+							"response": [
+								{
+									"name": "Search Results",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"query\": \"What is Kaladin's relationship with Bridge Four?\",\n  \"topK\": 5\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/query/search/semantic",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"query",
+												"search",
+												"semantic"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"results\": [\n    {\n      \"chunkId\": \"789e0123-e89b-12d3-a456-426614174000\",\n      \"score\": 0.89,\n      \"snippet\": \"Kaladin looked at the men of Bridge Four, his crew, his responsibility. They had become more than bridgemen to him now...\",\n      \"chapterId\": \"456e7890-e89b-12d3-a456-426614174000\",\n      \"bookNumber\": 1,\n      \"chapterNumber\": 15\n    }\n  ],\n  \"metadata\": {\n    \"query\": \"What is Kaladin's relationship with Bridge Four?\",\n    \"totalResults\": 1,\n    \"returnedResults\": 1,\n    \"processingTimeMs\": 145\n  }\n}"
+								}
+							]
+						},
+						{
+							"name": "Search Status",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/query/search/semantic/status",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"query",
+										"search",
+										"semantic",
+										"status"
+									]
+								},
+								"description": "Check availability of semantic search functionality"
+							}
+						},
+						{
+							"name": "Ask Vector",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"query\": \"How does Vin learn about Allomancy?\",\n  \"topK\": 3,\n  \"threshold\": 0.6,\n  \"filters\": {\n    \"universe\": \"Cosmere\",\n    \"series\": \"Mistborn\",\n    \"bookNumber\": 1\n  }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/query/ask/vector",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"query",
+										"ask",
+										"vector"
+									]
+								},
+								"description": "Vector-only QA: returns top chunks with similarity scores (mirrors semantic search)"
+							}
+						},
+						{
+							"name": "Ask RAG",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"question\": \"How does Vin learn about Allomancy?\",\n  \"topK\": 5,\n  \"threshold\": 0.6,\n  \"filters\": {\n    \"universe\": \"Cosmere\",\n    \"series\": \"Mistborn\",\n    \"bookNumber\": 1\n  }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/query/ask/rag",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"query",
+										"ask",
+										"rag"
+									]
+								},
+								"description": "RAG-based QA: retrieves chunks and synthesizes an answer with citations (v0.8.0+)"
+							},
+							"response": [
+								{
+									"name": "RAG Answer (v0.8.0+)",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"question\": \"How does Vin learn about Allomancy?\",\n  \"topK\": 5\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/query/ask/rag",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"query",
+												"ask",
+												"rag"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"answer\": \"Vin learns about Allomancy through several key experiences. Initially, she discovers her abilities accidentally when she instinctively burns pewter during a fight. Kelsior then becomes her primary teacher, explaining the fundamentals of Allomantic metals and their effects. She learns that Allomancy is the magic system that allows people to ingest and burn metals to gain supernatural abilities.\",\n  \"citations\": [\n    {\n      \"chunkId\": \"abc12345-e89b-12d3-a456-426614174000\",\n      \"snippet\": \"'You're an Allomancer, Vin,' Kelsior said. 'The metal you've been burning is pewter...'\",\n      \"score\": 0.92\n    },\n    {\n      \"chunkId\": \"def67890-e89b-12d3-a456-426614174000\",\n      \"snippet\": \"Vin felt the familiar warmth as she burned the pewter, feeling her strength flow through her...\",\n      \"score\": 0.87\n    }\n  ],\n  \"metadata\": {\n    \"question\": \"How does Vin learn about Allomancy?\",\n    \"retrieved\": 5,\n    \"used\": 2,\n    \"processingTimeMs\": 2340\n  }\n}"
+								},
+								{
+									"name": "Not Implemented Yet",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"question\": \"How does Vin learn about Allomancy?\"\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/query/ask/rag",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"query",
+												"ask",
+												"rag"
+											]
+										}
+									},
+									"status": "Not Implemented",
+									"code": 501,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": "RAG endpoint not implemented yet"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "System Health",
+					"item": [
+						{
+							"name": "Health Check",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/health",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"health"
+									]
+								},
+								"description": "System health check including LLM and embedding service status"
+							},
+							"response": [
+								{
+									"name": "System Healthy",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/health",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"health"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"healthy\": true,\n  \"timestamp\": \"2025-08-19T10:30:00Z\",\n  \"version\": \"0.8.0\",\n  \"checks\": {\n    \"llm\": {\n      \"healthy\": true,\n      \"description\": \"Large Language Model API connectivity\"\n    },\n    \"embeddings\": {\n      \"healthy\": true,\n      \"dimension\": 3072,\n      \"durationMs\": 145\n    }\n  }\n}"
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string",
+			"description": "Base URL for LoreVault API"
+		},
+		{
+			"key": "jobId",
+			"value": "550e8400-e29b-41d4-a716-446655440000",
+			"type": "string",
+			"description": "Example job ID for testing"
+		},
+		{
+			"key": "universe",
+			"value": "Cosmere",
+			"type": "string",
+			"description": "Example universe for filtering"
+		}
+	]
+}
