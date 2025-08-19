@@ -1,4 +1,4 @@
-package com.lorevault.api.web.ingestion;
+package com.lorevault.api.web.query.job;
 
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
 import com.lorevault.api.dto.ingestion.JobListResponse;

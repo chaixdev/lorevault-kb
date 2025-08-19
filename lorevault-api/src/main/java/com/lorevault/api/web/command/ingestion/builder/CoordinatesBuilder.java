@@ -1,4 +1,4 @@
-package com.lorevault.api.web.ingestion.builder;
+package com.lorevault.api.web.command.ingestion.builder;
 
 import com.lorevault.api.domain.shared.PublicationCoordinates;
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;

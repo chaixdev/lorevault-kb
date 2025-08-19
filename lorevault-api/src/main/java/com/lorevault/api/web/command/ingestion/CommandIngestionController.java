@@ -1,13 +1,13 @@
-package com.lorevault.api.web.ingestion;
+package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import com.lorevault.api.dto.ingestion.SubmitChapterResponse;
 import com.lorevault.api.domain.shared.PublicationCoordinates;
 import com.lorevault.api.service.ingestion.IngestionService;
-import com.lorevault.api.web.ingestion.builder.CoordinatesBuilder;
-import com.lorevault.api.web.ingestion.extractor.FileContentExtractor;
-import com.lorevault.api.web.ingestion.response.ErrorResponseFactory;
-import com.lorevault.api.web.ingestion.validation.FileUploadValidator;
+import com.lorevault.api.web.command.ingestion.builder.CoordinatesBuilder;
+import com.lorevault.api.web.command.ingestion.extractor.FileContentExtractor;
+import com.lorevault.api.web.command.ingestion.response.ErrorResponseFactory;
+import com.lorevault.api.web.command.ingestion.validation.FileUploadValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;

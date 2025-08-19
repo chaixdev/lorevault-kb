@@ -1,7 +1,7 @@
-package com.lorevault.api.web.ingestion.response;
+package com.lorevault.api.web.command.ingestion.response;
 
-import com.lorevault.api.web.ingestion.builder.CoordinatesBuilder;
-import com.lorevault.api.web.ingestion.validation.FileUploadValidator;
+import com.lorevault.api.web.command.ingestion.builder.CoordinatesBuilder;
+import com.lorevault.api.web.command.ingestion.validation.FileUploadValidator;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;

@@ -1,4 +1,4 @@
-package com.lorevault.api.web.system;
+package com.lorevault.api.web.query.health;
 
 import com.lorevault.api.service.system.LlmHealthCheckService;
 import com.lorevault.api.service.system.EmbeddingHealthCheckService;
@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/health")
+@RequestMapping("/api/query/health")
 @RequiredArgsConstructor
 public class HealthController {
 
