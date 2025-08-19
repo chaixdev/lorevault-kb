@@ -23,6 +23,7 @@ import java.util.Map;
 @Slf4j
 public class SceneDetectionClient {
     
+    @Qualifier("nlpSmall")
     private final ChatClient chatClient;
     private final PromptLoaderService promptLoaderService;
     
