@@ -275,36 +275,10 @@ class [ServiceName]Test {
 
 ### Phase 7: Git Commit (MANDATORY)
 
-**⚠️ PREREQUISITE**: Must commit changes after documentation is complete.
+**⚠️ IMPORTANT**: Must commit changes after documentation is complete.
 
-#### 7.1 Commit Message Template
 
-**Use this exact format**:
-
-```
-feat: implement issue [Issue Number] - [Brief description]
-
-✅ IMPLEMENTED:
-- [Key feature 1 - e.g., new REST endpoint, service layer logic]
-- [Key feature 2 - e.g., schema changes, integration logic] 
-- [Key feature 3 - e.g., validation, error handling]
-
-🧪 TESTING:
-- [Service-level tests with business behavior coverage]
-- [Integration tests for persistence/external services (if applicable)]
-- [Edge case and error handling test coverage]
-
-🔍 VERIFICATION:
-- [How user can verify it works - API calls, queries]
-- [Observable behavior/output - HTTP responses, log messages]
-
-📋 INTEGRATION:
-- [How it integrates with existing Spring Boot architecture]
-- [Any dependencies or configuration requirements]
-- [Testing approach and maintainability notes]
-```
-
-#### 7.2 Commit Instructions
+####  Commit Instructions
 
 **The LLM MUST provide these exact git commands**:
 
@@ -313,55 +287,13 @@ feat: implement issue [Issue Number] - [Brief description]
 git add .
 
 # Commit with template message  
-git commit -m "feat: implement issue [Issue Number] - [Brief description]
-
-✅ IMPLEMENTED:
-- [List key features implemented]
-
-🧪 TESTING:
-- [Testing approach and coverage details]
-
-🔍 VERIFICATION:
-- [How to verify it works]
-
-📋 INTEGRATION:
-- [Integration details]"
+git commit -m "
+{{A compact, high level summary of all changes in this commit}}
+"
 
 # Push changes (if working with remote)
 git push origin main
 ```
-
-#### 7.3 Example Commit Message
-
-```
-feat: implement issue 0.1.1 - basic chapter ingestion endpoint
-
-✅ IMPLEMENTED:
-- POST /api/chapters endpoint with content validation
-- ChapterService with deduplication logic via content hashing
-- IngestionJob entity with status tracking
-- Input validation and error handling with proper HTTP status codes
-
-🧪 TESTING:
-- ChapterServiceTest covering business logic (deduplication, job creation)
-- IngestionEndpointTest for input validation and error scenarios
-- Integration tests for persistence layer interactions
-- 90%+ service-level test coverage with clear business intent
-
-🔍 VERIFICATION:
-- Build: mvn clean install
-- Run: mvn -pl lorevault-api spring-boot:run
-- Test: POST to http://localhost:8080/api/chapters with chapter JSON
-- Verify: Check response includes jobId and HTTP 202 status
-
-📋 INTEGRATION:
-- Follows CQRS pattern (command path implementation)
-- Uses current persistence layer with job tracking
-- Test-driven development approach with comprehensive coverage
-- Ready for async processing pipeline integration
-```
-
-**CRITICAL**: LLM must provide specific commit instructions after every successful issue implementation.
 
 ## Decision Making Guidelines
 
