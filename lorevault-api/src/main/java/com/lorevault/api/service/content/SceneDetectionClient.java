@@ -1,7 +1,7 @@
 package com.lorevault.api.service.content;
 
+import com.lorevault.api.configuration.properties.LoreVaultPromptProperties;
 import com.lorevault.api.service.shared.PromptLoaderService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -19,19 +19,34 @@ import java.util.Map;
  * Encapsulates the AI model configuration, prompt loading, and retry logic.
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class SceneDetectionClient {
     
-    @Qualifier("nlpSmall")
-    private final ChatClient chatClient;
+    private final ChatClient nlpSmallChatClient;
+    private final ChatClient nlpBigChatClient;
     private final PromptLoaderService promptLoaderService;
+    private final LoreVaultPromptProperties promptProperties;
     
     @Qualifier("llmRetryTemplate")
     private final RetryTemplate retryTemplate;
 
     @Value("${lorevault.ai.models.nlp-small.model:llama-3.1-8b-instant}")
-    private String currentModelId;
+    private String nlpSmallModelId;
+    @Value("${lorevault.ai.models.nlp-big.model:llama-3.3-70b-versatile}")
+    private String nlpBigModelId;
+
+    public SceneDetectionClient(
+            @Qualifier("nlpSmall") ChatClient nlpSmallChatClient,
+            @Qualifier("nlpBig") ChatClient nlpBigChatClient,
+            PromptLoaderService promptLoaderService,
+            LoreVaultPromptProperties promptProperties,
+            @Qualifier("llmRetryTemplate") RetryTemplate retryTemplate) {
+        this.nlpSmallChatClient = nlpSmallChatClient;
+        this.nlpBigChatClient = nlpBigChatClient;
+        this.promptLoaderService = promptLoaderService;
+        this.promptProperties = promptProperties;
+        this.retryTemplate = retryTemplate;
+    }
 
     /**
      * Perform two-pass scene detection on chapter text.
@@ -43,8 +58,9 @@ public class SceneDetectionClient {
      * @throws RuntimeException if either pass fails after retries
      */
     public String detectScenesTwoPass(String chapterText) {
-        log.debug("[LLM] Starting two-pass scene detection: inputLength={} chars, model={}", 
-                 chapterText == null ? 0 : chapterText.length(), currentModelId);
+        String pass1ModelId = getModelIdForPass("pass1");
+        log.debug("[LLM] Starting two-pass scene detection: inputLength={} chars, pass1Model={}", 
+                 chapterText == null ? 0 : chapterText.length(), pass1ModelId);
         
         // Pass 1: Initial scene detection with rich hints
         String pass1Result = detectScenesPass1(chapterText);
@@ -68,7 +84,11 @@ public class SceneDetectionClient {
         PromptTemplate template = promptLoaderService.getSceneDetectionPass1PromptTemplate();
         String systemPrompt = template.render(Map.of());
         
-        return executeSceneDetectionCall("Pass 1", systemPrompt, chapterText);
+        String modelId = promptProperties.getSceneDetectionPass1Model();
+        ChatClient chatClient = getChatClientForModel(modelId);
+        String actualModelId = getModelIdForPass("pass1");
+        
+        return executeSceneDetectionCall("Pass 1", systemPrompt, chapterText, chatClient, actualModelId);
     }
 
     /**
@@ -82,7 +102,11 @@ public class SceneDetectionClient {
         PromptTemplate template = promptLoaderService.getSceneDetectionPass2PromptTemplate();
         String systemPrompt = template.render(Map.of());
         
-        return executeSceneDetectionCall("Pass 2", systemPrompt, pass1XmlResult);
+        String modelId = promptProperties.getSceneDetectionPass2Model();
+        ChatClient chatClient = getChatClientForModel(modelId);
+        String actualModelId = getModelIdForPass("pass2");
+        
+        return executeSceneDetectionCall("Pass 2", systemPrompt, pass1XmlResult, chatClient, actualModelId);
     }
 
     /**
@@ -97,7 +121,30 @@ public class SceneDetectionClient {
         PromptTemplate template = promptLoaderService.getSceneDetectionPromptTemplate();
         String systemPrompt = template.render(Map.of());
         
-        return executeSceneDetectionCall("Single-pass", systemPrompt, chapterText);
+        // Legacy uses small model by default
+        return executeSceneDetectionCall("Single-pass", systemPrompt, chapterText, nlpSmallChatClient, nlpSmallModelId);
+    }
+
+    /**
+     * Get the appropriate ChatClient for the specified model slot.
+     */
+    private ChatClient getChatClientForModel(String modelSlot) {
+        return switch (modelSlot) {
+            case "nlp-big" -> nlpBigChatClient;
+            case "nlp-small" -> nlpSmallChatClient;
+            default -> nlpSmallChatClient; // Default fallback
+        };
+    }
+    
+    /**
+     * Get the actual model ID for the specified pass.
+     */
+    private String getModelIdForPass(String pass) {
+        return switch (pass) {
+            case "pass1" -> "nlp-big".equals(promptProperties.getSceneDetectionPass1Model()) ? nlpBigModelId : nlpSmallModelId;
+            case "pass2" -> "nlp-big".equals(promptProperties.getSceneDetectionPass2Model()) ? nlpBigModelId : nlpSmallModelId;
+            default -> nlpSmallModelId; // Default fallback
+        };
     }
 
     /**
@@ -107,12 +154,14 @@ public class SceneDetectionClient {
      * @param passName Descriptive name for logging (e.g., "Pass 1", "Pass 2", "Single-pass")
      * @param systemPrompt The system prompt to use
      * @param userInput The user input (chapter text or pass 1 results)
+     * @param chatClient The ChatClient to use for this call
+     * @param modelId The model ID for logging
      * @return Raw XML response from the AI model
      * @throws RuntimeException if all retry attempts fail
      */
-    private String executeSceneDetectionCall(String passName, String systemPrompt, String userInput) {
+    private String executeSceneDetectionCall(String passName, String systemPrompt, String userInput, ChatClient chatClient, String modelId) {
         log.debug("[LLM] {} scene detection request: inputLength={} chars, model={}", 
-                 passName, userInput == null ? 0 : userInput.length(), currentModelId);
+                 passName, userInput == null ? 0 : userInput.length(), modelId);
         log.trace("[LLM] System prompt ({} chars): {}", systemPrompt.length(), systemPrompt);
         
         // Create options for consistent, deterministic results
@@ -129,7 +178,7 @@ public class SceneDetectionClient {
             return retryTemplate.execute(retryContext -> {
                 int retryCount = retryContext.getRetryCount();
                 String attemptMsg = retryCount > 0 ? " (retry=" + retryCount + ")" : "";
-                log.debug("[LLM] Calling model={} for {}{}", currentModelId, passName, attemptMsg);
+                log.debug("[LLM] Calling model={} for {}{}", modelId, passName, attemptMsg);
                 
                 String response = chatClient.prompt()
                     .system(systemPrompt)
@@ -141,14 +190,14 @@ public class SceneDetectionClient {
                 long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
                 if (response == null || response.trim().isEmpty()) {
                     log.warn("[LLM] Empty response from {} (elapsed={}ms) model={}", 
-                            passName, elapsedMs, currentModelId);
-                    throw new RuntimeException("Empty response from " + currentModelId + " during " + passName);
+                            passName, elapsedMs, modelId);
+                    throw new RuntimeException("Empty response from " + modelId + " during " + passName);
                 }
                 
                 int len = response.length();
                 String preview = response.substring(0, Math.min(400, len)).replaceAll("\n", "\\n");
                 log.debug("[LLM] {} response length={} elapsed={}ms model={}", 
-                         passName, len, elapsedMs, currentModelId);
+                         passName, len, elapsedMs, modelId);
                 log.trace("[LLM] Full raw response:{}\n{}", System.lineSeparator(), response);
                 log.debug("[LLM] Response preview (first {} chars): {}", preview.length(), preview);
                 

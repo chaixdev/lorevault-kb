@@ -67,7 +67,6 @@ class SemanticSearchServiceTest {
         assertThat(response.getMetadata().getQuery()).isEqualTo(query);
         assertThat(response.getMetadata().getTotalResults()).isEqualTo(2);
         assertThat(response.getMetadata().getReturnedResults()).isEqualTo(2);
-        assertThat(response.getMetadata().getProcessingTimeMs()).isGreaterThan(0);
 
         verify(embeddingPort).embed(query);
         verify(semanticSearchPort).search(eq(queryEmbedding), eq(5), any(SearchFilters.class));

@@ -24,7 +24,15 @@ public class Chapter {
     private UUID id;
 
     /**
-     * Embedded coordinates object defining the chapter's position in the published text corpus
+     * Stable UUID references for graph relationships
+     */
+    private UUID bookId;
+    private UUID universeId;  // denormalized for fast filtering
+    private UUID seriesId;    // denormalized for fast filtering, nullable for standalone books
+
+    /**
+     * Embedded coordinates object defining the chapter's position in the published text corpus.
+     * Essential for spoiler gating (ordering) and human-readable display.
      */
     private PublicationCoordinates coordinates;
 
@@ -47,15 +55,12 @@ public class Chapter {
     private LocalDateTime updatedAt;
 
     /**
-     * Scenes within this chapter (v0.3.0+)
-     * Ordered by scene index
+     * Scenes within this chapter, ordered by scene index
      */
     private List<Scene> scenes = new ArrayList<>();
 
     /**
      * All chunks within this chapter
-     * For v0.2.0: Direct chapter → chunk relationship
-     * For v0.3.0+: Includes both legacy direct chunks and scene-based chunks
      */
     private List<Chunk> chunks = new ArrayList<>();
 
@@ -199,5 +204,40 @@ public class Chapter {
         return chunks.stream()
                 .filter(chunk -> scene.equals(chunk.getScene()))
                 .collect(Collectors.toList());
+    }
+
+    // =====================================
+    // Factory Methods for UUID-based Creation
+    // =====================================
+
+    /**
+     * Create a chapter with full UUID references for graph relationships.
+     * PublicationCoordinates remain essential for spoiler gating and display.
+     */
+    public static Chapter createWithReferences(UUID bookId, UUID universeId, UUID seriesId,
+                                             PublicationCoordinates coordinates, 
+                                             String chapterTitle, String rawText, String contentHash) {
+        Chapter chapter = new Chapter();
+        chapter.setId(UUID.randomUUID());
+        chapter.setBookId(bookId);
+        chapter.setUniverseId(universeId);
+        chapter.setSeriesId(seriesId);
+        chapter.setCoordinates(coordinates);
+        chapter.setChapterTitle(chapterTitle);
+        chapter.setRawText(rawText);
+        chapter.setContentHash(contentHash);
+        chapter.setCreatedAt(LocalDateTime.now());
+        chapter.setUpdatedAt(chapter.getCreatedAt());
+        return chapter;
+    }
+
+    /**
+     * Create a chapter for a standalone book (no series).
+     */
+    public static Chapter createStandalone(UUID bookId, UUID universeId,
+                                         PublicationCoordinates coordinates,
+                                         String chapterTitle, String rawText, String contentHash) {
+        return createWithReferences(bookId, universeId, null, coordinates, 
+                                  chapterTitle, rawText, contentHash);
     }
 }
