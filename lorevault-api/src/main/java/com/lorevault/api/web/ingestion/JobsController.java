@@ -18,7 +18,7 @@ import java.util.UUID;
  * REST controller for job monitoring (Query operations)
  */
 @RestController
-@RequestMapping("/api/jobs")
+@RequestMapping("/api/query/jobs")
 @RequiredArgsConstructor
 @Slf4j
 public class JobsController {
@@ -43,7 +43,7 @@ public class JobsController {
                     .message("Job ID must be a valid UUID")
                     .details("providedJobId", jobId)
                     .timestamp(LocalDateTime.now())
-                    .path("/api/jobs/" + jobId)
+                    .path("/api/query/jobs/" + jobId)
                     .build()
             );
         }
@@ -81,7 +81,7 @@ public class JobsController {
                     .message("limit must be between 1 and 100")
                     .details("limit", String.valueOf(limit))
                     .timestamp(LocalDateTime.now())
-                    .path("/api/jobs")
+                    .path("/api/query/jobs")
                     .build()
             );
         }
@@ -92,7 +92,7 @@ public class JobsController {
                     .message("offset must be >= 0")
                     .details("offset", String.valueOf(offset))
                     .timestamp(LocalDateTime.now())
-                    .path("/api/jobs")
+                    .path("/api/query/jobs")
                     .build()
             );
         }
@@ -107,7 +107,7 @@ public class JobsController {
                         .message("status must be one of ACTIVE, " + java.util.Arrays.toString(IngestionStatus.values()))
                         .details("status", status)
                         .timestamp(LocalDateTime.now())
-                        .path("/api/jobs")
+                        .path("/api/query/jobs")
                         .build()
                 );
             }

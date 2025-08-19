@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
  * Provides vector-based similarity search across chunk content.
  */
 @RestController
-@RequestMapping("/api/search")
+@RequestMapping("/api/query/search")
 @RequiredArgsConstructor
 @Slf4j
 public class SemanticSearchController {
