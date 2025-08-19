@@ -1,6 +1,6 @@
 package com.lorevault.api.service.shared;
 
-import com.lorevault.api.configuration.properties.LoreVaultLlmProperties;
+import com.lorevault.api.configuration.properties.LoreVaultPromptProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentMap;
 @Slf4j
 public class PromptLoaderService {
 
-    private final LoreVaultLlmProperties llmProperties;
+    private final LoreVaultPromptProperties promptProperties;
     private final ResourceLoader resourceLoader;
     
     private final ConcurrentMap<String, PromptTemplate> promptCache = new ConcurrentHashMap<>();
@@ -34,15 +34,16 @@ public class PromptLoaderService {
      */
     @PostConstruct
     public void initialize() {
-        log.info("Initializing PromptLoaderService with base path: {}", llmProperties.prompts().basePath());
+        log.info("Initializing PromptLoaderService with base path: {}", promptProperties.basePath());
         
         // Pre-load scene detection prompts
         try {
             getSceneDetectionPass1PromptTemplate();
             getSceneDetectionPass2PromptTemplate();
-            log.info("Successfully pre-loaded scene detection pass 1 & 2 prompt templates");
+            getRagAnswerGenerationPromptTemplate();
+            log.info("Successfully pre-loaded scene detection pass 1 & 2 and RAG answer generation prompt templates");
         } catch (Exception e) {
-            log.error("Failed to pre-load scene detection prompt templates: {}", e.getMessage());
+            log.error("Failed to pre-load prompt templates: {}", e.getMessage());
         }
     }
 
@@ -53,8 +54,7 @@ public class PromptLoaderService {
      * @throws RuntimeException if prompt cannot be loaded
      */
     public PromptTemplate getSceneDetectionPass1PromptTemplate() {
-        String promptPath = llmProperties.prompts().basePath() + "/scene-detection-pass1.txt";
-        return getPromptTemplate("scene-detection-pass1", promptPath);
+        return getPromptTemplate("scene-detection-pass1", promptProperties.getSceneDetectionPass1Path());
     }
 
     /**
@@ -64,8 +64,7 @@ public class PromptLoaderService {
      * @throws RuntimeException if prompt cannot be loaded
      */
     public PromptTemplate getSceneDetectionPass2PromptTemplate() {
-        String promptPath = llmProperties.prompts().basePath() + "/scene-detection-pass2.txt";
-        return getPromptTemplate("scene-detection-pass2", promptPath);
+        return getPromptTemplate("scene-detection-pass2", promptProperties.getSceneDetectionPass2Path());
     }
 
     /**
@@ -75,7 +74,18 @@ public class PromptLoaderService {
      * @throws RuntimeException if prompt cannot be loaded
      */
     public PromptTemplate getSceneDetectionPromptTemplate() {
-        return getPromptTemplate("scene-detection", llmProperties.prompts().getSceneDetectionPath());
+        // Use pass 2 as the legacy scene detection (it's the normalized version)
+        return getSceneDetectionPass2PromptTemplate();
+    }
+
+    /**
+     * Get RAG answer generation prompt template from configured location.
+     * 
+     * @return Configured PromptTemplate for RAG answer generation
+     * @throws RuntimeException if prompt cannot be loaded
+     */
+    public PromptTemplate getRagAnswerGenerationPromptTemplate() {
+        return getPromptTemplate("rag-answer-generation", promptProperties.getRagAnswerGenerationPath());
     }
 
     /**

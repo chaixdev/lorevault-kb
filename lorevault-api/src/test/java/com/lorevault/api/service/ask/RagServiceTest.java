@@ -8,6 +8,7 @@ import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchResponse;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SearchResultDto;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SearchMetadata;
 import com.lorevault.api.service.search.SemanticSearchService;
+import com.lorevault.api.service.shared.PromptLoaderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +18,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.chat.prompt.PromptTemplate;
 
 import java.util.List;
 import java.util.UUID;
@@ -34,6 +37,9 @@ class RagServiceTest {
     
     @Mock
     private ChatClient chatClient;
+    
+    @Mock
+    private PromptLoaderService promptLoaderService;
     
     @InjectMocks
     private RagService ragService;
@@ -60,6 +66,11 @@ class RagServiceTest {
         
         SearchMetadata searchMetadata = SearchMetadata.of("Who is Kaladin?", 2, 2, 150L);
         searchResponse = SemanticSearchResponse.of(searchResults, searchMetadata);
+        
+        // Mock prompt template
+        PromptTemplate mockPromptTemplate = mock(PromptTemplate.class);
+        when(mockPromptTemplate.render(any())).thenReturn("You are a knowledgeable assistant. Answer based on the provided context.");
+        when(promptLoaderService.getRagAnswerGenerationPromptTemplate()).thenReturn(mockPromptTemplate);
     }
 
     @Test
@@ -68,15 +79,16 @@ class RagServiceTest {
         when(semanticSearchService.search(any(SemanticSearchRequest.class)))
             .thenReturn(searchResponse);
         
-        // Mock ChatClient chain
-        ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        // Override the default ChatClient response for this test
         ChatClient.CallResponseSpec callSpec = mock(ChatClient.CallResponseSpec.class);
+        when(callSpec.content()).thenReturn("Kaladin is a Windrunner and former bridgeman who leads Bridge Four.");
         
-        when(chatClient.prompt()).thenReturn(requestSpec);
+        // Reset the mock for this specific test
+        ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
         when(requestSpec.system(anyString())).thenReturn(requestSpec);
         when(requestSpec.user(anyString())).thenReturn(requestSpec);
         when(requestSpec.call()).thenReturn(callSpec);
-        when(callSpec.content()).thenReturn("Kaladin is a Windrunner and former bridgeman who leads Bridge Four.");
+        when(chatClient.prompt()).thenReturn(requestSpec);
 
         // When
         AskResponse response = ragService.ask(request);

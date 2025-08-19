@@ -14,7 +14,8 @@ public record LoreVaultPromptProperties(
     PromptConfig sceneDetection,
     PromptConfig sceneDetectionPass1,
     PromptConfig sceneDetectionPass2,
-    PromptConfig entityExtraction
+    PromptConfig entityExtraction,
+    PromptConfig ragAnswerGeneration
 ) {
     
     public LoreVaultPromptProperties {
@@ -73,5 +74,23 @@ public record LoreVaultPromptProperties(
         return sceneDetectionPass2 != null && sceneDetectionPass2.model() != null 
             ? sceneDetectionPass2.model() 
             : "nlp-small";
+    }
+    
+    /**
+     * Get RAG answer generation prompt path.
+     */
+    public String getRagAnswerGenerationPath() {
+        return ragAnswerGeneration != null && ragAnswerGeneration.systemPrompt() != null 
+            ? getPromptPath(ragAnswerGeneration.systemPrompt()) 
+            : getPromptPath("rag-answer-generation.txt");
+    }
+    
+    /**
+     * Get RAG answer generation model.
+     */
+    public String getRagAnswerGenerationModel() {
+        return ragAnswerGeneration != null && ragAnswerGeneration.model() != null 
+            ? ragAnswerGeneration.model() 
+            : "nlp-big";
     }
 }
