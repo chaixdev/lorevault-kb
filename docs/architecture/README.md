@@ -30,10 +30,10 @@ Describes the relationships between LoreVault and its environment, including ext
 Details the runtime functional elements, their responsibilities, and interactions. Focuses on the CQRS pattern and component architecture.
 
 ### [3. Information Viewpoint](./03-information-viewpoint.md)
-**Stakeholders:** Database administrators, data architects, developers  
-**Concerns:** Data structures, persistence, information flow
+**Stakeholders:** Data architects, developers, database administrators  
+**Concerns:** Data structure, storage strategy, information lifecycle
 
-Describes the data architecture, including PostgreSQL schema design, vector storage, and information processing flow.
+Describes the data architecture, including Neo4j schema design, vector storage, and information processing flow. References detailed data model specifications in `../data-model/`.
 
 ### [4. Concurrency Viewpoint](./04-concurrency-viewpoint.md)
 **Stakeholders:** Performance engineers, developers, system administrators  
@@ -66,5 +66,35 @@ Details the deployment strategy, containerization approach, and infrastructure r
 ## Related Documentation
 
 - [Project Summary](../project_summary.md) - High-level project goals and scope
-- [Technical Notes](../technical_notes.md) - Implementation decisions and trade-offs
-- [Development Setup](../../README.md) - Getting started with development
+- [API Specifications](../api/) - REST API documentation and collections
+- [Data Model](../data-model/) - Neo4j schema and entity relationships
+- [Process Specifications](../processes/) - Business workflow documentation
+
+## 🔧 Update Instructions
+
+**For LLM Assistants and Contributors:**
+
+### Folder Boundaries
+- **Root level**: Architectural viewpoints following ISO/IEC/IEEE 42010 standard
+- **Do not add**: API documentation (go to `../api/`), detailed data schemas (go to `../data-model/schemas/`)
+
+### When Updating Architecture Documentation
+- **Viewpoint changes**: Update relevant viewpoint files, maintain cross-references
+- **New concerns**: Add to appropriate viewpoint or create new viewpoint if needed
+- **Architectural decisions**: Document rationale and trade-offs clearly
+
+### Cross-Reference Requirements
+- **Link to specifications**: Use `../api/specifications/`, `../data-model/`, `../processes/` paths
+- **Maintain viewpoint consistency**: Ensure changes cascade to related viewpoints
+- **Update navigation**: Keep Quick Navigation section current
+
+### Content Standards
+- Follow ISO/IEC/IEEE 42010 viewpoint structure
+- Include stakeholder concerns for each viewpoint
+- Maintain architectural decision records
+- Use consistent diagramming notation (preferably Mermaid)
+
+### Version Management
+- Update architectural decisions when implementation changes
+- Keep viewpoints synchronized with actual system state
+- Document architectural evolution and rationale
