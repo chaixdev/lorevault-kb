@@ -10,6 +10,7 @@ import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchResponse;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SearchResultDto;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchFilters;
 import com.lorevault.api.service.search.SemanticSearchService;
+import com.lorevault.api.service.shared.PromptLoaderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -30,6 +31,7 @@ import java.util.stream.IntStream;
 public class RagService {
 
     private final SemanticSearchService semanticSearchService;
+    private final PromptLoaderService promptLoaderService;
     
     @Qualifier("nlpBig")
     private final ChatClient chatClient;
@@ -227,18 +229,7 @@ public class RagService {
     }
 
     private String buildSystemPrompt() {
-        return """
-            You are a knowledgeable assistant helping users understand fictional stories and characters.
-            
-            Your task is to answer the question using ONLY the provided context from the story.
-            
-            Guidelines:
-            - Base your answer strictly on the provided evidence
-            - If the evidence is insufficient, say so explicitly
-            - Be concise but informative
-            - Do not add information from outside the provided context
-            - Maintain the narrative voice and tone appropriate to the source material
-            """;
+        return promptLoaderService.getRagAnswerGenerationPromptTemplate().render();
     }
 
     private String buildUserPrompt(String question, String context) {

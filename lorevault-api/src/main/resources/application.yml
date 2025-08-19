@@ -96,6 +96,9 @@ lorevault:
       entity-extraction: 
         system-prompt: entity-extraction.txt
         model: nlp-big
+      rag-answer-generation:
+        system-prompt: rag-answer-generation.txt
+        model: nlp-big
 
   # Text chunking settings (aligned with TextChunkingService @Value keys)
   content:
