@@ -78,7 +78,6 @@ public class ModelHealthValidator {
      */
     public HealthCheckResult validateModelHealth(String modelId, ValidationConfig config) throws Exception {
         log.trace("[Health-Validator] Sending health check to model: {}", modelId);
-        
         Prompt healthCheckPrompt = new Prompt(config.getHealthCheckPrompt());
         String response = chatClient.prompt(healthCheckPrompt).call().content();
         
@@ -97,11 +96,33 @@ public class ModelHealthValidator {
     }
 
     /**
+     * Variant that allows specifying which ChatClient to use (e.g., small vs big slot).
+     */
+    public HealthCheckResult validateModelHealthWithClient(ChatClient client, String modelId, ValidationConfig config) throws Exception {
+        log.trace("[Health-Validator] (with-client) Sending health check to model: {}", modelId);
+        Prompt healthCheckPrompt = new Prompt(config.getHealthCheckPrompt());
+        String response = client.prompt(healthCheckPrompt).call().content();
+        if (config.isLogRawResponse()) {
+            log.trace("[Health-Validator] Raw response from model {}: {}", modelId, response);
+        }
+        if (config.isRequireNonEmptyResponse() && (response == null || response.trim().isEmpty())) {
+            throw new RuntimeException("Empty or null response received from model");
+        }
+        String trimmedResponse = response != null ? response.trim() : null;
+        return HealthCheckResult.success(trimmedResponse);
+    }
+
+    /**
      * Perform a basic connectivity test (simplified health check)
      * Throws exception on failure to work with retry mechanism
      */
     public HealthCheckResult performConnectivityTest(String modelId) throws Exception {
         return validateModelHealth(modelId, ValidationConfig.defaultConfig());
+    }
+
+    /** Perform connectivity test with a specified ChatClient. */
+    public HealthCheckResult performConnectivityTestWith(ChatClient client, String modelId) throws Exception {
+        return validateModelHealthWithClient(client, modelId, ValidationConfig.defaultConfig());
     }
 
     /**

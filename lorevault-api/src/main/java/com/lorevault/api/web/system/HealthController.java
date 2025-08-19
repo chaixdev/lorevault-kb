@@ -1,4 +1,4 @@
-package com.lorevault.api.web.query.health;
+package com.lorevault.api.web.system;
 
 import com.lorevault.api.service.system.LlmHealthCheckService;
 import com.lorevault.api.service.system.LlmChatSlotsHealthService;
@@ -15,8 +15,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-@RestController("queryHealthController")
-@RequestMapping("/api/query/health")
+@RestController("systemHealthController")
+@RequestMapping("/api/health")
 @RequiredArgsConstructor
 public class HealthController {
 
