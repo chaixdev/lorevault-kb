@@ -4,7 +4,6 @@
 
 ### Core Documentation
 - **[Project Summary](project_summary.md)** - Vision, roadmap, and feature overview
-- **[Multi-Provider LLM Configuration](multi-provider-llm-configuration.md)** - AI provider setup
 
 ### Architecture & Design
 - **[Architecture](architecture/)** - System architecture viewpoints following ISO/IEC/IEEE 42010
@@ -20,6 +19,7 @@
 - **[Development](development/)** - Testing strategies, guidelines, and research
   - `planning/` - Roadmaps, proposals, and analysis
   - `research/` - Experiments, prototypes, and explorations
+  - **[Multi-Provider LLM Configuration](development/multi-provider-llm-configuration.md)** - AI provider setup
 
 ### Visual Documentation
 - **[Diagrams](diagrams/)** - System diagrams and visual documentation
