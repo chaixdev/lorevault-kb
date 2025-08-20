@@ -10,7 +10,6 @@ import com.lorevault.api.web.command.ingestion.response.ErrorResponseFactory;
 import com.lorevault.api.web.command.ingestion.validation.FileUploadValidator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
