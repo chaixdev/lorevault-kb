@@ -62,3 +62,4 @@ Objective: ✅ **ACHIEVED** - Replaced legacy tests with a clean, scalable suite
 - 📋 Address ArchUnit violations through domain abstraction refactor (8 violations documented)
 - 📋 Port interface domain modeling (decouple from Neo4j infrastructure types)
 - 📋 Service layer cleanup (naming conventions, annotation consistency)
+- 📋 Re-enable ArchUnit tests in default suite: Change `@Tag("architecture")` back to `@Tag("unit")` once architectural violations are resolved
