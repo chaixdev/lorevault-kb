@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,6 +44,12 @@ public class OpenAiSceneDetectionAdapter implements SceneDetectionPort {
     @Override
     public List<SceneWithCoordinates> detectScenesInText(UUID chapterId, String chapterText) {
         try {
+            // Handle null or empty text gracefully
+            if (chapterText == null || chapterText.trim().isEmpty()) {
+                log.warn("Chapter {} has no text content for scene detection", chapterId);
+                return Collections.emptyList();
+            }
+            
             log.debug("Starting OpenAI scene detection with retry for chapter {} (length={} chars)", 
                      chapterId, chapterText.length());
             
