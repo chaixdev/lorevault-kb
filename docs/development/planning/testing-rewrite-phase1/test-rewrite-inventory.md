@@ -61,3 +61,11 @@ Purpose: Capture what existing tests assert today to drive parity during the ful
 
 ## Raw file list
 - See workspace search inventory; detailed per-file notes to be appended as we rewrite.
+
+## Related docs
+- Parity Matrix: `docs/development/planning/testing-rewrite-phase1/test-parity-matrix.md`
+- Rewrite Plan: `docs/development/planning/testing-rewrite-phase1/test-rewrite-plan.md`
+
+## Next steps
+- Fill out parity matrix per file with Category/Strategy and mark Parity status as we land replacements.
+- Start scaffolding: deterministic testutil, fakes, base container IT.
