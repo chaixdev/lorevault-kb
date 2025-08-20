@@ -7,6 +7,8 @@ import com.lorevault.api.testutil.TestIds;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static com.lorevault.api.util.StringSanitizer.toSnakeCase;
+
 /**
  * Test builder for Universe entities with deterministic defaults.
  */
@@ -14,6 +16,7 @@ public final class UniverseBuilder {
     
     private UUID id = TestIds.UNIVERSE_ID;
     private String name = "Cosmere";
+    private String slug = "cosmere";
     private LocalDateTime createdAt = LocalDateTime.now(TestClock.fixed());
     private LocalDateTime updatedAt = createdAt;
     
@@ -33,6 +36,11 @@ public final class UniverseBuilder {
         return this;
     }
     
+    public UniverseBuilder withSlug(String slug) {
+        this.slug = slug;
+        return this;
+    }
+    
     public UniverseBuilder withCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
         this.updatedAt = createdAt; // sync updated time by default
@@ -48,6 +56,7 @@ public final class UniverseBuilder {
         Universe universe = new Universe();
         universe.setId(id);
         universe.setName(name);
+        universe.setSlug(slug);
         universe.setCreatedAt(createdAt);
         universe.setUpdatedAt(updatedAt);
         return universe;
