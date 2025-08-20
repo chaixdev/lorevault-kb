@@ -156,9 +156,6 @@
                         <exclude>**/*IntegrationTests.java</exclude>
                         <!-- Temporarily exclude architecture rules from default unit runs -->
                         <exclude>**/architecture/**</exclude>
-                        <!-- Temporarily exclude flaky/broken unit tests -->
-                        <exclude>**/PromptLoaderServiceTest.*</exclude>
-                        <exclude>**/RagServiceTest.*</exclude>
                     </excludes>
                     <!-- Also honor JUnit 5 @Tag("integration") as excluded by default -->
                     <excludedGroups>integration,architecture</excludedGroups>
@@ -308,9 +305,6 @@
                                 <exclude>**/*ITCase*.java</exclude>
                                 <exclude>**/*IntegrationTest.java</exclude>
                                 <exclude>**/*IntegrationTests.java</exclude>
-                                <!-- Keep temporarily flaky unit tests excluded -->
-                                <exclude>**/PromptLoaderServiceTest.*</exclude>
-                                <exclude>**/RagServiceTest.*</exclude>
                             </excludes>
                             <!-- Run only architecture-tagged tests in this profile -->
                             <groups>architecture</groups>
