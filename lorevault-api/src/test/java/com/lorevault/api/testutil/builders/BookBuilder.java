@@ -12,9 +12,9 @@ import java.util.UUID;
  */
 public final class BookBuilder {
     
-    private UUID id = TestIds.Common.BOOK_ID;
-    private UUID universeId = TestIds.Common.UNIVERSE_ID;
-    private UUID seriesId = TestIds.Common.SERIES_ID;
+    private UUID id = TestIds.BOOK_ID;
+    private UUID universeId = TestIds.UNIVERSE_ID;
+    private UUID seriesId = TestIds.SERIES_ID;
     private String universe = "Cosmere";
     private String series = "Stormlight Archive";
     private Integer bookNumber = 1;

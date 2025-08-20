@@ -12,7 +12,7 @@ import java.util.UUID;
  */
 public final class UniverseBuilder {
     
-    private UUID id = TestIds.Common.UNIVERSE_ID;
+    private UUID id = TestIds.UNIVERSE_ID;
     private String name = "Cosmere";
     private LocalDateTime createdAt = LocalDateTime.now(TestClock.fixed());
     private LocalDateTime updatedAt = createdAt;

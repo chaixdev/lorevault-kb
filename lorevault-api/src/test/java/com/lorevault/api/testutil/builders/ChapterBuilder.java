@@ -15,10 +15,10 @@ import static com.lorevault.api.testutil.builders.PublicationCoordinatesBuilder.
  */
 public final class ChapterBuilder {
     
-    private UUID id = TestIds.Common.CHAPTER_ID;
-    private UUID bookId = TestIds.Common.BOOK_ID;
-    private UUID universeId = TestIds.Common.UNIVERSE_ID;
-    private UUID seriesId = TestIds.Common.SERIES_ID;
+    private UUID id = TestIds.CHAPTER_ID;
+    private UUID bookId = TestIds.BOOK_ID;
+    private UUID universeId = TestIds.UNIVERSE_ID;
+    private UUID seriesId = TestIds.SERIES_ID;
     private PublicationCoordinates coordinates = coordinates().build();
     private String chapterTitle = "Kaladin";
     private String rawText = "Kaladin stared at the spear in his hands...";
