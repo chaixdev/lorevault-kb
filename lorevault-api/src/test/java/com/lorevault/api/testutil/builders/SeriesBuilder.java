@@ -12,8 +12,8 @@ import java.util.UUID;
  */
 public final class SeriesBuilder {
     
-    private UUID id = TestIds.Common.SERIES_ID;
-    private UUID universeId = TestIds.Common.UNIVERSE_ID;
+    private UUID id = TestIds.SERIES_ID;
+    private UUID universeId = TestIds.UNIVERSE_ID;
     private String universeName = "Cosmere";
     private String name = "Stormlight Archive";
     private LocalDateTime createdAt = LocalDateTime.now(TestClock.fixed());
