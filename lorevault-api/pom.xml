@@ -97,6 +97,14 @@
             <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+        
+        <!-- Architecture Testing -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>1.2.1</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>        
@@ -146,6 +154,126 @@
                     <!-- Also honor JUnit 5 @Tag("integration") as excluded by default -->
                     <excludedGroups>integration</excludedGroups>
                 </configuration>
+            </plugin>
+            
+            <!-- JaCoCo Code Coverage -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.11</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-check</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.85</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>com.lorevault.api.service.*</include>
+                                        <include>com.lorevault.api.domain.*</include>
+                                        <include>com.lorevault.api.application.*</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.90</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                            <excludes>
+                                <!-- Exclude infrastructure adapters from unit coverage requirements -->
+                                <exclude>com/lorevault/api/infrastructure/**</exclude>
+                                <!-- Exclude configuration classes -->
+                                <exclude>com/lorevault/api/configuration/**</exclude>
+                                <!-- Exclude main application class -->
+                                <exclude>com/lorevault/api/LoreVaultApiApplication.*</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            
+            <!-- PIT Mutation Testing -->
+            <plugin>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+                <version>1.15.3</version>
+                <configuration>
+                    <targetClasses>
+                        <param>com.lorevault.api.service.*</param>
+                        <param>com.lorevault.api.domain.*</param>
+                        <param>com.lorevault.api.application.*</param>
+                    </targetClasses>
+                    <targetTests>
+                        <param>com.lorevault.api.service.*</param>
+                        <param>com.lorevault.api.domain.*</param>
+                        <param>com.lorevault.api.application.*</param>
+                    </targetTests>
+                    <excludedTestClasses>
+                        <!-- Exclude integration tests from mutation testing -->
+                        <param>**/*IT</param>
+                        <param>**/*IntegrationTest</param>
+                        <param>**/*TCKTest</param>
+                    </excludedTestClasses>
+                    <mutationThreshold>80</mutationThreshold>
+                    <coverageThreshold>85</coverageThreshold>
+                    <timestampedReports>false</timestampedReports>
+                    <mutators>
+                        <mutator>DEFAULTS</mutator>
+                    </mutators>
+                    <outputFormats>
+                        <outputFormat>XML</outputFormat>
+                        <outputFormat>HTML</outputFormat>
+                    </outputFormats>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>pit-report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>mutationCoverage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-junit5-plugin</artifactId>
+                        <version>1.2.1</version>
+                    </dependency>
+                </dependencies>
             </plugin>
         </plugins>
     </build>
