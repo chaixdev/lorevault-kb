@@ -52,10 +52,11 @@ The project will be developed in major versions, each delivering a significant p
     - **Tasks:** ✅ LLM integration port, ✅ RAG service implementation, ✅ POST /api/ask endpoint, ✅ citation logic
     - **Achievement:** POST /api/ask endpoint providing intelligent answers with source chunk citations
 
-- **v0.8.1: Performance & Architecture Optimization** 📋
+- **v0.8.1: Performance & Architecture Optimization** ✅
     - **Goal:** Technical improvements and performance optimization
     - **Deliverable:** Neo4j native vector search, materialized coordinates, architecture cleanup
-    - **Tasks:** Neo4j vector index setup, replace in-memory adapter, materialize publication coordinates on chunks, remove deprecated components
+    - **Tasks:** ✅ BookTitle/ChapterTitle mapping fixes, ✅ Ingestion endpoint refactor, ✅ Parameter consistency improvements, ✅ Legacy compatibility handling
+    - **Achievement:** Fixed critical mapping bugs, enhanced ingestion API consistency, comprehensive test coverage
 
 - **v0.9.0: Timeline & Scene Events** 📋
     - **Goal:** Model Scenes as Event entities with temporal relationships

@@ -1,28 +1,52 @@
 # LoreVault Release Notes
 
-## v0.8.1 (Unreleased)
+## v0.8.1 (2025-08-21)
 
-Breaking change: Ask API citation structure simplified
+Release tag: v0.8.1
 
-- Citations in Ask responses now expose publication context only under `coordinates`:
-  - coordinates.universe, coordinates.series, coordinates.bookTitle, coordinates.chapterTitle, coordinates.bookNumber, coordinates.chapterNumber
+Highlights
 
-## Unreleased
+- **BookTitle/ChapterTitle Mapping Fix**: Resolved critical bug where bookTitle was missing from API responses
+- **Ingestion Endpoint Refactor**: Enhanced parameter consistency and validation
+- **Comprehensive Test Coverage**: Added dedicated tests for Neo4j mapping logic
+- **Breaking Change**: Ask API citation structure simplified for consistency
 
-### Fixes
+### Major Fixes
 
-- Neo4j chapterTitle compatibility: some historical Chapter nodes stored the property as `chaptertitle` (lowercase 't'). The persistence model now maps this legacy property and falls back to it when the canonical `chapterTitle` is absent. No API schema changes; responses will correctly include `coordinates.chapterTitle` and `chapterTitle` where applicable.
-- Removed redundant flat fields from citation items: `chapterId`, `bookNumber`, `chapterNumber`.
+- **Fixed Neo4jMapper bookTitle bug**: Corrected mapping from `publicationCoordinates.title` to proper `bookTitle` field
+- **Fixed Neo4jMapper chapterTitle bug**: Resolved incorrect field mapping that caused missing chapterTitle in responses
+- **Legacy chapterTitle compatibility**: Added fallback mapping for historical Chapter nodes with lowercase `chaptertitle` property
 
-Migration guidance
+### Ingestion Endpoint Improvements
 
-- Clients should read publication context from `citations[i].coordinates.*`.
-- Remove references to `citations[i].chapterId`, `citations[i].bookNumber`, `citations[i].chapterNumber`.
-- No other fields changed; `chunkId`, `snippet`, and `score` remain.
+- **Parameter standardization**: Ingestion endpoint now accepts `bookTitle` and `chapterTitle` as separate, explicit parameters
+- **Enhanced validation**: Improved request validation and parameter consistency across the ingestion pipeline
+- **Updated CoordinatesBuilder**: Refactored to handle the new parameter structure cleanly
 
-Compatibility
+### Breaking Changes
 
-- This change is not backward compatible for clients relying on the removed flat fields. Consider pinning to v0.8.0 collections/specs or updating clients accordingly.
+- **Ask API citation structure**: Citations now expose publication context only under `coordinates`:
+  - `coordinates.universe`, `coordinates.series`, `coordinates.bookTitle`, `coordinates.chapterTitle`, `coordinates.bookNumber`, `coordinates.chapterNumber`
+- **Ingestion API**: Now requires explicit `bookTitle` and `chapterTitle` parameters instead of inferring from other sources
+- **Removed redundant citation fields**: `chapterId`, `bookNumber`, `chapterNumber` removed from citation items
+
+### Test Coverage Improvements
+
+- Added `Neo4jMapperBookTitleTest` and `Neo4jMapperChapterTitleTest` for comprehensive mapping validation
+- Updated all ingestion controller tests to use new parameter structure
+- All tests passing (98 tests green)
+
+### Migration Guidance
+
+- **API Clients**: Read publication context from `citations[i].coordinates.*` instead of flat fields
+- **Ingestion Clients**: Update requests to send explicit `bookTitle` and `chapterTitle` parameters
+- **Legacy Data**: No migration required - legacy chapterTitle mapping handled automatically
+
+### Compatibility
+
+- Not backward compatible for clients relying on removed flat citation fields
+- Not backward compatible for ingestion clients using old parameter structure
+- Consider pinning to v0.8.0 collections/specs if immediate migration is not feasible
 
 ## v0.8.0 (2025-08-21)
 
