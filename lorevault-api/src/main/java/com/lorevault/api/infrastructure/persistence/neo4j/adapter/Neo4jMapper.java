@@ -27,10 +27,10 @@ public class Neo4jMapper {
         domain.setChapterTitle(node.getChapterTitle());
         domain.setRawText(node.getRawText());
         domain.setContentHash(node.getContentHash());
-        PublicationCoordinates coords = new PublicationCoordinates();
+    PublicationCoordinates coords = new PublicationCoordinates();
         coords.setUniverse(node.getUniverse());
         coords.setSeries(node.getSeries());
-        // bookTitle not stored on node; left null intentionally
+    coords.setBookTitle(node.getBookTitle());
         coords.setChapterTitle(node.getChapterTitle());
         coords.setBookNumber(node.getBookNumber());
         coords.setChapterNumber(node.getChapterNumber());
@@ -50,6 +50,7 @@ public class Neo4jMapper {
         if (domain.getCoordinates() != null) {
             node.setUniverse(domain.getCoordinates().getUniverse());
             node.setSeries(domain.getCoordinates().getSeries());
+            node.setBookTitle(domain.getCoordinates().getBookTitle());
             node.setBookNumber(domain.getCoordinates().getBookNumber());
             node.setChapterNumber(domain.getCoordinates().getChapterNumber());
         }

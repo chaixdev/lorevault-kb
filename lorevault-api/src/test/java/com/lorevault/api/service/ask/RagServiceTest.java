@@ -66,6 +66,67 @@ class RagServiceTest {
     class AskMethod {
 
         @Test
+        void shouldIncludeNestedCoordinatesInCitations() {
+            // Arrange
+            when(chatClient.prompt()).thenReturn(requestSpec);
+            when(requestSpec.system(any(String.class))).thenReturn(systemSpec);
+            when(systemSpec.user(any(String.class))).thenReturn(requestSpec);
+            when(requestSpec.call()).thenReturn(callSpec);
+
+            AskDtos.AskRequest request = new AskDtos.AskRequest();
+            request.setQuestion("Who is Kaladin?");
+            request.setTopK(3);
+
+            UUID chunkId = UUID.randomUUID();
+            UUID chapterId = UUID.randomUUID();
+
+            SemanticSearchDtos.SearchResultDto searchResult = SemanticSearchDtos.SearchResultDto.of(
+                chunkId, 0.93, "Kaladin is a spearman.", chapterId, 1, 1
+            );
+            SemanticSearchDtos.SemanticSearchResponse searchResponse = new SemanticSearchDtos.SemanticSearchResponse();
+            searchResponse.setResults(List.of(searchResult));
+
+            // Mock chunk
+            Chunk mockChunk = new Chunk();
+            mockChunk.setId(chunkId);
+            mockChunk.setText("Kaladin is a spearman.");
+            when(contentPersistencePort.findChunkById(chunkId))
+                .thenReturn(Optional.of(mockChunk));
+
+            // Mock chapter with full coordinates
+            com.lorevault.api.domain.content.Chapter chapter = new com.lorevault.api.domain.content.Chapter();
+            chapter.setId(chapterId);
+            com.lorevault.api.dto.shared.PublicationCoordinates coords = new com.lorevault.api.dto.shared.PublicationCoordinates(
+                "Cosmere", "Stormlight Archive", "The Way of Kings", "Kaladin", 1, 1
+            );
+            chapter.setCoordinates(coords);
+            when(contentPersistencePort.findChapterById(chapterId))
+                .thenReturn(Optional.of(chapter));
+
+            when(semanticSearchService.search(any(SemanticSearchDtos.SemanticSearchRequest.class)))
+                .thenReturn(searchResponse);
+            when(promptLoaderService.getRagAnswerGenerationPromptTemplate())
+                .thenReturn(new org.springframework.ai.chat.prompt.PromptTemplate("You are a helpful assistant."));
+            when(callSpec.content())
+                .thenReturn("Kaladin is a spearman. [1]");
+
+            // Act
+            AskDtos.AskResponse response = ragService.ask(request);
+
+            // Assert
+            assertThat(response).isNotNull();
+            assertThat(response.getCitations()).hasSize(1);
+            AskDtos.CitationDto citation = response.getCitations().get(0);
+            assertThat(citation.getCoordinates()).isNotNull();
+            assertThat(citation.getCoordinates().getUniverse()).isEqualTo("Cosmere");
+            assertThat(citation.getCoordinates().getSeries()).isEqualTo("Stormlight Archive");
+            assertThat(citation.getCoordinates().getBookTitle()).isEqualTo("The Way of Kings");
+            assertThat(citation.getCoordinates().getChapterTitle()).isEqualTo("Kaladin");
+            assertThat(citation.getCoordinates().getBookNumber()).isEqualTo(1);
+            assertThat(citation.getCoordinates().getChapterNumber()).isEqualTo(1);
+        }
+
+        @Test
         void shouldGenerateAnswerWithCitations() {
             // Arrange
             when(chatClient.prompt()).thenReturn(requestSpec);
@@ -119,9 +180,10 @@ class RagServiceTest {
             assertThat(response.getCitations().get(0).getChunkId()).isEqualTo(chunkId);
             assertThat(response.getCitations().get(0).getSnippet()).isEqualTo("The meaning of life is 42.");
             assertThat(response.getCitations().get(0).getScore()).isEqualTo(0.95);
-            assertThat(response.getCitations().get(0).getChapterId()).isEqualTo(chapterId);
-            assertThat(response.getCitations().get(0).getBookNumber()).isEqualTo(1);
-            assertThat(response.getCitations().get(0).getChapterNumber()).isEqualTo(1);
+            // Check coordinates (fallback case - chapter not found, so minimal coordinates)
+            assertThat(response.getCitations().get(0).getCoordinates()).isNotNull();
+            assertThat(response.getCitations().get(0).getCoordinates().getBookNumber()).isEqualTo(1);
+            assertThat(response.getCitations().get(0).getCoordinates().getChapterNumber()).isEqualTo(1);
 
             assertThat(response.getMetadata()).isNotNull();
             assertThat(response.getMetadata().getQuestion()).isEqualTo("What is the meaning of life?");

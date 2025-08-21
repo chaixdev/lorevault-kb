@@ -46,13 +46,22 @@ public class Neo4jSemanticSearchAdapter implements SemanticSearchPort {
             
             // Query Neo4j vector index for semantic similarity
             List<SearchResult> results = neo4jClient.query("""
-                CALL db.index.vector.queryNodes($indexName, $limit, $embedding) 
+                CALL db.index.vector.queryNodes($indexName, $limit, $embedding)
                 YIELD node, score
+                WITH node AS chunk, score
+                // Try both relationship patterns: direct Chapter->HAS_CHUNK->Chunk (legacy)
+                // and Chapter->HAS_SCENE->Scene->HAS_CHUNK->Chunk (current)
+                OPTIONAL MATCH (chapterDirect:Chapter)-[:HAS_CHUNK]->(chunk)
+                OPTIONAL MATCH (chapterViaScene:Chapter)-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(chunk)
+                WITH chunk, score, coalesce(chapterViaScene, chapterDirect) AS chapter
                 WHERE score > 0.0
-                RETURN 
-                    node.id as chunkId,
+                RETURN
+                    chunk.id AS chunkId,
                     score,
-                    node.text as text
+                    chunk.text AS text,
+                    chapter.id AS chapterId,
+                    chapter.bookNumber AS bookNumber,
+                    chapter.chapterNumber AS chapterNumber
                 ORDER BY score DESC
                 LIMIT $topK
                 """)
@@ -68,8 +77,12 @@ public class Neo4jSemanticSearchAdapter implements SemanticSearchPort {
                     double score = record.get("score").asDouble();
                     String text = record.get("text").asString();
                     String snippet = truncateSnippet(text);
-                    
-                    return new SearchResult(chunkId, score, snippet, null, null, null);
+
+                    UUID chapterId = record.get("chapterId").isNull() ? null : UUID.fromString(record.get("chapterId").asString());
+                    Integer bookNumber = record.get("bookNumber").isNull() ? null : record.get("bookNumber").asInt();
+                    Integer chapterNumber = record.get("chapterNumber").isNull() ? null : record.get("chapterNumber").asInt();
+
+                    return new SearchResult(chunkId, score, snippet, chapterId, bookNumber, chapterNumber);
                 })
                 .all()
                 .stream()
