@@ -155,26 +155,17 @@ Please provide guidance on: [Specific questions]
 
 #### 4.1 Test Design First (MANDATORY)
 
-**Follow the Testing Strategy** from `/docs/spec/testing-strategy.md`:
+**Follow the Testing Strategy**: Refer to `/docs/development/testing/developer-testing-workflow.md` for the complete testing workflow, Maven commands, and quality gates.
 
-```markdown
-🧪 TEST DESIGN PHASE:
+**Key Principles**:
+- Service-level tests are the primary focus (business behavior validation)
+- Integration tests only when persistence/external contracts matter
+- Use proper test tags: `@Tag("unit")`, `@Tag("integration")`, `@Tag("architecture")`
+- Follow hexagonal architecture testing patterns (domain at center, mock ports)
 
-### Service-Level Tests (Primary Focus)
-1. **Identify Business Behaviors**: What business rules and workflows need validation?
-2. **Design Test Scenarios**: Happy path, edge cases, error conditions
-3. **Mock Strategy**: Which dependencies to mock vs. real implementations
-4. **Test Data Strategy**: Realistic test data setup using existing utilities
-
-### Integration Tests (If Needed)
-1. **Database Interactions**: Use Testcontainers only for actual persistence logic
-2. **External Service Integration**: Real calls only when testing integration contracts
-3. **Resource Optimization**: Minimize infrastructure overhead
-
-### Test Structure Template:
+**Test Structure Template**:
 ```java
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT) // If needed for complex scenarios
 class [ServiceName]Test {
     @Mock private [Repository] repository;
     @Mock private [ExternalService] externalService;
@@ -202,27 +193,27 @@ class [ServiceName]Test {
 
 #### 5.1 🧪 TEST VALIDATION GATE: "Tests Define and Verify Behavior"
 
-**The LLM MUST verify test quality and coverage**:
+**The LLM MUST verify test quality and coverage using the workflow from `/docs/development/testing/developer-testing-workflow.md`**:
 
 ```markdown
 🔍 TEST VALIDATION CHECKLIST FOR ISSUE [Issue Number]
 
-### Test Execution
-1. **Run Tests**: `mvn test` (all tests must pass)
-2. **Service Tests**: Verify business logic tests cover main scenarios
-3. **Integration Tests**: Verify persistence/external integration tests (if applicable)
-4. **Edge Cases**: Verify error conditions and boundary cases are tested
+### Maven Commands (per developer-testing-workflow.md)
+1. **Fast Loop**: `mvn test` - Unit tests only (default development cycle)
+2. **Integration Check**: `mvn verify -P integration-tests` - Unit + integration tests  
+3. **Coverage Gate**: `mvn verify -P coverage-gate` - Enforce strict coverage thresholds
+4. **Architecture Validation**: `mvn test -P architecture-tests` - ArchUnit boundary enforcement
 
 ### Test Quality Assessment
 1. **Business Intent**: Do tests clearly communicate what the feature does?
 2. **Realistic Data**: Are tests using realistic test data scenarios?
-3. **Mock Strategy**: Are mocks used appropriately (repositories, external services)?
+3. **Proper Tags**: Are tests tagged correctly (`@Tag("unit")`, `@Tag("integration")`)?
 4. **Test Maintenance**: Are tests structured for easy maintenance and understanding?
 
-### Test Coverage Indicators
-- ✅ **Service-Level Coverage**: Main business workflows tested
-- ✅ **Error Handling**: Exception scenarios and edge cases covered  
-- ✅ **Integration Points**: Database/external service interactions validated
+### Success Criteria
+- ✅ **Fast Loop Passes**: `mvn test` completes successfully
+- ✅ **Service-Level Coverage**: Main business workflows tested with mocked dependencies
+- ✅ **Integration Points**: Database/external service interactions validated (if applicable)
 - ✅ **Test Clarity**: Tests serve as living documentation of requirements
 ```
 
@@ -233,11 +224,11 @@ class [ServiceName]Test {
 ```markdown
 🔍 USER VERIFICATION INSTRUCTIONS FOR ISSUE [Issue Number]
 
-### Build & Run
-1. Build: `mvn clean install` (from project root) 
-2. Run: `mvn -pl lorevault-api spring-boot:run` (start the application)
-3. Test API: Use provided curl commands or test endpoints
-4. Monitor: Check application logs for expected behavior
+### Build & Run (using developer-testing-workflow.md commands)
+1. **Build**: `mvn clean install` (from project root)
+2. **Run**: `mvn -pl lorevault-api spring-boot:run -Dspring-boot.run.profiles=dev` (start application)  
+3. **Test API**: Use provided curl commands or test endpoints
+4. **Monitor**: Check application logs for expected behavior
 
 ### Verification Steps  
 1. **[Step 1]**: [Action] → [Expected result]
@@ -299,7 +290,9 @@ git push origin main
 
 **Reference**: See `/github/instructions/CORE_DEVELOPMENT_PHILOSOPHY.md` for comprehensive decision framework.
 
-**When in doubt**: Refer to `/docs/spec/testing-strategy.md` for testing approach, `/docs/architecture/` for architectural patterns, and existing codebase for Spring Boot conventions.
+**Testing Reference**: See `/docs/development/testing/developer-testing-workflow.md` for detailed testing workflow, Maven profiles, and quality gates.
+
+**When in doubt**: Refer to `/docs/architecture/` for architectural patterns and existing codebase for Spring Boot conventions.
 
 ## Quality Assurance
 

@@ -1,14 +1,15 @@
-# Functional Viewpoint (v0.7.0 Current State)
+# Functional Viewpoint (v0.8.0 Current State)
 
 **Stakeholders:** Developers, architects, testers  
 **Concerns:** Implemented system functionality, component responsibilities, interfaces, deferred roadmap items
 
 ## Scope Clarification
-Current release (v0.7.0) delivers: chapter ingestion, scene detection, text chunking, embedding generation, semantic search, ingestion job + status tracking, and graph persistence in Neo4j.  
-Deferred to v0.8.0+: knowledge entity extraction, RAG-based question answering, hybrid AI orchestration, CQRS read model specialization.
+Current release (v0.8.0) delivers: chapter ingestion, scene detection, text chunking, embedding generation, semantic search, RAG-based question answering, ingestion job + status tracking, and graph persistence in Neo4j.  
+Deferred to v0.8.1: Neo4j native vector indexing (currently in-memory), materialized publication coordinates.  
+Deferred to v0.9.0+: timeline modeling, knowledge entity extraction, hybrid AI orchestration, CQRS read model specialization.
 
 ## Overview
-The functional architecture provides chapter ingestion with hierarchical decomposition and semantic search capabilities. A synchronous REST submission triggers creation of an ingestion job; background processing performs scene detection, chunking, and embedding generation, persisting results as graph nodes. Semantic search endpoints enable natural language queries over chunk content using vector similarity.
+The functional architecture provides chapter ingestion with hierarchical decomposition, semantic search, and intelligent question answering capabilities. A synchronous REST submission triggers creation of an ingestion job; background processing performs scene detection, chunking, and embedding generation, persisting results as graph nodes. Semantic search endpoints enable natural language queries over chunk content using vector similarity, while RAG endpoints provide intelligent answers with source attribution.
 
 ## Implemented Components
 
@@ -84,12 +85,16 @@ sequenceDiagram
 - Observability: Basic status records (no distributed tracing yet)
 - Testability: Unit tests + Neo4j Testcontainer integration tests
 
-## Deferred Components (v0.8.0+ Roadmap)
+## Deferred Components (v0.8.1+ Roadmap)
+- Neo4j native vector indexing (v0.8.1 - currently in-memory cosine similarity)
+- Materialized publication coordinates on Chunk nodes (v0.8.1)
+
+## Deferred Components (v0.9.0+ Roadmap)
 (Original design elements retained here for continuity; not yet implemented)
 - CQRS specialization (separate optimized query services)
 - Hybrid Local + External AI orchestration layer
 - Knowledge entity extraction & graph enrichment pipeline
-- RAG-based question answering over retrieved chunks
+- Timeline modeling with Scene-as-Event entities
 - Event / job queue abstraction (currently inline method calls)
 
 ### Deferred Diagram References (Removed for Clarity)
@@ -107,10 +112,12 @@ Previous diagrams showing: full CQRS gateway, job queue/worker pool, multi-tier 
 - Limited status insight (no progress percentages) → Future: fine-grained stage events
 
 ## Planned Near-Term Improvements
-1. Replace adapter in-memory filtering with Cypher queries
-2. Remove unused legacy repository stubs & deprecated ChunkService  
-3. Inline node creation (drop GraphModelMapper)
-4. Add RAG-based question answering endpoint (v0.8.0)
+
+1. Replace in-memory vector search with Neo4j native vector indexing (v0.8.1)
+2. Materialize publication coordinates on Chunk nodes for efficient spoiler filtering (v0.8.1)
+3. Remove unused legacy repository stubs & deprecated ChunkService (v0.8.1)  
+4. Inline node creation (drop GraphModelMapper) (v0.8.1)
+5. Add timeline modeling with Scene-as-Event entities (v0.9.0)
 
 ---
-(Updated for v0.7.0 to reflect semantic search implementation; future sections clearly marked as deferred.)
+(Updated for v0.8.0 to reflect RAG question answering implementation; future sections clearly marked as deferred.)
