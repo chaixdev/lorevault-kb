@@ -144,6 +144,8 @@ Constraints:
 #### Chapter Node
 ```
 Properties:
+
+Note on property naming: the canonical property for the chapter's title is `chapterTitle`. Some historical data may contain `chaptertitle` (lowercase 't') on Chapter nodes. The application maps both and will prefer `chapterTitle`, falling back to `chaptertitle` when needed. Consider normalizing legacy nodes during maintenance windows.
 - id: UUID (required, unique)
 - title: String (required)
 - chapterOrder: Integer (required, order within book)

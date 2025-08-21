@@ -40,7 +40,8 @@ public class ChapterNode {
 
     @PersistenceCreator
     public ChapterNode(UUID id, String universe, String series, String bookTitle, Integer bookNumber,
-                       Integer chapterNumber, String chapterTitle, String rawText, String contentHash,
+                       Integer chapterNumber, String chapterTitle,
+                       String rawText, String contentHash,
                        LocalDateTime createdAt, LocalDateTime updatedAt, List<SceneNode> scenes, List<ChunkNode> chunks) {
         this.id = id;
         this.universe = universe;

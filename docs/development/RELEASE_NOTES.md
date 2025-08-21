@@ -6,6 +6,12 @@ Breaking change: Ask API citation structure simplified
 
 - Citations in Ask responses now expose publication context only under `coordinates`:
   - coordinates.universe, coordinates.series, coordinates.bookTitle, coordinates.chapterTitle, coordinates.bookNumber, coordinates.chapterNumber
+
+## Unreleased
+
+### Fixes
+
+- Neo4j chapterTitle compatibility: some historical Chapter nodes stored the property as `chaptertitle` (lowercase 't'). The persistence model now maps this legacy property and falls back to it when the canonical `chapterTitle` is absent. No API schema changes; responses will correctly include `coordinates.chapterTitle` and `chapterTitle` where applicable.
 - Removed redundant flat fields from citation items: `chapterId`, `bookNumber`, `chapterNumber`.
 
 Migration guidance
