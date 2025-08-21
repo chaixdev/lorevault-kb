@@ -1,5 +1,8 @@
 package com.lorevault.api.service.ask;
 
+import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.domain.content.Chapter;
+import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.dto.ask.AskDtos.AskRequest;
 import com.lorevault.api.dto.ask.AskDtos.AskResponse;
 import com.lorevault.api.dto.ask.AskDtos.CitationDto;
@@ -19,6 +22,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.IntStream;
 
 /**
@@ -32,6 +36,7 @@ public class RagService {
 
     private final SemanticSearchService semanticSearchService;
     private final PromptLoaderService promptLoaderService;
+    private final ContentPersistencePort contentPersistencePort;
     
     @Qualifier("nlpBig")
     private final ChatClient chatClient;
@@ -214,7 +219,12 @@ public class RagService {
         IntStream.range(0, evidence.size())
             .forEach(i -> {
                 SearchResultDto result = evidence.get(i);
-                context.append(String.format("[%d] %s", i + 1, result.getSnippet()));
+                
+                // Fetch full chunk content instead of using snippet
+                Optional<Chunk> chunkOpt = contentPersistencePort.findChunkById(result.getChunkId());
+                String chunkText = chunkOpt.map(Chunk::getText).orElse(result.getSnippet());
+                
+                context.append(String.format("[%d] %s", i + 1, chunkText));
                 
                 // Add chapter context if available
                 if (result.getBookNumber() != null && result.getChapterNumber() != null) {
@@ -244,13 +254,33 @@ public class RagService {
     }
 
     private CitationDto buildCitation(SearchResultDto searchResult) {
-        return CitationDto.of(
-            searchResult.getChunkId(),
-            searchResult.getScore(),
-            searchResult.getSnippet(),
-            searchResult.getChapterId(),
-            searchResult.getBookNumber(),
-            searchResult.getChapterNumber()
-        );
+        // Fetch chapter to get full publication coordinates
+        Optional<Chapter> chapterOpt = contentPersistencePort.findChapterById(searchResult.getChapterId());
+        
+        if (chapterOpt.isPresent()) {
+            Chapter chapter = chapterOpt.get();
+            return CitationDto.of(
+                searchResult.getChunkId(),
+                searchResult.getScore(),
+                searchResult.getSnippet(),
+                searchResult.getChapterId(),
+                searchResult.getBookNumber(),
+                searchResult.getChapterNumber(),
+                chapter.getUniverse(),
+                chapter.getSeries(),
+                chapter.getCoordinates() != null ? chapter.getCoordinates().getBookTitle() : null,
+                chapter.getCoordinates() != null ? chapter.getCoordinates().getChapterTitle() : null
+            );
+        } else {
+            // Fallback to basic citation if chapter not found
+            return CitationDto.of(
+                searchResult.getChunkId(),
+                searchResult.getScore(),
+                searchResult.getSnippet(),
+                searchResult.getChapterId(),
+                searchResult.getBookNumber(),
+                searchResult.getChapterNumber()
+            );
+        }
     }
 }

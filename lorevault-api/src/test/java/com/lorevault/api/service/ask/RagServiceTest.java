@@ -1,5 +1,7 @@
 package com.lorevault.api.service.ask;
 
+import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.dto.ask.AskDtos;
 import com.lorevault.api.dto.search.SemanticSearchDtos;
 import com.lorevault.api.service.search.SemanticSearchService;
@@ -17,6 +19,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +39,9 @@ class RagServiceTest {
     private PromptLoaderService promptLoaderService;
 
     @Mock
+    private ContentPersistencePort contentPersistencePort;
+
+    @Mock
     private ChatClient chatClient;
 
     @Mock
@@ -51,7 +57,7 @@ class RagServiceTest {
 
     @BeforeEach
     void setUp() {
-        ragService = new RagService(semanticSearchService, promptLoaderService, chatClient);
+        ragService = new RagService(semanticSearchService, promptLoaderService, contentPersistencePort, chatClient);
         
         ReflectionTestUtils.setField(ragService, "modelId", "test-model");
     }
@@ -85,6 +91,17 @@ class RagServiceTest {
 
             String llmResponse = "Based on the context, the meaning of life is 42. [1]";
 
+            // Mock chunk for context building
+            Chunk mockChunk = new Chunk();
+            mockChunk.setId(chunkId);
+            mockChunk.setText("The meaning of life is 42.");
+            when(contentPersistencePort.findChunkById(chunkId))
+                .thenReturn(Optional.of(mockChunk));
+
+            // Mock chapter for citation building (return empty for simplicity)
+            when(contentPersistencePort.findChapterById(chapterId))
+                .thenReturn(Optional.empty());
+
             when(semanticSearchService.search(any(SemanticSearchDtos.SemanticSearchRequest.class)))
                 .thenReturn(searchResponse);
             when(promptLoaderService.getRagAnswerGenerationPromptTemplate())
@@ -113,6 +130,8 @@ class RagServiceTest {
             assertThat(response.getMetadata().getModelId()).isEqualTo("test-model");
 
             verify(semanticSearchService).search(any(SemanticSearchDtos.SemanticSearchRequest.class));
+            verify(contentPersistencePort).findChunkById(chunkId);
+            verify(contentPersistencePort).findChapterById(chapterId);
             verify(callSpec).content();
         }
 
@@ -174,6 +193,17 @@ class RagServiceTest {
 
             String llmResponse = "AI stands for artificial intelligence. [1]";
 
+            // Mock chunk for context building (only the high-score chunk will be used)
+            Chunk mockChunk1 = new Chunk();
+            mockChunk1.setId(chunkId1);
+            mockChunk1.setText("AI is artificial intelligence.");
+            when(contentPersistencePort.findChunkById(chunkId1))
+                .thenReturn(Optional.of(mockChunk1));
+
+            // Mock chapter for citation building (return empty for simplicity)
+            when(contentPersistencePort.findChapterById(chapterId))
+                .thenReturn(Optional.empty());
+
             when(semanticSearchService.search(any(SemanticSearchDtos.SemanticSearchRequest.class)))
                 .thenReturn(searchResponse);
             when(promptLoaderService.getRagAnswerGenerationPromptTemplate())
@@ -195,6 +225,8 @@ class RagServiceTest {
             assertThat(response.getMetadata().getChunksUsed()).isEqualTo(1);
 
             verify(semanticSearchService).search(any(SemanticSearchDtos.SemanticSearchRequest.class));
+            verify(contentPersistencePort).findChunkById(chunkId1);
+            verify(contentPersistencePort).findChapterById(chapterId);
             verify(callSpec).content();
         }
     }

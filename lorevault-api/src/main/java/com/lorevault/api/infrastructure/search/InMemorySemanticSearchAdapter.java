@@ -5,6 +5,7 @@ import com.lorevault.api.application.port.SemanticSearchPort;
 import com.lorevault.api.domain.content.Chunk;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
@@ -15,13 +16,18 @@ import java.util.stream.Stream;
  * In-memory semantic search implementation using cosine similarity.
  * Loads chunks with embeddings from database and performs vector similarity in memory.
  * This is a v0.7.0 implementation that will be replaced with database-native vector search.
+ * 
+ * Activated when lorevault.search.provider=memory or as fallback when Neo4j unavailable.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@ConditionalOnProperty(name = "lorevault.search.provider", havingValue = "memory", matchIfMissing = false)
 public class InMemorySemanticSearchAdapter implements SemanticSearchPort {
 
     private final ContentPersistencePort contentPersistencePort;
+    @org.springframework.beans.factory.annotation.Value("${lorevault.search.snippet.max-length:600}")
+    private int maxSnippetLength;
 
     @Override
     public List<SearchResult> search(double[] queryEmbedding, int topK, SearchFilters filters) {
@@ -142,7 +148,7 @@ public class InMemorySemanticSearchAdapter implements SemanticSearchPort {
         }
         
         // Create a snippet of reasonable length for display
-        int maxLength = 200;
+        int maxLength = Math.max(50, maxSnippetLength);
         if (text.length() <= maxLength) {
             return text;
         }

@@ -37,6 +37,12 @@ public interface ContentPersistencePort {
     List<Chunk> updateChunks(List<Chunk> chunks);
     List<Chunk> findAllChunksWithEmbeddings();
 
+    /**
+     * Find a single chunk by its ID.
+     * Used by RAG to retrieve full chunk text for LLM context.
+     */
+    Optional<Chunk> findChunkById(UUID id);
+
     // Jobs
     IngestionJob createJob(IngestionJob job);
     IngestionJob createJobWithChapter(IngestionJob job, UUID chapterId);

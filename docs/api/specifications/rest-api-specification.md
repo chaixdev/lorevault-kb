@@ -350,7 +350,7 @@ offset: integer (optional, default: 0, min: 0) - Pagination offset
     },
     "embeddings": {
       "healthy": true,
-      "dimension": 3072,
+      "dimension": 1536,
       "durationMs": 145
     }
   }

@@ -44,6 +44,11 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     private static final String CHUNK_EMBEDDING_HASH_INDEX =
             "CREATE INDEX chunk_embeddingHash IF NOT EXISTS FOR (ch:Chunk) ON (ch.embeddingHash)";
 
+    // Vector search index - Neo4j 5.x vector index for semantic search
+    private static final String CHUNK_VECTOR_INDEX =
+            "CREATE VECTOR INDEX chunk_embedding_idx IF NOT EXISTS FOR (ch:Chunk) ON (ch.embedding) " +
+            "OPTIONS {indexConfig: {`vector.dimensions`: 1536, `vector.similarity_function`: 'cosine'}}";
+
     @Override
     public void ensureMinimalSchema() {
         List<String> results = new ArrayList<>();
@@ -60,6 +65,9 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(CHAPTER_COORDS_INDEX, "Chapter coordinates"));
         results.add(executeIndex(CHUNK_CONTENT_HASH_INDEX, "Chunk.contentHash"));
         results.add(executeIndex(CHUNK_EMBEDDING_HASH_INDEX, "Chunk.embeddingHash"));
+        
+        // Create vector search index
+        results.add(executeVectorIndex(CHUNK_VECTOR_INDEX, "Chunk embedding vector index"));
         
         long successful = results.stream().filter(r -> r.contains("ensured")).count();
         long failed = results.stream().filter(r -> r.contains("failed")).count();
@@ -94,6 +102,18 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             return "ensured: " + description;
         } catch (Exception e) {
             log.warn("Failed to create index {}: {}", description, e.getMessage());
+            return "failed: " + description;
+        }
+    }
+
+    private String executeVectorIndex(String cypher, String description) {
+        try {
+            neo4jClient.query(cypher).run();
+            log.debug("Ensured vector index: {}", description);
+            return "ensured: " + description;
+        } catch (Exception e) {
+            log.warn("Failed to create vector index {}: {}", description, e.getMessage());
+            log.debug("Vector index creation requires Neo4j 5.x with vector capabilities");
             return "failed: " + description;
         }
     }
