@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "d4b2c15e-f5b2-4c93-b3f4-12345abcdef0",
 		"name": "LoreVault API CQRS",
-		"description": "REST API collection for LoreVault - Agentic Knowledge Ingestion Service\nFollows CQRS pattern with /api/command/* and /api/query/* endpoints\nMatches implementation v0.7.2+",
+		"description": "REST API collection for LoreVault - Agentic Knowledge Ingestion Service\nFollows CQRS pattern with /api/command/* and /api/query/* endpoints\nMatches implementation v0.8.0+",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12345"
 	},
