@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Testing ChatClient Configuration Refactor - v0.7.2"
+echo "Testing ChatClient Configuration Refactor - v0.8.0"
 echo "=================================================="
 
 # Test 1: Compilation
@@ -20,4 +20,4 @@ echo "- ✅ LlmChatSlotsHealthService created for chat slot health monitoring"
 echo "- ✅ Enhanced health endpoints with chat slots information"
 echo "- ✅ All components compile and integrate successfully"
 echo ""
-echo "Ready for v0.7.2 release!"
+echo "Ready for v0.8.0 release!"
