@@ -14,6 +14,8 @@ LoreVault is an intelligent, service-oriented system designed to automatically b
 
 ### Project Roadmap
 
+**Current Status (v0.8.1-SNAPSHOT):** ✅ Core functionality complete with chapter ingestion, semantic search, and RAG question answering. Architecture cleaned up with ArchUnit compliance. Ready for performance optimization and timeline modeling.
+
 The project will be developed in major versions, each delivering a significant piece of functionality:
 
 - **v0.1.0: API Shell & Basic Job Lifecycle** ✅
@@ -44,23 +46,36 @@ The project will be developed in major versions, each delivering a significant p
     - **Tasks:** ✅ Embedding generation pipeline, ✅ Linear in-memory semantic search, ✅ Search API implementation
     - **Achievement:** POST /api/search/semantic endpoint with natural language query support
 
-- **v0.8.0: RAG Question Answering** 📋
+- **v0.8.0: RAG Question Answering** ✅ **COMPLETED**
     - **Goal:** Add intelligent question answering over retrieved chunk content
     - **Deliverable:** Natural language question answering with source attribution
-    - **Tasks:** LLM integration port, RAG service implementation, POST /api/ask endpoint, citation logic
+    - **Tasks:** ✅ LLM integration port, ✅ RAG service implementation, ✅ POST /api/ask endpoint, ✅ citation logic
+    - **Achievement:** POST /api/ask endpoint providing intelligent answers with source chunk citations
 
-- **v0.9.0 Timeline construction with Scenes as Event entities**
+- **v0.8.1: Performance & Architecture Optimization** 📋
+    - **Goal:** Technical improvements and performance optimization
+    - **Deliverable:** Neo4j native vector search, materialized coordinates, architecture cleanup
+    - **Tasks:** Neo4j vector index setup, replace in-memory adapter, materialize publication coordinates on chunks, remove deprecated components
+
+- **v0.9.0: Timeline & Scene Events** 📋
+    - **Goal:** Model Scenes as Event entities with temporal relationships
+    - **Deliverable:** Timeline construction and temporal querying capabilities
+    - **Tasks:** Event entity modeling, temporal relationship extraction, timeline APIs
 
 - **v0.10.0: Spoiler-Aware Search** 📋
     - **Goal:** Implement publication coordinate filtering for spoiler-safe search
     - **Deliverable:** Search API that respects user reading progress and filters results appropriately
     - **Tasks:** User progress tracking, spoiler filtering logic, oversample-and-filter search pipeline, progress-aware APIs
 
-- **v1.0.0: MVP with vector search** 📋
-    - **Goal:** NLQ on chapter content
-    - **Deliverable:** Complete API for chapter ingestion, hierarchical storage, and spoiler-aware search
-    - **Tasks:** API documentation, performance validation, error handling polish, deployment readiness
-- **v1.0.1: separate raw chapter & chunks & embeddings into postgres/pgvector as dedicated vector store, organise code around projection rerun for updated projection logic. keep neo nodes only with**
+- **v1.0.0: MVP with Production Polish** 📋
+    - **Goal:** Production-ready content ingestion and search system
+    - **Deliverable:** Complete API for chapter ingestion, hierarchical storage, and spoiler-aware search with production quality
+    - **Tasks:** API documentation, performance validation, error handling polish, deployment readiness, SLO establishment
+
+- **v1.0.1: Vector Store Optimization** 📋
+    - **Goal:** Separate raw content and embeddings into dedicated PostgreSQL/pgvector store
+    - **Deliverable:** Optimized storage architecture with projection rerun capabilities
+    - **Tasks:** PostgreSQL integration, data migration, projection logic refactor, Neo4j focus on graph relationships
 - **v1.1.0: Individual` Entity Extraction**
 - **v1.2.0: Entity Projection**
 - **v1.2.0: Actions modelling and projection**
