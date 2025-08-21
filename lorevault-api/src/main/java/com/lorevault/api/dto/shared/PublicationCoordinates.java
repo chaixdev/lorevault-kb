@@ -1,4 +1,4 @@
-package com.lorevault.api.domain.shared;
+package com.lorevault.api.dto.shared;
 
 import static com.lorevault.api.util.StringSanitizer.toSnakeCase;
 import jakarta.validation.constraints.NotBlank;

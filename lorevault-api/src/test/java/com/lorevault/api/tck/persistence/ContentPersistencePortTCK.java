@@ -3,7 +3,7 @@ package com.lorevault.api.tck.persistence;
 import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
-import com.lorevault.api.domain.shared.PublicationCoordinates;
+import com.lorevault.api.dto.shared.PublicationCoordinates;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 

@@ -2,7 +2,7 @@ package com.lorevault.api.service.content;
 
 import com.lorevault.api.dto.content.SceneWithCoordinates;
 import com.lorevault.api.domain.content.Chapter;
-import com.lorevault.api.domain.shared.PublicationCoordinates;
+import com.lorevault.api.dto.shared.PublicationCoordinates;
 import com.lorevault.api.testutil.TestIds;
 import com.lorevault.api.testutil.fakes.FakeContentPersistencePort;
 import com.lorevault.api.testutil.fakes.FakeSceneDetectionPort;

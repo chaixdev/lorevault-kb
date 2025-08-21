@@ -3,7 +3,7 @@ package com.lorevault.api.service.ingestion;
 import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import com.lorevault.api.domain.content.Chapter;
-import com.lorevault.api.domain.shared.PublicationCoordinates;
+import com.lorevault.api.dto.shared.PublicationCoordinates;
 import com.lorevault.api.service.shared.HashService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

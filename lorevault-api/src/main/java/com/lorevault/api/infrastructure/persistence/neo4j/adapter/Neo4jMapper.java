@@ -5,7 +5,7 @@ import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.StatusRecord;
-import com.lorevault.api.domain.shared.PublicationCoordinates;
+import com.lorevault.api.dto.shared.PublicationCoordinates;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode;

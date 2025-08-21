@@ -3,7 +3,6 @@ package com.lorevault.api.web.query.job;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
 import com.lorevault.api.dto.ingestion.JobListResponse;
 import com.lorevault.api.dto.shared.ErrorResponse;
-import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.service.ingestion.IngestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -98,13 +97,13 @@ public class JobsController {
         }
 
         if (status != null && !status.isBlank() && !"ACTIVE".equalsIgnoreCase(status)) {
-            try {
-                IngestionStatus.valueOf(status.toUpperCase());
-            } catch (IllegalArgumentException e) {
+            // Basic validation - let service layer handle full enum validation
+            String upperStatus = status.toUpperCase();
+            if (!java.util.Set.of("PENDING", "IN_PROGRESS", "COMPLETE", "FAILED").contains(upperStatus)) {
                 return ResponseEntity.badRequest().body(
                     ErrorResponse.builder()
                         .code("INVALID_STATUS")
-                        .message("status must be one of ACTIVE, " + java.util.Arrays.toString(IngestionStatus.values()))
+                        .message("status must be one of ACTIVE, PENDING, IN_PROGRESS, COMPLETE, FAILED")
                         .details("status", status)
                         .timestamp(LocalDateTime.now())
                         .path("/api/query/jobs")
