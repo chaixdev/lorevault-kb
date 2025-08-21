@@ -2,10 +2,8 @@ package com.lorevault.api.infrastructure.config;
 
 import com.lorevault.api.application.port.JobContextPort;
 import com.lorevault.api.application.port.SceneDetectionPort;
-import com.lorevault.api.application.port.SemanticSearchPort;
 import com.lorevault.api.infrastructure.adapter.ThreadLocalJobContextAdapter;
 import com.lorevault.api.infrastructure.ai.openai.OpenAiSceneDetectionAdapter;
-import com.lorevault.api.infrastructure.search.InMemorySemanticSearchAdapter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,13 +28,14 @@ public class PortsAdaptersConfiguration {
 
     /**
      * Configure the semantic search port implementation.
-     * Uses in-memory cosine similarity for v0.7.0.
-     * Future versions will support database-native vector search.
+     * 
+     * Default: Neo4j-native vector search (lorevault.search.provider=neo4j)
+     * Fallback: In-memory cosine similarity (lorevault.search.provider=memory)
+     * 
+     * Neo4jSemanticSearchAdapter and InMemorySemanticSearchAdapter are conditionally
+     * registered as @Component beans based on the property value.
      */
-    @Bean
-    public SemanticSearchPort semanticSearchPort(InMemorySemanticSearchAdapter adapter) {
-        return adapter;
-    }
+    // No longer needed - adapters self-register via @ConditionalOnProperty
     
     /**
      * Configure the job context port implementation.

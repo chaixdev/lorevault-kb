@@ -382,7 +382,7 @@
 										}
 									],
 									"cookie": [],
-									"body": "{\n    \"healthy\": true,\n    \"checks\": {\n        \"llm\": {\n            \"healthy\": true,\n            \"description\": \"Large Language Model API connectivity\"\n        },\n        \"embeddings\": {\n            \"healthy\": true,\n            \"dimension\": 3072,\n            \"durationMs\": 234\n        }\n    },\n    \"buildInfo\": {\n        \"version\": \"0.8.0\",\n        \"buildTime\": \"2025-08-19T08:15:30.123Z\"\n    },\n    \"timestamp\": \"2025-08-19T15:45:12.345Z\"\n}"
+									"body": "{\n    \"healthy\": true,\n    \"checks\": {\n        \"llm\": {\n            \"healthy\": true,\n            \"description\": \"Large Language Model API connectivity\"\n        },\n        \"embeddings\": {\n            \"healthy\": true,\n            \"dimension\": 1536,\n            \"durationMs\": 234\n        }\n    },\n    \"buildInfo\": {\n        \"version\": \"0.8.0\",\n        \"buildTime\": \"2025-08-19T08:15:30.123Z\"\n    },\n    \"timestamp\": \"2025-08-19T15:45:12.345Z\"\n}"
 								}
 							]
 						}

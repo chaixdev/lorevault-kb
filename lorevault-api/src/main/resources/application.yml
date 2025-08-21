@@ -103,11 +103,11 @@ lorevault:
   # Text chunking settings (aligned with TextChunkingService @Value keys)
   content:
     chunking:
-      decision-threshold: 5000
-      target-size: 3000
-      overlap-percentage: 15
-      min-chunk-size: 2000
-      max-chunk-size: 4000
+      decision-threshold: 1500  # Lower threshold for smaller chunks (was 5000)
+      target-size: 800         # 800 char chunks with padding (was 3000)
+      overlap-percentage: 25   # 200 chars each side = 25% of 800 (was 15%)
+      min-chunk-size: 400      # Allow smaller chunks for scene boundaries (was 2000)
+      max-chunk-size: 1200     # Upper bound with padding (was 4000)
 
   # Embedding configuration (configured to request 1536 dimensions from Gemini)
   embedding:
@@ -116,6 +116,18 @@ lorevault:
       model: gemini-embedding-001
       dimensions: 1536  # Request 1536 dimensions from Gemini (configurable via API)
       batch-size: 32
+
+  # Semantic search configuration
+  search:
+    provider: neo4j  # Options: neo4j (default), memory
+    snippet:
+      # Maximum characters per snippet returned from search, used in RAG context.
+      # With smaller 800-char chunks, we can return full chunks instead of snippets.
+      max-length: 800
+    neo4j:
+      vector-index-name: chunk_embedding_idx
+      similarity-function: cosine
+      dimensions: 1536
 
   # Multi-LLM provider configuration (disabled by default, requires valid structure for properties binding)
   multi-llm:

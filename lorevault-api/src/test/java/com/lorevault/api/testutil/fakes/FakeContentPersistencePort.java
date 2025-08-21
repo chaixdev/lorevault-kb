@@ -130,6 +130,14 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
     }
 
     @Override
+    public Optional<Chunk> findChunkById(UUID id) {
+        return chunksByChapter.values().stream()
+                .flatMap(List::stream)
+                .filter(c -> Objects.equals(c.getId(), id))
+                .findFirst();
+    }
+
+    @Override
     public IngestionJob createJob(IngestionJob job) {
         if (job.getId() == null) job.setId(UUID.randomUUID());
         jobs.put(job.getId(), job);

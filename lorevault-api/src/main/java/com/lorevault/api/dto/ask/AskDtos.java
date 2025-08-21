@@ -26,7 +26,7 @@ public class AskDtos {
         private String question;
         
         @Min(value = 1, message = "topK must be at least 1")
-        @Max(value = 10, message = "topK cannot exceed 10") 
+        @Max(value = 20, message = "topK cannot exceed 20") 
         private Integer topK = 5;
         
         @Min(value = 0, message = "Threshold cannot be negative")
@@ -75,7 +75,7 @@ public class AskDtos {
     }
 
     /**
-     * Citation with source attribution and chapter-level coordinates.
+     * Citation with source attribution and publication coordinates.
      */
     @Data
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -86,6 +86,12 @@ public class AskDtos {
         private UUID chapterId;
         private Integer bookNumber;
         private Integer chapterNumber;
+        
+        // Publication coordinates for complete attribution
+        private String universe;
+        private String series;
+        private String bookTitle;
+        private String chapterTitle;
 
         public static CitationDto of(UUID chunkId, double score, String snippet, 
                                    UUID chapterId, Integer bookNumber, Integer chapterNumber) {
@@ -96,6 +102,23 @@ public class AskDtos {
             dto.chapterId = chapterId;
             dto.bookNumber = bookNumber;
             dto.chapterNumber = chapterNumber;
+            return dto;
+        }
+        
+        public static CitationDto of(UUID chunkId, double score, String snippet, 
+                                   UUID chapterId, Integer bookNumber, Integer chapterNumber,
+                                   String universe, String series, String bookTitle, String chapterTitle) {
+            CitationDto dto = new CitationDto();
+            dto.chunkId = chunkId;
+            dto.score = score;
+            dto.snippet = snippet;
+            dto.chapterId = chapterId;
+            dto.bookNumber = bookNumber;
+            dto.chapterNumber = chapterNumber;
+            dto.universe = universe;
+            dto.series = series;
+            dto.bookTitle = bookTitle;
+            dto.chapterTitle = chapterTitle;
             return dto;
         }
     }

@@ -268,4 +268,9 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
         System.out.println("[Neo4jAdapter] findAllChunksWithEmbeddings size=" + chunks.size() + " ms=" + ms);
         return mapper.toChunkDomainList(chunks);
     }
+
+    @Override
+    public Optional<Chunk> findChunkById(UUID id) {
+        return chunkRepo.findById(id).map(mapper::toDomain);
+    }
 }
