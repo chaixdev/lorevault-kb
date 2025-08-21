@@ -39,6 +39,11 @@ public class StatusRecord {
     private String stepDescription;
 
     /**
+     * Progress percentage (0-100) for this status update
+     */
+    private Integer progressPercent;
+
+    /**
      * A flexible field to store structured metadata relevant to this event
      * (e.g., entities extracted, error details, performance metrics)
      */

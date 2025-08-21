@@ -1,7 +1,9 @@
 package com.lorevault.api.infrastructure.config;
 
+import com.lorevault.api.application.port.JobContextPort;
 import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.application.port.SemanticSearchPort;
+import com.lorevault.api.infrastructure.adapter.ThreadLocalJobContextAdapter;
 import com.lorevault.api.infrastructure.ai.openai.OpenAiSceneDetectionAdapter;
 import com.lorevault.api.infrastructure.search.InMemorySemanticSearchAdapter;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,15 @@ public class PortsAdaptersConfiguration {
      */
     @Bean
     public SemanticSearchPort semanticSearchPort(InMemorySemanticSearchAdapter adapter) {
+        return adapter;
+    }
+    
+    /**
+     * Configure the job context port implementation.
+     * Uses thread-local storage for job ID management.
+     */
+    @Bean
+    public JobContextPort jobContextPort(ThreadLocalJobContextAdapter adapter) {
         return adapter;
     }
     

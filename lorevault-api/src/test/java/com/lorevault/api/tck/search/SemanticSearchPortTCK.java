@@ -3,7 +3,7 @@ package com.lorevault.api.tck.search;
 import com.lorevault.api.application.port.SemanticSearchPort;
 import com.lorevault.api.application.port.SemanticSearchPort.SearchFilters;
 import com.lorevault.api.application.port.SemanticSearchPort.SearchResult;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
+import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.testutil.fakes.FakeContentPersistencePort;
 import org.junit.jupiter.api.Test;
 
@@ -39,8 +39,8 @@ public abstract class SemanticSearchPortTCK {
         Fixture fx = createFixture();
         UUID chapterId = UUID.randomUUID();
         // Seed two chunks with orthogonal embeddings in 3D: e1 vs e2
-        ChunkNode c1 = chunk(chapterId, UUID.randomUUID(), "alpha", new double[]{1, 0, 0});
-        ChunkNode c2 = chunk(chapterId, UUID.randomUUID(), "beta", new double[]{0, 1, 0});
+    Chunk c1 = chunk(chapterId, UUID.randomUUID(), "alpha", new double[]{1, 0, 0});
+    Chunk c2 = chunk(chapterId, UUID.randomUUID(), "beta", new double[]{0, 1, 0});
         fx.persistence().addChunksToChapter(chapterId, List.of(c1, c2));
 
         // Query closer to e1
@@ -58,7 +58,7 @@ public abstract class SemanticSearchPortTCK {
     void search_respects_topK_limit() {
         Fixture fx = createFixture();
         UUID chapterId = UUID.randomUUID();
-        List<ChunkNode> many = new ArrayList<>();
+    List<Chunk> many = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             many.add(chunk(chapterId, UUID.randomUUID(), "text-" + i, new double[]{i + 1, 0, 0}));
         }
@@ -75,7 +75,7 @@ public abstract class SemanticSearchPortTCK {
         Fixture fx = createFixture();
         UUID chapterId = UUID.randomUUID();
         // Add a chunk without embeddings to ensure it's ignored
-        ChunkNode noEmb = chunk(chapterId, UUID.randomUUID(), "no-emb", null);
+    Chunk noEmb = chunk(chapterId, UUID.randomUUID(), "no-emb", null);
         fx.persistence().addChunksToChapter(chapterId, List.of(noEmb));
 
         List<SearchResult> results = fx.port().search(new double[]{1, 0, 0}, 5, SearchFilters.empty());
@@ -95,8 +95,8 @@ public abstract class SemanticSearchPortTCK {
     }
 
     // Helpers
-    private static ChunkNode chunk(UUID chapterId, UUID id, String text, double[] emb) {
-        ChunkNode c = new ChunkNode();
+    private static Chunk chunk(UUID chapterId, UUID id, String text, double[] emb) {
+        Chunk c = new Chunk();
         c.setId(id);
         c.setChunkNumberInChapter(1);
         c.setStartCharInChapter(0);

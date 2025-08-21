@@ -1,14 +1,13 @@
 package com.lorevault.api.service.ingestion;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.application.port.JobContextPort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
+import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
-import com.lorevault.api.infrastructure.ai.openai.OpenAiSceneDetectionAdapter;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
 import com.lorevault.api.service.content.ChunkEmbeddingService;
 import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.ScenePersistenceService;
@@ -36,6 +35,7 @@ import java.util.UUID;
 public class IngestionWorkflowService {
 
     private final ContentPersistencePort contentPersistencePort;
+    private final JobContextPort jobContextPort;
     private final SceneDetectionService sceneDetectionService;
     private final ScenePersistenceService scenePersistenceService;
     private final TextChunkingService textChunkingService;
@@ -79,13 +79,13 @@ public class IngestionWorkflowService {
                     context.getJobId(), context.getChapterId());
             
             // Set job ID for retry-aware scene detection
-            OpenAiSceneDetectionAdapter.setCurrentJobId(context.getJobId());
+            jobContextPort.setCurrentJobId(context.getJobId());
             
             updateStatus(context, IngestionStatus.PREPROCESSING_STARTED, 
                     "Starting AI-powered scene detection");
 
-            List<SceneNode> sceneNodes = executeSceneDetectionStage(context);
-            executeChunkingStage(context, sceneNodes);
+            List<Scene> scenes = executeSceneDetectionStage(context);
+            executeChunkingStage(context, scenes);
             executeEmbeddingStage(context);
 
             jobLifecycleService.completeJob(job, context.getChapterId(), 
@@ -95,16 +95,16 @@ public class IngestionWorkflowService {
             handleProcessingError(context, e);
         } finally {
             // Always clear job ID from ThreadLocal to prevent memory leaks
-            OpenAiSceneDetectionAdapter.clearCurrentJobId();
+            jobContextPort.clearCurrentJobId();
         }
     }
 
-    private List<SceneNode> executeSceneDetectionStage(WorkflowContext context) {
+    private List<Scene> executeSceneDetectionStage(WorkflowContext context) {
         updateStatus(context, IngestionStatus.DETECTING_SCENES, 
                 "Analyzing chapter text with AI to identify semantic scene boundaries");
 
         // Check for existing scenes first
-        List<SceneNode> existingScenes = contentPersistencePort.findScenesByChapterId(context.getChapterId());
+        List<Scene> existingScenes = contentPersistencePort.findScenesByChapterId(context.getChapterId());
         if (!existingScenes.isEmpty()) {
             updateStatus(context, IngestionStatus.DETECTING_SCENES, 
                     String.format("Found %d existing scenes, proceeding to chunking", existingScenes.size()));
@@ -115,23 +115,23 @@ public class IngestionWorkflowService {
         List<SceneWithCoordinates> scenesWithCoordinates = sceneDetectionService
                 .detectScenesForChapter(context.getChapterId());
         
-        List<SceneNode> sceneNodes = scenePersistenceService
+        List<Scene> scenes = scenePersistenceService
                 .persistDetectedScenes(context.getChapterId(), scenesWithCoordinates);
         
         updateStatus(context, IngestionStatus.DETECTING_SCENES, 
-                String.format("Detected %d semantic scenes from chapter text", sceneNodes.size()));
+                String.format("Detected %d semantic scenes from chapter text", scenes.size()));
         
-        return sceneNodes;
+        return scenes;
     }
 
-    private int executeChunkingStage(WorkflowContext context, List<SceneNode> sceneNodes) {
+    private int executeChunkingStage(WorkflowContext context, List<Scene> scenes) {
         updateStatus(context, IngestionStatus.EMBEDDING_CHUNKS, 
                 "Applying chunking decision gate to scenes");
 
-        int chunkCount = createChunksFromScenes(context, sceneNodes);
+        int chunkCount = createChunksFromScenes(context, scenes);
         
         updateStatus(context, IngestionStatus.EMBEDDING_CHUNKS, 
-                String.format("Created %d chunks from %d semantic scenes", chunkCount, sceneNodes.size()));
+                String.format("Created %d chunks from %d semantic scenes", chunkCount, scenes.size()));
         
         return chunkCount;
     }
@@ -153,71 +153,71 @@ public class IngestionWorkflowService {
      * Implements Stage 3 (Chunking Decision Gate) and Stage 4 (Chunk Generation):
      * Uses TextChunkingService which transparently handles both single and multi-chunk cases.
      */
-    private int createChunksFromScenes(WorkflowContext context, List<SceneNode> sceneNodes) {
+    private int createChunksFromScenes(WorkflowContext context, List<Scene> scenes) {
         if (context.getChapterText() == null) {
             return 0;
         }
 
         int totalChunks = 0;
-        for (SceneNode scene : sceneNodes) {
+        for (Scene scene : scenes) {
             totalChunks += processSceneIntoChunks(context, scene);
         }
         
         log.info("Created {} total chunks from {} scenes (scene-linked)", 
-                totalChunks, sceneNodes.size());
+                totalChunks, scenes.size());
         return totalChunks;
     }
 
-    private int processSceneIntoChunks(WorkflowContext context, SceneNode scene) {
+    private int processSceneIntoChunks(WorkflowContext context, Scene scene) {
         String sceneText = extractSceneText(context.getChapterText(), scene);
         List<Chunk> sceneChunks = textChunkingService.extractChunks(sceneText);
         
-        List<ChunkNode> chunkNodes = buildChunkNodes(context, scene, sceneChunks);
+        List<Chunk> chunks = buildChunks(context, scene, sceneChunks);
         
-        if (!chunkNodes.isEmpty()) {
-            contentPersistencePort.addChunksToScene(scene.getId(), chunkNodes);
-            return chunkNodes.size();
+        if (!chunks.isEmpty()) {
+            contentPersistencePort.addChunksToScene(scene.getId(), chunks);
+            return chunks.size();
         }
         
         return 0;
     }
 
-    private String extractSceneText(String chapterText, SceneNode scene) {
+    private String extractSceneText(String chapterText, Scene scene) {
         return chapterText.substring(
-                scene.getStartOffset().intValue(), 
-                scene.getEndOffset().intValue()
+                scene.getStartCharacterOffset().intValue(), 
+                scene.getEndCharacterOffset().intValue()
         );
     }
 
-    private List<ChunkNode> buildChunkNodes(WorkflowContext context, SceneNode scene, List<Chunk> chunks) {
-        List<ChunkNode> chunkNodes = new ArrayList<>();
+    private List<Chunk> buildChunks(WorkflowContext context, Scene scene, List<Chunk> chunks) {
+        List<Chunk> chunkList = new ArrayList<>();
         
         for (Chunk chunk : chunks) {
             // Adjust chunk coordinates to chapter-relative positions
-            chunk.setStartCharInChapter(chunk.getStartCharInChapter() + scene.getStartOffset().intValue());
-            chunk.setEndCharInChapter(chunk.getEndCharInChapter() + scene.getStartOffset().intValue());
+            chunk.setStartCharInChapter(chunk.getStartCharInChapter() + scene.getStartCharacterOffset().intValue());
+            chunk.setEndCharInChapter(chunk.getEndCharInChapter() + scene.getStartCharacterOffset().intValue());
             
-            ChunkNode node = createChunkNode(context, chunk);
-            chunkNodes.add(node);
+            Chunk newChunk = createChunk(context, chunk);
+            chunkList.add(newChunk);
         }
         
-        return chunkNodes;
+        return chunkList;
     }
 
-    private ChunkNode createChunkNode(WorkflowContext context, Chunk chunk) {
+    private Chunk createChunk(WorkflowContext context, Chunk chunk) {
         // Use the normalized chunk text from TextChunkingService instead of raw chapter substring
         String chunkContent = chunk.getText(); // This contains the properly normalized text
         String contentHash = hashService.generateSha256Hash(chunkContent);
         
-        ChunkNode node = new ChunkNode();
+        Chunk newChunk = new Chunk();
         // Legacy: still populate for backward compatibility; will migrate to relationship ordering
-        node.setChunkNumberInChapter(chunk.getChunkNumberInChapter());
-        node.setStartCharInChapter(chunk.getStartCharInChapter());
-        node.setEndCharInChapter(chunk.getEndCharInChapter());
-        node.setContentHash(contentHash);
-        node.setText(chunkContent); // Store the normalized chunk text from TextChunkingService
+        newChunk.setChunkNumberInChapter(chunk.getChunkNumberInChapter());
+        newChunk.setStartCharInChapter(chunk.getStartCharInChapter());
+        newChunk.setEndCharInChapter(chunk.getEndCharInChapter());
+        newChunk.setContentHash(contentHash);
+        newChunk.setText(chunkContent); // Store the normalized chunk text from TextChunkingService
         
-        return node;
+        return newChunk;
     }
 
     private void handleProcessingError(WorkflowContext context, Exception e) {

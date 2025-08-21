@@ -1,8 +1,8 @@
 package com.lorevault.api.service.content;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
+import com.lorevault.api.domain.content.Chapter;
+import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.testutil.fakes.FakeContentPersistencePort;
 import com.lorevault.api.testutil.fakes.FakeEmbeddingPort;
 import org.junit.jupiter.api.DisplayName;
@@ -33,7 +33,7 @@ class ChunkEmbeddingServiceTest {
 
         UUID chapterId = UUID.randomUUID();
         // Only chapter exists, no chunks
-        ChapterNode chapter = new ChapterNode();
+    Chapter chapter = new Chapter();
         chapter.setId(chapterId);
         chapter.setRawText("Some text");
         ((FakeContentPersistencePort) repo).createChapter(chapter);
@@ -52,7 +52,7 @@ class ChunkEmbeddingServiceTest {
         svc.setBatchSize(8);
 
         UUID chapterId = UUID.randomUUID();
-        ChapterNode chapter = new ChapterNode();
+    Chapter chapter = new Chapter();
         chapter.setId(chapterId);
         String rawText = "abcdefghijklmnopqrstuvwxyz. "+
                          "More content here to ensure substring operations work.";
@@ -60,10 +60,10 @@ class ChunkEmbeddingServiceTest {
         repo.createChapter(chapter);
 
         // Prepare three chunks for the chapter
-        List<ChunkNode> chunks = new ArrayList<>();
+    List<Chunk> chunks = new ArrayList<>();
 
         // 1) Needs embedding (no embedding yet)
-        ChunkNode c1 = new ChunkNode();
+    Chunk c1 = new Chunk();
         c1.setId(UUID.randomUUID());
         c1.setStartCharInChapter(0);
         c1.setEndCharInChapter(10);
@@ -71,7 +71,7 @@ class ChunkEmbeddingServiceTest {
         chunks.add(c1);
 
         // 2) Up-to-date: already has embedding + correct hash
-        ChunkNode c2 = new ChunkNode();
+    Chunk c2 = new Chunk();
         c2.setId(UUID.randomUUID());
         c2.setStartCharInChapter(10);
         c2.setEndCharInChapter(20);
@@ -81,7 +81,7 @@ class ChunkEmbeddingServiceTest {
         chunks.add(c2);
 
         // 3) Needs update: has embedding but wrong hash
-        ChunkNode c3 = new ChunkNode();
+    Chunk c3 = new Chunk();
         c3.setId(UUID.randomUUID());
         c3.setStartCharInChapter(20);
         c3.setEndCharInChapter(30);
