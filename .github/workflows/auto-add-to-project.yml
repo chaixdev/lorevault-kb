@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       issues: read
-      metadata: read
     steps:
       - name: Add to project
         uses: actions/add-to-project@v0.5.0

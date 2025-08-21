@@ -28,7 +28,6 @@ jobs:
     permissions:
       contents: read
       issues: write
-      metadata: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4

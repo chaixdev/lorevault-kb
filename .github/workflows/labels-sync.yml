@@ -13,10 +13,8 @@ jobs:
     permissions:
       contents: read
       issues: write
-      metadata: read
       repository-projects: write
       pull-requests: write
-      administration: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
