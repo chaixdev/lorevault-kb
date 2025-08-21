@@ -17,6 +17,11 @@
     <name>LoreVault API</name>
     <description>REST API module for LoreVault service</description>
 
+    <properties>
+        <!-- Skip JaCoCo check by default (reports still generated); enable in CI via -Pcoverage-gate -->
+        <jacoco.check.skip>true</jacoco.check.skip>
+    </properties>
+
     <dependencies>
         <!-- Spring AI OpenAI client (core library only, no auto-configuration) -->
         <dependency>
@@ -97,6 +102,14 @@
             <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+        
+        <!-- Architecture Testing -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>1.2.1</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>        
@@ -126,8 +139,10 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.1.2</version>
                 <configuration>
-                    <forkCount>1</forkCount>
+                    <!-- Parallelize test execution: 1C = one fork per CPU core -->
+                    <forkCount>1C</forkCount>
                     <reuseForks>true</reuseForks>
+                    <!-- Reuse JVM for speed; JUnit5 parallelism is configured via junit-platform.properties -->
                     <includes>
                         <include>**/*Test.java</include>
                         <include>**/*Tests.java</include>
@@ -139,14 +154,87 @@
                         <exclude>**/*ITCase*.java</exclude>
                         <exclude>**/*IntegrationTest.java</exclude>
                         <exclude>**/*IntegrationTests.java</exclude>
-                        <!-- Temporarily exclude flaky/broken unit tests -->
-                        <exclude>**/PromptLoaderServiceTest.*</exclude>
-                        <exclude>**/RagServiceTest.*</exclude>
                     </excludes>
                     <!-- Also honor JUnit 5 @Tag("integration") as excluded by default -->
-                    <excludedGroups>integration</excludedGroups>
+                    <excludedGroups>integration,architecture</excludedGroups>
+                    <properties>
+                        <configurationParameters>junit.jupiter.tags.exclude=architecture</configurationParameters>
+                    </properties>
                 </configuration>
             </plugin>
+            
+            <!-- JaCoCo Code Coverage -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.11</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-check</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <!-- Make the coverage gate opt-in; default is skipped locally -->
+                            <skip>${jacoco.check.skip}</skip>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.85</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>com.lorevault.api.service.*</include>
+                                        <include>com.lorevault.api.domain.*</include>
+                                        <include>com.lorevault.api.application.*</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.90</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                            <excludes>
+                                <!-- Exclude infrastructure adapters from unit coverage requirements -->
+                                <exclude>com/lorevault/api/infrastructure/**</exclude>
+                                <!-- Exclude configuration classes -->
+                                <exclude>com/lorevault/api/configuration/**</exclude>
+                                <!-- Exclude main application class -->
+                                <exclude>com/lorevault/api/LoreVaultApiApplication.*</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            
+            <!-- PIT Mutation Testing moved to profile 'mutation-testing' for opt-in CI runs -->
         </plugins>
     </build>
 
@@ -185,6 +273,101 @@
                                 <goals>
                                     <goal>integration-test</goal>
                                     <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>architecture-tests</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>3.1.2</version>
+                        <configuration>
+                            <!-- Run only architecture tests by file path to avoid tag filter pitfalls -->
+                            <forkCount>1C</forkCount>
+                            <reuseForks>true</reuseForks>
+                            <includes combine.self="override">
+                                <include>**/architecture/**/*Test.java</include>
+                                <include>**/architecture/**/*Tests.java</include>
+                            </includes>
+                            <!-- Fully override the exclude list to NOT exclude architecture tests -->
+                            <excludes combine.self="override">
+                                <!-- Keep IT patterns excluded; do NOT exclude architecture here -->
+                                <exclude>**/*IT.java</exclude>
+                                <exclude>**/*ITCase.java</exclude>
+                                <exclude>**/*ITCase*.java</exclude>
+                                <exclude>**/*IntegrationTest.java</exclude>
+                                <exclude>**/*IntegrationTests.java</exclude>
+                            </excludes>
+                            <!-- Clear tag filters to not exclude anything by tag -->
+                            <excludedGroups combine.self="override"></excludedGroups>
+                            <properties combine.self="override"/>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Enable strict JaCoCo coverage gate: mvn verify -P coverage-gate -->
+        <profile>
+            <id>coverage-gate</id>
+            <properties>
+                <jacoco.check.skip>false</jacoco.check.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>mutation-testing</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <version>1.15.3</version>
+                        <configuration>
+                            <targetClasses>
+                                <param>com.lorevault.api.service.*</param>
+                                <param>com.lorevault.api.domain.*</param>
+                                <param>com.lorevault.api.application.*</param>
+                            </targetClasses>
+                            <targetTests>
+                                <param>com.lorevault.api.service.*</param>
+                                <param>com.lorevault.api.domain.*</param>
+                                <param>com.lorevault.api.application.*</param>
+                            </targetTests>
+                            <excludedTestClasses>
+                                <param>**/*IT</param>
+                                <param>**/*IntegrationTest</param>
+                                <param>**/*TCKTest</param>
+                            </excludedTestClasses>
+                            <mutationThreshold>80</mutationThreshold>
+                            <coverageThreshold>85</coverageThreshold>
+                            <timestampedReports>false</timestampedReports>
+                            <mutators>
+                                <mutator>DEFAULTS</mutator>
+                            </mutators>
+                            <outputFormats>
+                                <outputFormat>XML</outputFormat>
+                                <outputFormat>HTML</outputFormat>
+                            </outputFormats>
+                        </configuration>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.pitest</groupId>
+                                <artifactId>pitest-junit5-plugin</artifactId>
+                                <version>1.2.1</version>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <id>pit-report</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>mutationCoverage</goal>
                                 </goals>
                             </execution>
                         </executions>

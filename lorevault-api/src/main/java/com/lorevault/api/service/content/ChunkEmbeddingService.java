@@ -2,8 +2,8 @@ package com.lorevault.api.service.content;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.application.port.EmbeddingPort;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
+import com.lorevault.api.domain.content.Chapter;
+import com.lorevault.api.domain.content.Chunk;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,12 +52,12 @@ public class ChunkEmbeddingService {
         
         log.info("[Embeddings] START chapter={}", chapterId);
         
-        List<ChunkNode> chunks = loadChunks(context);
+        List<Chunk> chunks = loadChunks(context);
         if (chunks.isEmpty()) {
             return finishWithNoWork(context, "no chunks");
         }
         
-        List<ChunkNode> targets = selectTargetsNeedingEmbedding(chunks, context);
+        List<Chunk> targets = selectTargetsNeedingEmbedding(chunks, context);
         if (targets.isEmpty()) {
             return finishWithNoWork(context, "all up-to-date", chunks.size());
         }
@@ -113,8 +113,8 @@ public class ChunkEmbeddingService {
         if (embeddingDim <= 0) embeddingDim = 3072;
     }
 
-    private List<ChunkNode> loadChunks(EmbeddingContext context) {
-        List<ChunkNode> chunks = contentPersistencePort.findChunksByChapterId(context.chapterId);
+    private List<Chunk> loadChunks(EmbeddingContext context) {
+        List<Chunk> chunks = contentPersistencePort.findChunksByChapterId(context.chapterId);
         long elapsed = context.elapsedMs();
         log.debug("[Embeddings] Loaded {} chunks ({} ms) chapter={}", chunks.size(), elapsed, context.chapterId);
         return chunks;
@@ -126,7 +126,7 @@ public class ChunkEmbeddingService {
 
     private int finishWithNoWork(EmbeddingContext context, String reason, int skippedCount) {
         long totalMs = context.elapsedMs();
-        log.info("[Embeddings] DONE ({}) chapter={} totalMs={}", reason, context.chapterId, totalMs);
+        log.info("[Embeddings] DONE ({}) chapter={} totalMs={}", context.chapterId, totalMs);
         if (skippedCount > 0) {
             Metrics.counter("embeddings.skipped.count", "reason", "up_to_date").increment(skippedCount);
         }
@@ -134,12 +134,12 @@ public class ChunkEmbeddingService {
         return 0;
     }
 
-    private List<ChunkNode> selectTargetsNeedingEmbedding(List<ChunkNode> chunks, EmbeddingContext context) {
+    private List<Chunk> selectTargetsNeedingEmbedding(List<Chunk> chunks, EmbeddingContext context) {
         Instant selectionStart = Instant.now();
         String modelId = embeddingPort.getModelId();
-        List<ChunkNode> targets = new ArrayList<>();
+        List<Chunk> targets = new ArrayList<>();
         
-        for (ChunkNode chunk : chunks) {
+        for (Chunk chunk : chunks) {
             if (chunkNeedsEmbedding(chunk, modelId)) {
                 targets.add(chunk);
             }
@@ -152,7 +152,7 @@ public class ChunkEmbeddingService {
         return targets;
     }
 
-    private boolean chunkNeedsEmbedding(ChunkNode chunk, String modelId) {
+    private boolean chunkNeedsEmbedding(Chunk chunk, String modelId) {
         String expectedHash = computeEmbeddingHash(modelId, chunk.getContentHash());
         boolean needs = chunk.getEmbedding() == null || 
                        chunk.getEmbeddingHash() == null || 
@@ -167,11 +167,11 @@ public class ChunkEmbeddingService {
         return needs;
     }
 
-    private List<String> extractTextsForEmbedding(List<ChunkNode> targets, UUID chapterId) {
+    private List<String> extractTextsForEmbedding(List<Chunk> targets, UUID chapterId) {
         String rawText = loadChapterRawText(chapterId);
         List<String> texts = new ArrayList<>(targets.size());
         
-        for (ChunkNode target : targets) {
+        for (Chunk target : targets) {
             String text = extractTextForChunk(target, rawText);
             texts.add(text == null ? "" : text);
         }
@@ -182,7 +182,7 @@ public class ChunkEmbeddingService {
     private String loadChapterRawText(UUID chapterId) {
         try {
             return contentPersistencePort.findChapterById(chapterId)
-                    .map(ChapterNode::getRawText)
+                    .map(Chapter::getRawText)
                     .orElse(null);
         } catch (Exception e) {
             log.warn("[Embeddings] Failed to load chapter rawText chapter={} error={}", chapterId, e.getMessage());
@@ -190,7 +190,7 @@ public class ChunkEmbeddingService {
         }
     }
 
-    private String extractTextForChunk(ChunkNode chunk, String rawText) {
+    private String extractTextForChunk(Chunk chunk, String rawText) {
         // Prefer directly stored chunk text when available (decouples from chapter/scene)
         if (chunk.getText() != null && !chunk.getText().isEmpty()) {
             return chunk.getText();
@@ -206,7 +206,7 @@ public class ChunkEmbeddingService {
         return chunk.getContentHash();
     }
 
-    private String extractTextByCoordinates(ChunkNode chunk, String rawText) {
+    private String extractTextByCoordinates(Chunk chunk, String rawText) {
         int start = chunk.getStartCharInChapter();
         int end = chunk.getEndCharInChapter();
         
@@ -248,13 +248,13 @@ public class ChunkEmbeddingService {
         }
     }
 
-    private int updateChunksWithEmbeddings(List<ChunkNode> targets, List<double[]> vectors, EmbeddingContext context) {
+    private int updateChunksWithEmbeddings(List<Chunk> targets, List<double[]> vectors, EmbeddingContext context) {
         Instant persistStart = Instant.now();
         String modelId = embeddingPort.getModelId();
         int updated = 0;
         
         for (int i = 0; i < targets.size(); i++) {
-            ChunkNode target = targets.get(i);
+            Chunk target = targets.get(i);
             double[] vector = vectors.get(i);
             
             if (updateChunkWithVector(target, vector, modelId)) {
@@ -273,7 +273,7 @@ public class ChunkEmbeddingService {
         return updated;
     }
 
-    private boolean updateChunkWithVector(ChunkNode chunk, double[] vector, String modelId) {
+    private boolean updateChunkWithVector(Chunk chunk, double[] vector, String modelId) {
         if (vector.length == 0) {
             return false; // Skip failed embeddings
         }

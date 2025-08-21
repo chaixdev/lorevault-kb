@@ -2,7 +2,8 @@ package com.lorevault.api.service.ingestion;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
+import com.lorevault.api.domain.content.Chapter;
+import com.lorevault.api.domain.shared.PublicationCoordinates;
 import com.lorevault.api.service.shared.HashService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -68,7 +69,7 @@ public class ChapterValidationService {
         String contentHash = hashService.generateSha256Hash(request.getChapterText());
 
         // Check for existing chapter with same content
-        Optional<ChapterNode> existingChapter = findExistingChapterByHash(contentHash);
+    Optional<Chapter> existingChapter = findExistingChapterByHash(contentHash);
         if (existingChapter.isPresent()) {
             UUID chapterId = existingChapter.get().getId();
             boolean hasActiveJob = checkForActiveJob(chapterId);
@@ -105,7 +106,7 @@ public class ChapterValidationService {
         }
     }
 
-    private Optional<ChapterNode> findExistingChapterByHash(String contentHash) {
+    private Optional<Chapter> findExistingChapterByHash(String contentHash) {
         try {
             return contentPersistencePort.findChapterByContentHash(contentHash);
         } catch (Exception e) {
@@ -116,11 +117,11 @@ public class ChapterValidationService {
 
     private UUID createNewChapter(SubmitChapterRequest request, String contentHash) {
         try {
-            ChapterNode node = buildChapterNode(request, contentHash);
-            ChapterNode persisted = contentPersistencePort.createChapter(node);
+            Chapter chapter = buildChapter(request, contentHash);
+            Chapter persisted = contentPersistencePort.createChapter(chapter);
             
             // Handle mock scenarios where createChapter might return null
-            UUID chapterId = (persisted != null) ? persisted.getId() : node.getId();
+            UUID chapterId = (persisted != null) ? persisted.getId() : chapter.getId();
             
             log.debug("Created new chapter with ID: {}", chapterId);
             return chapterId;
@@ -130,21 +131,16 @@ public class ChapterValidationService {
         }
     }
 
-    private ChapterNode buildChapterNode(SubmitChapterRequest request, String contentHash) {
-        ChapterNode node = new ChapterNode();
-        node.setId(UUID.randomUUID());
+    private Chapter buildChapter(SubmitChapterRequest request, String contentHash) {
+        Chapter chapter = new Chapter();
+        chapter.setId(UUID.randomUUID());
         
-        if (request.getCoordinates() != null) {
-            node.setUniverse(request.getCoordinates().getUniverse());
-            node.setSeries(request.getCoordinates().getSeries());
-            node.setBookNumber(request.getCoordinates().getBookNumber());
-            node.setChapterNumber(request.getCoordinates().getChapterNumber());
-        }
+        PublicationCoordinates coords = request.getCoordinates();
+        chapter.setCoordinates(coords);
+        chapter.setChapterTitle(request.getChapterTitle());
+        chapter.setRawText(request.getChapterText());
+        chapter.setContentHash(contentHash);
         
-        node.setChapterTitle(request.getChapterTitle());
-        node.setRawText(request.getChapterText());
-        node.setContentHash(contentHash);
-        
-        return node;
+        return chapter;
     }
 }

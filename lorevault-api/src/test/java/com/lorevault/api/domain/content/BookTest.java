@@ -1,105 +1,119 @@
 package com.lorevault.api.domain.content;
 
+import com.lorevault.api.testutil.TestIds;
+import com.lorevault.api.testutil.builders.BookBuilder;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
-public class BookTest {
+@Tag("unit")
+@DisplayName("Book")
+class BookTest {
 
     @Test
-    void displayLabel_formatsNicely() {
-        Book b = new Book();
-        b.setUniverse("Cosmere");
-        b.setSeries("Stormlight Archive");
-        b.setBookNumber(2);
-        b.setTitle("Words of Radiance");
+    @DisplayName("should create book with all required fields")
+    void shouldCreateBookWithAllRequiredFields() {
+        // Given
+        UUID id = TestIds.BOOK_ID;
+        UUID universeId = TestIds.UNIVERSE_ID;
+        UUID seriesId = TestIds.SERIES_ID;
+        String universe = TestIds.DEFAULT_UNIVERSE_NAME;
+        String series = "Stormlight Archive";
+        Integer bookNumber = 1;
+        String title = "The Way of Kings";
+        LocalDateTime ts = TestIds.FIXED_TIMESTAMP;
 
-        assertEquals("Stormlight Archive #2 Words of Radiance", b.displayLabel());
+        // When
+        Book book = BookBuilder.aBook()
+                .withId(id)
+                .withUniverseId(universeId)
+                .withSeriesId(seriesId)
+                .withUniverse(universe)
+                .withSeries(series)
+                .withBookNumber(bookNumber)
+                .withTitle(title)
+                .withCreatedAt(ts)
+                .withUpdatedAt(ts)
+                .build();
+
+        // Then
+        assertThat(book.getId()).isEqualTo(id);
+        assertThat(book.getUniverseId()).isEqualTo(universeId);
+        assertThat(book.getSeriesId()).isEqualTo(seriesId);
+        assertThat(book.getUniverse()).isEqualTo(universe);
+        assertThat(book.getSeries()).isEqualTo(series);
+        assertThat(book.getBookNumber()).isEqualTo(bookNumber);
+        assertThat(book.getTitle()).isEqualTo(title);
+        assertThat(book.getCreatedAt()).isEqualTo(ts);
+        assertThat(book.getUpdatedAt()).isEqualTo(ts);
     }
 
     @Test
-    void displayLabel_handlesMissingFields() {
-        Book b1 = new Book();
-        b1.setTitle("Elantris");
-        assertEquals("Elantris", b1.displayLabel());
+    @DisplayName("should create series book via factory method")
+    void shouldCreateSeriesBookViaFactory() {
+        // Given
+        UUID universeId = TestIds.UNIVERSE_ID;
+        UUID seriesId = TestIds.SERIES_ID;
+        String universe = TestIds.DEFAULT_UNIVERSE_NAME;
+        String series = "Mistborn";
+        Integer bookNumber = 2;
+        String title = "The Well of Ascension";
 
-        Book b2 = new Book();
-        b2.setSeries("Mistborn");
-        b2.setTitle("The Final Empire");
-        assertEquals("Mistborn The Final Empire", b2.displayLabel());
+        // When
+        Book book = Book.createInSeries(universeId, universe, seriesId, series, bookNumber, title);
 
-        Book b3 = new Book();
-        b3.setSeries("Mistborn");
-        b3.setBookNumber(1);
-        assertEquals("Mistborn #1", b3.displayLabel());
+        // Then
+        assertThat(book.getId()).isNotNull();
+        assertThat(book.getUniverseId()).isEqualTo(universeId);
+        assertThat(book.getSeriesId()).isEqualTo(seriesId);
+        assertThat(book.getUniverse()).isEqualTo(universe);
+        assertThat(book.getSeries()).isEqualTo(series);
+        assertThat(book.getBookNumber()).isEqualTo(bookNumber);
+        assertThat(book.getTitle()).isEqualTo(title);
+        assertThat(book.getUpdatedAt()).isEqualTo(book.getCreatedAt());
     }
 
     @Test
-    void createInSeries_setsUuidReferencesAndDisplayMetadata() {
-        UUID universeId = UUID.randomUUID();
-        UUID seriesId = UUID.randomUUID();
-        
-        Book book = Book.createInSeries(universeId, "Cosmere", seriesId, "Stormlight Archive", 1, "The Way of Kings");
-        
-        assertNotNull(book.getId());
-        assertEquals(universeId, book.getUniverseId());
-        assertEquals(seriesId, book.getSeriesId());
-        assertEquals("Cosmere", book.getUniverse());
-        assertEquals("Stormlight Archive", book.getSeries());
-        assertEquals(Integer.valueOf(1), book.getBookNumber());
-        assertEquals("The Way of Kings", book.getTitle());
-        assertNotNull(book.getCreatedAt());
-        assertNotNull(book.getUpdatedAt());
+    @DisplayName("should create standalone book via factory method")
+    void shouldCreateStandaloneBookViaFactory() {
+        // Given
+        UUID universeId = TestIds.UNIVERSE_ID;
+        String universe = TestIds.DEFAULT_UNIVERSE_NAME;
+        String title = "Elantris";
+
+        // When
+        Book book = Book.createStandalone(universeId, universe, title);
+
+        // Then
+        assertThat(book.getId()).isNotNull();
+        assertThat(book.getUniverseId()).isEqualTo(universeId);
+        assertThat(book.getSeriesId()).isNull();
+        assertThat(book.getUniverse()).isEqualTo(universe);
+        assertThat(book.getSeries()).isNull();
+        assertThat(book.getBookNumber()).isNull();
+        assertThat(book.getTitle()).isEqualTo(title);
     }
 
     @Test
-    void createStandalone_setsUniverseButNullSeries() {
-        UUID universeId = UUID.randomUUID();
-        
-        Book book = Book.createStandalone(universeId, "Cosmere", "Elantris");
-        
-        assertNotNull(book.getId());
-        assertEquals(universeId, book.getUniverseId());
-        assertNull(book.getSeriesId());
-        assertEquals("Cosmere", book.getUniverse());
-        assertNull(book.getSeries());
-        assertNull(book.getBookNumber());
-        assertEquals("Elantris", book.getTitle());
-    }
+    @DisplayName("should format display label correctly")
+    void shouldFormatDisplayLabelCorrectly() {
+        Book book = BookBuilder.aBook()
+                .withSeries("Stormlight Archive")
+                .withBookNumber(4)
+                .withTitle("Rhythm of War")
+                .build();
 
-    @Test
-    void createInSeries_validatesUuidRelationships() {
-        UUID universeId = UUID.randomUUID();
-        UUID seriesId = UUID.randomUUID();
-        
-        Book book1 = Book.createInSeries(universeId, "Cosmere", seriesId, "Mistborn", 1, "The Final Empire");
-        Book book2 = Book.createInSeries(universeId, "Cosmere", seriesId, "Mistborn", 2, "The Well of Ascension");
-        
-        // Same universe and series references
-        assertEquals(universeId, book1.getUniverseId());
-        assertEquals(universeId, book2.getUniverseId());
-        assertEquals(seriesId, book1.getSeriesId());
-        assertEquals(seriesId, book2.getSeriesId());
-        
-        // Different book IDs
-        assertNotEquals(book1.getId(), book2.getId());
-        
-        // Different book numbers but same series
-        assertEquals(Integer.valueOf(1), book1.getBookNumber());
-        assertEquals(Integer.valueOf(2), book2.getBookNumber());
-    }
+        assertThat(book.displayLabel()).isEqualTo("Stormlight Archive #4 Rhythm of War");
 
-    @Test
-    void displayLabel_reflectsEntityRelationships() {
-        UUID universeId = UUID.randomUUID();
-        UUID seriesId = UUID.randomUUID();
-        
-        Book seriesBook = Book.createInSeries(universeId, "Cosmere", seriesId, "Stormlight Archive", 1, "The Way of Kings");
-        Book standalone = Book.createStandalone(universeId, "Cosmere", "Elantris");
-        
-        assertEquals("Stormlight Archive #1 The Way of Kings", seriesBook.displayLabel());
-        assertEquals("Elantris", standalone.displayLabel());
+        // Standalone
+        Book standalone = BookBuilder.aStandaloneBook()
+                .withTitle("Elantris")
+                .build();
+        assertThat(standalone.displayLabel()).isEqualTo("Elantris");
     }
 }

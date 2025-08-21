@@ -2,7 +2,7 @@ package com.lorevault.api.infrastructure.search;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.application.port.SemanticSearchPort;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
+import com.lorevault.api.domain.content.Chunk;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -31,7 +31,7 @@ public class InMemorySemanticSearchAdapter implements SemanticSearchPort {
         
         // Load all chunks with embeddings
         // TODO: In future versions, this should be optimized with database-native vector search
-        List<ChunkNode> chunks = loadChunksWithEmbeddings();
+        List<Chunk> chunks = loadChunksWithEmbeddings();
         log.debug("Loaded {} chunks with embeddings", chunks.size());
         
         if (chunks.isEmpty()) {
@@ -39,7 +39,7 @@ public class InMemorySemanticSearchAdapter implements SemanticSearchPort {
         }
 
         // Filter chunks based on search filters
-        Stream<ChunkNode> filteredChunks = applyFilters(chunks.stream(), filters);
+        Stream<Chunk> filteredChunks = applyFilters(chunks.stream(), filters);
 
         // Calculate cosine similarity and rank results
         List<SearchResult> results = filteredChunks
@@ -58,13 +58,13 @@ public class InMemorySemanticSearchAdapter implements SemanticSearchPort {
     @Override
     public boolean isAvailable() {
         // Check if any chunks have embeddings
-        List<ChunkNode> chunks = loadChunksWithEmbeddings();
+        List<Chunk> chunks = loadChunksWithEmbeddings();
         boolean available = !chunks.isEmpty();
         log.debug("Semantic search available: {} (found {} chunks with embeddings)", available, chunks.size());
         return available;
     }
 
-    private List<ChunkNode> loadChunksWithEmbeddings() {
+    private List<Chunk> loadChunksWithEmbeddings() {
         // Load all chunks from database that have embeddings
         // This is a placeholder implementation - in practice we'd need a method to fetch all embedded chunks
         // For now, we'll fetch chunks from all chapters and filter for those with embeddings
@@ -76,7 +76,7 @@ public class InMemorySemanticSearchAdapter implements SemanticSearchPort {
         }
     }
 
-    private Stream<ChunkNode> applyFilters(Stream<ChunkNode> chunks, SearchFilters filters) {
+    private Stream<Chunk> applyFilters(Stream<Chunk> chunks, SearchFilters filters) {
         if (!filters.hasFilters()) {
             return chunks;
         }
@@ -84,7 +84,7 @@ public class InMemorySemanticSearchAdapter implements SemanticSearchPort {
         return chunks.filter(chunk -> matchesFilters(chunk, filters));
     }
 
-    private boolean matchesFilters(ChunkNode chunk, SearchFilters filters) {
+    private boolean matchesFilters(Chunk chunk, SearchFilters filters) {
         // TODO: Implement filtering based on chunk metadata
         // For v0.7.0, we'll keep this simple and not implement complex filtering
         // This would require navigation to chapter -> book -> series -> universe
@@ -94,7 +94,7 @@ public class InMemorySemanticSearchAdapter implements SemanticSearchPort {
         return true;
     }
 
-    private SearchResult calculateSimilarity(ChunkNode chunk, double[] queryEmbedding) {
+    private SearchResult calculateSimilarity(Chunk chunk, double[] queryEmbedding) {
         double[] chunkEmbedding = chunk.getEmbedding();
         
         if (chunkEmbedding == null || chunkEmbedding.length != queryEmbedding.length) {

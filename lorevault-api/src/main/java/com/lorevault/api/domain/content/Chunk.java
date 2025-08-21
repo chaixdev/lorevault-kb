@@ -26,6 +26,9 @@ public class Chunk {
     private String text;
     
     private String contentHash;
+    private double[] embedding;
+    private String embeddingHash;
+    private LocalDateTime embeddedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     public int getLength() { return endCharInChapter - startCharInChapter; }

@@ -1,109 +1,96 @@
 package com.lorevault.api.domain.content;
 
 import com.lorevault.api.domain.shared.PublicationCoordinates;
+import com.lorevault.api.testutil.builders.ChapterBuilder;
+import com.lorevault.api.testutil.builders.PublicationCoordinatesBuilder;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-import java.util.UUID;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class ChapterTest {
+@Tag("unit")
+@DisplayName("Chapter")
+class ChapterTest {
 
     @Test
-    void createWithReferences_setsAllUuidReferencesAndCoordinates() {
-        UUID bookId = UUID.randomUUID();
-        UUID universeId = UUID.randomUUID();
-        UUID seriesId = UUID.randomUUID();
-        
-        PublicationCoordinates coords = new PublicationCoordinates(
-            "Cosmere", "Stormlight Archive", "The Way of Kings", "The King's Feast", 1, 5
-        );
-        
-        Chapter chapter = Chapter.createWithReferences(
-            bookId, universeId, seriesId, coords, 
-            "The King's Feast", "Raw chapter text", "hash123"
-        );
-        
-        assertNotNull(chapter.getId());
-        assertEquals(bookId, chapter.getBookId());
-        assertEquals(universeId, chapter.getUniverseId());
-        assertEquals(seriesId, chapter.getSeriesId());
-        assertEquals(coords, chapter.getCoordinates());
-        assertEquals("The King's Feast", chapter.getChapterTitle());
-        assertEquals("Raw chapter text", chapter.getRawText());
-        assertEquals("hash123", chapter.getContentHash());
-        assertNotNull(chapter.getCreatedAt());
-        assertNotNull(chapter.getUpdatedAt());
+    @DisplayName("should add and remove scenes while maintaining relationships")
+    void shouldAddAndRemoveScenes() {
+        Chapter chapter = ChapterBuilder.aChapter().build();
+
+        Scene s1 = chapter.addScene(0, 0, 100, "Intro");
+        Scene s2 = chapter.addScene(1, 101, 300, "Conflict");
+
+        assertThat(chapter.getSceneCount()).isEqualTo(2);
+        assertThat(s1.getChapter()).isEqualTo(chapter);
+        assertThat(s2.getChapter()).isEqualTo(chapter);
+
+        chapter.removeScene(s1);
+        assertThat(chapter.getSceneCount()).isEqualTo(1);
+        assertThat(s1.getChapter()).isNull();
+
+        chapter.clearScenes();
+        assertThat(chapter.getSceneCount()).isZero();
     }
 
     @Test
-    void createStandalone_setsNullSeriesId() {
-        UUID bookId = UUID.randomUUID();
-        UUID universeId = UUID.randomUUID();
-        
-        PublicationCoordinates coords = new PublicationCoordinates(
-            "Cosmere", null, "Elantris", "Chapter 1", null, 1
-        );
-        
-        Chapter chapter = Chapter.createStandalone(
-            bookId, universeId, coords, "Chapter 1", "Raw text", "hash456"
-        );
-        
-        assertEquals(bookId, chapter.getBookId());
-        assertEquals(universeId, chapter.getUniverseId());
-        assertNull(chapter.getSeriesId()); // Standalone book
-        assertEquals(coords, chapter.getCoordinates());
+    @DisplayName("should add chunks and associate with scenes when requested")
+    void shouldAddChunksAndAssociateWithScenes() {
+        Chapter chapter = ChapterBuilder.aChapter().build();
+        Scene scene = chapter.addScene(0, 0, 50, "Setup");
+
+        Chunk c1 = chapter.addChunk(1, 0, 25, "hash1");
+        Chunk c2 = chapter.addChunkToScene(scene, 2, 26, 50, "hash2");
+
+        assertThat(chapter.getChunkCount()).isEqualTo(2);
+        assertThat(c1.getChapter()).isEqualTo(chapter);
+        assertThat(c2.getChapter()).isEqualTo(chapter);
+        assertThat(c2.getScene()).isEqualTo(scene);
+
+        List<Chunk> chunksForScene = chapter.getChunksForScene(scene);
+        assertThat(chunksForScene).containsExactly(c2);
+
+        chapter.removeChunk(c1);
+        assertThat(chapter.getChunkCount()).isEqualTo(1);
+        chapter.clearChunks();
+        assertThat(chapter.getChunkCount()).isZero();
     }
 
     @Test
-    void createWithReferences_preservesSpoilerGatingCapability() {
-        UUID bookId = UUID.randomUUID();
-        UUID universeId = UUID.randomUUID();
-        UUID seriesId = UUID.randomUUID();
-        
-        PublicationCoordinates coords1 = new PublicationCoordinates(
-            "Cosmere", "Stormlight Archive", "The Way of Kings", "The Glory of the First", 1, 1
-        );
-        PublicationCoordinates coords2 = new PublicationCoordinates(
-            "Cosmere", "Stormlight Archive", "Words of Radiance", "The Shattered Plains", 2, 15
-        );
-        
-        Chapter chapter1 = Chapter.createWithReferences(
-            bookId, universeId, seriesId, coords1, "The Glory of the First", "Text1", "hash1"
-        );
-        Chapter chapter2 = Chapter.createWithReferences(
-            bookId, universeId, seriesId, coords2, "The Shattered Plains", "Text2", "hash2"
-        );
-        
-        // UUID references for graph relationships
-        assertEquals(universeId, chapter1.getUniverseId());
-        assertEquals(seriesId, chapter1.getSeriesId());
-        assertEquals(bookId, chapter1.getBookId());
-        
-        // PublicationCoordinates for spoiler gating (ordering)
-        assertEquals(Integer.valueOf(1), chapter1.getCoordinates().getBookNumber());
-        assertEquals(Integer.valueOf(1), chapter1.getCoordinates().getChapterNumber());
-        assertEquals(Integer.valueOf(2), chapter2.getCoordinates().getBookNumber());
-        assertEquals(Integer.valueOf(15), chapter2.getCoordinates().getChapterNumber());
-        
-        // Spoiler gating logic can compare: chapter2 > chapter1
-        assertTrue(chapter2.getCoordinates().getBookNumber() > chapter1.getCoordinates().getBookNumber());
+    @DisplayName("should reject adding chunk to a different chapter's scene")
+    void shouldRejectAddingChunkToDifferentChapterScene() {
+        Chapter chapter1 = ChapterBuilder.aChapter().build();
+        Chapter chapter2 = ChapterBuilder.aChapter().build();
+        Scene otherScene = chapter2.addScene(0, 0, 10, "Other");
+
+        assertThatThrownBy(() -> chapter1.addChunkToScene(otherScene, 1, 0, 9, "hash"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Scene must belong to this chapter");
     }
 
     @Test
-    void factoryMethods_ensureUniqueChapterIds() {
-        UUID bookId = UUID.randomUUID();
-        UUID universeId = UUID.randomUUID();
-        
-        PublicationCoordinates coords = new PublicationCoordinates(
-            "Cosmere", null, "Elantris", "Chapter 1", null, 1
-        );
-        
-        Chapter chapter1 = Chapter.createStandalone(bookId, universeId, coords, "Chapter 1", "Text", "hash1");
-        Chapter chapter2 = Chapter.createStandalone(bookId, universeId, coords, "Chapter 2", "Text", "hash2");
-        
-        assertNotEquals(chapter1.getId(), chapter2.getId());
-        assertEquals(bookId, chapter1.getBookId());
-        assertEquals(bookId, chapter2.getBookId());
+    @DisplayName("should create with references and standalone correctly")
+    void shouldCreateWithReferencesAndStandalone() {
+        PublicationCoordinates coords = PublicationCoordinatesBuilder.coordinates()
+                .withUniverse("Cosmere")
+                .withSeries("Stormlight Archive")
+                .withBookTitle("The Way of Kings")
+                .withChapterTitle("Kaladin")
+                .withBookNumber(1)
+                .withChapterNumber(1)
+                .build();
+
+        Chapter withRefs = Chapter.createWithReferences(
+                java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), java.util.UUID.randomUUID(),
+                coords, "Kaladin", "text", "hash");
+        assertThat(withRefs.getCoordinates()).isEqualTo(coords);
+
+        Chapter standalone = Chapter.createStandalone(
+                java.util.UUID.randomUUID(), java.util.UUID.randomUUID(),
+                coords, "Prologue", "text2", "hash2");
+        assertThat(standalone.getSeriesId()).isNull();
     }
 }

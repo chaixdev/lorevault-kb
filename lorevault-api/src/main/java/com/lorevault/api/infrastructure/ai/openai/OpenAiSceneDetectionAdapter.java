@@ -1,5 +1,6 @@
 package com.lorevault.api.infrastructure.ai.openai;
 
+import com.lorevault.api.application.port.JobContextPort;
 import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.application.port.SceneDetectionException;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,33 +23,43 @@ import java.util.UUID;
 public class OpenAiSceneDetectionAdapter implements SceneDetectionPort {
     
     private final RetryAwareSceneDetectionService retryAwareSceneDetectionService;
+    private final JobContextPort jobContextPort;
     
-    // TODO: Add jobId parameter to SceneDetectionPort interface in future iteration
-    // For now, we'll extract jobId from a thread-local context or pass null
-    private static final ThreadLocal<UUID> CURRENT_JOB_ID = new ThreadLocal<>();
+    // Keep static methods for backward compatibility during transition period
+    // TODO: Remove these after all callers are refactored to use JobContextPort
     
     /**
-     * Set the current job ID for this thread (temporary solution)
+     * @deprecated Use JobContextPort.setCurrentJobId() instead
      */
+    @Deprecated(forRemoval = true)
     public static void setCurrentJobId(UUID jobId) {
-        CURRENT_JOB_ID.set(jobId);
+        // This method is now a no-op since we use JobContextPort injection
+        // Static access patterns should be refactored to dependency injection
     }
     
     /**
-     * Clear the current job ID for this thread
+     * @deprecated Use JobContextPort.clearCurrentJobId() instead
      */
+    @Deprecated(forRemoval = true)
     public static void clearCurrentJobId() {
-        CURRENT_JOB_ID.remove();
+        // This method is now a no-op since we use JobContextPort injection
+        // Static access patterns should be refactored to dependency injection
     }
     
     @Override
     public List<SceneWithCoordinates> detectScenesInText(UUID chapterId, String chapterText) {
         try {
+            // Handle null or empty text gracefully
+            if (chapterText == null || chapterText.trim().isEmpty()) {
+                log.warn("Chapter {} has no text content for scene detection", chapterId);
+                return Collections.emptyList();
+            }
+            
             log.debug("Starting OpenAI scene detection with retry for chapter {} (length={} chars)", 
                      chapterId, chapterText.length());
             
-            // Get current job ID from thread-local context
-            UUID jobId = CURRENT_JOB_ID.get();
+            // Get current job ID from JobContextPort
+            UUID jobId = jobContextPort.getCurrentJobId();
             
             if (jobId != null) {
                 // Use retry-aware service with job status updates
