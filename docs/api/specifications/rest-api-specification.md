@@ -297,6 +297,7 @@ offset: integer (optional, default: 0, min: 0) - Pagination offset
 **Status**: Available in v0.8.0+
 
 **Request Format**:
+
 ```json
 {
   "question": "How does Vin learn about Allomancy?",
@@ -311,6 +312,7 @@ offset: integer (optional, default: 0, min: 0) - Pagination offset
 ```
 
 **Response Format**:
+
 ```json
 {
   "answer": "Vin learns about Allomancy through several key experiences. Initially, she discovers her abilities accidentally when she instinctively burns pewter during a fight. Kelsior then becomes her primary teacher, explaining the fundamentals of Allomantic metals and their effects.",
@@ -318,7 +320,15 @@ offset: integer (optional, default: 0, min: 0) - Pagination offset
     {
       "chunkId": "abc12345-e89b-12d3-a456-426614174000",
       "snippet": "'You're an Allomancer, Vin,' Kelsior said. 'The metal you've been burning is pewter...'",
-      "score": 0.92
+      "score": 0.92,
+      "coordinates": {
+        "universe": "Cosmere",
+        "series": "Mistborn",
+        "bookTitle": "The Final Empire",
+        "chapterTitle": "Chapter 1",
+        "bookNumber": 1,
+        "chapterNumber": 1
+      }
     }
   ],
   "metadata": {
@@ -329,6 +339,8 @@ offset: integer (optional, default: 0, min: 0) - Pagination offset
   }
 }
 ```
+
+> Note: As of v0.8.1, citation fields `chapterId`, `bookNumber`, and `chapterNumber` are consolidated under `coordinates`. Clients should use `citations[i].coordinates.*` for publication context.
 
 ### System Health Domain
 

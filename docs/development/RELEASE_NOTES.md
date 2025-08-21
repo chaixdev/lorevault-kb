@@ -1,5 +1,23 @@
 # LoreVault Release Notes
 
+## v0.8.1 (Unreleased)
+
+Breaking change: Ask API citation structure simplified
+
+- Citations in Ask responses now expose publication context only under `coordinates`:
+  - coordinates.universe, coordinates.series, coordinates.bookTitle, coordinates.chapterTitle, coordinates.bookNumber, coordinates.chapterNumber
+- Removed redundant flat fields from citation items: `chapterId`, `bookNumber`, `chapterNumber`.
+
+Migration guidance
+
+- Clients should read publication context from `citations[i].coordinates.*`.
+- Remove references to `citations[i].chapterId`, `citations[i].bookNumber`, `citations[i].chapterNumber`.
+- No other fields changed; `chunkId`, `snippet`, and `score` remain.
+
+Compatibility
+
+- This change is not backward compatible for clients relying on the removed flat fields. Consider pinning to v0.8.0 collections/specs or updating clients accordingly.
+
 ## v0.8.0 (2025-08-21)
 
 Release tag: v0.8.0
