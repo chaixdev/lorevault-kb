@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Architecture & Docs Index
+    url: https://github.com/chaixdev/lorevault-kb/tree/main/docs
+    about: Start here to find architecture, specs, and data-model docs.

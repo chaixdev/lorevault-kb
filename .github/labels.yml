@@ -1,0 +1,71 @@
+# Standard labels for lorevault-kb
+- name: type/bug
+  color: d73a4a
+  description: Something is broken
+- name: type/feature
+  color: a2eeef
+  description: New functionality
+- name: type/chore
+  color: cfd3d7
+  description: Maintenance tasks
+- name: type/docs
+  color: 0075ca
+  description: Documentation updates
+- name: type/test
+  color: fbca04
+  description: Testing-related work
+
+- name: area/api
+  color: 0e8a16
+  description: REST/GraphQL API
+- name: area/ingestion
+  color: 5319e7
+  description: Content ingestion pipeline
+- name: area/graph
+  color: 0366d6
+  description: Neo4j/graph model
+- name: area/agentic
+  color: 1d76db
+  description: Agentic workflows and prompts
+- name: area/docs
+  color: 0052cc
+  description: Documentation and specs
+
+- name: status/triage
+  color: fef2c0
+  description: Needs triage
+- name: status/discovery
+  color: bfd4f2
+  description: Exploring requirements/approach
+- name: status/ready
+  color: 0e8a16
+  description: Ready for implementation
+- name: status/in-progress
+  color: 5319e7
+  description: Being worked on
+- name: status/blocked
+  color: b60205
+  description: Blocked by dependency or decision
+
+- name: priority/p0
+  color: b60205
+  description: Critical, immediate attention
+- name: priority/p1
+  color: d93f0b
+  description: High priority
+- name: priority/p2
+  color: fbca04
+  description: Medium priority
+- name: priority/p3
+  color: cfd3d7
+  description: Low priority
+
+- name: ai/task
+  color: 0cf2aa
+  description: Optimized for AI agent execution
+- name: ai/context
+  color: 17a2b8
+  description: Context-rich documentation or reference
+- name: ai/prompt
+  color: e99695
+  description: Prompt engineering work
