@@ -1,11 +1,11 @@
 package com.lorevault.api.service.ingestion;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.domain.content.Chapter;
+import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.dto.ingestion.JobListResponse;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -62,13 +62,13 @@ public class JobQueryService {
      */
     public Optional<JobStatusResponse> getJobStatus(UUID jobId) {
         try {
-            Optional<IngestionJobNode> jobNodeOpt = contentPersistencePort.findJob(jobId);
-            if (jobNodeOpt.isEmpty()) {
+            Optional<IngestionJob> jobOpt = contentPersistencePort.findJob(jobId);
+            if (jobOpt.isEmpty()) {
                 return Optional.empty();
             }
 
-            IngestionJobNode jobNode = jobNodeOpt.get();
-            return Optional.of(buildJobStatusResponse(jobNode, jobId));
+            IngestionJob job = jobOpt.get();
+            return Optional.of(buildJobStatusResponse(job, jobId));
             
         } catch (Exception e) {
             log.warn("Graph job lookup failed for job {}: {}", jobId, e.getMessage());
@@ -83,9 +83,9 @@ public class JobQueryService {
         JobFilterContext filterContext = new JobFilterContext(universe, status, limit, offset);
         
         try {
-            List<IngestionJobNode> allJobs = loadJobsWithUniverseFilter(filterContext);
-            List<IngestionJobNode> filteredJobs = applyStatusFilter(allJobs, filterContext);
-            List<IngestionJobNode> sortedJobs = sortJobsByCreatedDate(filteredJobs);
+            List<IngestionJob> allJobs = loadJobsWithUniverseFilter(filterContext);
+            List<IngestionJob> filteredJobs = applyStatusFilter(allJobs, filterContext);
+            List<IngestionJob> sortedJobs = sortJobsByCreatedDate(filteredJobs);
             
             return buildPaginatedResponse(sortedJobs, filterContext);
             
@@ -95,18 +95,18 @@ public class JobQueryService {
         }
     }
 
-    private JobStatusResponse buildJobStatusResponse(IngestionJobNode jobNode, UUID jobId) {
+    private JobStatusResponse buildJobStatusResponse(IngestionJob job, UUID jobId) {
         List<JobStatusResponse.StatusUpdateDto> recentUpdates = loadRecentStatusUpdates(jobId);
         
         JobStatusResponse response = new JobStatusResponse();
-        response.setJobId(jobNode.getId());
-        response.setChapterId(jobNode.getChapterId());
-        response.setCreatedAt(jobNode.getCreatedAt());
-        response.setCompletedAt(jobNode.getCompletedAt());
+        response.setJobId(job.getId());
+        response.setChapterId(job.getChapterId());
+        response.setCreatedAt(job.getCreatedAt());
+        response.setCompletedAt(job.getCompletedAt());
         response.setRecentUpdates(recentUpdates);
 
         // Set current status information
-        var currentStatus = jobNode.getCurrentStatusRecord();
+        var currentStatus = job.getCurrentStatus();
         if (currentStatus != null) {
             response.setCurrentStatus(currentStatus.getStatus());
             response.setProgressPercent(currentStatus.getProgressPercent());
@@ -132,17 +132,17 @@ public class JobQueryService {
         }
     }
 
-    private List<IngestionJobNode> loadJobsWithUniverseFilter(JobFilterContext filterContext) {
+    private List<IngestionJob> loadJobsWithUniverseFilter(JobFilterContext filterContext) {
         if (filterContext.hasUniverseFilter()) {
-            List<ChapterNode> chapters = contentPersistencePort.findChaptersByUniverse(filterContext.getUniverse());
-            List<UUID> chapterIds = chapters.stream().map(ChapterNode::getId).toList();
+            List<Chapter> chapters = contentPersistencePort.findChaptersByUniverse(filterContext.getUniverse());
+            List<UUID> chapterIds = chapters.stream().map(Chapter::getId).toList();
             return contentPersistencePort.findJobsByChapterIds(chapterIds);
         } else {
             return contentPersistencePort.findAllJobs();
         }
     }
 
-    private List<IngestionJobNode> applyStatusFilter(List<IngestionJobNode> jobs, JobFilterContext filterContext) {
+    private List<IngestionJob> applyStatusFilter(List<IngestionJob> jobs, JobFilterContext filterContext) {
         if (!filterContext.hasStatusFilter()) {
             return jobs;
         }
@@ -162,7 +162,7 @@ public class JobQueryService {
         }
     }
 
-    private List<IngestionJobNode> sortJobsByCreatedDate(List<IngestionJobNode> jobs) {
+    private List<IngestionJob> sortJobsByCreatedDate(List<IngestionJob> jobs) {
         return jobs.stream()
                 .sorted((a, b) -> {
                     if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0;
@@ -173,12 +173,12 @@ public class JobQueryService {
                 .toList();
     }
 
-    private JobListResponse buildPaginatedResponse(List<IngestionJobNode> sortedJobs, JobFilterContext filterContext) {
+    private JobListResponse buildPaginatedResponse(List<IngestionJob> sortedJobs, JobFilterContext filterContext) {
         long total = sortedJobs.size();
         int from = Math.min(filterContext.getOffset(), sortedJobs.size());
         int to = Math.min(from + filterContext.getLimit(), sortedJobs.size());
         
-        List<IngestionJobNode> pageSlice = sortedJobs.subList(from, to);
+        List<IngestionJob> pageSlice = sortedJobs.subList(from, to);
         List<JobListResponse.JobSummary> summaries = buildJobSummaries(pageSlice);
         
         boolean hasMore = (long) (filterContext.getOffset() + filterContext.getLimit()) < total;
@@ -188,25 +188,25 @@ public class JobQueryService {
         return new JobListResponse(summaries, pagination);
     }
 
-    private List<JobListResponse.JobSummary> buildJobSummaries(List<IngestionJobNode> jobs) {
+    private List<JobListResponse.JobSummary> buildJobSummaries(List<IngestionJob> jobs) {
         List<JobListResponse.JobSummary> summaries = new ArrayList<>();
         
-        for (IngestionJobNode jobNode : jobs) {
+        for (IngestionJob job : jobs) {
             JobListResponse.JobSummary summary = new JobListResponse.JobSummary();
-            summary.setJobId(jobNode.getId());
-            summary.setChapterId(jobNode.getChapterId());
-            summary.setCreatedAt(jobNode.getCreatedAt());
-            summary.setCompletedAt(jobNode.getCompletedAt());
+            summary.setJobId(job.getId());
+            summary.setChapterId(job.getChapterId());
+            summary.setCreatedAt(job.getCreatedAt());
+            summary.setCompletedAt(job.getCompletedAt());
 
             // Set current status and progress
-            var currentStatus = jobNode.getCurrentStatusRecord();
+            var currentStatus = job.getCurrentStatus();
             if (currentStatus != null) {
                 summary.setStatus(currentStatus.getStatus());
                 summary.setProgress(currentStatus.getProgressPercent());
             }
 
             // Enrich with chapter information
-            enrichSummaryWithChapterInfo(summary, jobNode.getChapterId());
+            enrichSummaryWithChapterInfo(summary, job.getChapterId());
             
             summaries.add(summary);
         }
@@ -230,15 +230,15 @@ public class JobQueryService {
 
     // Strategy pattern for different status filtering approaches
     private interface StatusFilterStrategy {
-        boolean matches(IngestionJobNode job);
+        boolean matches(IngestionJob job);
     }
 
     private static class ActiveJobsFilterStrategy implements StatusFilterStrategy {
         private static final List<IngestionStatus> TERMINAL_STATUSES = List.of(IngestionStatus.COMPLETE, IngestionStatus.FAILED);
 
         @Override
-        public boolean matches(IngestionJobNode job) {
-            var currentStatus = job.getCurrentStatusRecord();
+        public boolean matches(IngestionJob job) {
+            var currentStatus = job.getCurrentStatus();
             return currentStatus == null || !TERMINAL_STATUSES.contains(currentStatus.getStatus());
         }
     }
@@ -251,8 +251,8 @@ public class JobQueryService {
         }
 
         @Override
-        public boolean matches(IngestionJobNode job) {
-            var currentStatus = job.getCurrentStatusRecord();
+        public boolean matches(IngestionJob job) {
+            var currentStatus = job.getCurrentStatus();
             return currentStatus != null && targetStatus.equals(currentStatus.getStatus());
         }
     }

@@ -1,8 +1,9 @@
 package com.lorevault.api.tck.persistence;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
+import com.lorevault.api.domain.content.Chapter;
+import com.lorevault.api.domain.content.Chunk;
+import com.lorevault.api.domain.shared.PublicationCoordinates;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -28,15 +29,18 @@ public abstract class ContentPersistencePortTCK {
     @Test
     void create_and_find_chapter_by_id() {
         ContentPersistencePort port = createPort();
-        ChapterNode ch = new ChapterNode();
+        Chapter ch = new Chapter();
         ch.setId(UUID.randomUUID());
-        ch.setUniverse("Middle Earth");
-        ch.setBookNumber(1);
-        ch.setChapterNumber(1);
+        PublicationCoordinates coords = new PublicationCoordinates();
+        coords.setUniverse("Middle Earth");
+        coords.setSeries("The Lord of the Rings");
+        coords.setBookNumber(1);
+        coords.setChapterNumber(1);
+        ch.setCoordinates(coords);
         ch.setChapterTitle("A Long-Expected Party");
 
-        ChapterNode saved = port.createChapter(ch);
-        Optional<ChapterNode> found = port.findChapterById(saved.getId());
+        Chapter saved = port.createChapter(ch);
+        Optional<Chapter> found = port.findChapterById(saved.getId());
         assertThat(found).isPresent();
         assertThat(found.get().getChapterTitle()).isEqualTo("A Long-Expected Party");
     }
@@ -47,23 +51,23 @@ public abstract class ContentPersistencePortTCK {
         UUID chapterId = UUID.randomUUID();
 
         // Two chunks: one with embedding, one without
-        ChunkNode withEmb = new ChunkNode();
+        Chunk withEmb = new Chunk();
         withEmb.setId(UUID.randomUUID());
         withEmb.setText("Some text");
         withEmb.setEmbedding(new double[]{1, 2, 3});
         withEmb.setEmbeddedAt(LocalDateTime.now());
 
-        ChunkNode withoutEmb = new ChunkNode();
+        Chunk withoutEmb = new Chunk();
         withoutEmb.setId(UUID.randomUUID());
         withoutEmb.setText("Other text");
 
         port.addChunksToChapter(chapterId, List.of(withEmb, withoutEmb));
 
-        List<ChunkNode> byChapter = port.findChunksByChapterId(chapterId);
+        List<Chunk> byChapter = port.findChunksByChapterId(chapterId);
         assertThat(byChapter).hasSize(2);
 
-        List<ChunkNode> embedded = port.findAllChunksWithEmbeddings();
-        assertThat(embedded).extracting(ChunkNode::getId).contains(withEmb.getId());
-        assertThat(embedded).extracting(ChunkNode::getId).doesNotContain(withoutEmb.getId());
+        List<Chunk> embedded = port.findAllChunksWithEmbeddings();
+        assertThat(embedded).extracting(Chunk::getId).contains(withEmb.getId());
+        assertThat(embedded).extracting(Chunk::getId).doesNotContain(withoutEmb.getId());
     }
 }

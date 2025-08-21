@@ -1,7 +1,11 @@
 package com.lorevault.api.testutil.fakes;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.*;
+import com.lorevault.api.domain.content.Chapter;
+import com.lorevault.api.domain.content.Chunk;
+import com.lorevault.api.domain.content.Scene;
+import com.lorevault.api.domain.ingestion.IngestionJob;
+import com.lorevault.api.domain.ingestion.StatusRecord;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -13,26 +17,26 @@ import java.util.stream.Collectors;
  */
 public class FakeContentPersistencePort implements ContentPersistencePort {
 
-    public final Map<UUID, ChapterNode> chapters = new ConcurrentHashMap<>();
-    public final Map<UUID, List<SceneNode>> scenesByChapter = new ConcurrentHashMap<>();
-    public final Map<UUID, List<ChunkNode>> chunksByChapter = new ConcurrentHashMap<>();
-    public final Map<UUID, IngestionJobNode> jobs = new ConcurrentHashMap<>();
-    public final Map<UUID, List<StatusRecordNode>> statusByJob = new ConcurrentHashMap<>();
+    public final Map<UUID, Chapter> chapters = new ConcurrentHashMap<>();
+    public final Map<UUID, List<Scene>> scenesByChapter = new ConcurrentHashMap<>();
+    public final Map<UUID, List<Chunk>> chunksByChapter = new ConcurrentHashMap<>();
+    public final Map<UUID, IngestionJob> jobs = new ConcurrentHashMap<>();
+    public final Map<UUID, List<StatusRecord>> statusByJob = new ConcurrentHashMap<>();
 
     @Override
-    public ChapterNode createChapter(ChapterNode chapter) {
+    public Chapter createChapter(Chapter chapter) {
         if (chapter.getId() == null) chapter.setId(UUID.randomUUID());
         chapters.put(chapter.getId(), chapter);
         return chapter;
     }
 
     @Override
-    public Optional<ChapterNode> findChapterById(UUID id) {
+    public Optional<Chapter> findChapterById(UUID id) {
         return Optional.ofNullable(chapters.get(id));
     }
 
     @Override
-    public Optional<ChapterNode> findChapterByContentHash(String contentHash) {
+    public Optional<Chapter> findChapterByContentHash(String contentHash) {
         return chapters.values().stream().filter(c -> Objects.equals(c.getContentHash(), contentHash)).findFirst();
     }
 
@@ -42,59 +46,59 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
     }
 
     @Override
-    public ChapterNode updateChapter(ChapterNode chapter) {
+    public Chapter updateChapter(Chapter chapter) {
         chapters.put(chapter.getId(), chapter);
         return chapter;
     }
 
     @Override
-    public SceneNode addSceneToChapter(UUID chapterId, SceneNode scene) {
+    public Scene addSceneToChapter(UUID chapterId, Scene scene) {
         scenesByChapter.computeIfAbsent(chapterId, k -> new ArrayList<>()).add(scene);
         return scene;
     }
 
     @Override
-    public List<SceneNode> addScenesToChapter(UUID chapterId, List<SceneNode> scenes) {
+    public List<Scene> addScenesToChapter(UUID chapterId, List<Scene> scenes) {
         scenesByChapter.computeIfAbsent(chapterId, k -> new ArrayList<>()).addAll(scenes);
         return scenes;
     }
 
     @Override
-    public List<SceneNode> findScenesByChapterId(UUID chapterId) {
+    public List<Scene> findScenesByChapterId(UUID chapterId) {
         return scenesByChapter.getOrDefault(chapterId, List.of());
     }
 
     @Override
     public int deleteScenesByChapterId(UUID chapterId) {
-        List<SceneNode> removed = scenesByChapter.remove(chapterId);
+        List<Scene> removed = scenesByChapter.remove(chapterId);
         return removed == null ? 0 : removed.size();
     }
 
     @Override
-    public List<ChunkNode> addChunksToChapter(UUID chapterId, List<ChunkNode> chunks) {
+    public List<Chunk> addChunksToChapter(UUID chapterId, List<Chunk> chunks) {
         chunksByChapter.computeIfAbsent(chapterId, k -> new ArrayList<>()).addAll(chunks);
         return chunks;
     }
 
     @Override
-    public ChunkNode addChunkToScene(UUID sceneId, ChunkNode chunk) {
+    public Chunk addChunkToScene(UUID sceneId, Chunk chunk) {
         // Not necessary for current tests
         return chunk;
     }
 
     @Override
-    public List<ChunkNode> addChunksToScene(UUID sceneId, List<ChunkNode> chunks) {
+    public List<Chunk> addChunksToScene(UUID sceneId, List<Chunk> chunks) {
         return chunks;
     }
 
     @Override
-    public List<ChunkNode> findChunksByChapterId(UUID chapterId) {
+    public List<Chunk> findChunksByChapterId(UUID chapterId) {
         return chunksByChapter.getOrDefault(chapterId, List.of());
     }
 
     @Override
     public int deleteChunksByChapterId(UUID chapterId) {
-        List<ChunkNode> removed = chunksByChapter.remove(chapterId);
+        List<Chunk> removed = chunksByChapter.remove(chapterId);
         return removed == null ? 0 : removed.size();
     }
 
@@ -109,16 +113,16 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
     }
 
     @Override
-    public ChunkNode updateChunk(ChunkNode chunk) {
+    public Chunk updateChunk(Chunk chunk) {
         // No-op: tests mutate the same object references that are stored
         return chunk;
     }
 
     @Override
-    public List<ChunkNode> updateChunks(List<ChunkNode> chunks) { return chunks; }
+    public List<Chunk> updateChunks(List<Chunk> chunks) { return chunks; }
 
     @Override
-    public List<ChunkNode> findAllChunksWithEmbeddings() {
+    public List<Chunk> findAllChunksWithEmbeddings() {
         return chunksByChapter.values().stream()
                 .flatMap(List::stream)
                 .filter(c -> c.getEmbedding() != null)
@@ -126,34 +130,34 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
     }
 
     @Override
-    public IngestionJobNode createJob(IngestionJobNode jobNode) {
-        if (jobNode.getId() == null) jobNode.setId(UUID.randomUUID());
-        jobs.put(jobNode.getId(), jobNode);
-        return jobNode;
+    public IngestionJob createJob(IngestionJob job) {
+        if (job.getId() == null) job.setId(UUID.randomUUID());
+        jobs.put(job.getId(), job);
+        return job;
     }
 
     @Override
-    public IngestionJobNode createJobWithChapter(IngestionJobNode jobNode, UUID chapterId) {
-        jobNode.setChapterId(chapterId);
-        return createJob(jobNode);
+    public IngestionJob createJobWithChapter(IngestionJob job, UUID chapterId) {
+        job.setChapterId(chapterId);
+        return createJob(job);
     }
 
     @Override
-    public Optional<IngestionJobNode> findJob(UUID id) {
+    public Optional<IngestionJob> findJob(UUID id) {
         return Optional.ofNullable(jobs.get(id));
     }
 
     @Override
-    public IngestionJobNode updateJob(IngestionJobNode jobNode) {
-        jobs.put(jobNode.getId(), jobNode);
-        return jobNode;
+    public IngestionJob updateJob(IngestionJob job) {
+        jobs.put(job.getId(), job);
+        return job;
     }
 
     @Override
-    public Optional<IngestionJobNode> findMostRecentJobForChapter(UUID chapterId) {
+    public Optional<IngestionJob> findMostRecentJobForChapter(UUID chapterId) {
         return jobs.values().stream()
                 .filter(j -> Objects.equals(j.getChapterId(), chapterId))
-                .max(Comparator.comparing(IngestionJobNode::getCreatedAt, Comparator.nullsFirst(LocalDateTime::compareTo)));
+                .max(Comparator.comparing(IngestionJob::getCreatedAt, Comparator.nullsFirst(LocalDateTime::compareTo)));
     }
 
     @Override
@@ -162,29 +166,29 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
     }
 
     @Override
-    public List<IngestionJobNode> findJobsByChapterIds(List<UUID> chapterIds) {
+    public List<IngestionJob> findJobsByChapterIds(List<UUID> chapterIds) {
         Set<UUID> set = new HashSet<>(chapterIds);
         return jobs.values().stream().filter(j -> set.contains(j.getChapterId())).toList();
     }
 
     @Override
-    public List<IngestionJobNode> findAllJobs() {
+    public List<IngestionJob> findAllJobs() {
         return new ArrayList<>(jobs.values());
     }
 
     @Override
-    public StatusRecordNode addStatusRecord(UUID jobId, StatusRecordNode recordNode) {
-        statusByJob.computeIfAbsent(jobId, k -> new ArrayList<>()).add(recordNode);
-        return recordNode;
+    public StatusRecord addStatusRecord(UUID jobId, StatusRecord record) {
+        statusByJob.computeIfAbsent(jobId, k -> new ArrayList<>()).add(record);
+        return record;
     }
 
     @Override
-    public List<StatusRecordNode> findStatusHistoryForJob(UUID jobId) {
+    public List<StatusRecord> findStatusHistoryForJob(UUID jobId) {
         return statusByJob.getOrDefault(jobId, List.of());
     }
 
     @Override
-    public List<ChapterNode> findChaptersByUniverse(String universe) {
+    public List<Chapter> findChaptersByUniverse(String universe) {
         return chapters.values().stream().filter(c -> Objects.equals(c.getUniverse(), universe)).toList();
     }
 }

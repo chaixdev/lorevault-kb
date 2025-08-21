@@ -1,8 +1,8 @@
 package com.lorevault.api.service.content;
 
-import com.lorevault.api.dto.content.SceneWithCoordinates;
 import com.lorevault.api.application.port.ContentPersistencePort;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
+import com.lorevault.api.domain.content.Scene;
+import com.lorevault.api.dto.content.SceneWithCoordinates;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,7 +33,7 @@ public class ScenePersistenceService {
      * @return List of created Scene entities
      */
     @Transactional
-    public List<SceneNode> persistDetectedScenes(UUID chapterId, List<SceneWithCoordinates> scenesWithCoords) {
+    public List<Scene> persistDetectedScenes(UUID chapterId, List<SceneWithCoordinates> scenesWithCoords) {
         log.debug("Persisting {} scenes for chapter {} (graph)", scenesWithCoords.size(), chapterId);
         if (scenesWithCoords.isEmpty()) return List.of();
         // Avoid duplicate persistence if scenes already exist
@@ -43,19 +43,17 @@ public class ScenePersistenceService {
         }
         
         // Fetch chapter text to extract scene content
-        String chapterText = null;
-        var chapterNode = contentPersistencePort.findChapterById(chapterId);
-        if (chapterNode.isPresent()) {
-            chapterText = chapterNode.get().getRawText();
-        }
+        String chapterText = contentPersistencePort.findChapterById(chapterId)
+            .map(c -> c.getRawText())
+            .orElse(null);
         
         final String finalChapterText = chapterText;
-        List<SceneNode> nodes = scenesWithCoords.stream().map(s -> {
-            SceneNode n = new SceneNode();
-            n.setSceneIndex(s.sceneIndex());
-            n.setStartOffset(s.startCharacterOffset());
-            n.setEndOffset(s.endCharacterOffset());
-            n.setContextSummary(s.contextSummary());
+        List<Scene> scenes = scenesWithCoords.stream().map(s -> {
+            Scene scene = new Scene();
+            scene.setSceneIndex(s.sceneIndex());
+            scene.setStartCharacterOffset(s.startCharacterOffset());
+            scene.setEndCharacterOffset(s.endCharacterOffset());
+            scene.setContextSummary(s.contextSummary());
             
             // Extract and set the scene text
             if (finalChapterText != null) {
@@ -64,7 +62,7 @@ public class ScenePersistenceService {
                     int end = (int) s.endCharacterOffset();
                     if (start >= 0 && end <= finalChapterText.length() && start < end) {
                         String sceneText = finalChapterText.substring(start, end);
-                        n.setText(sceneText);
+                        scene.setText(sceneText);
                         log.trace("Extracted scene text for scene {}: {} chars", s.sceneIndex(), sceneText.length());
                     } else {
                         log.warn("Invalid scene coordinates for scene {}: start={}, end={}, chapterLen={}", 
@@ -75,9 +73,9 @@ public class ScenePersistenceService {
                 }
             }
             
-            return n;
+            return scene;
         }).collect(Collectors.toList());
-        return contentPersistencePort.addScenesToChapter(chapterId, nodes);
+        return contentPersistencePort.addScenesToChapter(chapterId, scenes);
     }
 
     /**

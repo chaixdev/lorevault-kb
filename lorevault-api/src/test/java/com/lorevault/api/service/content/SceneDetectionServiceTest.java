@@ -1,7 +1,8 @@
 package com.lorevault.api.service.content;
 
 import com.lorevault.api.dto.content.SceneWithCoordinates;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
+import com.lorevault.api.domain.content.Chapter;
+import com.lorevault.api.domain.shared.PublicationCoordinates;
 import com.lorevault.api.testutil.TestIds;
 import com.lorevault.api.testutil.fakes.FakeContentPersistencePort;
 import com.lorevault.api.testutil.fakes.FakeSceneDetectionPort;
@@ -26,7 +27,7 @@ class SceneDetectionServiceTest {
     private SceneDetectionService sceneDetectionService;
 
     private UUID chapterId;
-    private ChapterNode chapterNode;
+    private Chapter chapterNode;
 
     @BeforeEach
     void setUp() {
@@ -35,14 +36,18 @@ class SceneDetectionServiceTest {
         sceneDetectionService = new SceneDetectionService(contentPersistencePort, sceneDetectionPort);
 
         chapterId = TestIds.CHAPTER_ID;
-        chapterNode = new ChapterNode();
+        chapterNode = new Chapter();
         chapterNode.setId(chapterId);
         chapterNode.setRawText("Chapter text for scene detection analysis.");
         chapterNode.setChapterTitle("Test Chapter");
-        chapterNode.setUniverse("TestUniverse");
-        chapterNode.setSeries("Test Series");
-        chapterNode.setBookNumber(1);
-        chapterNode.setChapterNumber(1);
+        chapterNode.setCoordinates(new PublicationCoordinates(
+            "TestUniverse",
+            "Test Series",
+            "Test Book",
+            "Test Chapter",
+            1,
+            1
+        ));
         chapterNode.setCreatedAt(LocalDateTime.now());
         chapterNode.setUpdatedAt(LocalDateTime.now());
     }
