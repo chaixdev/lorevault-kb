@@ -1,6 +1,6 @@
 package com.lorevault.api.domain.content;
 
-import com.lorevault.api.domain.shared.PublicationCoordinates;
+import com.lorevault.api.dto.shared.PublicationCoordinates;
 import com.lorevault.api.testutil.builders.ChapterBuilder;
 import com.lorevault.api.testutil.builders.PublicationCoordinatesBuilder;
 import org.junit.jupiter.api.DisplayName;
