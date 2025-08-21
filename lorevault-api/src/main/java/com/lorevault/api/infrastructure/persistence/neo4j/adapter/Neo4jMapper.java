@@ -44,15 +44,21 @@ public class Neo4jMapper {
         if (domain == null) return null;
         ChapterNode node = new ChapterNode();
         node.setId(domain.getId());
-        node.setChapterTitle(domain.getChapterTitle());
         node.setRawText(domain.getRawText());
         node.setContentHash(domain.getContentHash());
         if (domain.getCoordinates() != null) {
             node.setUniverse(domain.getCoordinates().getUniverse());
             node.setSeries(domain.getCoordinates().getSeries());
             node.setBookTitle(domain.getCoordinates().getBookTitle());
+            // Prefer coordinates chapterTitle, fallback to domain chapterTitle
+            node.setChapterTitle(domain.getCoordinates().getChapterTitle() != null 
+                ? domain.getCoordinates().getChapterTitle() 
+                : domain.getChapterTitle());
             node.setBookNumber(domain.getCoordinates().getBookNumber());
             node.setChapterNumber(domain.getCoordinates().getChapterNumber());
+        } else {
+            // No coordinates - use domain chapterTitle
+            node.setChapterTitle(domain.getChapterTitle());
         }
         node.setCreatedAt(domain.getCreatedAt());
         node.setUpdatedAt(domain.getUpdatedAt());

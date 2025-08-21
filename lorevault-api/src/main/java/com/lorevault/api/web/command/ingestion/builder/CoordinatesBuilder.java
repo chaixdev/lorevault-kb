@@ -45,7 +45,7 @@ public class CoordinatesBuilder {
     /**
      * Validate coordinate parameters for required values and constraints
      */
-    public CoordinateValidationResult validateCoordinates(String universe, String series, 
+    public CoordinateValidationResult validateCoordinates(String universe, String series, String bookTitle,
                                                          Integer bookNumber, Integer chapterNumber, Integer partNumber) {
         
         // Validate required universe parameter
@@ -74,11 +74,12 @@ public class CoordinatesBuilder {
     /**
      * Build PublicationCoordinates from validated parameters
      */
-    public PublicationCoordinates buildCoordinates(String universe, String series, 
+    public PublicationCoordinates buildCoordinates(String universe, String series, String bookTitle,
                                                  Integer bookNumber, Integer chapterNumber) {
         PublicationCoordinates coordinates = new PublicationCoordinates();
         coordinates.setUniverse(universe.trim());
         coordinates.setSeries(series != null && !series.trim().isEmpty() ? series.trim() : null);
+        coordinates.setBookTitle(bookTitle != null && !bookTitle.trim().isEmpty() ? bookTitle.trim() : null);
         coordinates.setBookNumber(bookNumber);
         coordinates.setChapterNumber(chapterNumber);
         return coordinates;
