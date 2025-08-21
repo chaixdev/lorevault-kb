@@ -1,6 +1,10 @@
 package com.lorevault.api.application.port;
 
-import com.lorevault.api.infrastructure.persistence.neo4j.model.*;
+import com.lorevault.api.domain.content.Chapter;
+import com.lorevault.api.domain.content.Chunk;
+import com.lorevault.api.domain.content.Scene;
+import com.lorevault.api.domain.ingestion.IngestionJob;
+import com.lorevault.api.domain.ingestion.StatusRecord;
 
 import java.util.List;
 import java.util.Optional;
@@ -9,44 +13,44 @@ import java.util.UUID;
 public interface ContentPersistencePort {
 
     // Chapters
-    ChapterNode createChapter(ChapterNode chapter);
-    Optional<ChapterNode> findChapterById(UUID id);
-    Optional<ChapterNode> findChapterByContentHash(String contentHash);
+    Chapter createChapter(Chapter chapter);
+    Optional<Chapter> findChapterById(UUID id);
+    Optional<Chapter> findChapterByContentHash(String contentHash);
     boolean chapterExistsByContentHash(String contentHash);
-    ChapterNode updateChapter(ChapterNode chapter);
+    Chapter updateChapter(Chapter chapter);
 
     // Scenes
-    SceneNode addSceneToChapter(UUID chapterId, SceneNode scene);
-    List<SceneNode> addScenesToChapter(UUID chapterId, List<SceneNode> scenes);
-    List<SceneNode> findScenesByChapterId(UUID chapterId);
+    Scene addSceneToChapter(UUID chapterId, Scene scene);
+    List<Scene> addScenesToChapter(UUID chapterId, List<Scene> scenes);
+    List<Scene> findScenesByChapterId(UUID chapterId);
     int deleteScenesByChapterId(UUID chapterId);
 
     // Chunks
-    List<ChunkNode> addChunksToChapter(UUID chapterId, List<ChunkNode> chunks);
-    ChunkNode addChunkToScene(UUID sceneId, ChunkNode chunk);
-    List<ChunkNode> addChunksToScene(UUID sceneId, List<ChunkNode> chunks);
-    List<ChunkNode> findChunksByChapterId(UUID chapterId);
+    List<Chunk> addChunksToChapter(UUID chapterId, List<Chunk> chunks);
+    Chunk addChunkToScene(UUID sceneId, Chunk chunk);
+    List<Chunk> addChunksToScene(UUID sceneId, List<Chunk> chunks);
+    List<Chunk> findChunksByChapterId(UUID chapterId);
     int deleteChunksByChapterId(UUID chapterId);
     boolean chunksExistForChapter(UUID chapterId);
     int countChunksByChapterId(UUID chapterId);
-    ChunkNode updateChunk(ChunkNode chunk);
-    List<ChunkNode> updateChunks(List<ChunkNode> chunks);
-    List<ChunkNode> findAllChunksWithEmbeddings();
+    Chunk updateChunk(Chunk chunk);
+    List<Chunk> updateChunks(List<Chunk> chunks);
+    List<Chunk> findAllChunksWithEmbeddings();
 
     // Jobs
-    IngestionJobNode createJob(IngestionJobNode jobNode);
-    IngestionJobNode createJobWithChapter(IngestionJobNode jobNode, UUID chapterId);
-    Optional<IngestionJobNode> findJob(UUID id);
-    IngestionJobNode updateJob(IngestionJobNode jobNode);
-    Optional<IngestionJobNode> findMostRecentJobForChapter(UUID chapterId);
+    IngestionJob createJob(IngestionJob job);
+    IngestionJob createJobWithChapter(IngestionJob job, UUID chapterId);
+    Optional<IngestionJob> findJob(UUID id);
+    IngestionJob updateJob(IngestionJob job);
+    Optional<IngestionJob> findMostRecentJobForChapter(UUID chapterId);
     boolean hasActiveJobForChapter(UUID chapterId);
-    List<IngestionJobNode> findJobsByChapterIds(List<UUID> chapterIds);
-    List<IngestionJobNode> findAllJobs();
+    List<IngestionJob> findJobsByChapterIds(List<UUID> chapterIds);
+    List<IngestionJob> findAllJobs();
 
     // Status Records
-    StatusRecordNode addStatusRecord(UUID jobId, StatusRecordNode recordNode);
-    List<StatusRecordNode> findStatusHistoryForJob(UUID jobId);
+    StatusRecord addStatusRecord(UUID jobId, StatusRecord record);
+    List<StatusRecord> findStatusHistoryForJob(UUID jobId);
 
     // Queries
-    List<ChapterNode> findChaptersByUniverse(String universe);
+    List<Chapter> findChaptersByUniverse(String universe);
 }

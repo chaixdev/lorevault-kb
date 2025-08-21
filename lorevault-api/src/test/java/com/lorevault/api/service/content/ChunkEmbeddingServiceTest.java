@@ -1,93 +1,113 @@
 package com.lorevault.api.service.content;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
-import com.lorevault.api.application.port.EmbeddingPort;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
-import org.junit.jupiter.api.BeforeEach;
+import com.lorevault.api.domain.content.Chapter;
+import com.lorevault.api.domain.content.Chunk;
+import com.lorevault.api.testutil.fakes.FakeContentPersistencePort;
+import com.lorevault.api.testutil.fakes.FakeEmbeddingPort;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@Tag("service")
+@DisplayName("ChunkEmbeddingService")
 class ChunkEmbeddingServiceTest {
 
-    @Mock private ContentPersistencePort contentPersistencePort;
-    @Mock private EmbeddingPort embeddingPort;
-    @InjectMocks private ChunkEmbeddingService service;
+    @Test
+    @DisplayName("should return 0 when chapter has no chunks")
+    void shouldReturnZeroWhenNoChunks() {
+        ContentPersistencePort repo = new FakeContentPersistencePort();
+        var embed = new FakeEmbeddingPort("fake-model", 8);
+        var svc = new ChunkEmbeddingService(repo, embed);
+        svc.setEmbeddingDim(8);
+        svc.setBatchSize(8);
 
-    private UUID chapterId;
+        UUID chapterId = UUID.randomUUID();
+        // Only chapter exists, no chunks
+    Chapter chapter = new Chapter();
+        chapter.setId(chapterId);
+        chapter.setRawText("Some text");
+        ((FakeContentPersistencePort) repo).createChapter(chapter);
 
-    @BeforeEach
-    void setup() {
-        chapterId = UUID.randomUUID();
-        service.setBatchSize(32);
-        service.setEmbeddingDim(1536);
+        int updated = svc.generateEmbeddingsForChapter(chapterId);
+        assertThat(updated).isEqualTo(0);
     }
 
     @Test
-    void generateEmbeddingsForChapter_WhenAllUpToDate_ShouldReturnZeroAndNotCallBatch() {
-        when(embeddingPort.getModelId()).thenReturn("gemini-embedding-001");
-        ChunkNode node = new ChunkNode();
-        node.setId(UUID.randomUUID());
-        node.setContentHash("abc");
-        node.setEmbedding(new double[]{0.1});
-        node.setEmbeddingHash(sha256("gemini-embedding-001:abc"));
-        node.setEmbeddedAt(LocalDateTime.now());
-        when(contentPersistencePort.findChunksByChapterId(chapterId)).thenReturn(List.of(node));
+    @DisplayName("should embed only chunks needing embedding and skip up-to-date ones")
+    void shouldEmbedOnlyWhenNeeded() throws Exception {
+        FakeContentPersistencePort repo = new FakeContentPersistencePort();
+        var embed = new FakeEmbeddingPort("fake-model", 8);
+        var svc = new ChunkEmbeddingService(repo, embed);
+        svc.setEmbeddingDim(8);
+        svc.setBatchSize(8);
 
-        int updated = service.generateEmbeddingsForChapter(chapterId);
+        UUID chapterId = UUID.randomUUID();
+    Chapter chapter = new Chapter();
+        chapter.setId(chapterId);
+        String rawText = "abcdefghijklmnopqrstuvwxyz. "+
+                         "More content here to ensure substring operations work.";
+        chapter.setRawText(rawText);
+        repo.createChapter(chapter);
 
-        assertThat(updated).isZero();
-        verify(embeddingPort, never()).embedBatch(anyList());
-    }
+        // Prepare three chunks for the chapter
+    List<Chunk> chunks = new ArrayList<>();
 
-    @Test
-    void generateEmbeddingsForChapter_WhenMissingOrStale_ShouldUpdateAndCallBatch() {
-        when(embeddingPort.getModelId()).thenReturn("gemini-embedding-001");
-        ChunkNode node1 = new ChunkNode();
-        node1.setId(UUID.randomUUID());
-        node1.setContentHash("hash1"); // missing embedding
-        ChunkNode node2 = new ChunkNode();
-        node2.setId(UUID.randomUUID());
-        node2.setContentHash("hash2");
-        node2.setEmbedding(new double[]{0.2});
-        node2.setEmbeddingHash("stale"); // mismatch
-        when(contentPersistencePort.findChunksByChapterId(chapterId)).thenReturn(List.of(node1, node2));
+        // 1) Needs embedding (no embedding yet)
+    Chunk c1 = new Chunk();
+        c1.setId(UUID.randomUUID());
+        c1.setStartCharInChapter(0);
+        c1.setEndCharInChapter(10);
+        c1.setContentHash("hash-1");
+        chunks.add(c1);
 
-        when(embeddingPort.embedBatch(anyList())).thenAnswer(inv -> {
-            List<String> texts = inv.getArgument(0);
-            return texts.stream().map(t -> new double[]{0.5, 0.6}).toList();
-        });
+        // 2) Up-to-date: already has embedding + correct hash
+    Chunk c2 = new Chunk();
+        c2.setId(UUID.randomUUID());
+        c2.setStartCharInChapter(10);
+        c2.setEndCharInChapter(20);
+        c2.setContentHash("hash-2");
+        c2.setEmbedding(new double[]{1,2,3});
+        c2.setEmbeddingHash(sha256(embed.getModelId()+":"+c2.getContentHash()));
+        chunks.add(c2);
 
-        int updated = service.generateEmbeddingsForChapter(chapterId);
+        // 3) Needs update: has embedding but wrong hash
+    Chunk c3 = new Chunk();
+        c3.setId(UUID.randomUUID());
+        c3.setStartCharInChapter(20);
+        c3.setEndCharInChapter(30);
+        c3.setContentHash("hash-3");
+        c3.setEmbedding(new double[]{9,9});
+        c3.setEmbeddingHash("mismatch");
+        chunks.add(c3);
 
+        // Register chunks under chapter in fake repo
+        ((FakeContentPersistencePort) repo).chunksByChapter.put(chapterId, chunks);
+
+        int updated = svc.generateEmbeddingsForChapter(chapterId);
+        // c1 and c3 should be updated; c2 skipped
         assertThat(updated).isEqualTo(2);
-        verify(embeddingPort, times(1)).embedBatch(anyList());
+
+        // Verify embedding hash updated to expected format for updated chunks
+        String expectedHash1 = sha256(embed.getModelId()+":"+c1.getContentHash());
+        String expectedHash3 = sha256(embed.getModelId()+":"+c3.getContentHash());
+        assertThat(c1.getEmbedding()).isNotNull();
+        assertThat(c1.getEmbeddingHash()).isEqualTo(expectedHash1);
+        assertThat(c3.getEmbedding()).isNotNull();
+        assertThat(c3.getEmbeddingHash()).isEqualTo(expectedHash3);
     }
 
-    @Test
-    void generateEmbeddingsForChapter_NoChunks_ShouldReturnZero() {
-        when(contentPersistencePort.findChunksByChapterId(chapterId)).thenReturn(List.of());
-        int updated = service.generateEmbeddingsForChapter(chapterId);
-        assertThat(updated).isZero();
-        verifyNoInteractions(embeddingPort);
-    }
-
-    private String sha256(String input) {
-        try {
-            var digest = java.security.MessageDigest.getInstance("SHA-256");
-            return java.util.HexFormat.of().formatHex(digest.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    private static String sha256(String s) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        return HexFormat.of().formatHex(md.digest(s.getBytes(StandardCharsets.UTF_8)));
     }
 }

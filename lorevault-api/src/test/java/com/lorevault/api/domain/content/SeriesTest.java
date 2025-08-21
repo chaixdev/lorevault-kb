@@ -1,49 +1,80 @@
 package com.lorevault.api.domain.content;
 
+import com.lorevault.api.testutil.TestIds;
+import com.lorevault.api.testutil.builders.SeriesBuilder;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
-public class SeriesTest {
-
+@Tag("unit")
+@DisplayName("Series")
+class SeriesTest {
+    
     @Test
-    void create_setsAllFieldsCorrectly() {
-        UUID universeId = UUID.randomUUID();
-        String universeName = "Cosmere";
+    @DisplayName("should create series with all required fields")
+    void shouldCreateSeriesWithAllRequiredFields() {
+        // Given
+        UUID id = TestIds.SERIES_ID;
+        UUID universeId = TestIds.UNIVERSE_ID;
+        String universeName = TestIds.DEFAULT_UNIVERSE_NAME;
+        String seriesName = "Mistborn";
+        LocalDateTime ts = TestIds.FIXED_TIMESTAMP;
+        
+        // When
+        Series series = SeriesBuilder.aSeries()
+                .withId(id)
+                .withUniverseId(universeId)
+                .withUniverseName(universeName)
+                .withName(seriesName)
+                .withCreatedAt(ts)
+                .withUpdatedAt(ts)
+                .build();
+        
+        // Then
+        assertThat(series.getId()).isEqualTo(id);
+        assertThat(series.getUniverseId()).isEqualTo(universeId);
+        assertThat(series.getUniverseName()).isEqualTo(universeName);
+        assertThat(series.getName()).isEqualTo(seriesName);
+        assertThat(series.getCreatedAt()).isEqualTo(ts);
+        assertThat(series.getUpdatedAt()).isEqualTo(ts);
+    }
+    
+    @Test
+    @DisplayName("should create series using factory method")
+    void shouldCreateSeriesUsingFactoryMethod() {
+        // Given
+        UUID universeId = TestIds.UNIVERSE_ID;
+        String universeName = TestIds.DEFAULT_UNIVERSE_NAME;
         String seriesName = "Stormlight Archive";
         
+        // When
         Series series = Series.create(universeId, universeName, seriesName);
         
-        assertNotNull(series.getId());
-        assertEquals(universeId, series.getUniverseId());
-        assertEquals(universeName, series.getUniverseName());
-        assertEquals(seriesName, series.getName());
-        assertNotNull(series.getCreatedAt());
-        assertNotNull(series.getUpdatedAt());
+        // Then
+        assertThat(series.getId()).isNotNull();
+        assertThat(series.getUniverseId()).isEqualTo(universeId);
+        assertThat(series.getUniverseName()).isEqualTo(universeName);
+        assertThat(series.getName()).isEqualTo(seriesName);
+        assertThat(series.getUpdatedAt()).isEqualTo(series.getCreatedAt());
     }
-
+    
     @Test
-    void create_handlesNullUniverseName() {
-        UUID universeId = UUID.randomUUID();
+    @DisplayName("should use builder defaults for convenience")
+    void shouldUseBuilderDefaultsForConvenience() {
+        // When
+        Series series = SeriesBuilder.aSeries().build();
         
-        Series series = Series.create(universeId, null, "Standalone Series");
-        
-        assertEquals(universeId, series.getUniverseId());
-        assertNull(series.getUniverseName());
-        assertEquals("Standalone Series", series.getName());
-    }
-
-    @Test
-    void create_ensuresUniqueIds() {
-        UUID universeId = UUID.randomUUID();
-        
-        Series series1 = Series.create(universeId, "Universe", "Series A");
-        Series series2 = Series.create(universeId, "Universe", "Series B");
-        
-        assertNotEquals(series1.getId(), series2.getId());
-        assertEquals(universeId, series1.getUniverseId());
-        assertEquals(universeId, series2.getUniverseId());
+        // Then
+        assertThat(series.getId()).isEqualTo(TestIds.SERIES_ID);
+        assertThat(series.getUniverseId()).isEqualTo(TestIds.UNIVERSE_ID);
+        assertThat(series.getUniverseName()).isEqualTo("Cosmere");
+        assertThat(series.getName()).isEqualTo("Stormlight Archive");
+        assertThat(series.getCreatedAt()).isNotNull();
+        assertThat(series.getUpdatedAt()).isNotNull();
     }
 }

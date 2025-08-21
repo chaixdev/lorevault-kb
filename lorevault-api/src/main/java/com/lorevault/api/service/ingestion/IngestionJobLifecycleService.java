@@ -1,11 +1,9 @@
 package com.lorevault.api.service.ingestion;
 
-import com.lorevault.api.domain.ingestion.StatusRecord;
+import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
-import com.lorevault.api.application.port.ContentPersistencePort;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.StatusRecordNode;
+import com.lorevault.api.domain.ingestion.StatusRecord;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,12 +30,18 @@ public class IngestionJobLifecycleService {
      */
     @Transactional
     public IngestionJob createIngestionJob(UUID chapterId) {
-        IngestionJobNode node = createJobNode(chapterId);
-        IngestionJob job = buildDomainJob(node, chapterId);
-        StatusRecord initialStatus = createInitialStatusRecord(job.getId(), chapterId);
-        updateJobNodeStatus(initialStatus);
-        job.setCurrentStatus(initialStatus);
-        return job;
+        IngestionJob job = new IngestionJob();
+        job.setId(UUID.randomUUID());
+        job.setChapterId(chapterId);
+        job.setCreatedAt(LocalDateTime.now());
+
+        IngestionJob persistedJob = contentPersistencePort.createJobWithChapter(job, chapterId);
+
+        StatusRecord initialStatus = createInitialStatusRecord(persistedJob.getId(), chapterId);
+        contentPersistencePort.addStatusRecord(persistedJob.getId(), initialStatus);
+        
+        persistedJob.setCurrentStatus(initialStatus);
+        return persistedJob;
     }
 
     /**
@@ -53,6 +57,7 @@ public class IngestionJobLifecycleService {
                 LocalDateTime.now(),
                 IngestionStatus.COMPLETE,
                 String.format("Chapter processing completed successfully. Created %d chunks.", chunkCount),
+                100, // progressPercent
                 Map.of(
                     "version", "0.2.0",
                     "pipeline", "content_segmentation",
@@ -64,8 +69,8 @@ public class IngestionJobLifecycleService {
 
         job.setCurrentStatus(completionStatus);
         job.setCompletedAt(LocalDateTime.now());
-        updateJobNodeStatus(completionStatus);
-        updateJobNodeCompletedAt(job.getId(), job.getCompletedAt());
+        saveStatusRecord(completionStatus);
+        updateJobCompletedAt(job.getId(), job.getCompletedAt());
         
         log.info("Job {} completed successfully with {} chunks", job.getId(), chunkCount);
     }
@@ -81,6 +86,7 @@ public class IngestionJobLifecycleService {
                 LocalDateTime.now(), 
                 IngestionStatus.FAILED, 
                 errorMessage,
+                0, // progressPercent - failed jobs have 0 progress
                 Map.of(
                     "version", "0.2.0", 
                     "failedAt", LocalDateTime.now().toString()
@@ -89,8 +95,8 @@ public class IngestionJobLifecycleService {
         
         job.setCurrentStatus(failureStatus);
         job.setCompletedAt(LocalDateTime.now());
-        updateJobNodeStatus(failureStatus);
-        updateJobNodeCompletedAt(job.getId(), job.getCompletedAt());
+        saveStatusRecord(failureStatus);
+        updateJobCompletedAt(job.getId(), job.getCompletedAt());
         
         log.error("Job {} failed: {}", job.getId(), errorMessage);
     }
@@ -118,47 +124,22 @@ public class IngestionJobLifecycleService {
      */
     @Transactional
     public void updateJobStatus(UUID jobId, IngestionStatus status, String description, Map<String, Object> properties) {
-        StatusRecordNode node = new StatusRecordNode();
-        node.setId(UUID.randomUUID());
-        node.setJobId(jobId);
-        node.setStatus(status);
-        node.setStepDescription(description);
-        node.setProgressPercent(status.getProgressPercentage());
-        node.setTimestamp(LocalDateTime.now());
+        StatusRecord statusRecord = new StatusRecord(
+            UUID.randomUUID(),
+            jobId,
+            LocalDateTime.now(),
+            status,
+            description,
+            status.getProgressPercentage(),
+            properties
+        );
         
         try {
-            contentPersistencePort.addStatusRecord(jobId, node);
+            contentPersistencePort.addStatusRecord(jobId, statusRecord);
             log.debug("Created status record for job {}: {} - {}", jobId, status, description);
         } catch (Exception e) {
             log.debug("Failed to add status record to graph: {}", e.getMessage());
         }
-    }
-
-    private IngestionJobNode createJobNode(UUID chapterId) {
-        try {
-            IngestionJobNode node = new IngestionJobNode();
-            node.setId(UUID.randomUUID());
-            node.setChapterId(chapterId);
-            node.setCreatedAt(LocalDateTime.now());
-            
-            IngestionJobNode persisted = contentPersistencePort.createJobWithChapter(node, chapterId);
-            if (persisted == null) { // fallback for mocks not stubbing new method
-                persisted = contentPersistencePort.createJob(node);
-            }
-            if (persisted != null) node = persisted;
-            
-            return node;
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to create job in graph: " + e.getMessage(), e);
-        }
-    }
-
-    private IngestionJob buildDomainJob(IngestionJobNode node, UUID chapterId) {
-        IngestionJob job = new IngestionJob();
-        job.setId(node.getId());
-        job.setChapterId(chapterId);
-        job.setCreatedAt(node.getCreatedAt());
-        return job;
     }
 
     private StatusRecord createInitialStatusRecord(UUID jobId, UUID chapterId) {
@@ -168,21 +149,14 @@ public class IngestionJobLifecycleService {
                 LocalDateTime.now(),
                 IngestionStatus.QUEUED,
                 "Chapter submitted and queued for processing",
+                0, // progressPercent
                 Map.of("chapterId", chapterId.toString())
         );
     }
 
-    private void updateJobNodeStatus(StatusRecord statusRecord) {
-        StatusRecordNode node = new StatusRecordNode();
-        node.setId(UUID.randomUUID());
-        node.setJobId(statusRecord.getJobId());
-        node.setStatus(statusRecord.getStatus());
-        node.setStepDescription(statusRecord.getStepDescription());
-        node.setProgressPercent(statusRecord.getStatus().getProgressPercentage());
-        node.setTimestamp(statusRecord.getTimestamp());
-        
+    private void saveStatusRecord(StatusRecord statusRecord) {
         try {
-            contentPersistencePort.addStatusRecord(statusRecord.getJobId(), node);
+            contentPersistencePort.addStatusRecord(statusRecord.getJobId(), statusRecord);
             log.debug("Created status record for job {}: {} - {}", 
                     statusRecord.getJobId(), statusRecord.getStatus(), statusRecord.getStepDescription());
         } catch (Exception e) {
@@ -190,11 +164,11 @@ public class IngestionJobLifecycleService {
         }
     }
 
-    private void updateJobNodeCompletedAt(UUID jobId, LocalDateTime completedAt) {
+    private void updateJobCompletedAt(UUID jobId, LocalDateTime completedAt) {
         try {
-            contentPersistencePort.findJob(jobId).ifPresent(jobNode -> {
-                jobNode.setCompletedAt(completedAt);
-                contentPersistencePort.updateJob(jobNode);
+            contentPersistencePort.findJob(jobId).ifPresent(job -> {
+                job.setCompletedAt(completedAt);
+                contentPersistencePort.updateJob(job);
             });
         } catch (Exception e) {
             log.debug("Graph completion update failed for job {}: {}", jobId, e.getMessage());

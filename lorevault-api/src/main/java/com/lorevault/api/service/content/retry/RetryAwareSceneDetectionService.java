@@ -10,7 +10,7 @@ import com.lorevault.api.service.content.retry.LlmRetryStrategy.LlmRetryConfig;
 import com.lorevault.api.service.content.retry.LlmRetryStrategy.LlmRetryResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
@@ -19,7 +19,7 @@ import java.util.UUID;
  * Enhanced scene detection service that provides better LLM retry handling
  * and communicates retry attempts through ingestion job status updates.
  */
-@Component
+@Service
 @RequiredArgsConstructor
 @Slf4j
 public class RetryAwareSceneDetectionService {

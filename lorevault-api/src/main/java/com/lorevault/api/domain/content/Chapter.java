@@ -207,6 +207,38 @@ public class Chapter {
     }
 
     // =====================================
+    // Convenience Methods for Publication Coordinates
+    // =====================================
+
+    /**
+     * Get the universe name from coordinates
+     */
+    public String getUniverse() {
+        return coordinates != null ? coordinates.getUniverse() : null;
+    }
+
+    /**
+     * Get the series name from coordinates
+     */
+    public String getSeries() {
+        return coordinates != null ? coordinates.getSeries() : null;
+    }
+
+    /**
+     * Get the book number from coordinates
+     */
+    public Integer getBookNumber() {
+        return coordinates != null ? coordinates.getBookNumber() : null;
+    }
+
+    /**
+     * Get the chapter number from coordinates
+     */
+    public Integer getChapterNumber() {
+        return coordinates != null ? coordinates.getChapterNumber() : null;
+    }
+
+    // =====================================
     // Factory Methods for UUID-based Creation
     // =====================================
 

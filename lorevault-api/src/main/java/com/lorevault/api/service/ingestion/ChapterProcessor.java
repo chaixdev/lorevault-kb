@@ -4,9 +4,6 @@ import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.event.ChapterIngestionEvent;
-import com.lorevault.api.infrastructure.persistence.neo4j.mapping.GraphModelMapper;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -27,7 +24,6 @@ public class ChapterProcessor {
 
     private final ContentPersistencePort contentPersistencePort;
     private final IngestionService ingestionService;
-    private final GraphModelMapper mapper;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("ingestionTaskExecutor")
@@ -36,21 +32,8 @@ public class ChapterProcessor {
                 event.getJobId(), event.getChapterId(), Thread.currentThread().getName());
 
         try {
-            IngestionJobNode jobNode = findJobWithRetry(event.getJobId());
-            ChapterNode chapterNode = findChapterWithRetry(event.getChapterId());
-
-            // Minimal transient domain objects for processing (rawText & scenes still domain-gap; future refactor)
-            IngestionJob job = new IngestionJob();
-            job.setId(jobNode.getId());
-            job.setChapterId(jobNode.getChapterId());
-            job.setCurrentStatus(mapper.toStatusRecord(jobNode.getCurrentStatusRecord()));
-            job.setCreatedAt(jobNode.getCreatedAt());
-            job.setCompletedAt(jobNode.getCompletedAt());
-
-            // Build transient Chapter
-            Chapter chapter = new Chapter();
-            chapter.setId(chapterNode.getId());
-            chapter.setRawText(chapterNode.getRawText());
+            IngestionJob job = findJobWithRetry(event.getJobId());
+            Chapter chapter = findChapterWithRetry(event.getChapterId());
 
             // Scenes will be resolved later when scene graph refactor adds retrieval
             ingestionService.processChapter(job, chapter);
@@ -63,12 +46,12 @@ public class ChapterProcessor {
 
 
 
-    private IngestionJobNode findJobWithRetry(UUID jobId) {
+    private IngestionJob findJobWithRetry(UUID jobId) {
         int maxAttempts = 3;
         long delayMs = 100;
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-            Optional<IngestionJobNode> jobOpt = contentPersistencePort.findJob(jobId);
+            Optional<IngestionJob> jobOpt = contentPersistencePort.findJob(jobId);
             if (jobOpt.isPresent()) {
                 log.debug("Found job {} on attempt {}", jobId, attempt);
                 return jobOpt.get();
@@ -79,15 +62,15 @@ public class ChapterProcessor {
                 delayMs *= 2; // Exponential backoff
             }
         }
-        throw new IllegalStateException("Job not found after retries: " + jobId);
+    throw new IllegalStateException("Job not found after retries: " + jobId);
     }
 
-    private ChapterNode findChapterWithRetry(UUID chapterId) {
+    private Chapter findChapterWithRetry(UUID chapterId) {
         int maxAttempts = 3;
         long delayMs = 100;
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-            Optional<ChapterNode> chOpt = contentPersistencePort.findChapterById(chapterId);
+        Optional<Chapter> chOpt = contentPersistencePort.findChapterById(chapterId);
             if (chOpt.isPresent()) {
                 log.debug("Found chapter {} on attempt {}", chapterId, attempt);
                 return chOpt.get();
@@ -98,7 +81,7 @@ public class ChapterProcessor {
                 delayMs *= 2; // Exponential backoff
             }
         }
-        throw new IllegalStateException("Chapter not found after retries: " + chapterId);
+    throw new IllegalStateException("Chapter not found after retries: " + chapterId);
     }
 
     private void sleep(long ms) {
