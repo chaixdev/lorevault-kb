@@ -83,42 +83,16 @@ public class AskDtos {
         private UUID chunkId;
         private double score;
         private String snippet;
-        private UUID chapterId;
-        private Integer bookNumber;
-        private Integer chapterNumber;
-        
-        // Publication coordinates for complete attribution
-        private String universe;
-        private String series;
-        private String bookTitle;
-        private String chapterTitle;
+        // Nested publication coordinates for full citation context
+        private com.lorevault.api.dto.shared.PublicationCoordinates coordinates;
 
-        public static CitationDto of(UUID chunkId, double score, String snippet, 
-                                   UUID chapterId, Integer bookNumber, Integer chapterNumber) {
+        public static CitationDto of(UUID chunkId, double score, String snippet,
+                                   com.lorevault.api.dto.shared.PublicationCoordinates coordinates) {
             CitationDto dto = new CitationDto();
             dto.chunkId = chunkId;
             dto.score = score;
             dto.snippet = snippet;
-            dto.chapterId = chapterId;
-            dto.bookNumber = bookNumber;
-            dto.chapterNumber = chapterNumber;
-            return dto;
-        }
-        
-        public static CitationDto of(UUID chunkId, double score, String snippet, 
-                                   UUID chapterId, Integer bookNumber, Integer chapterNumber,
-                                   String universe, String series, String bookTitle, String chapterTitle) {
-            CitationDto dto = new CitationDto();
-            dto.chunkId = chunkId;
-            dto.score = score;
-            dto.snippet = snippet;
-            dto.chapterId = chapterId;
-            dto.bookNumber = bookNumber;
-            dto.chapterNumber = chapterNumber;
-            dto.universe = universe;
-            dto.series = series;
-            dto.bookTitle = bookTitle;
-            dto.chapterTitle = chapterTitle;
+            dto.coordinates = coordinates;
             return dto;
         }
     }

@@ -9,6 +9,7 @@ import com.lorevault.api.dto.search.SemanticSearchDtos.SearchMetadata;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SearchResultDto;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchRequest;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchResponse;
+import com.lorevault.api.dto.shared.PublicationCoordinates;
 import com.lorevault.api.service.ask.RagService;
 import com.lorevault.api.service.search.SemanticSearchService;
 import org.junit.jupiter.api.Tag;
@@ -120,8 +121,14 @@ class AskControllerWebMvcTest {
         request.setTopK(3);
 
         UUID chunkId = UUID.fromString("00000000-0000-0000-0000-000000000002");
-        UUID chapterId = UUID.fromString("00000000-0000-0000-0000-0000000000bb");
-        CitationDto citation = CitationDto.of(chunkId, 0.91, "wizard of middle-earth", chapterId, 1, 1);
+        PublicationCoordinates coordinates = new PublicationCoordinates(
+                "Test Universe", 
+                "Test Series", 
+                "Test Book", 
+                "Test Chapter", 
+                1, 
+                1);
+        CitationDto citation = CitationDto.of(chunkId, 0.91, "wizard of middle-earth", coordinates);
         AskMetadata metadata = AskMetadata.of("who is gandalf?", 3, 1, 25, "test-model");
         AskResponse response = AskResponse.of("Gandalf is a wizard.", List.of(citation), metadata);
 

@@ -19,6 +19,7 @@ public class ChapterNode {
 
     private String universe;
     private String series; // optional
+    private String bookTitle;
     private Integer bookNumber;
     private Integer chapterNumber;
     private String chapterTitle;
@@ -38,12 +39,13 @@ public class ChapterNode {
     private List<ChunkNode> chunks; // optional direct linkage
 
     @PersistenceCreator
-    public ChapterNode(UUID id, String universe, String series, Integer bookNumber,
+    public ChapterNode(UUID id, String universe, String series, String bookTitle, Integer bookNumber,
                        Integer chapterNumber, String chapterTitle, String rawText, String contentHash,
                        LocalDateTime createdAt, LocalDateTime updatedAt, List<SceneNode> scenes, List<ChunkNode> chunks) {
         this.id = id;
         this.universe = universe;
         this.series = series;
+        this.bookTitle = bookTitle;
         this.bookNumber = bookNumber;
         this.chapterNumber = chapterNumber;
         this.chapterTitle = chapterTitle;
