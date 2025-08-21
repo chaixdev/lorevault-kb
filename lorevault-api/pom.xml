@@ -154,8 +154,6 @@
                         <exclude>**/*ITCase*.java</exclude>
                         <exclude>**/*IntegrationTest.java</exclude>
                         <exclude>**/*IntegrationTests.java</exclude>
-                        <!-- Temporarily exclude architecture rules from default unit runs -->
-                        <exclude>**/architecture/**</exclude>
                     </excludes>
                     <!-- Also honor JUnit 5 @Tag("integration") as excluded by default -->
                     <excludedGroups>integration,architecture</excludedGroups>
@@ -291,14 +289,15 @@
                         <artifactId>maven-surefire-plugin</artifactId>
                         <version>3.1.2</version>
                         <configuration>
-                            <!-- Override defaults to run only architecture-tagged tests and re-enable their path -->
+                            <!-- Run only architecture tests by file path to avoid tag filter pitfalls -->
                             <forkCount>1C</forkCount>
                             <reuseForks>true</reuseForks>
-                            <includes>
-                                <include>**/*Test.java</include>
-                                <include>**/*Tests.java</include>
+                            <includes combine.self="override">
+                                <include>**/architecture/**/*Test.java</include>
+                                <include>**/architecture/**/*Tests.java</include>
                             </includes>
-                            <excludes>
+                            <!-- Fully override the exclude list to NOT exclude architecture tests -->
+                            <excludes combine.self="override">
                                 <!-- Keep IT patterns excluded; do NOT exclude architecture here -->
                                 <exclude>**/*IT.java</exclude>
                                 <exclude>**/*ITCase.java</exclude>
@@ -306,11 +305,9 @@
                                 <exclude>**/*IntegrationTest.java</exclude>
                                 <exclude>**/*IntegrationTests.java</exclude>
                             </excludes>
-                            <!-- Run only architecture-tagged tests in this profile -->
-                            <groups>architecture</groups>
-                            <properties>
-                                <configurationParameters>junit.jupiter.tags.include=architecture</configurationParameters>
-                            </properties>
+                            <!-- Clear tag filters to not exclude anything by tag -->
+                            <excludedGroups combine.self="override"></excludedGroups>
+                            <properties combine.self="override"/>
                         </configuration>
                     </plugin>
                 </plugins>
