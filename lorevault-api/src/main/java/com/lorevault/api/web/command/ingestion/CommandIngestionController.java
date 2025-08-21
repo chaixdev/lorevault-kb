@@ -38,13 +38,14 @@ public class CommandIngestionController {
 			@RequestParam("file") MultipartFile file,
 			@RequestParam("universe") String universe,
 			@RequestParam(value = "series", required = false) String series,
+			@RequestParam("bookTitle") String bookTitle,
 			@RequestParam("bookNumber") Integer bookNumber,
 			@RequestParam("chapterNumber") Integer chapterNumber,
 			@RequestParam(value = "partNumber", required = false) Integer partNumber,
-			@RequestParam(value = "title", required = false) String title) {
+			@RequestParam(value = "chapterTitle", required = false) String chapterTitle) {
         
-		log.info("[CMD] Ingest: universe={}, series={}, book={}, chapter={}, part={}, title={}, filename={}", 
-				universe, series, bookNumber, chapterNumber, partNumber, title, file.getOriginalFilename());
+		log.info("[CMD] Ingest: universe={}, series={}, bookTitle={}, book={}, chapter={}, part={}, chapterTitle={}, filename={}", 
+				universe, series, bookTitle, bookNumber, chapterNumber, partNumber, chapterTitle, file.getOriginalFilename());
 
 		try {
 			// Validate file is present
@@ -60,7 +61,7 @@ public class CommandIngestionController {
 
 			// Validate coordinates parameters
 			CoordinatesBuilder.CoordinateValidationResult coordinateValidation = 
-				coordinatesBuilder.validateCoordinates(universe, series, bookNumber, chapterNumber, partNumber);
+				coordinatesBuilder.validateCoordinates(universe, series, bookTitle, bookNumber, chapterNumber, partNumber);
 			if (!coordinateValidation.isValid()) {
 				return errorResponseFactory.createCoordinateValidationError(coordinateValidation);
 			}
@@ -72,17 +73,17 @@ public class CommandIngestionController {
 			}
 
 			// Determine final chapter title
-			String finalTitle = coordinatesBuilder.determineFinalTitle(title, file.getOriginalFilename());
+			String finalChapterTitle = coordinatesBuilder.determineFinalTitle(chapterTitle, file.getOriginalFilename());
             
 			// Validate title length
-			CoordinatesBuilder.CoordinateValidationResult titleValidation = coordinatesBuilder.validateTitleLength(finalTitle);
+			CoordinatesBuilder.CoordinateValidationResult titleValidation = coordinatesBuilder.validateTitleLength(finalChapterTitle);
 			if (!titleValidation.isValid()) {
 				return errorResponseFactory.createCoordinateValidationError(titleValidation);
 			}
 
 			// Build coordinates and request
-			PublicationCoordinates coordinates = coordinatesBuilder.buildCoordinates(universe, series, bookNumber, chapterNumber);
-			SubmitChapterRequest request = coordinatesBuilder.buildSubmitRequest(coordinates, finalTitle, contentResult.getContent());
+			PublicationCoordinates coordinates = coordinatesBuilder.buildCoordinates(universe, series, bookTitle, bookNumber, chapterNumber);
+			SubmitChapterRequest request = coordinatesBuilder.buildSubmitRequest(coordinates, finalChapterTitle, contentResult.getContent());
 
 			// Submit for processing
 			SubmitChapterResponse response = ingestionService.submitChapter(request);

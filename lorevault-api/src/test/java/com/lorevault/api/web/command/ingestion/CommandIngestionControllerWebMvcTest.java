@@ -59,7 +59,7 @@ class CommandIngestionControllerWebMvcTest {
         MockMultipartFile file = new MockMultipartFile("file", "chapter.txt", "text/plain", "Some valid content".getBytes());
 
         when(fileUploadValidator.validateFile(any())).thenReturn(FileUploadValidator.ValidationResult.success());
-        when(coordinatesBuilder.validateCoordinates(anyString(), any(), any(), any(), any())).thenReturn(CoordinatesBuilder.CoordinateValidationResult.success());
+        when(coordinatesBuilder.validateCoordinates(anyString(), any(), any(), any(), any(), any())).thenReturn(CoordinatesBuilder.CoordinateValidationResult.success());
 
         FileContentExtractor.ContentExtractionResult extractionResult = FileContentExtractor.ContentExtractionResult.success("Some valid content", "chapter.txt");
         when(fileContentExtractor.extractFileContent(any())).thenReturn(extractionResult);
@@ -68,7 +68,7 @@ class CommandIngestionControllerWebMvcTest {
         when(coordinatesBuilder.validateTitleLength(anyString())).thenReturn(CoordinatesBuilder.CoordinateValidationResult.success());
 
         PublicationCoordinates coords = new PublicationCoordinates();
-        when(coordinatesBuilder.buildCoordinates(anyString(), any(), any(), any())).thenReturn(coords);
+        when(coordinatesBuilder.buildCoordinates(anyString(), any(), any(), any(), any())).thenReturn(coords);
 
         SubmitChapterRequest builtRequest = new SubmitChapterRequest();
         when(coordinatesBuilder.buildSubmitRequest(eq(coords), eq("My Chapter Title"), eq("Some valid content"))).thenReturn(builtRequest);
@@ -88,9 +88,10 @@ class CommandIngestionControllerWebMvcTest {
                         .file(file)
                         .param("universe", "Middle Earth")
                         .param("series", "LOTR")
+                        .param("bookTitle", "The Fellowship of the Ring")
                         .param("bookNumber", "1")
                         .param("chapterNumber", "1")
-                        .param("title", "My Chapter Title")
+                        .param("chapterTitle", "My Chapter Title")
         )
                 .andExpect(MockMvcResultMatchers.status().isAccepted())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.jobId").value(jobId.toString()))
@@ -107,6 +108,7 @@ class CommandIngestionControllerWebMvcTest {
                 MockMvcRequestBuilders.multipart("/api/command/ingest")
                         .file(emptyFile)
                         .param("universe", "Middle Earth")
+                        .param("bookTitle", "Test Book")
                         .param("bookNumber", "1")
                         .param("chapterNumber", "1")
         )
@@ -130,6 +132,7 @@ class CommandIngestionControllerWebMvcTest {
                 MockMvcRequestBuilders.multipart("/api/command/ingest")
                         .file(file)
                         .param("universe", "Middle Earth")
+                        .param("bookTitle", "Test Book")
                         .param("bookNumber", "1")
                         .param("chapterNumber", "1")
         )
@@ -144,7 +147,7 @@ class CommandIngestionControllerWebMvcTest {
 
         CoordinatesBuilder.CoordinateValidationResult coordFailure = CoordinatesBuilder.CoordinateValidationResult.failure(
                 "MISSING_UNIVERSE", "Universe parameter is required");
-        when(coordinatesBuilder.validateCoordinates(anyString(), any(), any(), any(), any())).thenReturn(coordFailure);
+        when(coordinatesBuilder.validateCoordinates(anyString(), any(), any(), any(), any(), any())).thenReturn(coordFailure);
         when(errorResponseFactory.createCoordinateValidationError(eq(coordFailure)))
                 .thenReturn(ResponseEntity.badRequest().body(null));
 
@@ -152,6 +155,7 @@ class CommandIngestionControllerWebMvcTest {
                 MockMvcRequestBuilders.multipart("/api/command/ingest")
                         .file(file)
                         .param("universe", " ")
+                        .param("bookTitle", "Test Book")
                         .param("bookNumber", "1")
                         .param("chapterNumber", "1")
         )
@@ -163,7 +167,7 @@ class CommandIngestionControllerWebMvcTest {
         MockMultipartFile file = new MockMultipartFile("file", "chapter.txt", "text/plain", "content".getBytes());
 
         when(fileUploadValidator.validateFile(any())).thenReturn(FileUploadValidator.ValidationResult.success());
-        when(coordinatesBuilder.validateCoordinates(anyString(), any(), any(), any(), any())).thenReturn(CoordinatesBuilder.CoordinateValidationResult.success());
+        when(coordinatesBuilder.validateCoordinates(anyString(), any(), any(), any(), any(), any())).thenReturn(CoordinatesBuilder.CoordinateValidationResult.success());
 
         IOException io = new IOException("read error");
         FileContentExtractor.ContentExtractionResult failure = FileContentExtractor.ContentExtractionResult.failure("chapter.txt", "Failed", io);
@@ -175,6 +179,7 @@ class CommandIngestionControllerWebMvcTest {
                 MockMvcRequestBuilders.multipart("/api/command/ingest")
                         .file(file)
                         .param("universe", "Middle Earth")
+                        .param("bookTitle", "Test Book")
                         .param("bookNumber", "1")
                         .param("chapterNumber", "1")
         )
@@ -186,7 +191,7 @@ class CommandIngestionControllerWebMvcTest {
         MockMultipartFile file = new MockMultipartFile("file", "chapter.txt", "text/plain", "content".getBytes());
 
         when(fileUploadValidator.validateFile(any())).thenReturn(FileUploadValidator.ValidationResult.success());
-        when(coordinatesBuilder.validateCoordinates(anyString(), any(), any(), any(), any())).thenReturn(CoordinatesBuilder.CoordinateValidationResult.success());
+        when(coordinatesBuilder.validateCoordinates(anyString(), any(), any(), any(), any(), any())).thenReturn(CoordinatesBuilder.CoordinateValidationResult.success());
 
         FileContentExtractor.ContentExtractionResult extractionResult = FileContentExtractor.ContentExtractionResult.success("Some valid content", "chapter.txt");
         when(fileContentExtractor.extractFileContent(any())).thenReturn(extractionResult);
@@ -204,9 +209,10 @@ class CommandIngestionControllerWebMvcTest {
                 MockMvcRequestBuilders.multipart("/api/command/ingest")
                         .file(file)
                         .param("universe", "Middle Earth")
+                        .param("bookTitle", "Test Book")
                         .param("bookNumber", "1")
                         .param("chapterNumber", "1")
-                        .param("title", longTitle)
+                        .param("chapterTitle", longTitle)
         )
                 .andExpect(MockMvcResultMatchers.status().isBadRequest());
     }
@@ -216,7 +222,7 @@ class CommandIngestionControllerWebMvcTest {
         MockMultipartFile file = new MockMultipartFile("file", "chapter.txt", "text/plain", "Some valid content".getBytes());
 
         when(fileUploadValidator.validateFile(any())).thenReturn(FileUploadValidator.ValidationResult.success());
-        when(coordinatesBuilder.validateCoordinates(anyString(), any(), any(), any(), any())).thenReturn(CoordinatesBuilder.CoordinateValidationResult.success());
+        when(coordinatesBuilder.validateCoordinates(anyString(), any(), any(), any(), any(), any())).thenReturn(CoordinatesBuilder.CoordinateValidationResult.success());
 
         FileContentExtractor.ContentExtractionResult extractionResult = FileContentExtractor.ContentExtractionResult.success("Some valid content", "chapter.txt");
         when(fileContentExtractor.extractFileContent(any())).thenReturn(extractionResult);
@@ -225,7 +231,7 @@ class CommandIngestionControllerWebMvcTest {
         when(coordinatesBuilder.validateTitleLength(anyString())).thenReturn(CoordinatesBuilder.CoordinateValidationResult.success());
 
         PublicationCoordinates coords = new PublicationCoordinates();
-        when(coordinatesBuilder.buildCoordinates(anyString(), any(), any(), any())).thenReturn(coords);
+        when(coordinatesBuilder.buildCoordinates(anyString(), any(), any(), any(), any())).thenReturn(coords);
         SubmitChapterRequest builtRequest = new SubmitChapterRequest();
         when(coordinatesBuilder.buildSubmitRequest(eq(coords), eq("Title"), eq("Some valid content"))).thenReturn(builtRequest);
 
@@ -238,6 +244,7 @@ class CommandIngestionControllerWebMvcTest {
                         .file(file)
                         .param("universe", "Middle Earth")
                         .param("series", "LOTR")
+                        .param("bookTitle", "Test Book")
                         .param("bookNumber", "1")
                         .param("chapterNumber", "1")
         )
