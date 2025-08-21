@@ -1,0 +1,58 @@
+name: Generate Issues from Docs
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: true
+        default: 'dry-run'
+        type: choice
+        options:
+        - dry-run
+        - create
+      limit:
+        description: 'Max issues to create'
+        required: false
+        default: '25'
+        type: string
+      branch:
+        description: 'Branch for source links'
+        required: false
+        default: 'main'
+        type: string
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Run issue generator
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ inputs.branch }}
+        run: |
+          python scripts/generate_issues.py \
+            --mode "${{ inputs.mode }}" \
+            --limit "${{ inputs.limit }}" \
+            --branch "${{ inputs.branch }}"
+            
+      - name: Add issues to project (if PROJECT_URL is set)
+        if: inputs.mode == 'create' && vars.PROJECT_URL
+        uses: actions/add-to-project@v0.5.0
+        with:
+          project-url: ${{ vars.PROJECT_URL }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          labeled: ai/task
+          label-operator: OR
