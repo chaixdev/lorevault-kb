@@ -23,6 +23,12 @@ public final class CertaintyWeights {
     }
 
     public static double weightOf(CertaintyLevel level) {
+        if (level == null) {
+            // Default to HEURISTIC weight for unknown/null certainty levels
+            // This handles the edge case where consecutive scene edges have no explicit certainty
+            return WEIGHTS.get(CertaintyLevel.HEURISTIC);
+        }
+        
         Double w = WEIGHTS.get(level);
         if (w == null) {
             throw new IllegalArgumentException("No weight for certainty level: " + level);
