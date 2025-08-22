@@ -17,7 +17,8 @@ Before implementing any issue, the LLM MUST gather complete context:
 📖 REQUIRED READING:
 - /docs/project_summary.md (complete system vision and architecture)
 - /docs/architecture/ (all viewpoint documents for architectural context)
-- /docs/spec/ (relevant specifications for the feature domain)
+- /docs/development/current/data-model/ (current database schemas and entity models)
+- /docs/development/current/processes/ (current business process specifications)
 ```
 
 #### 1.2 Assess Current Implementation State
@@ -155,7 +156,7 @@ Please provide guidance on: [Specific questions]
 
 #### 4.1 Test Design First (MANDATORY)
 
-**Follow the Testing Strategy**: Refer to `/docs/development/testing/developer-testing-workflow.md` for the complete testing workflow, Maven commands, and quality gates.
+**Follow the Testing Strategy**: Refer to `/docs/development/current/testing/developer-testing-workflow.md` for the complete testing workflow, Maven commands, and quality gates.
 
 **Key Principles**:
 - Service-level tests are the primary focus (business behavior validation)
@@ -193,7 +194,7 @@ class [ServiceName]Test {
 
 #### 5.1 🧪 TEST VALIDATION GATE: "Tests Define and Verify Behavior"
 
-**The LLM MUST verify test quality and coverage using the workflow from `/docs/development/testing/developer-testing-workflow.md`**:
+**The LLM MUST verify test quality and coverage using the workflow from `/docs/development/current/testing/developer-testing-workflow.md`**:
 
 ```markdown
 🔍 TEST VALIDATION CHECKLIST FOR ISSUE [Issue Number]
@@ -256,10 +257,13 @@ class [ServiceName]Test {
 **⚠️ PREREQUISITE**: Documentation may ONLY begin after successful test validation and user verification from Phase 5.
 
 **Update relevant documentation**:
+
 - **Architecture docs** (`/docs/architecture/`): If architectural impact
-- **Spec docs** (`/docs/spec/`): If data model or process changes
-- **API documentation**: If new endpoints or changes (e.g., placeholder behaviors)  
-- **Testing documentation**: Update testing examples if new patterns introduced
+- **Current data model** (`/docs/development/current/data-model/`): If data model changes
+- **Current processes** (`/docs/development/current/processes/`): If process changes  
+- **API documentation** (`/docs/api/`): If new endpoints or changes
+- **Testing documentation** (`/docs/development/current/testing/`): Update testing examples if new patterns introduced
+- **Implementation notes** (`/docs/development/versions/vX.Y.Z/implementation/`): Document patterns discovered, integration challenges, trade-offs made, and lessons learned during implementation
 - **README**: If user-facing changes
 
 **Documentation focus**: Why decisions were made, architectural impact, integration points, testing approach
@@ -268,8 +272,7 @@ class [ServiceName]Test {
 
 **⚠️ IMPORTANT**: Must commit changes after documentation is complete.
 
-
-####  Commit Instructions
+#### Commit Instructions
 
 **The LLM MUST provide these exact git commands**:
 
@@ -286,11 +289,24 @@ git commit -m "
 git push origin main
 ```
 
+## Release Process
+
+**Reference**: See `.github/instructions/RELEASING.md` for the complete lightweight release process.
+
+**Key Release Steps**:
+1. **Run tests**: `mvn -q -DskipTests=false test`
+2. **Set release version**: `mvn -q versions:set -DnewVersion=X.Y.Z`
+3. **Commit and tag**: `git commit -m "release: X.Y.Z" && git tag -a vX.Y.Z -m "LoreVault X.Y.Z"`
+4. **Push**: `git push && git push --tags`
+5. **Prepare next snapshot**: `mvn -q versions:set -DnewVersion=X.Y.Z+1-SNAPSHOT`
+
+**When to trigger releases**: After successful feature completion and user verification, when preparing for milestone deliveries, or when coordinating with project maintainer.
+
 ## Decision Making Guidelines
 
 **Reference**: See `/github/instructions/CORE_DEVELOPMENT_PHILOSOPHY.md` for comprehensive decision framework.
 
-**Testing Reference**: See `/docs/development/testing/developer-testing-workflow.md` for detailed testing workflow, Maven profiles, and quality gates.
+**Testing Reference**: See `/docs/development/current/testing/developer-testing-workflow.md` for detailed testing workflow, Maven profiles, and quality gates.
 
 **When in doubt**: Refer to `/docs/architecture/` for architectural patterns and existing codebase for Spring Boot conventions.
 
