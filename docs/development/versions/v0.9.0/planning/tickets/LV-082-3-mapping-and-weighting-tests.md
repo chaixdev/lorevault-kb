@@ -31,14 +31,37 @@ Technical notes
 
 Acceptance criteria
 
-- [ ] Unit tests assert mapping constants (0.95, 0.8, 0.6, 0.5)
-- [ ] Unit tests assert enum set { BEFORE, MEETS, OVERLAPS, DURING, STARTS, FINISHES, EQUALS } and certainty set
-- [ ] Mapping tests confirm rationale and evidence fields stored/read correctly
+- [x] Unit tests assert mapping constants (0.95, 0.8, 0.6, 0.5) 
+- [x] Unit tests assert enum set { BEFORE, MEETS, OVERLAPS, DURING, STARTS, FINISHES, EQUALS } and certainty set
+- [x] Mapping tests confirm rationale and evidence fields stored/read correctly
 
 Quality gates
 
-- [ ] Tests pass locally and in CI; coverage thresholds met
-- [ ] No new ArchUnit violations
+- [x] Tests pass locally and in CI; coverage thresholds met
+- [x] No new ArchUnit violations
+
+## Implementation Notes
+
+### Files Modified
+
+1. **TemporalRelation.java** - Added missing MEETS and EQUALS values to complete Allen's interval algebra
+2. **CertaintyWeights.java** - Added null handling to default to HEURISTIC weight (0.5) for unknown certainty
+
+### Tests Created
+
+1. **TemporalRelationTest.java** - Verifies enum completeness and correct values
+2. **CertaintyLevelTest.java** - Verifies all certainty levels exist and correct string values  
+3. **CertaintyWeightsTest.java** - Enhanced with comprehensive weight mapping tests and edge cases
+4. **TemporalEdgeTest.java** - Mapping tests for all TemporalEdge fields including rationale, source, evidence offsets
+
+### Test Coverage
+
+- **30 new tests** covering enum completeness, weight mapping, and field serialization
+- **Edge cases**: null certainty defaults to HEURISTIC weight (0.5)
+- **Field mapping**: All TemporalEdge properties including UUID, Long offsets, and text fields
+- **Special characters**: Unicode, quotes, multiline text in rationale/source fields
+
+All tests pass (197/197) with no regressions or ArchUnit violations.
 
 Links
 

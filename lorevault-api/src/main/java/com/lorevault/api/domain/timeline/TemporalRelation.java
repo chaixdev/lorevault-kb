@@ -2,9 +2,11 @@ package com.lorevault.api.domain.timeline;
 
 public enum TemporalRelation {
     BEFORE,
-    AFTER,
-    DURING,
+    MEETS,
     OVERLAPS,
+    DURING,
     STARTS,
-    FINISHES
+    FINISHES,
+    EQUALS,
+    AFTER  // Keep for bidirectional convenience
 }
