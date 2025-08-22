@@ -23,6 +23,9 @@ public class SceneNode {
     private String contextSummary;
     private String text; // The actual scene text extracted from chapter
 
+    @DynamicLabels
+    private List<String> labels; // dynamic labels e.g., ["Event"] when scene is also an event
+
     @CreatedDate
     private LocalDateTime createdAt;
     @LastModifiedDate
@@ -33,13 +36,14 @@ public class SceneNode {
 
     @PersistenceCreator
     public SceneNode(UUID id, Integer sceneIndex, Long startOffset, Long endOffset, String contextSummary,
-                     String text, LocalDateTime createdAt, LocalDateTime updatedAt, List<SceneHasChunk> chunks) {
+                     String text, List<String> labels, LocalDateTime createdAt, LocalDateTime updatedAt, List<SceneHasChunk> chunks) {
         this.id = id;
         this.sceneIndex = sceneIndex;
         this.startOffset = startOffset;
         this.endOffset = endOffset;
         this.contextSummary = contextSummary;
         this.text = text;
+        this.labels = labels;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.chunks = chunks;
