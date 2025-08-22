@@ -1,5 +1,7 @@
 # Timeline APIs (initial)
 
+> **Research only - not an implementation target**
+
 Intent
 
 Provide minimal APIs to read Events and their temporal relationships to support early consumers and internal testing.

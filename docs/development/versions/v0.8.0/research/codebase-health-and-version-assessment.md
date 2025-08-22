@@ -1,4 +1,8 @@
+> **Research only - not an implementation target**
+
 # LoreVault Codebase Health & Version Assessment (Aug 21, 2025)
+
+> **Research only - not an implementation target**
 
 Author: GitHub Copilot (AI pair engineer)
 Branch analyzed: testing-rewrite-phase1

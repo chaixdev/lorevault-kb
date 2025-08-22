@@ -1,3 +1,5 @@
+> **Research only - not an implementation target**
+
 ###
 THIS ANALYSIS IS WORK IN PROGRESS AND SUBJECT TO BE DISCARDED COMPLETELY
 ###

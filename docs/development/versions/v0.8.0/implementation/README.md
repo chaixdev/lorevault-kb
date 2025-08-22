@@ -1,6 +1,6 @@
 # v0.8.0 Implementation History
 
-*Historical reference*
+Historical reference.
 
 This folder would contain implementation notes from v0.8.0 development. Since this version's implementation is now complete and historical, detailed implementation notes are primarily captured in:
 

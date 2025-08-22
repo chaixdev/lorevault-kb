@@ -1,3 +1,5 @@
+> **Research only - not an implementation target**
+
 # Testing Patterns for Growing Codebases
 
 ## Introduction

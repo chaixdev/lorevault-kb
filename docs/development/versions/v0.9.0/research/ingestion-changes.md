@@ -1,5 +1,7 @@
 # Ingestion Changes for Skeleton Timeline (v0.9.0)
 
+> **Research only - not an implementation target**
+
 Overview
 
 We extend the chapter ingestion to produce Events (from Scenes) and temporal links between consecutive scenes, with certainty and rationale captured.

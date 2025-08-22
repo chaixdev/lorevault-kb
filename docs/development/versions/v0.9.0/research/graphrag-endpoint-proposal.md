@@ -1,5 +1,7 @@
 # GraphRAG Endpoint Proposal (Research)
 
+> **Research only - not an implementation target**
+
 Status: Draft (research-only)
 
 Purpose

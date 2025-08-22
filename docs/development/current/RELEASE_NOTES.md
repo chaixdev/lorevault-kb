@@ -57,7 +57,7 @@ Highlights
 - Testing rewrite (phase 1): stabilized unit tests, pragmatic defaults, opt-in heavy checks
 - RAG/Query: AskController validation and in-memory semantic search adapter improvements
 - Health checks: Embedding/LLM health services with retry metrics
-- Versioning tooling: versions-maven-plugin integration, SCM metadata, RELEASING.md
+- Versioning tooling: versions-maven-plugin integration, SCM metadata, release procedures
 
 Changes
 
@@ -68,7 +68,7 @@ Changes
 
 Breaking/Behavioral notes
 
-- Some previously flaky tests are excluded by default; see module surefire config and RELEASING.md
+- Some previously flaky tests are excluded by default; see module surefire config and release procedures
 - Validation constraints: AskRequest (topK<=10, threshold<=1.0, question not blank)
 
 Known issues / caveats

@@ -1,5 +1,7 @@
 # v0.9.0 Scope — Timeline & Scene Events
 
+> **Research only - not an implementation target**
+
 Goal
 
 Make Scenes first-class Events (Entity subtype) with a skeleton timeline built during ingestion, enabling temporal queries and future timeline features.
