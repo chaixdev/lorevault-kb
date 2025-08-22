@@ -49,6 +49,7 @@ The LoreVault API implements a strict CQRS design that separates content ingesti
 - `GET /api/query/search/semantic/status` - Search availability
 - `POST /api/query/ask/vector` - Vector-based question answering
 - `POST /api/query/ask/rag` - RAG-powered question answering with citations
+ 
 - `GET /api/query/health` - System health and service status
 
 ## Detailed Workflow
@@ -86,7 +87,8 @@ sequenceDiagram
 **Content-Type**: `multipart/form-data`
 
 **Request Parameters**:
-```
+
+```text
 file: MultipartFile          (required) - .txt or .md file
 universe: string             (required) - Universe name (e.g., "Cosmere", "Middle Earth")
 series: string               (optional) - Series name (e.g., "Mistborn", "The Lord of the Rings")
@@ -97,53 +99,8 @@ title: string                (optional) - Chapter title (auto-extracted if omitt
 ```
 
 **Request Example**:
-```bash
-# Standalone book in a universe
-curl -X POST /api/command/ingest \
-  -F "file=@chapter1.md" \
-  -F "universe=Cosmere" \
-  -F "bookNumber=1" \
-  -F "chapterNumber=1" \
-  -F "title=Warbreaker - Chapter 1"
-
-# Book in a series
-curl -X POST /api/command/ingest \
-  -F "file=@chapter1.md" \
-  -F "universe=Cosmere" \
-  -F "series=Mistborn" \
-  -F "bookNumber=1" \
-  -F "chapterNumber=1" \
-  -F "title=The Final Empire - Chapter 1"
-```
-
-**Response Format**:
-```json
-{
-  "jobId": "550e8400-e29b-41d4-a716-446655440000",
-  "chapterId": "123e4567-e89b-12d3-a456-426614174000",
-  "status": "submitted",
-  "message": "Chapter submitted successfully for processing"
-}
-```
-
-**Validation Rules**:
-- File size limit: 1MB maximum
-- Supported file types: `.txt`, `.md` for now
-- Universe name: required, standard text (letters, numbers, spaces, hyphens, apostrophes)
-- Series name: optional, standard text (letters, numbers, spaces, hyphens, apostrophes) 
-- Book/chapter numbers: positive integers (1-based indexing)
-- Part number: positive integer if provided (1-based indexing)
-- Title: 1-500 characters if provided
-
-### Job Monitoring Domain
-
-#### Get Job Status
-
-**Endpoint**: `GET /api/query/jobs/{jobId}`  
-**Purpose**: Retrieve processing status for a specific job
-
-**Path Parameters**:
-```
+ 
+```text
 jobId: UUID (required) - Unique job identifier
 ```
 
@@ -186,7 +143,8 @@ jobId: UUID (required) - Unique job identifier
 **Purpose**: Retrieve list of jobs with optional filtering
 
 **Query Parameters**:
-```
+
+```text
 universe: string (optional) - Filter by universe (matches Chapter.coordinates.universe)
 status: string (optional) - One of [ACTIVE | QUEUED | PREPROCESSING_STARTED | DETECTING_SCENES | EMBEDDING_CHUNKS | COMPLETE | FAILED]
 limit: integer (optional, default: 20, min: 1, max: 100) - Page size
@@ -341,6 +299,55 @@ offset: integer (optional, default: 0, min: 0) - Pagination offset
 ```
 
 > Note: As of v0.8.1, citation fields `chapterId`, `bookNumber`, and `chapterNumber` are consolidated under `coordinates`. Clients should use `citations[i].coordinates.*` for publication context.
+
+#### Ask GraphRAG
+
+**Endpoint**: `POST /api/query/ask/graphrag`  
+**Purpose**: Graph-aware, timeline-ordered question answering that leverages Event sequencing up to a chapter-based spoiler gate. Designed to demonstrate incremental improvements separate from existing QA endpoints.
+**Status**: Planned for v0.8.6+
+
+**Request Format**:
+
+```json
+{
+  "question": "What happened so far?",
+  "filters": {
+    "universe": "Cosmere",
+    "series": "Mistborn",
+    "bookNumber": 1,
+    "uptoChapter": 15
+  },
+  "includeEvidence": false,
+  "topKEvents": 50
+}
+```
+
+Notes:
+
+- uptoChapter enforces chapter-level spoiler gating.
+- topKEvents limits context size; service orders Events by temporal edges with fallback to sceneIndex.
+- includeEvidence controls whether rationales/offsets are included in the response.
+
+**Response Format**:
+
+```json
+{
+  "answer": "So far, Vin has...",
+  "timeline": [
+    { "eventId": "e1", "title": "...", "description": "...", "chapterNumber": 1, "sceneIndex": 1 },
+    { "eventId": "e2", "title": "...", "description": "...", "chapterNumber": 1, "sceneIndex": 2 }
+  ],
+  "evidence": [
+    { "fromEventId": "e1", "toEventId": "e2", "temporalRelation": "MEETS", "certainty": "HEURISTIC", "rationale": "Chapter sequence" }
+  ],
+  "metadata": {
+    "question": "What happened so far?",
+    "uptoChapter": 15,
+    "usedEvents": 32,
+    "processingTimeMs": 1120
+  }
+}
+```
 
 ### System Health Domain
 

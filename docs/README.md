@@ -16,9 +16,17 @@
   - `collections/` - Postman collections for testing
 
 ### Development Resources
-- **[Development](development/)** - Testing strategies, guidelines, and research
-  - `planning/` - Roadmaps, proposals, and analysis
-  - `research/` - Experiments, prototypes, and explorations
+- **[Development](development/)** - Version-organized development documentation
+  - `v0.9.0/` - Scene→Event (Timeline) milestone
+    - `research/` - Requirements and model exploration
+    - `planning/` - Implementation roadmap and design
+    - `implementation/` - Implementation notes and patterns
+  - `v0.8.0/` - Current version development history
+    - `research/` - Foundational research and explorations
+    - `planning/` - Roadmaps, proposals, and analysis
+    - `testing/` - Testing strategies and patterns
+  - `data-model/` - Current state database schemas and entity models
+  - `processes/` - Current state business process specifications
   - **[Multi-Provider LLM Configuration](development/multi-provider-llm-configuration.md)** - AI provider setup
 
 ### Visual Documentation
@@ -35,11 +43,13 @@ This structure was reorganized in v0.7.1 to improve navigation and separate conc
 ## 📖 Navigation
 
 For specific documentation needs:
+
 - **API Development**: Start with `api/specifications/rest-api-specification.md`
-- **System Understanding**: Begin with `architecture/README.md` 
-- **Data Integration**: See `data-model/neo4j-content-data-model.md`
-- **Testing**: Reference `development/testing-strategy.md`
-- **Future Planning**: Browse `development/planning/`
+- **System Understanding**: Begin with `architecture/README.md`
+- **Data Integration**: See `development/data-model/neo4j-content-data-model.md`
+- **Current Processes**: Reference `development/processes/`
+- **v0.9.0 Planning**: Browse `development/v0.9.0/planning/`
+- **Historical Research**: See `development/v0.8.0/research/`
 
 ## 🔧 Update Instructions
 

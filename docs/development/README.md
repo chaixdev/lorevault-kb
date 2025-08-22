@@ -1,75 +1,79 @@
-# Development Resources
+# Development Documentation
+
+## Structure Overview
+
+Development documentation is organized by version with clear phases for each development cycle:
+
+### Version Folders
+- **[v0.9.0/](v0.9.0/)** - Scene→Event (Timeline) milestone
+- **[v0.8.0/](v0.8.0/)** - Current version development history
+
+### Phase Structure (per version)
+- **research/** - Requirements exploration, model research, and technical discovery
+- **planning/** - Implementation roadmaps, design decisions, and delivery plans  
+- **implementation/** - Implementation notes, patterns discovered, and lessons learned
+
+### Current State Documentation
+- **[data-model/](data-model/)** - Current database schemas and entity models
+- **[processes/](processes/)** - Current business process specifications
 
 ## Configuration & Setup
 
 - **[Multi-Provider LLM Configuration](multi-provider-llm-configuration.md)** - AI provider setup and configuration
-
-## Testing & Quality
-
-- **[Testing Strategy](testing-strategy-v2-concise.md)** - ✅ **IMPLEMENTED** - Comprehensive testing strategy with 81 tests, quality gates enforced
-- **[Testing Strategy (Detailed)](testing-strategy.md)** - Extended documentation and patterns
+- **[Release Notes](RELEASE_NOTES.md)** - Version history and changes
+- **[Releasing Process](RELEASING.md)** - Release procedures and guidelines
 - **[Spec Documentation Guidelines](SPEC_DOCUMENTATION_GUIDELINES.md)** - Standards for technical documentation
-
-### Testing Implementation Status
-- ✅ **Phase 1 Complete**: Modern test architecture with ports & adapters principles (35 test files, 81 tests)
-- ✅ **Phase 2 Complete**: Quality gates implemented - JaCoCo coverage (85%), PIT mutation (80%), ArchUnit rules
-- ⏳ **Phase 3 Active**: CI optimization and documentation updates
-
-## Planning & Analysis
-
-### Roadmap Evolution
-- **[HITL Ingestion Proposal](planning/hitl-ingestion-proposal.md)** - Human-in-the-loop workflow design  
-- **[HITL QA](planning/hitl-qa.md)** - Interactive question answering proposals
-- **[Roadmap Revision v0.4.0-v3.0.0](planning/roadmap-revision-v0.4.0-v3.0.0.md)** - Long-term feature planning
-
-## Research & Experiments
-
-### Data Model Research
-- **[Entity-Claims Model](research/entity-claims-model.md)** - Knowledge representation experiments
-- **[Core Domain Model](research/core-domain-model-and-graph-process-restructured.md)** - Graph structure analysis
-- **[Claims Examples & Schema](research/claims.*)** - Experimental claim formats
-
-### Prototypes & Examples  
-- **[Sample Chapter](research/sample_chapter.md)** - Test content for development
-- **[Multi-Model Example](research/multi-model-example.yml)** - Configuration patterns
-- **[Discussion Notes](research/discussion.md)** - Design decision rationale
 
 ## Development Philosophy
 
-Follow the **LLM Development Plan** principles:
-1. **Context First**: Read architecture and specs before coding
-2. **Test-Driven**: Write service tests before implementation  
-3. **Iterative Design**: Present alternatives and collaborate on solutions
-4. **Clean Integration**: Leverage existing ports and Spring Boot patterns
+Follow the **Version-Driven Development** principles:
+
+1. **Research First**: Explore requirements and technical options in research/ folders
+2. **Plan Incrementally**: Break down milestones into testable, deliverable increments
+3. **Document Implementation**: Capture patterns, decisions, and lessons in implementation/ folders
+4. **Maintain Current State**: Keep data-model/ and processes/ as living documentation of current system
+
+## Navigation Guide
+
+### For Current Development (v0.9.0)
+- **Understanding scope**: Start with `v0.9.0/research/scope.md`
+- **Implementation plan**: See `v0.9.0/planning/v0.9.0-scene-to-event-entity-plan.md`
+- **Technical details**: Browse all files in `v0.9.0/research/`
+
+### For Historical Context
+- **Previous research**: See `v0.8.0/research/` for foundational explorations
+- **Testing evolution**: See `v0.8.0/testing/` for testing strategy development
+
+### For Current System Understanding
+- **Data structures**: See `data-model/neo4j-content-data-model.md`
+- **Business processes**: Browse `processes/` for current specifications
 
 ## 🔧 Update Instructions
 
 **For LLM Assistants and Contributors:**
 
-### Folder Boundaries
-- **Root level**: Core development practices, testing strategies, documentation guidelines
-- **planning/**: Strategic documents, roadmaps, and formal proposals
-- **research/**: Experiments, prototypes, and exploratory work
-- **Do not add**: API specs (go to `../api/`), final data models (go to `../data-model/`)
+### Version Boundaries
+- **Active development**: Add to current milestone folder (v0.9.0)
+- **Historical preservation**: Never delete previous version folders
+- **Current state**: Update data-model/ and processes/ as system evolves
 
-### When Adding Development Documentation
-- **Testing changes**: Update `testing-strategy.md`
-- **New guidelines**: Update `SPEC_DOCUMENTATION_GUIDELINES.md`
-- **Strategic planning**: Add to `planning/` with clear naming
-- **Experiments**: Add to `research/` with date prefixes if temporary
+### Phase Guidelines
+- **research/**: Requirements, models, API proposals, open questions
+- **planning/**: Roadmaps, implementation plans, delivery schedules
+- **implementation/**: Code patterns, deployment notes, post-implementation analysis
 
-### Content Organization Rules
-- **planning/**: Formal documents that influence development direction
-- **research/**: Temporary or experimental content that may be archived
-- **Root level**: Stable development practices and guidelines
+### When Adding Documentation
+- **New research**: Add to current version research/ folder
+- **Implementation plans**: Add to current version planning/ folder
+- **System changes**: Update current state folders (data-model/, processes/)
+- **Configuration**: Update root-level files
 
-### Cross-Reference Requirements
-- **Reference implementations**: Use relative paths to actual code
-- **Link to specs**: Use `../api/`, `../data-model/`, `../processes/` as appropriate
-- **Architecture context**: Use `../architecture/` for design decisions
+### Cross-Reference Rules
+- **Within version**: Use relative paths within version folders
+- **Cross-version**: Use absolute paths from development/ root
+- **External docs**: Use `../api/`, `../architecture/` as appropriate
 
-### Version Control Practices
-- Keep research files for historical context
-- Archive obsolete planning documents rather than deleting
-- Maintain clear distinction between active vs. historical content
-- Use semantic versioning for guideline documents
+### Version Migration
+- **New milestone**: Create new version folder with research/planning/implementation structure
+- **Archive previous**: Leave previous version folders intact for historical reference
+- **Update current**: Move data-model/ and processes/ content as system evolves
