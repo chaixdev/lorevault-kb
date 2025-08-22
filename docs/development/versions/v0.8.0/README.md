@@ -6,6 +6,7 @@
 ## Phase Overview
 
 ### [Research](research/)
+
 Historical research and explorations that shaped the current system:
 
 - **[Core Domain Model](research/core-domain-model-and-graph-process-restructured.md)** - Graph structure analysis
@@ -14,6 +15,7 @@ Historical research and explorations that shaped the current system:
 - **[UI Functionality Design](research/ui-functionality-and-api-design.md)** - User interface planning
 
 ### [Planning](planning/)
+
 Strategic planning documents that guided v0.8.0 development:
 
 - **[CQRS Query Design](planning/cqrs-query-side-design-exploration.md)** - Query architecture exploration
@@ -22,6 +24,7 @@ Strategic planning documents that guided v0.8.0 development:
 - **[Test Rewrite Planning](planning/test-rewrite-inventory.md)** - Testing strategy evolution
 
 ### [Testing](testing/)
+
 Testing strategy development and quality assurance:
 
 - **[Testing Strategy v2](testing/testing-strategy-v2-concise.md)** - ✅ **IMPLEMENTED** - Comprehensive testing approach
@@ -29,7 +32,8 @@ Testing strategy development and quality assurance:
 - **[CI Test Profiles](testing/ci-test-profiles.md)** - Continuous integration setup
 
 ### [Implementation](implementation/)
-*Historical implementation notes would go here*
+
+Historical implementation notes would go here.
 
 ## Key Achievements
 
@@ -44,4 +48,4 @@ This version established the foundational architecture and testing practices tha
 
 ## Migration Notes
 
-These documents remain as historical reference. Active development has moved to v0.9.0 with the new versioned structure. Current system state is documented in the root-level data-model/ and processes/ folders.
+These documents remain as historical reference. Active development has moved to v0.9.0 with the new versioned structure. Current system state is documented in `development/current/data-model/` and `development/current/processes/`.
