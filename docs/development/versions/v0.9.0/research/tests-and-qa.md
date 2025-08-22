@@ -1,5 +1,7 @@
 # Tests and QA — v0.9.0
 
+> **Research only - not an implementation target**
+
 Test Themes
 
 - Model validation for Event and TemporalEdge

@@ -1,5 +1,7 @@
 # Open Questions — v0.9.0
 
+> **Research only - not an implementation target**
+
 Priorities
 
 - Which business use-cases depend first on timeline? (e.g., "what was known by X?", "order scenes for recap")

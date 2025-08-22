@@ -1,4 +1,9 @@
+> **Research only - not an implementation target**
+
 # Narrative → Knowledge Graph: the Entity-Claim conceptual model
+
+> **Research only - not an implementation target**
+
 ---
 
 ## 1) Core principles

@@ -1,3 +1,5 @@
+> **Research only - not an implementation target**
+
 # LoreVault Claims–Entities Core Domain Model and Graph Process (POC)
 
 This is the introduction and reference for LoreVault's core Claims–Entities model and the end‑to‑end graph‑building process. It consolidates decisions and rationales from prior design notes and fixes conflicts in favor of the current POC model.
