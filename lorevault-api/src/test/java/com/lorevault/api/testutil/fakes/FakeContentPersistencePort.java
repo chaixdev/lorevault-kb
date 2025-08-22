@@ -5,6 +5,7 @@ import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionJob;
+import com.lorevault.api.domain.ingestion.LlmCallRecord;
 import com.lorevault.api.domain.ingestion.StatusRecord;
 
 import java.time.LocalDateTime;
@@ -22,6 +23,7 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
     public final Map<UUID, List<Chunk>> chunksByChapter = new ConcurrentHashMap<>();
     public final Map<UUID, IngestionJob> jobs = new ConcurrentHashMap<>();
     public final Map<UUID, List<StatusRecord>> statusByJob = new ConcurrentHashMap<>();
+    public final Map<UUID, List<LlmCallRecord>> llmCallsByJob = new ConcurrentHashMap<>();
 
     @Override
     public Chapter createChapter(Chapter chapter) {
@@ -198,5 +200,24 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
     @Override
     public List<Chapter> findChaptersByUniverse(String universe) {
         return chapters.values().stream().filter(c -> Objects.equals(c.getUniverse(), universe)).toList();
+    }
+
+    @Override
+    public LlmCallRecord addLlmCallRecord(LlmCallRecord record) {
+        if (record.getId() == null) record.setId(UUID.randomUUID());
+        llmCallsByJob.computeIfAbsent(record.getJobId(), k -> new ArrayList<>()).add(record);
+        return record;
+    }
+
+    @Override
+    public List<LlmCallRecord> findLlmCallsByJob(UUID jobId) {
+        return llmCallsByJob.getOrDefault(jobId, List.of());
+    }
+
+    @Override
+    public List<LlmCallRecord> findLlmCallsByJobAndStep(UUID jobId, String step) {
+        return llmCallsByJob.getOrDefault(jobId, List.of()).stream()
+                .filter(record -> Objects.equals(record.getStep(), step))
+                .collect(Collectors.toList());
     }
 }

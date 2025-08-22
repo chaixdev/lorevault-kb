@@ -4,12 +4,14 @@ import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionJob;
+import com.lorevault.api.domain.ingestion.LlmCallRecord;
 import com.lorevault.api.domain.ingestion.StatusRecord;
 import com.lorevault.api.dto.shared.PublicationCoordinates;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.LlmCallRecordNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.StatusRecordNode;
 import org.springframework.stereotype.Component;
 
@@ -212,5 +214,60 @@ public class Neo4jMapper {
 
     public List<StatusRecord> toStatusRecordDomainList(List<StatusRecordNode> nodes) {
         return nodes.stream().map(this::toDomain).collect(Collectors.toList());
+    }
+
+    // LlmCallRecord
+    public LlmCallRecord toDomain(LlmCallRecordNode node) {
+        if (node == null) return null;
+        LlmCallRecord d = new LlmCallRecord();
+        d.setId(node.getId());
+        d.setJobId(node.getJobId());
+        d.setStatusRecordId(node.getStatusRecordId());
+        d.setStep(node.getStep());
+        d.setProvider(node.getProvider());
+        d.setModel(node.getModel());
+        d.setTemperature(node.getTemperature());
+        d.setTopP(node.getTopP());
+        d.setMaxTokens(node.getMaxTokens());
+        d.setLatencyMs(node.getLatencyMs());
+        d.setInputTokens(node.getInputTokens());
+        d.setOutputTokens(node.getOutputTokens());
+        d.setTokensEstimated(node.getTokensEstimated());
+        d.setPromptTemplateId(node.getPromptTemplateId());
+        d.setStoreRenderedPrompt(node.getStoreRenderedPrompt());
+        d.setRenderedPrompt(node.getRenderedPrompt());
+        d.setInputPreview(node.getInputPreview());
+        d.setResponseBody(node.getResponseBody());
+        d.setResponseHash(node.getResponseHash());
+        d.setTruncated(node.getTruncated());
+        d.setCreatedAt(node.getCreatedAt());
+        return d;
+    }
+
+    public LlmCallRecordNode toNode(LlmCallRecord d) {
+        if (d == null) return null;
+        LlmCallRecordNode n = new LlmCallRecordNode();
+        n.setId(d.getId());
+        n.setJobId(d.getJobId());
+        n.setStatusRecordId(d.getStatusRecordId());
+        n.setStep(d.getStep());
+        n.setProvider(d.getProvider());
+        n.setModel(d.getModel());
+        n.setTemperature(d.getTemperature());
+        n.setTopP(d.getTopP());
+        n.setMaxTokens(d.getMaxTokens());
+        n.setLatencyMs(d.getLatencyMs());
+        n.setInputTokens(d.getInputTokens());
+        n.setOutputTokens(d.getOutputTokens());
+        n.setTokensEstimated(d.getTokensEstimated());
+        n.setPromptTemplateId(d.getPromptTemplateId());
+        n.setStoreRenderedPrompt(d.getStoreRenderedPrompt());
+        n.setRenderedPrompt(d.getRenderedPrompt());
+        n.setInputPreview(d.getInputPreview());
+        n.setResponseBody(d.getResponseBody());
+        n.setResponseHash(d.getResponseHash());
+        n.setTruncated(d.getTruncated());
+        n.setCreatedAt(d.getCreatedAt());
+        return n;
     }
 }

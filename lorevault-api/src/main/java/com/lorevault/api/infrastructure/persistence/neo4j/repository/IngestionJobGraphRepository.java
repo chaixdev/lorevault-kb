@@ -11,6 +11,13 @@ import java.util.UUID;
 public interface IngestionJobGraphRepository extends Neo4jRepository<IngestionJobNode, UUID> {
 
     @Query("""
+            MATCH (j:IngestionJob {id: $id})
+            OPTIONAL MATCH (j)-[:HAS_CURRENT_STATUS]->(cur:StatusRecord)
+            RETURN j, cur
+            """)
+    Optional<IngestionJobNode> findByIdWithCurrentStatus(UUID id);
+
+    @Query("""
             MATCH (j:IngestionJob {chapterId: $chapterId})
             OPTIONAL MATCH (j)-[:HAS_CURRENT_STATUS]->(cur:StatusRecord)
             RETURN j, cur

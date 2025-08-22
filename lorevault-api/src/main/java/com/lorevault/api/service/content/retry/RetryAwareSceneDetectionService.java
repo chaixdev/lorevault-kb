@@ -43,10 +43,10 @@ public class RetryAwareSceneDetectionService {
         updateJobStatus(jobId, String.format("Detecting scenes with retry (up to %d attempts)", retryConfig.getMaxAttempts()));
         
         // Execute scene detection with retry
-        LlmRetryResult<List<SceneWithCoordinates>> retryResult = llmRetryStrategy.executeWithRetry(
+    LlmRetryResult<List<SceneWithCoordinates>> retryResult = llmRetryStrategy.executeWithRetry(
                 "Scene Detection",
                 retryConfig,
-                () -> performFullSceneDetection(chapterId, chapterText)
+        () -> performFullSceneDetection(jobId, chapterId, chapterText)
         );
         
         if (retryResult.isSuccess()) {
@@ -76,10 +76,10 @@ public class RetryAwareSceneDetectionService {
     /**
      * Perform the complete scene detection pipeline (Two-pass LLM call + parsing + localization)
      */
-    private List<SceneWithCoordinates> performFullSceneDetection(UUID chapterId, String chapterText) {
+    private List<SceneWithCoordinates> performFullSceneDetection(UUID jobId, UUID chapterId, String chapterText) {
         try {
             // Two-pass scene detection: Pass 1 (segmentation) -> Pass 2 (normalization)
-            String finalXmlResponse = sceneDetectionClient.detectScenesTwoPass(chapterText);
+            String finalXmlResponse = sceneDetectionClient.detectScenesTwoPass(jobId, chapterText);
             
             // Step 2: Parse XML response 
             List<SceneDetectionResult> sceneResults = xmlParser.parseResponse(finalXmlResponse, chapterText.length());
