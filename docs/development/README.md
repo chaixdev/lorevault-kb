@@ -2,27 +2,34 @@
 
 ## Structure Overview
 
-Development documentation is organized by version with clear phases for each development cycle:
+Development documentation is organized into current system state and version-specific development cycles:
 
-### Version Folders
-- **[v0.9.0/](v0.9.0/)** - Scene→Event (Timeline) milestone
-- **[v0.8.0/](v0.8.0/)** - Current version development history
+### Current System Documentation
+- **[current/](current/)** - Current system state, configuration, and processes
+
+### Version-Specific Development
+- **[versions/](versions/)** - Version-organized development with clear phases
+  - **[v0.9.0/](versions/v0.9.0/)** - Scene→Event (Timeline) milestone
+  - **[v0.8.0/](versions/v0.8.0/)** - Foundation development history
 
 ### Phase Structure (per version)
 - **research/** - Requirements exploration, model research, and technical discovery
 - **planning/** - Implementation roadmaps, design decisions, and delivery plans  
 - **implementation/** - Implementation notes, patterns discovered, and lessons learned
 
-### Current State Documentation
-- **[data-model/](data-model/)** - Current database schemas and entity models
-- **[processes/](processes/)** - Current business process specifications
+## Current System State
 
-## Configuration & Setup
+### [Current Documentation](current/)
+- **[data-model/](current/data-model/)** - Current database schemas and entity models
+- **[processes/](current/processes/)** - Current business process specifications
+- **[testing/](current/testing/)** - Current testing strategies and practices
+- **[configuration/](current/configuration/)** - System configuration and setup guides
 
-- **[Multi-Provider LLM Configuration](multi-provider-llm-configuration.md)** - AI provider setup and configuration
-- **[Release Notes](RELEASE_NOTES.md)** - Version history and changes
-- **[Releasing Process](RELEASING.md)** - Release procedures and guidelines
-- **[Spec Documentation Guidelines](SPEC_DOCUMENTATION_GUIDELINES.md)** - Standards for technical documentation
+### Configuration & Setup
+- **[Multi-Provider LLM Configuration](current/configuration/multi-provider-llm-configuration.md)** - AI provider setup
+- **[Release Notes](current/RELEASE_NOTES.md)** - Version history and changes
+- **[Releasing Process](RELEASING.md)** - Release procedures and guidelines  
+- **[Spec Documentation Guidelines](current/SPEC_DOCUMENTATION_GUIDELINES.md)** - Documentation standards
 
 ## Development Philosophy
 
@@ -36,17 +43,18 @@ Follow the **Version-Driven Development** principles:
 ## Navigation Guide
 
 ### For Current Development (v0.9.0)
-- **Understanding scope**: Start with `v0.9.0/research/scope.md`
-- **Implementation plan**: See `v0.9.0/planning/v0.9.0-scene-to-event-entity-plan.md`
-- **Technical details**: Browse all files in `v0.9.0/research/`
+- **Understanding scope**: Start with `versions/v0.9.0/research/scope.md`
+- **Implementation plan**: See `versions/v0.9.0/planning/v0.9.0-scene-to-event-entity-plan.md`
+- **Technical details**: Browse all files in `versions/v0.9.0/research/`
 
 ### For Historical Context
-- **Previous research**: See `v0.8.0/research/` for foundational explorations
-- **Testing evolution**: See `v0.8.0/testing/` for testing strategy development
+- **Previous research**: See `versions/v0.8.0/research/` for foundational explorations
+- **Testing evolution**: See `versions/v0.8.0/testing/` for testing strategy development
 
 ### For Current System Understanding
-- **Data structures**: See `data-model/neo4j-content-data-model.md`
-- **Business processes**: Browse `processes/` for current specifications
+- **Data structures**: See `current/data-model/neo4j-content-data-model.md`
+- **Business processes**: Browse `current/processes/` for current specifications
+- **Testing practices**: See `current/testing/` for current strategies
 
 ## 🔧 Update Instructions
 

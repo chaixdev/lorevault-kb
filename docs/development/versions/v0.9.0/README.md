@@ -6,6 +6,7 @@
 ## Phase Overview
 
 ### [Research](research/)
+
 Requirements exploration and technical discovery for the Scene→Event transformation:
 
 - **[Scope Definition](research/scope.md)** - Milestone boundaries and acceptance criteria
@@ -14,12 +15,14 @@ Requirements exploration and technical discovery for the Scene→Event transform
 - **[Testing Strategy](research/tests-and-qa.md)** - Quality assurance and validation approach
 
 ### [Planning](planning/)
+
 Implementation roadmap and delivery strategy:
 
 - **[Implementation Plan](planning/v0.9.0-scene-to-event-entity-plan.md)** - Complete milestone roadmap with 0.8.x increments
 
 ### [Implementation](implementation/)
-*To be populated during development*
+
+To be populated during development.
 
 Implementation notes, patterns discovered, and lessons learned will be documented here as development progresses.
 
