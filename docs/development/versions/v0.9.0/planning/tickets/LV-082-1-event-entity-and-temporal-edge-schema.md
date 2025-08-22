@@ -51,3 +51,39 @@ Links
 
 - Planning: ../v0.9.0-scene-to-event-entity-plan.md#082—event-shell-and-storage-readiness
 - Research: ../../research/event-model.md
+
+## Dev Notes (Implementation Refinements)
+
+Modality and Labeling
+
+- Domain modality: `Scene` will implement a new `Event` interface to express event semantics in the business layer without persistence concerns.
+- Infrastructure modality: we will keep `SceneNode` as the single SDN entity mapped to label `Scene` and add dynamic labels (`@Labels`) to support dual-labeling `:Scene:Event` when a scene is also an event.
+- Rationale: avoids Spring Data Neo4j mapper conflicts (two @Node classes for one label) while enabling event-shaped queries via `:Scene:Event` filters.
+
+Repositories
+
+- Keep `ChapterNode` → `List<SceneNode>` for `HAS_SCENE`. No need to switch to `EventNode` type; queries can select `(s:Scene:Event)` where needed.
+- Keep `SceneGraphRepository`; add a minimal repository for temporal traversals (or methods on `SceneGraphRepository`) and a lightweight repository to fetch `:Scene:Event` nodes.
+- No public API behavior changes.
+
+Temporal Edge Properties
+
+- Direction: edge owner is earlier; target is later → `(earlier:Scene:Event)-[:TEMPORAL {…}]->(later:Scene:Event)`.
+- Keep both `certainty` (enum) and `weight` (double). `weight` is a denormalized numeric derived via `CertaintyWeights` for efficient sorting/algorithms in Cypher.
+- certainty→weight mapping (initial): Explicit=0.95, StronglyImplied=0.80, WeaklyImplied=0.60, Heuristic=0.50.
+
+Enums and Flags
+
+- Define enums: `TemporalRelation`, `CertaintyLevel`.
+- Defer flags/tags entirely per YAGNI (remove `EventFlag` from this ticket scope; add later when needed).
+
+Event Fields
+
+- `eventType` remains a String in domain (`Event` interface); no persistence fields added until required.
+- Title/description are domain-level getters; mapping may default to existing `Scene` fields (e.g., title from `contextSummary`) or remain null until populated by future features.
+
+Testing & Architecture
+
+- Unit-test only the `CertaintyWeights` mapping table.
+- No integration tests required in this ticket.
+- ArchUnit boundaries preserved (domain vs infrastructure separation maintained).

@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import com.lorevault.api.domain.timeline.Event;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -20,7 +21,7 @@ import java.util.ArrayList;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Scene {
+public class Scene implements Event {
     private UUID id;
 
     /**
@@ -102,5 +103,21 @@ public class Scene {
         if (chunks.remove(chunk)) {
             chunk.setScene(null);
         }
+    }
+
+    // --- Event interface mapping ---
+    @Override
+    public java.util.UUID getEventId() {
+        return id;
+    }
+
+    @Override
+    public Long getStartOffset() {
+        return startCharacterOffset;
+    }
+
+    @Override
+    public Long getEndOffset() {
+        return endCharacterOffset;
     }
 }
