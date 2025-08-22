@@ -82,19 +82,21 @@ public class Neo4jMapper {
 
     public SceneNode toNode(Scene domain) {
         if (domain == null) return null;
-    SceneNode node = new SceneNode();
+        SceneNode node = new SceneNode();
         node.setId(domain.getId());
         node.setSceneIndex(domain.getSceneIndex());
         node.setContextSummary(domain.getContextSummary());
-    node.setStartOffset(domain.getStartCharacterOffset());
-    node.setEndOffset(domain.getEndCharacterOffset());
+        node.setStartOffset(domain.getStartCharacterOffset());
+        node.setEndOffset(domain.getEndCharacterOffset());
         node.setText(domain.getText());
+        
+        // LV-083-1: Set dual labels for Scene→Event dual-write
+        node.setLabels(List.of("Event"));
+        
         node.setCreatedAt(domain.getCreatedAt());
         node.setUpdatedAt(domain.getUpdatedAt());
         return node;
-    }
-
-    // Chunk
+    }    // Chunk
     public Chunk toDomain(ChunkNode node) {
         if (node == null) return null;
         Chunk domain = new Chunk();

@@ -36,6 +36,7 @@ Acceptance criteria
 - [ ] Ingesting a sample chapter creates one :Event:Scene node per scene
 - [ ] Chapter HAS_SCENE edges point to :Event:Scene; HAS_CHUNK edges link Event→Chunk
 - [ ] Ingestion job output optionally lists created eventIds
+- [ ] After reingestion, there are 0 nodes labeled `:Scene` without `:Event`
 
 Quality gates
 
