@@ -65,11 +65,18 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
         ChapterNode chapterNode = chapterRepo.findById(chapterId).orElseThrow();
         SceneNode sceneNode = mapper.toNode(scene);
         if (sceneNode.getId() == null) sceneNode.setId(UUID.randomUUID());
-        sceneNode = sceneRepo.save(sceneNode);
-        var scenes = chapterNode.getScenes();
-        if (scenes != null) {
-            scenes.add(sceneNode);
+        // Ensure the scene carries the chapterId for efficient lookups when also labeled :Event
+        if (sceneNode.getChapterId() == null) {
+            sceneNode.setChapterId(chapterNode.getId());
         }
+        sceneNode = sceneRepo.save(sceneNode);
+        // Ensure HAS_SCENE relationship exists; initialize list if needed
+        var scenes = chapterNode.getScenes();
+        if (scenes == null) {
+            scenes = new ArrayList<>();
+            chapterNode.setScenes(scenes);
+        }
+        scenes.add(sceneNode);
         chapterRepo.save(chapterNode);
         return mapper.toDomain(sceneNode);
     }
