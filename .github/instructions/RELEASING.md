@@ -4,6 +4,8 @@ This document describes the lightweight release process to bump versions and tag
 
 We use the versions-maven-plugin for version changes. SCM metadata is set in the parent POM so git tags link correctly.
 
+> Approval gate: Do not bump versions or create tags without PM approval for the target version. Confirm the release scope and checklist before step 2.
+
 ## One-time setup
 
 - Ensure you have permission to push tags to the remote repository.
