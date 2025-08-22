@@ -34,9 +34,50 @@ Technical notes
 
 Acceptance criteria
 
-- [ ] Unique constraint exists on Event.eventId
-- [ ] Index exists to support per-chapter ordering via sceneIndex
-- [ ] Documentation notes how ordering query uses the index
+- [x] Unique constraint exists on Event.eventId
+- [x] Index exists to support per-chapter ordering via sceneIndex
+- [x] Documentation notes how ordering query uses the index
+
+## Implementation
+
+### Chosen Approach
+
+Scene and Event share the same `id` (polymorphism). Event is a dynamic label on Scene nodes using `@DynamicLabels` in Spring Data Neo4j.
+
+**Schema Changes:**
+
+- **Event identity constraint**: `CREATE CONSTRAINT event_id_unique IF NOT EXISTS FOR (e:Event) REQUIRE e.id IS UNIQUE`
+- **Per-chapter ordering index**: `CREATE INDEX event_per_chapter_scene_idx IF NOT EXISTS FOR (e:Event) ON (e.chapterId, e.sceneIndex)`
+
+**Model Changes:**
+
+- Added `chapterId` property to `SceneNode` for efficient per-chapter ordering when Scene is labeled as Event
+- Event identity uses the same `id` as Scene (no separate `eventId` property needed)
+
+### Usage Examples
+
+**Per-chapter Event ordering (uses composite index):**
+
+```cypher
+MATCH (e:Event {chapterId: $chapterId}) 
+RETURN e 
+ORDER BY e.sceneIndex
+```
+
+**Cross-chapter Event queries (benefits from Event.id unique constraint):**
+
+```cypher
+MATCH (e:Event) 
+WHERE e.id IN $eventIds 
+RETURN e
+```
+
+**Index verification:**
+
+```cypher
+SHOW INDEXES YIELD name, labelsOrTypes, properties 
+WHERE name IN ['event_id_unique', 'event_per_chapter_scene_idx']
+```
 
 Quality gates
 

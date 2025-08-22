@@ -36,6 +36,10 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     private static final String CHAPTER_CONTENT_HASH_UNIQUE =
             "CREATE CONSTRAINT chapter_contentHash_unique IF NOT EXISTS FOR (c:Chapter) REQUIRE c.contentHash IS UNIQUE";
 
+    // Event identity uniqueness (explicit, though Scene.id unique already enforces this)
+    private static final String EVENT_ID_UNIQUE =
+            "CREATE CONSTRAINT event_id_unique IF NOT EXISTS FOR (e:Event) REQUIRE e.id IS UNIQUE";
+
     // Read-path helper indexes (non-unique)
     private static final String CHAPTER_COORDS_INDEX =
             "CREATE INDEX chapter_coordinates IF NOT EXISTS FOR (c:Chapter) ON (c.universe, c.series, c.bookNumber, c.chapterNumber)";
@@ -43,6 +47,10 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE INDEX chunk_contentHash IF NOT EXISTS FOR (ch:Chunk) ON (ch.contentHash)";
     private static final String CHUNK_EMBEDDING_HASH_INDEX =
             "CREATE INDEX chunk_embeddingHash IF NOT EXISTS FOR (ch:Chunk) ON (ch.embeddingHash)";
+
+    // Per-chapter ordering index for events
+    private static final String EVENT_PER_CHAPTER_SCENE_INDEX =
+            "CREATE INDEX event_per_chapter_scene_idx IF NOT EXISTS FOR (e:Event) ON (e.chapterId, e.sceneIndex)";
 
     // Vector search index - Neo4j 5.x vector index for semantic search
     private static final String CHUNK_VECTOR_INDEX =
@@ -61,10 +69,16 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(STATUS_RECORD_ID_UNIQUE, "StatusRecord.id unique"));
         results.add(executeConstraint(CHAPTER_CONTENT_HASH_UNIQUE, "Chapter.contentHash unique"));
         
+        // Event identity constraint
+        results.add(executeConstraint(EVENT_ID_UNIQUE, "Event.id unique"));
+        
         // Create non-unique indexes
         results.add(executeIndex(CHAPTER_COORDS_INDEX, "Chapter coordinates"));
         results.add(executeIndex(CHUNK_CONTENT_HASH_INDEX, "Chunk.contentHash"));
         results.add(executeIndex(CHUNK_EMBEDDING_HASH_INDEX, "Chunk.embeddingHash"));
+        
+        // Event per-chapter ordering index
+        results.add(executeIndex(EVENT_PER_CHAPTER_SCENE_INDEX, "Event(chapterId, sceneIndex)"));
         
         // Create vector search index
         results.add(executeVectorIndex(CHUNK_VECTOR_INDEX, "Chunk embedding vector index"));
