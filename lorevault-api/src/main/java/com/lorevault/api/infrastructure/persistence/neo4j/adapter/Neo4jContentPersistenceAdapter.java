@@ -6,12 +6,14 @@ import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.StatusRecord;
+import com.lorevault.api.domain.ingestion.LlmCallRecord;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneHasChunk;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.*;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.LlmCallRecordNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,7 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     private final ChunkGraphRepository chunkRepo;
     private final IngestionJobGraphRepository jobRepo;
     private final StatusRecordGraphRepository statusRepo;
+    private final LlmCallRecordGraphRepository llmCallRepo;
     private final Neo4jMapper mapper;
 
     @Override
@@ -146,7 +149,8 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
 
     @Override
     public Optional<IngestionJob> findJob(UUID id) {
-        return jobRepo.findById(id).map(mapper::toDomain);
+    // Load job along with current status so callers can access currentStatus without additional queries
+    return jobRepo.findByIdWithCurrentStatus(id).map(mapper::toDomain);
     }
 
     @Override
@@ -202,6 +206,34 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     @Override
     public List<StatusRecord> findStatusHistoryForJob(UUID jobId) {
         return mapper.toStatusRecordDomainList(statusRepo.findStatusHistoryForJob(jobId));
+    }
+
+    // LLM Call Records
+    @Override
+    public LlmCallRecord addLlmCallRecord(LlmCallRecord record) {
+        LlmCallRecordNode node = mapper.toNode(record);
+        if (node.getId() == null) node.setId(UUID.randomUUID());
+        
+        // Establish relationships for Neo4j graph visualization
+        if (record.getJobId() != null) {
+            jobRepo.findById(record.getJobId()).ifPresent(node::setJob);
+        }
+        if (record.getStatusRecordId() != null) {
+            statusRepo.findById(record.getStatusRecordId()).ifPresent(node::setStatus);
+        }
+        
+        node = llmCallRepo.save(node);
+        return mapper.toDomain(node);
+    }
+
+    @Override
+    public List<LlmCallRecord> findLlmCallsByJob(UUID jobId) {
+        return llmCallRepo.findByJobId(jobId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public List<LlmCallRecord> findLlmCallsByJobAndStep(UUID jobId, String step) {
+        return llmCallRepo.findByJobIdAndStep(jobId, step).stream().map(mapper::toDomain).toList();
     }
 
     @Override

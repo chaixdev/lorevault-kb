@@ -89,6 +89,6 @@ public class OpenAiSceneDetectionAdapter implements SceneDetectionPort {
     
     @Override
     public String getImplementationInfo() {
-        return "OpenAI Scene Detection with Enhanced Retry (GPT-4)";
+    return "OpenAI-compatible Scene Detection with Enhanced Retry";
     }
 }

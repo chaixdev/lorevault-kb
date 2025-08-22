@@ -5,6 +5,7 @@ import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.StatusRecord;
+import com.lorevault.api.domain.ingestion.LlmCallRecord;
 
 import java.util.List;
 import java.util.Optional;
@@ -56,6 +57,11 @@ public interface ContentPersistencePort {
     // Status Records
     StatusRecord addStatusRecord(UUID jobId, StatusRecord record);
     List<StatusRecord> findStatusHistoryForJob(UUID jobId);
+
+    // LLM Call Records
+    LlmCallRecord addLlmCallRecord(LlmCallRecord record);
+    List<LlmCallRecord> findLlmCallsByJob(UUID jobId);
+    List<LlmCallRecord> findLlmCallsByJobAndStep(UUID jobId, String step);
 
     // Queries
     List<Chapter> findChaptersByUniverse(String universe);

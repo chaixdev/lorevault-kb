@@ -35,14 +35,17 @@
 ### Database Design
 - **[Neo4j Content Data Model](neo4j-content-data-model.md)** - Graph database schema and relationships
 - **[Content Hierarchy Integration](content-hierarchy-integration.md)** - Publication coordinates and hierarchy
+- **[LLM Call Records](llm-call-records.md)** - Concise reference for LLM request/response logging nodes
 
 ### Schema Definitions
+
 - **[Claims Schema](schemas/claims.schema.json)** - JSON schema for knowledge claims (future feature)
 - **[Claims Examples](schemas/claims.examples.json)** - Example claim structures
 
 ## Data Architecture
 
 The LoreVault data model centers around a hierarchical content structure:
+
 - **Universe** → **Series** → **Book** → **Chapter** → **Scene** → **Chunk**
 
 Each level maintains publication coordinates for spoiler-aware retrieval and supports vector embeddings for semantic search.
