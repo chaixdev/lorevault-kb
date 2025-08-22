@@ -1,3 +1,5 @@
+> **Research only - not an implementation target**
+
 # Narrative → Knowledge Graph: the compact playbook
 
 Here’s a tight, ready-to-use consolidation of everything we landed on—kept small, consistent, and scalable.

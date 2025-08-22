@@ -1,3 +1,5 @@
+> **Research only - not an implementation target**
+
 # LoreVault UI Functionality & API Research
 
 *Author: Technical Advisory*  

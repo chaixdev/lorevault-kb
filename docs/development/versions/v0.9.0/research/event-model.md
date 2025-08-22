@@ -1,5 +1,7 @@
 # Event (Scene) — Entity Subtype
 
+> **Research only - not an implementation target**
+
 Purpose
 
 Define the Event model as the canonical representation of Scenes as temporal anchors. We dual-label nodes as :Event:Scene to keep current Chapter→Scene hierarchies intact while enabling Event-first timelines.

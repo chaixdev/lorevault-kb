@@ -1,6 +1,6 @@
 # v0.9.0 Implementation Notes
 
-*To be populated during development*
+To be populated during development.
 
 This folder will contain implementation notes, patterns discovered, and lessons learned as the v0.9.0 Scene→Event milestone is developed.
 

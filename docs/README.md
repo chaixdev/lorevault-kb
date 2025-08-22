@@ -1,6 +1,14 @@
 # LoreVault Documentation
 
-## 📁 Documentation Structure
+## � Start Here
+
+New to LoreVault? Begin with these essential documents:
+
+- **[Project Summary](project_summary.md)** — Vision, features, and roadmap overview
+- **[Release Notes](development/current/RELEASE_NOTES.md)** — Latest changes and version history
+- **[Architecture Overview](architecture/README.md)** — System design and technical foundations
+
+## �📁 Documentation Structure
 
 ### Core Documentation
 
