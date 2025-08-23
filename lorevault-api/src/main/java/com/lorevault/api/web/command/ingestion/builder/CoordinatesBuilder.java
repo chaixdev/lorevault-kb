@@ -1,16 +1,15 @@
 package com.lorevault.api.web.command.ingestion.builder;
 
-import com.lorevault.api.dto.shared.PublicationCoordinates;
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Service responsible for building PublicationCoordinates and SubmitChapterRequest objects.
- * Handles coordinate validation and request object construction.
- * Extracted from ContentIngestionController to improve single responsibility and testability.
+ * Service responsible for building SubmitChapterRequest objects and validating inputs.
+ * Legacy coordinate-based construction has been removed in favor of UUID-based book targeting.
  */
 @Component
 public class CoordinatesBuilder {
@@ -42,56 +41,21 @@ public class CoordinatesBuilder {
         public String getErrorMessage() { return errorMessage; }
     }
 
-    /**
-     * Validate coordinate parameters for required values and constraints
-     */
-    public CoordinateValidationResult validateCoordinates(String universe, String series, String bookTitle,
-                                                         Integer bookNumber, Integer chapterNumber, Integer partNumber) {
-        
-        // Validate required universe parameter
-        if (universe == null || universe.trim().isEmpty()) {
-            return CoordinateValidationResult.failure("MISSING_UNIVERSE", "Universe parameter is required");
-        }
-
-        // Validate book number
-        if (bookNumber == null || bookNumber < 1) {
-            return CoordinateValidationResult.failure("INVALID_BOOK_NUMBER", "Book number must be a positive integer");
-        }
-
-        // Validate chapter number  
+    // Validation helpers
+    public CoordinateValidationResult validateChapterNumber(Integer chapterNumber) {
         if (chapterNumber == null || chapterNumber < 1) {
             return CoordinateValidationResult.failure("INVALID_CHAPTER_NUMBER", "Chapter number must be a positive integer");
         }
-
-        // Validate optional part number
-        if (partNumber != null && partNumber < 1) {
-            return CoordinateValidationResult.failure("INVALID_PART_NUMBER", "Part number must be a positive integer if provided");
-        }
-
         return CoordinateValidationResult.success();
-    }
-
-    /**
-     * Build PublicationCoordinates from validated parameters
-     */
-    public PublicationCoordinates buildCoordinates(String universe, String series, String bookTitle,
-                                                 Integer bookNumber, Integer chapterNumber) {
-        PublicationCoordinates coordinates = new PublicationCoordinates();
-        coordinates.setUniverse(universe.trim());
-        coordinates.setSeries(series != null && !series.trim().isEmpty() ? series.trim() : null);
-        coordinates.setBookTitle(bookTitle != null && !bookTitle.trim().isEmpty() ? bookTitle.trim() : null);
-        coordinates.setBookNumber(bookNumber);
-        coordinates.setChapterNumber(chapterNumber);
-        return coordinates;
     }
 
     /**
      * Build complete SubmitChapterRequest from file content and coordinates
      */
-    public SubmitChapterRequest buildSubmitRequest(PublicationCoordinates coordinates, 
-                                                 String chapterTitle, String chapterText) {
+    public SubmitChapterRequest buildSubmitRequest(UUID bookId, Integer chapterNumber, String chapterTitle, String chapterText) {
         SubmitChapterRequest request = new SubmitChapterRequest();
-        request.setCoordinates(coordinates);
+        request.setBookId(bookId);
+        request.setChapterNumber(chapterNumber);
         request.setChapterTitle(chapterTitle);
         request.setChapterText(chapterText);
         return request;

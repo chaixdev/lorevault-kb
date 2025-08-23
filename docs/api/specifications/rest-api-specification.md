@@ -4,7 +4,8 @@
 
 **Scope**: All public HTTP endpoints, request/response formats, error handling, and integration patterns for the LoreVault API. Covers current v0.8.0 implementation and planned expansion through v1.0.0.
 
-**Dependencies**: 
+**Dependencies**:
+
 - Architecture Document: ### Performance Requirements
 
 ### Response Time Targets
@@ -24,7 +25,9 @@
 | File submissions | 10/minute | 100/hour |
 | Status queries | 100/minute | 1000/hour |
 | Search queries | 50/minute | 500/hour |
-| RAG queries | 20/minute | 200/hour |oint (02-functional-viewpoint.md) - CQRS patterns
+| RAG queries | 20/minute | 200/hour |
+
+- CQRS patterns
 - Neo4j Content Data Model (neo4j-content-data-model.md) - Entity structures
 - Scene Detection Specification (scene-detection-specification.md) - Processing workflow
 
@@ -40,16 +43,18 @@ The LoreVault API implements a strict CQRS design that separates content ingesti
 ## CQRS Endpoint Structure
 
 ### Command Operations
+
 - `POST /api/command/ingest` - Submit content for processing
 
-### Query Operations  
+### Query Operations
+
 - `GET /api/query/jobs/{jobId}` - Get job status
 - `GET /api/query/jobs` - List jobs with filtering
 - `POST /api/query/search/semantic` - Vector similarity search
 - `GET /api/query/search/semantic/status` - Search availability
 - `POST /api/query/ask/vector` - Vector-based question answering
 - `POST /api/query/ask/rag` - RAG-powered question answering with citations
- 
+
 - `GET /api/query/health` - System health and service status
 
 ## Detailed Workflow
@@ -79,7 +84,6 @@ sequenceDiagram
     JobService-->>Client: Job status & progress
 ```
 
-
 #### Submit File Endpoint
 
 **Endpoint**: `POST /api/command/ingest`  
@@ -99,12 +103,13 @@ title: string                (optional) - Chapter title (auto-extracted if omitt
 ```
 
 **Request Example**:
- 
+
 ```text
 jobId: UUID (required) - Unique job identifier
 ```
 
 **Response Format**:
+
 ```json
 {
   "jobId": "550e8400-e29b-41d4-a716-446655440000",
@@ -152,6 +157,7 @@ offset: integer (optional, default: 0, min: 0) - Pagination offset
 ```
 
 **Response Format**:
+
 ```json
 {
   "jobs": [
@@ -191,6 +197,7 @@ offset: integer (optional, default: 0, min: 0) - Pagination offset
 **Status**: Available in v0.7.0+
 
 **Request Format**:
+
 ```json
 {
   "query": "What is Kaladin's relationship with Bridge Four?",
@@ -233,6 +240,7 @@ offset: integer (optional, default: 0, min: 0) - Pagination offset
 **Purpose**: Check availability of semantic search functionality
 
 **Response Format**:
+
 ```json
 {
   "available": true,

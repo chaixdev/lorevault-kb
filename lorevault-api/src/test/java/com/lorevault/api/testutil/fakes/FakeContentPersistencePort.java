@@ -4,6 +4,9 @@ import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
+import com.lorevault.api.domain.content.Universe;
+import com.lorevault.api.domain.content.Series;
+import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.LlmCallRecord;
 import com.lorevault.api.domain.ingestion.StatusRecord;
@@ -24,6 +27,11 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
     public final Map<UUID, IngestionJob> jobs = new ConcurrentHashMap<>();
     public final Map<UUID, List<StatusRecord>> statusByJob = new ConcurrentHashMap<>();
     public final Map<UUID, List<LlmCallRecord>> llmCallsByJob = new ConcurrentHashMap<>();
+    
+    // Hierarchy entities
+    public final Map<UUID, Universe> universes = new ConcurrentHashMap<>();
+    public final Map<UUID, Series> series = new ConcurrentHashMap<>();
+    public final Map<UUID, Book> books = new ConcurrentHashMap<>();
 
     @Override
     public Chapter createChapter(Chapter chapter) {
@@ -219,5 +227,74 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
         return llmCallsByJob.getOrDefault(jobId, List.of()).stream()
                 .filter(record -> Objects.equals(record.getStep(), step))
                 .collect(Collectors.toList());
+    }
+
+    // Publication Hierarchy - Universes
+    @Override
+    public Universe createUniverse(Universe universe) {
+        if (universe.getId() == null) universe.setId(UUID.randomUUID());
+        universes.put(universe.getId(), universe);
+        return universe;
+    }
+
+    @Override
+    public Optional<Universe> findUniverseById(UUID id) {
+        return Optional.ofNullable(universes.get(id));
+    }
+
+    @Override
+    public Optional<Universe> findUniverseByName(String name) {
+        return universes.values().stream()
+                .filter(u -> Objects.equals(u.getName(), name))
+                .findFirst();
+    }
+
+    // Publication Hierarchy - Series
+    @Override
+    public Series createSeries(Series series) {
+        if (series.getId() == null) series.setId(UUID.randomUUID());
+        this.series.put(series.getId(), series);
+        return series;
+    }
+
+    @Override
+    public Optional<Series> findSeriesById(UUID id) {
+        return Optional.ofNullable(series.get(id));
+    }
+
+    @Override
+    public Optional<Series> findSeriesByNameAndUniverseId(String name, UUID universeId) {
+        return series.values().stream()
+                .filter(s -> Objects.equals(s.getName(), name) && Objects.equals(s.getUniverseId(), universeId))
+                .findFirst();
+    }
+
+    // Publication Hierarchy - Books
+    @Override
+    public Book createBook(Book book) {
+        if (book.getId() == null) book.setId(UUID.randomUUID());
+        books.put(book.getId(), book);
+        return book;
+    }
+
+    @Override
+    public Optional<Book> findBookById(UUID id) {
+        return Optional.ofNullable(books.get(id));
+    }
+
+    @Override
+    public Optional<Book> findBookByTitleAndSeriesId(String title, UUID seriesId) {
+        return books.values().stream()
+                .filter(b -> Objects.equals(b.getTitle(), title) && Objects.equals(b.getSeriesId(), seriesId))
+                .findFirst();
+    }
+
+    @Override
+    public Optional<Book> findStandaloneBookByTitleAndUniverseId(String title, UUID universeId) {
+        return books.values().stream()
+                .filter(b -> Objects.equals(b.getTitle(), title) 
+                          && Objects.equals(b.getUniverseId(), universeId) 
+                          && b.getSeriesId() == null)
+                .findFirst();
     }
 }

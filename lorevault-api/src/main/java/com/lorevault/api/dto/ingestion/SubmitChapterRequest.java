@@ -1,12 +1,12 @@
 package com.lorevault.api.dto.ingestion;
 
-import com.lorevault.api.dto.shared.PublicationCoordinates;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.UUID;
 
 /**
  * Request DTO for submitting a chapter for ingestion
@@ -17,11 +17,16 @@ import lombok.NoArgsConstructor;
 public class SubmitChapterRequest {
 
     /**
-     * Coordinates defining the chapter's position in the published text corpus
+     * Target book identifier for this chapter submission
      */
-    @Valid
     @NotNull
-    private PublicationCoordinates coordinates;
+    private UUID bookId;
+
+    /**
+     * The number of the chapter within the book (1-based)
+     */
+    @NotNull
+    private Integer chapterNumber;
 
     /**
      * The title of the chapter

@@ -3,6 +3,9 @@ package com.lorevault.api.application.port;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
+import com.lorevault.api.domain.content.Universe;
+import com.lorevault.api.domain.content.Series;
+import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.StatusRecord;
 import com.lorevault.api.domain.ingestion.LlmCallRecord;
@@ -65,4 +68,20 @@ public interface ContentPersistencePort {
 
     // Queries
     List<Chapter> findChaptersByUniverse(String universe);
+
+    // Publication Hierarchy - Universes
+    Universe createUniverse(Universe universe);
+    Optional<Universe> findUniverseById(UUID id);
+    Optional<Universe> findUniverseByName(String name);
+
+    // Publication Hierarchy - Series
+    Series createSeries(Series series);
+    Optional<Series> findSeriesById(UUID id);
+    Optional<Series> findSeriesByNameAndUniverseId(String name, UUID universeId);
+
+    // Publication Hierarchy - Books
+    Book createBook(Book book);
+    Optional<Book> findBookById(UUID id);
+    Optional<Book> findBookByTitleAndSeriesId(String title, UUID seriesId);
+    Optional<Book> findStandaloneBookByTitleAndUniverseId(String title, UUID universeId);
 }

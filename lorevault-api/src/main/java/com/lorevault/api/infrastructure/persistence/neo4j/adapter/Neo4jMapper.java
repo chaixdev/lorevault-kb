@@ -3,6 +3,9 @@ package com.lorevault.api.infrastructure.persistence.neo4j.adapter;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
+import com.lorevault.api.domain.content.Universe;
+import com.lorevault.api.domain.content.Series;
+import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.LlmCallRecord;
 import com.lorevault.api.domain.ingestion.StatusRecord;
@@ -13,6 +16,9 @@ import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode
 import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.LlmCallRecordNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.StatusRecordNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.UniverseNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.SeriesNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.BookNode;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -269,5 +275,82 @@ public class Neo4jMapper {
         n.setTruncated(d.getTruncated());
         n.setCreatedAt(d.getCreatedAt());
         return n;
+    }
+
+    // Hierarchy mapping methods
+    public Universe toDomain(UniverseNode node) {
+        if (node == null) return null;
+        return new Universe(
+            node.getId(),
+            node.getName(),
+            node.getSlug(),
+            node.getCreatedAt(),
+            node.getUpdatedAt()
+        );
+    }
+
+    public UniverseNode toNode(Universe domain) {
+        if (domain == null) return null;
+        return new UniverseNode(
+            domain.getId(),
+            domain.getName(),
+            domain.getSlug(),
+            domain.getCreatedAt(),
+            domain.getUpdatedAt()
+        );
+    }
+
+    public Series toDomain(SeriesNode node) {
+        if (node == null) return null;
+        return new Series(
+            node.getId(),
+            node.getUniverseId(),
+            node.getUniverseName(),
+            node.getName(),
+            node.getCreatedAt(),
+            node.getUpdatedAt()
+        );
+    }
+
+    public SeriesNode toNode(Series domain) {
+        if (domain == null) return null;
+        return new SeriesNode(
+            domain.getId(),
+            domain.getUniverseId(),
+            domain.getUniverseName(),
+            domain.getName(),
+            domain.getCreatedAt(),
+            domain.getUpdatedAt()
+        );
+    }
+
+    public Book toDomain(BookNode node) {
+        if (node == null) return null;
+        return new Book(
+            node.getId(),
+            node.getUniverseId(),
+            node.getSeriesId(),
+            node.getUniverse(),
+            node.getSeries(),
+            node.getBookNumber(),
+            node.getTitle(),
+            node.getCreatedAt(),
+            node.getUpdatedAt()
+        );
+    }
+
+    public BookNode toNode(Book domain) {
+        if (domain == null) return null;
+        return new BookNode(
+            domain.getId(),
+            domain.getUniverseId(),
+            domain.getSeriesId(),
+            domain.getUniverse(),
+            domain.getSeries(),
+            domain.getBookNumber(),
+            domain.getTitle(),
+            domain.getCreatedAt(),
+            domain.getUpdatedAt()
+        );
     }
 }

@@ -3,6 +3,7 @@ package com.lorevault.api.service.ingestion;
 import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import com.lorevault.api.domain.content.Chapter;
+import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.dto.shared.PublicationCoordinates;
 import com.lorevault.api.service.shared.HashService;
 import lombok.RequiredArgsConstructor;
@@ -63,8 +64,8 @@ public class ChapterValidationService {
      */
     @Transactional
     public ChapterValidationResult validateAndProcessChapter(SubmitChapterRequest request) {
-        log.info("Validating chapter submission: {} - {}", 
-                request.getCoordinates(), request.getChapterTitle());
+    log.info("Validating chapter submission: bookId={}, chapterNumber={}, title={}",
+        request.getBookId(), request.getChapterNumber(), request.getChapterTitle());
 
         String contentHash = hashService.generateSha256Hash(request.getChapterText());
 
@@ -77,7 +78,7 @@ public class ChapterValidationService {
         }
 
         // Create new chapter
-        UUID newChapterId = createNewChapter(request, contentHash);
+    UUID newChapterId = createNewChapter(request, contentHash);
         return ChapterValidationResult.newChapter(newChapterId, contentHash);
     }
 
@@ -132,15 +133,28 @@ public class ChapterValidationService {
     }
 
     private Chapter buildChapter(SubmitChapterRequest request, String contentHash) {
+        // Lookup book and derive hierarchy info
+        Book book = contentPersistencePort.findBookById(request.getBookId())
+                .orElseThrow(() -> new IllegalArgumentException("Book not found: " + request.getBookId()));
+
+        PublicationCoordinates coords = new PublicationCoordinates();
+        coords.setUniverse(book.getUniverse());
+        coords.setSeries(book.getSeries());
+        coords.setBookTitle(book.getTitle());
+        coords.setChapterTitle(request.getChapterTitle());
+        coords.setBookNumber(book.getBookNumber() != null ? book.getBookNumber() : 0);
+        coords.setChapterNumber(request.getChapterNumber());
+
+        // Build Chapter with stable references
         Chapter chapter = new Chapter();
         chapter.setId(UUID.randomUUID());
-        
-        PublicationCoordinates coords = request.getCoordinates();
+        chapter.setBookId(book.getId());
+        chapter.setUniverseId(book.getUniverseId());
+        chapter.setSeriesId(book.getSeriesId());
         chapter.setCoordinates(coords);
         chapter.setChapterTitle(request.getChapterTitle());
         chapter.setRawText(request.getChapterText());
         chapter.setContentHash(contentHash);
-        
         return chapter;
     }
 }
