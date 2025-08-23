@@ -40,11 +40,11 @@ public class IngestionService {
      */
     @Transactional
     public SubmitChapterResponse submitChapter(SubmitChapterRequest request) {
-        log.info("Processing chapter submission: {} - {}",
-                request.getCoordinates(), request.getChapterTitle());
+    log.info("Processing chapter submission: bookId={}, chapterNumber={}, title={}",
+        request.getBookId(), request.getChapterNumber(), request.getChapterTitle());
 
         // Validate chapter and handle duplicates
-        ChapterValidationService.ChapterValidationResult validationResult = 
+    ChapterValidationService.ChapterValidationResult validationResult = 
                 chapterValidationService.validateAndProcessChapter(request);
 
         UUID chapterId = validationResult.getChapterId();

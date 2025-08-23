@@ -2,7 +2,6 @@ package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import com.lorevault.api.dto.ingestion.SubmitChapterResponse;
-import com.lorevault.api.dto.shared.PublicationCoordinates;
 import com.lorevault.api.service.ingestion.IngestionService;
 import com.lorevault.api.web.command.ingestion.builder.CoordinatesBuilder;
 import com.lorevault.api.web.command.ingestion.extractor.FileContentExtractor;
@@ -36,16 +35,12 @@ public class CommandIngestionController {
 	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<?> submitFile(
 			@RequestParam("file") MultipartFile file,
-			@RequestParam("universe") String universe,
-			@RequestParam(value = "series", required = false) String series,
-			@RequestParam("bookTitle") String bookTitle,
-			@RequestParam("bookNumber") Integer bookNumber,
+			@RequestParam("bookId") java.util.UUID bookId,
 			@RequestParam("chapterNumber") Integer chapterNumber,
-			@RequestParam(value = "partNumber", required = false) Integer partNumber,
 			@RequestParam(value = "chapterTitle", required = false) String chapterTitle) {
-        
-		log.info("[CMD] Ingest: universe={}, series={}, bookTitle={}, book={}, chapter={}, part={}, chapterTitle={}, filename={}", 
-				universe, series, bookTitle, bookNumber, chapterNumber, partNumber, chapterTitle, file.getOriginalFilename());
+
+		log.info("[CMD] Ingest: bookId={}, chapterNumber={}, chapterTitle={}, filename={}",
+				bookId, chapterNumber, chapterTitle, file.getOriginalFilename());
 
 		try {
 			// Validate file is present
@@ -59,11 +54,10 @@ public class CommandIngestionController {
 				return errorResponseFactory.createFileValidationError(fileValidation);
 			}
 
-			// Validate coordinates parameters
-			CoordinatesBuilder.CoordinateValidationResult coordinateValidation = 
-				coordinatesBuilder.validateCoordinates(universe, series, bookTitle, bookNumber, chapterNumber, partNumber);
-			if (!coordinateValidation.isValid()) {
-				return errorResponseFactory.createCoordinateValidationError(coordinateValidation);
+			// Validate chapter number
+			CoordinatesBuilder.CoordinateValidationResult numValidation = coordinatesBuilder.validateChapterNumber(chapterNumber);
+			if (!numValidation.isValid()) {
+				return errorResponseFactory.createCoordinateValidationError(numValidation);
 			}
 
 			// Extract file content
@@ -81,9 +75,8 @@ public class CommandIngestionController {
 				return errorResponseFactory.createCoordinateValidationError(titleValidation);
 			}
 
-			// Build coordinates and request
-			PublicationCoordinates coordinates = coordinatesBuilder.buildCoordinates(universe, series, bookTitle, bookNumber, chapterNumber);
-			SubmitChapterRequest request = coordinatesBuilder.buildSubmitRequest(coordinates, finalChapterTitle, contentResult.getContent());
+			// Build request
+			SubmitChapterRequest request = coordinatesBuilder.buildSubmitRequest(bookId, chapterNumber, finalChapterTitle, contentResult.getContent());
 
 			// Submit for processing
 			SubmitChapterResponse response = ingestionService.submitChapter(request);
