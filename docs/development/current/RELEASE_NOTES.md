@@ -1,5 +1,29 @@
 # LoreVault Release Notes
 
+## Unreleased (0.8.3-SNAPSHOT)
+
+Highlights
+
+- LV-084-1: Default temporal edges (MEETS) created during ingestion
+  - In-chapter edges between consecutive scenes within each chapter
+  - Cross-chapter edges linking last scene of chapter N to first scene of chapter N+1
+  - Idempotent, bookId-scoped sweep (safe to run repeatedly)
+- New integration tests validating in-chapter and cross-chapter edges and idempotency
+- Service wired into ingestion workflow after scene persistence
+
+Changes
+
+- Added `TemporalEdgePort`, `DefaultTemporalEdgeService`, and `Neo4jTemporalEdgeAdapter`
+- Implemented `TemporalEdgeWriteRepository` Cypher for MEETS edges (book-wide)
+- Updated `IngestionWorkflowService` to invoke `createAllDefaults(bookId)`
+- Added `CrossChapterTemporalEdgesIntegrationTest` for robust verification
+
+Notes
+
+- MEETS edges from this pass carry properties: `type = 'HEURISTIC'`, `confidence = 0.5`
+- The operation is idempotent; repeated runs do not duplicate edges
+- See processes/lv-084-1-implementation-summary.md for verification queries
+
 ## v0.8.1 (2025-08-21)
 
 Release tag: v0.8.1

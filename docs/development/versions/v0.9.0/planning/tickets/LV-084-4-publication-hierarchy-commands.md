@@ -5,7 +5,6 @@
 You are implementing command endpoints to establish publication hierarchy (Universe/Series/Book) before chapter ingestion, eliminating string-based matching risks identified in LV-084-1.
 
 **Required reading:**
-
 - `/docs/development/versions/v0.9.0/planning/tickets/LV-084-1-default-temporal-edges.md` (dev notes section)
 - `/docs/architecture/02-functional-viewpoint.md` (CQRS patterns)
 - `/lorevault-api/src/main/java/com/lorevault/api/web/command/` (existing command controller patterns)
@@ -21,24 +20,24 @@ Current chapter ingestion relies on string-based PublicationCoordinates matching
 
 Design commands that express **business intent**, not CRUD operations:
 
-1. **Create Universe** - Register a new fictional universe for content management
-2. **Create Series** - Register a series within an existing universe  
-3. **Create Book** - Register a book for a universe (optionally within a series)
+1. **Establish Universe** - Register a new fictional universe for content ingestion
+2. **Establish Series** - Register a series within an existing universe  
+3. **Register Book** - Register a book for a universe (optionally within a series)
 
 ### Constraints
 
-- **Follow existing patterns:** Study `CommandIngestionController` and `IngestionService`
+- **Follow existing patterns:** Study `CommandIngestionController` and `IngestionService` 
 - **Domain-driven design:** Commands should express business operations, not data manipulation
 - **Idempotency:** Safe to retry; return existing IDs if already established
 - **Minimal invariants:** Universe names unique globally; series names unique within universe; book titles unique within series
-- **No legacy support:** Clean slate implementation - existing coordinate-based ingestion will be replaced
+- **No deep book management:** Keep scope minimal - just enough to provide stable IDs for chapter ingestion
 
 ### Technical Implementation
 
 - New command controller following existing `/api/command/` patterns
 - New application service handling business logic
 - Extend existing `ContentPersistencePort` or create new port for hierarchy operations
-- Update `SubmitChapterRequest` to require `bookId` - remove coordinate-based fallback
+- Update `SubmitChapterRequest` to accept `bookId` instead of relying on coordinate text matching
 - Neo4j relationships: `(:Universe)-[:HAS_SERIES]->(:Series)-[:HAS_BOOK]->(:Book)-[:HAS_CHAPTER]->(:Chapter)`
 
 ## Deliverables
@@ -54,10 +53,10 @@ Design commands that express **business intent**, not CRUD operations:
 
 - [ ] Can establish universe, series, and book hierarchy via commands
 - [ ] Commands are idempotent (repeated calls return same IDs)
-- [ ] Chapter ingestion requires valid `bookId`, returns 400 if not found
-- [ ] String-based coordinate matching removed entirely from ingestion flow
+- [ ] Chapter ingestion validates `bookId` exists, returns 400 if not found
+- [ ] String-based coordinate matching eliminated from ingestion flow
 - [ ] Integration tests cover happy path and validation scenarios
-- [ ] Existing ingestion tests updated to use new bookId-based request format
+- [ ] Existing ingestion tests still pass with updated request format
 
 ## Quality Gates
 
@@ -71,7 +70,7 @@ Design commands that express **business intent**, not CRUD operations:
 - Book metadata management (authors, publication dates, etc.)
 - Complex book relationships or versioning
 - Query endpoints for browsing hierarchy (focus on command-side only)
-- Backward compatibility with coordinate-based ingestion
+- Migration of existing data (new installations only)
 
 ## Notes
 
