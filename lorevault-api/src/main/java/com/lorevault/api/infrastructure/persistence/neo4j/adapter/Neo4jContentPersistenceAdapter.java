@@ -52,6 +52,10 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
         if (node.getId() == null) {
             node.setId(UUID.randomUUID());
         }
+        // Establish Chapter -> Book relationship if bookId provided
+        if (chapter.getBookId() != null) {
+            bookRepo.findById(chapter.getBookId()).ifPresent(node::setBook);
+        }
         return mapper.toDomain(chapterRepo.save(node));
     }
 
@@ -353,6 +357,12 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
         if (node.getId() == null) {
             node.setId(UUID.randomUUID());
         }
+        
+        // Establish relationship to Universe
+        UniverseNode universeNode = universeRepo.findById(series.getUniverseId())
+            .orElseThrow(() -> new IllegalArgumentException("Universe not found: " + series.getUniverseId()));
+        node.setUniverse(universeNode);
+        
         SeriesNode saved = seriesRepo.save(node);
         return mapper.toDomain(saved);
     }
@@ -374,6 +384,19 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
         if (node.getId() == null) {
             node.setId(UUID.randomUUID());
         }
+        
+        // Establish relationship to Universe
+        UniverseNode universeNode = universeRepo.findById(book.getUniverseId())
+            .orElseThrow(() -> new IllegalArgumentException("Universe not found: " + book.getUniverseId()));
+        node.setUniverseNode(universeNode);
+        
+        // Establish relationship to Series if book is part of a series
+        if (book.getSeriesId() != null) {
+            SeriesNode seriesNode = seriesRepo.findById(book.getSeriesId())
+                .orElseThrow(() -> new IllegalArgumentException("Series not found: " + book.getSeriesId()));
+            node.setSeriesNode(seriesNode);
+        }
+        
         BookNode saved = bookRepo.save(node);
         return mapper.toDomain(saved);
     }

@@ -52,10 +52,10 @@ flowchart TD
 #### Coordinate Calculation Logic
 ```
 For each Chunk:
-1. Traverse upward: Chunk → Scene → Chapter → Book → Series
-2. Collect coordinates: seriesId, bookOrder, chapterOrder, sceneIndex
+1. Traverse upward: Chunk → Scene → Chapter → Book → Series → Universe
+2. Collect coordinates: universeId, seriesId, bookOrder, chapterOrder, sceneIndex
 3. Calculate earliest position: minimum coordinates for cross-scene chunks
-4. Materialize properties: seriesId, bookOrder_min, chapterOrder_min, sceneIndex_min
+4. Materialize properties: universeId, seriesId, bookOrder_min, chapterOrder_min, sceneIndex_min
 5. Validate consistency: ensure coordinates align with hierarchy
 ```
 
@@ -77,12 +77,14 @@ For each Chunk:
     "status": "valid",
     "lastUpdated": "2025-08-10T14:30:00Z",
     "calculatedFrom": {
+      "universeId": "cosmere",
       "seriesId": "stormlight",
       "bookOrder": 1,
       "chapterOrder": 14,
       "sceneIndex": 2
     },
     "materializedCoordinates": {
+      "universeId": "cosmere",
       "seriesId": "stormlight",
       "bookOrder_min": 1,
       "chapterOrder_min": 14,
@@ -146,6 +148,7 @@ For each Chunk:
 {
   "chunkId": "chunk-uuid-123",
   "materializedCoordinates": {
+    "universeId": "cosmere",
     "seriesId": "stormlight",
     "bookOrder_min": 1,
     "chapterOrder_min": 14,
@@ -153,7 +156,7 @@ For each Chunk:
   },
   "calculationMetadata": {
     "calculatedAt": "2025-08-10T14:30:00Z",
-    "hierarchyPath": ["universe-123", "series-456", "book-789", "chapter-012", "scene-345"],
+    "hierarchyPath": ["universe-cosmere", "series-stormlight", "book-1", "chapter-14", "scene-2"],
     "processingTime": 45
   }
 }
