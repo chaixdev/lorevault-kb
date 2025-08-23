@@ -1,7 +1,6 @@
 package com.lorevault.api.testutil;
 
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
-import com.lorevault.api.dto.shared.PublicationCoordinates;
 import lombok.experimental.UtilityClass;
 import org.springframework.util.ResourceUtils;
 
@@ -10,10 +9,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Utility class for loading sample chapters and test data from test resources.
@@ -22,6 +18,8 @@ import java.util.Map;
  */
 @UtilityClass
 public class SampleChapterLoader {
+
+    private static final UUID DEATHWORLDERS_BOOK_ID = UUID.nameUUIDFromBytes("Deathworlders".getBytes(StandardCharsets.UTF_8));
 
     /**
      * Loads all available sample chapters from test resources.
@@ -66,34 +64,34 @@ public class SampleChapterLoader {
     private static SubmitChapterRequest loadKevinJenkinsExperience() {
         String content = loadFileContent("sample-chapters/000_deathworlders - The Kevin Jenkins Experience.txt");
 
-        SubmitChapterRequest request = new SubmitChapterRequest();
-        request.setCoordinates(new PublicationCoordinates("Deathworlders", "Main Series", "Deathworlders",
-                "The Kevin Jenkins Experience", 1, 1));
-        request.setChapterText(content);
-
-        return request;
+        return new SubmitChapterRequest(
+                DEATHWORLDERS_BOOK_ID,
+                1,
+                "The Kevin Jenkins Experience",
+                content
+        );
     }
 
     private static SubmitChapterRequest loadRunLittleMonster() {
         String content = loadFileContent("sample-chapters/005_reddit-Hambone3110 - Run, little monster.txt");
 
-        SubmitChapterRequest request = new SubmitChapterRequest();
-        request.setCoordinates(new PublicationCoordinates("Deathworlders", "Main Series", "Deathworlders",
-                "Run, little monster", 1, 3));
-        request.setChapterText(content);
-
-        return request;
+        return new SubmitChapterRequest(
+                DEATHWORLDERS_BOOK_ID,
+                3,
+                "Run, little monster",
+                content
+        );
     }
 
     private static SubmitChapterRequest loadAftermath() {
         String content = loadFileContent("sample-chapters/007_reddit-Hambone3110 - Aftermath.txt");
 
-        SubmitChapterRequest request = new SubmitChapterRequest();
-        request.setCoordinates(new PublicationCoordinates("Deathworlders", "Main Series", "Deathworlders",
-                "Aftermath", 1, 3));
-        request.setChapterText(content);
-
-        return request;
+        return new SubmitChapterRequest(
+                DEATHWORLDERS_BOOK_ID,
+                3,
+                "Aftermath",
+                content
+        );
     }
 
     private static String loadFileContent(String resourcePath) {
@@ -119,14 +117,10 @@ public class SampleChapterLoader {
                 .mapToInt(ch -> ch.getChapterText().length())
                 .average()
                 .orElse(0.0));
-        stats.put("universes", chapters.stream()
-                .map(ch -> ch.getCoordinates().getUniverse())
-                .distinct()
-                .toList());
-        stats.put("series", chapters.stream()
-                .map(ch -> ch.getCoordinates().getSeries())
-                .distinct()
-                .toList());
+    stats.put("bookIds", chapters.stream()
+        .map(SubmitChapterRequest::getBookId)
+        .distinct()
+        .toList());
 
         return stats;
     }

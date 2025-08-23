@@ -11,6 +11,260 @@
 			"name": "Commands",
 			"item": [
 				{
+					"name": "Library",
+					"item": [
+						{
+							"name": "Create Universe",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"title\": \"Cosmere\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/command/library/create-universe",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"command",
+										"library",
+										"create-universe"
+									]
+								},
+								"description": "Create a new universe in the library"
+							},
+							"response": [
+								{
+									"name": "Success Response",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"title\": \"Cosmere\"\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/command/library/create-universe",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"command",
+												"library",
+												"create-universe"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\": \"Cosmere\",\n    \"alreadyExists\": false\n}"
+								}
+							]
+						},
+						{
+							"name": "Create Series",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"universeId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\": \"The Stormlight Archive\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/command/library/create-series",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"command",
+										"library",
+										"create-series"
+									]
+								},
+								"description": "Create a new series within a universe"
+							},
+							"response": [
+								{
+									"name": "Success Response",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"universeId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\": \"The Stormlight Archive\"\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/command/library/create-series",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"command",
+												"library",
+												"create-series"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"id\": \"b2c3d4e5-f6a7-8901-bcde-f23456789012\",\n    \"universeId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\": \"The Stormlight Archive\",\n    \"alreadyExists\": false\n}"
+								}
+							]
+						},
+						{
+							"name": "Create Book",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"universeId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"seriesId\": \"b2c3d4e5-f6a7-8901-bcde-f23456789012\",\n    \"title\": \"The Way of Kings\",\n    \"bookNumber\": 1\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/command/library/create-book",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"command",
+										"library",
+										"create-book"
+									]
+								},
+								"description": "Create a new book within a series or as a standalone book in a universe"
+							},
+							"response": [
+								{
+									"name": "Success Response (Series Book)",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"universeId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"seriesId\": \"b2c3d4e5-f6a7-8901-bcde-f23456789012\",\n    \"title\": \"The Way of Kings\",\n    \"bookNumber\": 1\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/command/library/create-book",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"command",
+												"library",
+												"create-book"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"id\": \"c3d4e5f6-a7b8-9012-cdef-345678901234\",\n    \"universeId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"seriesId\": \"b2c3d4e5-f6a7-8901-bcde-f23456789012\",\n    \"title\": \"The Way of Kings\",\n    \"bookNumber\": 1,\n    \"alreadyExists\": false\n}"
+								},
+								{
+									"name": "Success Response (Standalone Book)",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"universeId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\": \"Warbreaker\"\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/command/library/create-book",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"command",
+												"library",
+												"create-book"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"id\": \"d4e5f6a7-b8c9-0123-def4-56789012345a\",\n    \"universeId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"seriesId\": null,\n    \"title\": \"Warbreaker\",\n    \"bookNumber\": null,\n    \"alreadyExists\": false\n}"
+								}
+							]
+						}
+					]
+				},
+				{
 					"name": "Content Ingestion",
 					"item": [
 						{
@@ -27,19 +281,10 @@
 											"src": "/path/to/sample-chapter.txt"
 										},
 										{
-											"key": "universe",
-											"value": "Cosmere",
-											"type": "text"
-										},
-										{
-											"key": "series",
-											"value": "The Stormlight Archive",
-											"type": "text"
-										},
-										{
-											"key": "bookNumber",
-											"value": "1",
-											"type": "text"
+											"key": "bookId",
+											"value": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+											"type": "text",
+											"description": "Target book ID for this chapter submission"
 										},
 										{
 											"key": "chapterNumber",
@@ -47,9 +292,10 @@
 											"type": "text"
 										},
 										{
-											"key": "title",
+											"key": "chapterTitle",
 											"value": "Kaladin",
-											"type": "text"
+											"type": "text",
+											"description": "Optional chapter title (falls back to filename)"
 										}
 									]
 								},
@@ -64,7 +310,7 @@
 										"ingest"
 									]
 								},
-								"description": "Submit a chapter file for processing. Returns a job ID for tracking."
+								"description": "Submit a chapter file for processing using the target book ID. Returns a job ID for tracking."
 							},
 							"response": [
 								{
@@ -81,18 +327,8 @@
 													"src": "/path/to/sample-chapter.txt"
 												},
 												{
-													"key": "universe",
-													"value": "Cosmere",
-													"type": "text"
-												},
-												{
-													"key": "series",
-													"value": "The Stormlight Archive",
-													"type": "text"
-												},
-												{
-													"key": "bookNumber",
-													"value": "1",
+													"key": "bookId",
+													"value": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
 													"type": "text"
 												},
 												{

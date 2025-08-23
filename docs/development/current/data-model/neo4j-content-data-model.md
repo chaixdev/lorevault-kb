@@ -256,6 +256,17 @@ Constraints:
 - chapterOrder provides ordering within book
 ```
 
+#### Chapter-Book Relationship: `IN_BOOK`
+```
+Properties:
+- None (structural relationship only)
+
+Constraints:
+- Many-to-one: Multiple chapters can belong to one book
+- Every chapter must have exactly one parent book
+- Provides direct traversal from Chapter to Book
+```
+
 #### Chapter-Scene Relationship: `HAS_SCENE`
 ```
 Properties:

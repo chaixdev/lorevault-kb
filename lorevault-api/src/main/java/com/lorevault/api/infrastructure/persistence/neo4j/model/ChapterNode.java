@@ -32,6 +32,9 @@ public class ChapterNode {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
+    @Relationship(type = "IN_BOOK", direction = Relationship.Direction.OUTGOING)
+    private BookNode book;
+
     @Relationship(type = "HAS_SCENE")
     private List<SceneNode> scenes;
 
@@ -42,7 +45,9 @@ public class ChapterNode {
     public ChapterNode(UUID id, String universe, String series, String bookTitle, Integer bookNumber,
                        Integer chapterNumber, String chapterTitle,
                        String rawText, String contentHash,
-                       LocalDateTime createdAt, LocalDateTime updatedAt, List<SceneNode> scenes, List<ChunkNode> chunks) {
+                       LocalDateTime createdAt, LocalDateTime updatedAt,
+                       BookNode book,
+                       List<SceneNode> scenes, List<ChunkNode> chunks) {
         this.id = id;
         this.universe = universe;
         this.series = series;
@@ -54,6 +59,7 @@ public class ChapterNode {
         this.contentHash = contentHash;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.book = book;
         this.scenes = scenes;
         this.chunks = chunks;
     }

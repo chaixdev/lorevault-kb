@@ -44,7 +44,10 @@ The LoreVault API implements a strict CQRS design that separates content ingesti
 
 ### Command Operations
 
-- `POST /api/command/ingest` - Submit content for processing
+- `POST /api/command/ingest` - Submit chapter content for processing
+- `POST /api/command/library/create-universe` - Create a universe for organizing content
+- `POST /api/command/library/create-series` - Create a series within a universe  
+- `POST /api/command/library/create-book` - Create a book, either standalone or within a series
 
 ### Query Operations
 
@@ -94,19 +97,137 @@ sequenceDiagram
 
 ```text
 file: MultipartFile          (required) - .txt or .md file
-universe: string             (required) - Universe name (e.g., "Cosmere", "Middle Earth")
-series: string               (optional) - Series name (e.g., "Mistborn", "The Lord of the Rings")
-bookNumber: integer          (required) - Book number in series (1-based)
-chapterNumber: integer       (required) - Chapter number in book (1-based)
-partNumber: integer          (optional) - Part number within book (1-based)
-title: string                (optional) - Chapter title (auto-extracted if omitted)
+bookId: UUID                 (required) - Book ID for chapter ingestion
+chapterNumber: integer       (required) - Chapter number within book (1-based)
+chapterTitle: string         (optional) - Chapter title (auto-extracted if omitted)
 ```
 
 **Request Example**:
 
-```text
-jobId: UUID (required) - Unique job identifier
+```bash
+curl -X POST "/api/command/ingest" \
+  -F "file=@chapter1.txt" \
+  -F "bookId=123e4567-e89b-12d3-a456-426614174000" \
+  -F "chapterNumber=1" \
+  -F "chapterTitle=The Way of Kings"
 ```
+
+**Response Format** (202 Accepted):
+
+```json
+{
+  "message": "Chapter ingestion started successfully",
+  "jobId": "550e8400-e29b-41d4-a716-446655440000",
+  "timestamp": "2025-08-06T10:15:00Z",
+  "status": "ACCEPTED"
+}
+```
+
+## Publication Hierarchy Command Endpoints
+
+### Create Universe
+
+**Endpoint**: `POST /api/command/library/create-universe`  
+**Purpose**: Create a universe for organizing publication content  
+**Content-Type**: `application/json`
+
+**Request Format**:
+
+```json
+{
+  "name": "Cosmere"
+}
+```
+
+**Response Format**:
+
+```json
+{
+  "universeId": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Cosmere",
+  "slug": "cosmere",
+  "created": true,
+  "createdAt": "2025-08-06T10:15:00Z",
+  "updatedAt": "2025-08-06T10:15:00Z"
+}
+```
+
+### Create Series
+
+**Endpoint**: `POST /api/command/library/create-series`  
+**Purpose**: Create a series within a universe  
+**Content-Type**: `application/json`
+
+**Request Format**:
+
+```json
+{
+  "universeId": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Mistborn"
+}
+```
+
+**Response Format**:
+
+```json
+{
+  "seriesId": "123e4567-e89b-12d3-a456-426614174000",
+  "universeId": "550e8400-e29b-41d4-a716-446655440000",
+  "universeName": "Cosmere",
+  "name": "Mistborn",
+  "created": true,
+  "createdAt": "2025-08-06T10:15:00Z",
+  "updatedAt": "2025-08-06T10:15:00Z"
+}
+```
+
+### Create Book
+
+**Endpoint**: `POST /api/command/library/create-book`  
+**Purpose**: Create a book, either standalone in a universe or within a series  
+**Content-Type**: `application/json`
+
+**Request Format** (Series book):
+
+```json
+{
+  "universeId": "550e8400-e29b-41d4-a716-446655440000",
+  "seriesId": "123e4567-e89b-12d3-a456-426614174000", 
+  "title": "The Final Empire",
+  "bookNumber": 1
+}
+```
+
+**Request Format** (Standalone book):
+
+```json
+{
+  "universeId": "550e8400-e29b-41d4-a716-446655440000",
+  "title": "Warbreaker"
+}
+```
+
+**Response Format**:
+
+```json
+{
+  "bookId": "789e0123-e89b-12d3-a456-426614174000",
+  "universeId": "550e8400-e29b-41d4-a716-446655440000",
+  "universeName": "Cosmere",
+  "seriesId": "123e4567-e89b-12d3-a456-426614174000",
+  "seriesName": "Mistborn",
+  "title": "The Final Empire",
+  "bookNumber": 1,
+  "created": true,
+  "createdAt": "2025-08-06T10:15:00Z",
+  "updatedAt": "2025-08-06T10:15:00Z"
+}
+```
+
+#### Get Job Status
+
+**Endpoint**: `GET /api/query/jobs/{jobId}`  
+**Purpose**: Query ingestion job status and progress
 
 **Response Format**:
 
@@ -496,12 +617,17 @@ flowchart TD
 - `INVALID_ENCODING`: File not UTF-8 encoded
 
 **Parameter Validation Errors**:
-- `MISSING_UNIVERSE`: Universe parameter required
-- `INVALID_BOOK_NUMBER`: Book number must be positive integer
+
+- `MISSING_BOOK_ID`: Book ID parameter required for chapter ingestion
+- `INVALID_BOOK_ID`: Book ID must be a valid UUID
 - `INVALID_CHAPTER_NUMBER`: Chapter number must be positive integer  
-- `INVALID_PART_NUMBER`: Part number must be positive integer if provided
-- `TITLE_TOO_LONG`: Chapter title exceeds 500 character limit  
-- `INVALID_UNIVERSE_FORMAT`: Universe contains unsupported characters
+- `INVALID_TITLE_LENGTH`: Chapter title exceeds character limit
+- `MISSING_UNIVERSE_NAME`: Universe name parameter required  
+- `INVALID_UNIVERSE_NAME_LENGTH`: Universe name exceeds character limit
+- `MISSING_SERIES_NAME`: Series name parameter required
+- `INVALID_SERIES_NAME_LENGTH`: Series name exceeds character limit
+- `MISSING_BOOK_TITLE`: Book title parameter required
+- `INVALID_BOOK_TITLE_LENGTH`: Book title exceeds character limit
 
 #### Server Errors (5xx)
 
