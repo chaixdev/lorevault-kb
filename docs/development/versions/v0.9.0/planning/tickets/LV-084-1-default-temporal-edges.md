@@ -42,3 +42,40 @@ Links
 
 - Planning: ../v0.9.0-scene-to-event-entity-plan.md#084—skeleton-timeline-edges-default-meets@heuristic
 - Research: ../../research/event-model.md
+
+## Dev Notes
+
+### Chosen approach (Aug 2025)
+
+**Current state limitations:**
+
+- No Universe/Series/Book nodes in graph; chapters matched by string-based PublicationCoordinates (universe, series, bookTitle, bookNumber)
+- Risk of misspellings creating disconnected graphs
+- Cross-chapter linking relies on coordinate text matching
+
+**Proper workflow design (for future implementation):**
+
+1. **Create publication hierarchy first:** Require Universe/Series/Book entities to exist before chapter ingestion
+2. **Use stable IDs:** Pass explicit `bookId` in chapter submission requests instead of relying on bookTitle matching
+3. **Validation:** Return API errors if referenced bookId not found
+4. **Chapter sequence:** Use `(:Chapter)-[:NEXT_CHAPTER]->(:Chapter)` relationship for robust cross-chapter linking
+
+**LV-084-1 implementation approach:**
+
+- **In-chapter edges:** Use existing sceneIndex ordering within each chapter
+- **Cross-chapter edges:** During sequential ingestion of chapter k+1, create edge from last(k) → first(k+1)
+- **Matching strategy:** For now, use deterministic bookId derived from coordinates: `UUID.nameUUIDFromBytes((universe + "/" + series + "/" + bookTitle + "#" + bookNumber).getBytes())`
+- **Edge properties (exact):**
+  - temporalRelation = MEETS
+  - certainty = HEURISTIC
+  - weight = 0.5
+  - source = "CHAPTER_SEQUENCE"
+  - rationale = "chapter sequence"
+
+**Technical implementation:**
+
+- New service: `DefaultTemporalEdgeService`
+- New repo: `TemporalEdgeWriteRepository` with @Query MERGE operations
+- Wire into `IngestionWorkflowService` after scene persistence
+- Add derived `bookId` to `ChapterNode` via `Neo4jMapper`
+- Integration tests with Testcontainers for idempotency and property verification

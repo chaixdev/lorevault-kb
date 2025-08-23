@@ -4,6 +4,9 @@ import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
+import com.lorevault.api.domain.content.Universe;
+import com.lorevault.api.domain.content.Series;
+import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.StatusRecord;
 import com.lorevault.api.domain.ingestion.LlmCallRecord;
@@ -12,6 +15,9 @@ import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneHasChunk;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.UniverseNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.SeriesNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.BookNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.*;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.LlmCallRecordNode;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +38,12 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     private final IngestionJobGraphRepository jobRepo;
     private final StatusRecordGraphRepository statusRepo;
     private final LlmCallRecordGraphRepository llmCallRepo;
+    
+    // Hierarchy repositories
+    private final UniverseGraphRepository universeRepo;
+    private final SeriesGraphRepository seriesRepo;
+    private final BookGraphRepository bookRepo;
+    
     private final Neo4jMapper mapper;
 
     @Override
@@ -311,5 +323,73 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     @Override
     public Optional<Chunk> findChunkById(UUID id) {
         return chunkRepo.findById(id).map(mapper::toDomain);
+    }
+
+    // Publication Hierarchy - Universes
+    @Override
+    public Universe createUniverse(Universe universe) {
+        UniverseNode node = mapper.toNode(universe);
+        if (node.getId() == null) {
+            node.setId(UUID.randomUUID());
+        }
+        UniverseNode saved = universeRepo.save(node);
+        return mapper.toDomain(saved);
+    }
+
+    @Override
+    public Optional<Universe> findUniverseById(UUID id) {
+        return universeRepo.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<Universe> findUniverseByName(String name) {
+        return universeRepo.findByName(name).map(mapper::toDomain);
+    }
+
+    // Publication Hierarchy - Series
+    @Override
+    public Series createSeries(Series series) {
+        SeriesNode node = mapper.toNode(series);
+        if (node.getId() == null) {
+            node.setId(UUID.randomUUID());
+        }
+        SeriesNode saved = seriesRepo.save(node);
+        return mapper.toDomain(saved);
+    }
+
+    @Override
+    public Optional<Series> findSeriesById(UUID id) {
+        return seriesRepo.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<Series> findSeriesByNameAndUniverseId(String name, UUID universeId) {
+        return seriesRepo.findByNameAndUniverseId(name, universeId).map(mapper::toDomain);
+    }
+
+    // Publication Hierarchy - Books
+    @Override
+    public Book createBook(Book book) {
+        BookNode node = mapper.toNode(book);
+        if (node.getId() == null) {
+            node.setId(UUID.randomUUID());
+        }
+        BookNode saved = bookRepo.save(node);
+        return mapper.toDomain(saved);
+    }
+
+    @Override
+    public Optional<Book> findBookById(UUID id) {
+        return bookRepo.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<Book> findBookByTitleAndSeriesId(String title, UUID seriesId) {
+        return bookRepo.findByTitleAndSeriesId(title, seriesId).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<Book> findStandaloneBookByTitleAndUniverseId(String title, UUID universeId) {
+        return bookRepo.findStandaloneByTitleAndUniverseId(title, universeId).map(mapper::toDomain);
     }
 }
