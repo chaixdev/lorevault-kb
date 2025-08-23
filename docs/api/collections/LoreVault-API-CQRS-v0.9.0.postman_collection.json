@@ -1,0 +1,313 @@
+{
+  "info": {
+    "_postman_id": "d4b2c15e-f5b2-4c93-b3f4-12345abcdef1",
+    "name": "LoreVault API CQRS v0.9.0",
+    "description": "REST API collection for LoreVault - Publication Hierarchy + Ingestion\nFollows CQRS pattern with /api/command/library/* and /api/command/ingest endpoints\nUpdated for v0.9.0 with book-based ingestion and Chapter→Book relationships",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12345"
+  },
+  "item": [
+    {
+      "name": "Commands",
+      "item": [
+        {
+          "name": "Publication Library",
+          "description": "Commands to establish publication hierarchy before chapter ingestion",
+          "item": [
+            {
+              "name": "Create Universe",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Cosmere\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/command/library/create-universe",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "command", "library", "create-universe"]
+                },
+                "description": "Create a universe for organizing publication content. Idempotent operation."
+              },
+              "response": [
+                {
+                  "name": "Success - Created",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"universeId\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"name\": \"Cosmere\",\n  \"slug\": \"cosmere\",\n  \"created\": true,\n  \"createdAt\": \"2025-08-06T10:15:00Z\",\n  \"updatedAt\": \"2025-08-06T10:15:00Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Create Series",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"universeId\": \"{{universeId}}\",\n  \"name\": \"The Stormlight Archive\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/command/library/create-series",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "command", "library", "create-series"]
+                },
+                "description": "Create a series within a universe. Idempotent operation."
+              }
+            },
+            {
+              "name": "Create Book",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"universeId\": \"{{universeId}}\",\n  \"seriesId\": \"{{seriesId}}\",\n  \"title\": \"The Way of Kings\",\n  \"bookNumber\": 1\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/command/library/create-book",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "command", "library", "create-book"]
+                },
+                "description": "Create a book within a series. For standalone books, omit seriesId and bookNumber."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Content Ingestion",
+          "description": "Submit chapter content for processing. Requires existing book.",
+          "item": [
+            {
+              "name": "Submit Chapter File",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "/path/to/sample-chapter.txt"
+                    },
+                    {
+                      "key": "bookId",
+                      "value": "{{bookId}}",
+                      "type": "text",
+                      "description": "UUID of the book for this chapter"
+                    },
+                    {
+                      "key": "chapterNumber",
+                      "value": "1",
+                      "type": "text",
+                      "description": "Chapter number within the book (1-based)"
+                    },
+                    {
+                      "key": "chapterTitle",
+                      "value": "Kaladin",
+                      "type": "text",
+                      "description": "Chapter title (optional - will be auto-extracted from filename)"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/command/ingest",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "command", "ingest"]
+                },
+                "description": "Submit a chapter file for processing. Creates Chapter→Book relationship in Neo4j."
+              },
+              "response": [
+                {
+                  "name": "Success - Accepted",
+                  "status": "Accepted",
+                  "code": 202,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"message\": \"Chapter ingestion started successfully\",\n  \"jobId\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"timestamp\": \"2025-08-06T10:15:00Z\",\n  \"status\": \"ACCEPTED\"\n}"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Queries",
+      "item": [
+        {
+          "name": "Job Monitoring",
+          "item": [
+            {
+              "name": "Get Job Status",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/query/jobs/{{jobId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "query", "jobs", "{{jobId}}"]
+                },
+                "description": "Get detailed job status and progress"
+              }
+            },
+            {
+              "name": "List Jobs",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/query/jobs?limit=10&offset=0&status=COMPLETED",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "query", "jobs"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0"
+                    },
+                    {
+                      "key": "status",
+                      "value": "COMPLETED"
+                    }
+                  ]
+                },
+                "description": "List ingestion jobs with filtering"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Question Answering",
+          "item": [
+            {
+              "name": "Ask RAG Question",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"question\": \"What is Kaladin's relationship with Bridge Four?\",\n  \"topK\": 5,\n  \"threshold\": 0.7,\n  \"filters\": {\n    \"universe\": \"Cosmere\",\n    \"series\": \"The Stormlight Archive\",\n    \"bookNumber\": 1\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/query/ask/rag",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "query", "ask", "rag"]
+                },
+                "description": "RAG-powered question answering with source citations"
+              }
+            }
+          ]
+        },
+        {
+          "name": "System Health",
+          "item": [
+            {
+              "name": "Health Check",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/query/health",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "query", "health"]
+                },
+                "description": "System health status including AI service connectivity"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "universeId",
+      "value": "",
+      "type": "string",
+      "description": "UUID from create-universe response"
+    },
+    {
+      "key": "seriesId",
+      "value": "",
+      "type": "string",
+      "description": "UUID from create-series response"
+    },
+    {
+      "key": "bookId",
+      "value": "",
+      "type": "string",
+      "description": "UUID from create-book response"
+    },
+    {
+      "key": "jobId",
+      "value": "",
+      "type": "string",
+      "description": "UUID from ingestion response"
+    }
+  ]
+}

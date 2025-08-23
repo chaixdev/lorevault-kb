@@ -11,6 +11,98 @@
 			"name": "Commands",
 			"item": [
 				{
+					"name": "Library Structure",
+					"item": [
+						{
+							"name": "Create Universe",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Cosmere\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/command/library/create-universe",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"command",
+										"library",
+										"create-universe"
+									]
+								},
+								"description": "Create a universe for organizing publication content"
+							}
+						},
+						{
+							"name": "Create Series",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"universeId\": \"{{universeId}}\",\n  \"name\": \"The Stormlight Archive\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/command/library/create-series",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"command",
+										"library",
+										"create-series"
+									]
+								},
+								"description": "Create a series within a universe"
+							}
+						},
+						{
+							"name": "Create Book",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"universeId\": \"{{universeId}}\",\n  \"seriesId\": \"{{seriesId}}\",\n  \"title\": \"The Way of Kings\",\n  \"bookNumber\": 1\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/command/library/create-book",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"command",
+										"library",
+										"create-book"
+									]
+								},
+								"description": "Create a book, either standalone or within a series"
+							}
+						}
+					]
+				},
+				{
 					"name": "Content Ingestion",
 					"item": [
 						{
@@ -27,18 +119,8 @@
 											"src": "/path/to/sample-chapter.txt"
 										},
 										{
-											"key": "universe",
-											"value": "Cosmere",
-											"type": "text"
-										},
-										{
-											"key": "series",
-											"value": "The Stormlight Archive",
-											"type": "text"
-										},
-										{
-											"key": "bookNumber",
-											"value": "1",
+											"key": "bookId",
+											"value": "{{bookId}}",
 											"type": "text"
 										},
 										{
@@ -47,7 +129,7 @@
 											"type": "text"
 										},
 										{
-											"key": "title",
+											"key": "chapterTitle",
 											"value": "Kaladin",
 											"type": "text"
 										}
@@ -64,42 +146,64 @@
 										"ingest"
 									]
 								},
-								"description": "Submit a chapter file for processing. Returns a job ID for tracking."
+								"description": "Submit a chapter file for processing. Requires an existing book."
 							},
-							"response": [
-								{
-									"name": "Success Response",
-									"originalRequest": {
-										"method": "POST",
-										"header": [],
-										"body": {
-											"mode": "formdata",
-											"formdata": [
-												{
-													"key": "file",
-													"type": "file",
-													"src": "/path/to/sample-chapter.txt"
-												},
-												{
-													"key": "universe",
-													"value": "Cosmere",
-													"type": "text"
-												},
-												{
-													"key": "series",
-													"value": "The Stormlight Archive",
-													"type": "text"
-												},
-												{
-													"key": "bookNumber",
-													"value": "1",
-													"type": "text"
-												},
-												{
-													"key": "chapterNumber",
-													"value": "1",
-													"type": "text"
-												}
+								"response": [
+									{
+										"name": "Success Response",
+										"originalRequest": {
+											"method": "POST",
+											"header": [],
+											"body": {
+												"mode": "formdata",
+												"formdata": [
+													{
+														"key": "file",
+														"type": "file",
+														"src": "/path/to/sample-chapter.txt"
+													},
+													{
+														"key": "bookId",
+														"value": "{{bookId}}",
+														"type": "text"
+													},
+													{
+														"key": "chapterNumber",
+														"value": "1",
+														"type": "text"
+													},
+													{
+														"key": "chapterTitle",
+														"value": "Kaladin",
+														"type": "text"
+													}
+												]
+											},
+											"url": {
+												"raw": "{{baseUrl}}/api/command/ingest",
+												"host": [
+													"{{baseUrl}}"
+												],
+												"path": [
+													"api",
+													"command",
+													"ingest"
+												]
+											}
+										},
+										"status": "Accepted",
+										"code": 202,
+										"_postman_previewlanguage": "json",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"cookie": [],
+										"body": "{\n  \"message\": \"Chapter ingestion started successfully\",\n  \"jobId\": \"a1b2c3d4-e5f6-7890-abcd-1234567890ef\",\n  \"timestamp\": \"2023-08-19T10:30:00Z\",\n  \"status\": \"ACCEPTED\"\n}"
+									}
+								]
 											]
 										},
 										"url": {
