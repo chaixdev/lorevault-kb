@@ -12,6 +12,7 @@ import com.lorevault.api.service.content.ChunkEmbeddingService;
 import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.ScenePersistenceService;
 import com.lorevault.api.service.content.TextChunkingService;
+import com.lorevault.api.service.timeline.DefaultTemporalEdgeService;
 import com.lorevault.api.service.shared.HashService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,7 @@ public class IngestionWorkflowService {
     private final ChunkEmbeddingService chunkEmbeddingService;
     private final HashService hashService;
     private final IngestionJobLifecycleService jobLifecycleService;
+    private final DefaultTemporalEdgeService defaultTemporalEdgeService;
 
     /**
      * Context object for workflow processing state
@@ -117,6 +119,10 @@ public class IngestionWorkflowService {
         
         List<Scene> scenes = scenePersistenceService
                 .persistDetectedScenes(context.getChapterId(), scenesWithCoordinates);
+        
+        // Create default temporal edges for the newly persisted scenes
+        log.info("Creating default temporal edges for chapter {}", context.getChapterId());
+        defaultTemporalEdgeService.createAllDefaults(context.getChapter().getBookId());
         
         updateStatus(context, IngestionStatus.DETECTING_SCENES, 
                 String.format("Detected %d semantic scenes from chapter text", scenes.size()));

@@ -14,4 +14,7 @@ public interface SceneGraphRepository extends Neo4jRepository<SceneNode, UUID> {
 
     @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene) DETACH DELETE s")
     void deleteByChapterId(UUID chapterId);
+
+    @Query("MATCH (a:Scene {id: $fromId})-[r:MEETS]->(b:Scene {id: $toId}) RETURN count(r)")
+    long countMeetsBetween(UUID fromId, UUID toId);
 }

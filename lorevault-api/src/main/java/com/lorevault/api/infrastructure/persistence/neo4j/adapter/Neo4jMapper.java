@@ -24,6 +24,8 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.lorevault.api.infrastructure.persistence.neo4j.model.BookNode;
+
 @Component
 public class Neo4jMapper {
 
@@ -32,6 +34,14 @@ public class Neo4jMapper {
         if (node == null) return null;
         Chapter domain = new Chapter();
         domain.setId(node.getId());
+        
+        // Extract UUID references from relationships
+        if (node.getBook() != null) {
+            domain.setBookId(node.getBook().getId());
+            domain.setSeriesId(node.getBook().getSeriesId());
+            domain.setUniverseId(node.getBook().getUniverseId());
+        }
+        
         domain.setChapterTitle(node.getChapterTitle());
         domain.setRawText(node.getRawText());
         domain.setContentHash(node.getContentHash());
@@ -54,6 +64,12 @@ public class Neo4jMapper {
         node.setId(domain.getId());
         node.setRawText(domain.getRawText());
         node.setContentHash(domain.getContentHash());
+        // Establish IN_BOOK link using the known Book UUID if available
+        if (domain.getBookId() != null) {
+            BookNode bookRef = new BookNode();
+            bookRef.setId(domain.getBookId());
+            node.setBook(bookRef);
+        }
         if (domain.getCoordinates() != null) {
             node.setUniverse(domain.getCoordinates().getUniverse());
             node.setSeries(domain.getCoordinates().getSeries());
