@@ -28,6 +28,9 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, 
             WITH c, collect(s) AS scenes
             UNWIND range(0, size(scenes) - 2) AS i
             WITH scenes[i] AS earlier, scenes[i + 1] AS later
+            // Guard: skip if adding earlier->later would introduce a cycle
+            WITH earlier, later
+            WHERE NOT EXISTS { MATCH (later)-[:MEETS*1..50]->(earlier) }
             MERGE (earlier)-[t:MEETS]->(later)
             SET t.type = 'HEURISTIC',
                 t.confidence = 0.5
@@ -62,6 +65,9 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, 
             WITH lastScene, head(collect(s2)) AS firstScene
             
             WHERE lastScene IS NOT NULL AND firstScene IS NOT NULL
+            // Guard: skip if adding lastScene->firstScene would introduce a cycle
+            WITH lastScene, firstScene
+            WHERE NOT EXISTS { MATCH (firstScene)-[:MEETS*1..500]->(lastScene) }
             MERGE (lastScene)-[t:MEETS]->(firstScene)
             SET t.type = 'HEURISTIC', t.confidence = 0.5
             RETURN count(t)
@@ -79,4 +85,48 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, 
         RETURN count(t)
         """)
     int countTemporalEdgesFromChapter(@Param("chapterId") UUID chapterId);
+
+    /**
+     * Count how many in-chapter candidate pairs would create a cycle
+     * (i.e., a bounded path exists from candidate later to earlier).
+     */
+    @Query("""
+        MATCH (b:Book {id: $bookId})
+        MATCH (c:Chapter)-[:IN_BOOK]->(b)
+        MATCH (c)-[:HAS_SCENE]->(s:Scene)
+        WITH c, s ORDER BY c.chapterNumber, s.sceneIndex
+        WITH c, collect(s) AS scenes
+        UNWIND range(0, size(scenes) - 2) AS i
+        WITH scenes[i] AS earlier, scenes[i + 1] AS later
+        WITH earlier, later
+        MATCH (later)-[:MEETS*1..50]->(earlier)
+        RETURN count(*)
+        """)
+    int countInChapterCycleCandidates(@Param("bookId") UUID bookId);
+
+    /**
+     * Count how many cross-chapter candidate pairs would create a cycle
+     * (i.e., a bounded path exists from firstScene to lastScene).
+     */
+    @Query("""
+        MATCH (b:Book {id: $bookId})
+        MATCH (c1:Chapter)-[:IN_BOOK]->(b)
+        MATCH (c2:Chapter)-[:IN_BOOK]->(b)
+        WHERE c2.chapterNumber = c1.chapterNumber + 1
+
+        OPTIONAL MATCH (c1)-[:HAS_SCENE]->(s1:Scene)
+        WITH b, c1, c2, s1
+        ORDER BY c1.chapterNumber, s1.sceneIndex DESC
+        WITH b, c1, c2, head(collect(s1)) AS lastScene
+
+        OPTIONAL MATCH (c2)-[:HAS_SCENE]->(s2:Scene)
+        WITH lastScene, c2, s2
+        ORDER BY c2.chapterNumber, s2.sceneIndex ASC
+        WITH lastScene, head(collect(s2)) AS firstScene
+
+        WHERE lastScene IS NOT NULL AND firstScene IS NOT NULL
+        MATCH (firstScene)-[:MEETS*1..500]->(lastScene)
+        RETURN count(*)
+        """)
+    int countCrossChapterCycleCandidates(@Param("bookId") UUID bookId);
 }
