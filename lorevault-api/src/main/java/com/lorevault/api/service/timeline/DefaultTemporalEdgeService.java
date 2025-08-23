@@ -30,7 +30,20 @@ public class DefaultTemporalEdgeService {
     @Transactional
     public void createAllDefaults(UUID bookId) {
         log.info("Creating default temporal edges for book {}", bookId);
-        
+        // Pre-flight: log potential cycle candidates for observability
+        try {
+            int inChapterCycleCandidates = temporalEdgePort.countInChapterCycleCandidates(bookId);
+            int crossChapterCycleCandidates = temporalEdgePort.countCrossChapterCycleCandidates(bookId);
+            if (inChapterCycleCandidates > 0 || crossChapterCycleCandidates > 0) {
+                log.warn("Detected potential cycle-inducing candidates before creation (book {}): in-chapter={}, cross-chapter={}",
+                        bookId, inChapterCycleCandidates, crossChapterCycleCandidates);
+            } else {
+                log.debug("No potential cycle-inducing candidates detected before creation for book {}", bookId);
+            }
+        } catch (Exception e) {
+            log.debug("Cycle candidate pre-check failed for book {}: {}", bookId, e.getMessage());
+        }
+
         int inChapterEdges = createInChapterDefaults(bookId);
         int crossChapterEdges = createCrossChapterDefault(bookId);
         

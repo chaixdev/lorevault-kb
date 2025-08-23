@@ -34,4 +34,16 @@ public interface TemporalEdgePort {
      * @return number of temporal edges from scenes in this chapter
      */
     int countTemporalEdgesFromChapter(UUID chapterId);
+
+    /**
+     * Count candidate in-chapter default edges that would introduce a cycle (bounded path exists).
+     * Used for logging/observability before guarded creation.
+     */
+    int countInChapterCycleCandidates(UUID bookId);
+
+    /**
+     * Count candidate cross-chapter default edges that would introduce a cycle (bounded path exists).
+     * Used for logging/observability before guarded creation.
+     */
+    int countCrossChapterCycleCandidates(UUID bookId);
 }
