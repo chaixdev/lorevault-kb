@@ -33,4 +33,14 @@ public class Neo4jTemporalEdgeAdapter implements TemporalEdgePort {
     public int countTemporalEdgesFromChapter(UUID chapterId) {
         return temporalEdgeWriteRepository.countTemporalEdgesFromChapter(chapterId);
     }
+
+    @Override
+    public int countInChapterCycleCandidates(UUID bookId) {
+        return temporalEdgeWriteRepository.countInChapterCycleCandidates(bookId);
+    }
+
+    @Override
+    public int countCrossChapterCycleCandidates(UUID bookId) {
+        return temporalEdgeWriteRepository.countCrossChapterCycleCandidates(bookId);
+    }
 }
