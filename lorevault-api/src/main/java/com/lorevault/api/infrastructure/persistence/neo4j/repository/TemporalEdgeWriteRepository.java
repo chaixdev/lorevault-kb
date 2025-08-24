@@ -30,10 +30,12 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, 
             WITH scenes[i] AS earlier, scenes[i + 1] AS later
             // Guard: skip if adding earlier->later would introduce a cycle
             WITH earlier, later
-            WHERE NOT EXISTS { MATCH (later)-[:MEETS*1..50]->(earlier) }
-            MERGE (earlier)-[t:MEETS]->(later)
-            SET t.type = 'HEURISTIC',
-                t.confidence = 0.5
+            WHERE NOT EXISTS { MATCH (later)-[:TEMPORAL*1..50]->(earlier) }
+            MERGE (earlier)-[t:TEMPORAL]->(later)
+            SET t.relation = 'MEETS',
+                t.status = 'CONFIRMED',
+                t.confidence = 0.5,
+                t.certainty = 'HEURISTIC'
             RETURN count(t)
             """)
     int mergeInChapterDefaultEdges(@Param("bookId") UUID bookId);
@@ -67,9 +69,12 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, 
             WHERE lastScene IS NOT NULL AND firstScene IS NOT NULL
             // Guard: skip if adding lastScene->firstScene would introduce a cycle
             WITH lastScene, firstScene
-            WHERE NOT EXISTS { MATCH (firstScene)-[:MEETS*1..500]->(lastScene) }
-            MERGE (lastScene)-[t:MEETS]->(firstScene)
-            SET t.type = 'HEURISTIC', t.confidence = 0.5
+            WHERE NOT EXISTS { MATCH (firstScene)-[:TEMPORAL*1..500]->(lastScene) }
+            MERGE (lastScene)-[t:TEMPORAL]->(firstScene)
+            SET t.relation = 'MEETS',
+                t.status = 'CONFIRMED',
+                t.confidence = 0.5,
+                t.certainty = 'HEURISTIC'
             RETURN count(t)
             """)
     int mergeCrossChapterDefaultEdge(@Param("bookId") UUID bookId);
@@ -81,7 +86,7 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, 
      * @return Number of temporal edges originating from scenes in this chapter
      */
     @Query("""
-        MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene)-[t:MEETS]->()
+        MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene)-[t:TEMPORAL]->()
         RETURN count(t)
         """)
     int countTemporalEdgesFromChapter(@Param("chapterId") UUID chapterId);
@@ -99,7 +104,7 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, 
         UNWIND range(0, size(scenes) - 2) AS i
         WITH scenes[i] AS earlier, scenes[i + 1] AS later
         WITH earlier, later
-        MATCH (later)-[:MEETS*1..50]->(earlier)
+        MATCH (later)-[:TEMPORAL*1..50]->(earlier)
         RETURN count(*)
         """)
     int countInChapterCycleCandidates(@Param("bookId") UUID bookId);
@@ -125,7 +130,7 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, 
         WITH lastScene, head(collect(s2)) AS firstScene
 
         WHERE lastScene IS NOT NULL AND firstScene IS NOT NULL
-        MATCH (firstScene)-[:MEETS*1..500]->(lastScene)
+        MATCH (firstScene)-[:TEMPORAL*1..500]->(lastScene)
         RETURN count(*)
         """)
     int countCrossChapterCycleCandidates(@Param("bookId") UUID bookId);
