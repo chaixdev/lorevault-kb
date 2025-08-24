@@ -34,6 +34,7 @@ Acceptance criteria
 Quality gates
 
 - [ ] Web tests pass; ArchUnit rules preserved
+- [ ] After LV-085 completes: circle back to LV-084-3 validation checklist and verify determinism, cross-chapter edge handling, cycle behavior, and performance
 
 Links
 
