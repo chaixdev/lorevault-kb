@@ -76,7 +76,7 @@ lorevault:
         base-url: https://api.groq.com/openai/v1
         completions-path: /chat/completions
         api-key: ${GROQ_API_KEY}
-        model: llama-3.3-70b-versatile
+        model: openai/gpt-oss-120b
         temperature: 0.2
         top-p: 1.0
         max-tokens: 4096

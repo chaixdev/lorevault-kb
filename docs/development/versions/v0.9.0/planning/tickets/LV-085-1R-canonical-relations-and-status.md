@@ -23,7 +23,6 @@ Acceptance criteria
 
 - [ ] Unit tests: mapping of all 13 Allen relations to canonical 7 (both directions) is correct.
 - [ ] Edges can be created/read with status and confidence fields.
-- [ ] Migration job runs idempotently and updates existing edges.
 
 Quality gates
 

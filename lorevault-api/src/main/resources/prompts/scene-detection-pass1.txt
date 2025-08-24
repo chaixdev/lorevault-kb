@@ -26,7 +26,7 @@ Rules
 - Output ONLY valid XML with root <scenes>. No explanations or extra text.
 - <index> starts at 1 and increments by 1.
 - <start_anchor> is the delimiter for the scene and MUST:
-  - be found verbatim in the chapter (exact case and punctuation),
+  - be found verbatim in the chapter (including exact case, punctuation and special characters),
   - be thirty to one hundred characters long,
   - be unique across the chapter.
 - All other fields are free text. Do not force verbatim quotes; paraphrase is acceptable.
