@@ -292,6 +292,21 @@ Constraints:
 - Chunks are context-agnostic - sequencing lives on the relationship edge
 ```
 
+#### Scene-Scene Relationship: `TEMPORAL`
+```
+Properties:
+- relationType: String (Allen temporal relation: 'before', 'after', 'meets', 'met_by', 'overlaps', 'overlapped_by', 'starts', 'started_by', 'during', 'contains', 'finishes', 'finished_by', 'equals')
+- certaintyLevel: String ('Explicit', 'StronglyImplied', 'WeaklyImplied', 'Heuristic')
+- timelineMarker: String (optional temporal reference extracted from scene)
+
+Constraints:
+- Consolidates all Allen temporal relations into single edge type
+- Many-to-many relationship (Scene can have temporal relationships with multiple other Scenes)
+- relationType must be from the 13 standard Allen interval relations
+- certaintyLevel reflects confidence in the temporal relationship determination
+- Supports cross-chapter temporal relationships through triad-based scene detection
+```
+
 #### Scene-Character Relationship: `FEATURES`
 ```
 Properties:

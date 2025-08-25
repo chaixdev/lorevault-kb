@@ -1,52 +1,37 @@
 <scenes>
   <scene>
     <index>1</index>
-    <start_anchor><![CDATA[“Next!” I ordered.]]></start_anchor>
-    <what_happens>A customs officer, Krrkktnkk a'ktnnzzik'tk, processes an alien abductee, Kevin Jenkins, who claims to be a human from a category twelve temperate planet. The officer is confused by the human's species and the fact that it is considered a non-sentient specimen under the Galactic Treaty of Laws. The two engage in a conversation, and the officer learns about the human's history and the circumstances of its abduction.</what_happens>
-    <who>Krrkktnkk a'ktnnzzik'tk; Kevin Jenkins</who>
-    <where>A customs and immigration desk on a trade station called Outlook on Forever</where>
-    <when_clues>Contemporary scene; no specific date or time mentioned</when_clues>
-    <break_reason>The scene shifts from the customs desk to a violent attack by Hunters, a carnivorous species that prefers the meat of fellow sentients.</break_reason>
-    <temporal_relation_guess>immediately after</temporal_relation_guess>
+    <start_anchor><![CDATA[“Next!” I ordered. I did not at first bother to look up from the desktop]]></start_anchor>
+    <context_summary>Customs and Immigration Officer Krrkktnkk a’ktnnzzik’tk encounters an "Unknown Species" abductee named Kevin Jenkins. Jenkins, a small, dense-seeming biped, introduces himself as Abductee 907-42-96-53-3. The officer learns that Jenkins is a "Human" from a "deathworld" and has been abducted by the Corti, causing bureaucratic issues due to the Galactic Treaty of Laws.</context_summary>
+    <time_indicators>interstellar convenient standard date/time 1196-5-24.4; two standard Diurnals</time_indicators>
+    <break_reason>N/A</break_reason>
   </scene>
   <scene>
     <index>2</index>
-    <start_anchor><![CDATA[It was suicide. The Hunter had a clear shot and took it.]]></start_anchor>
-    <what_happens>Krrkktnkk a'ktnnzzik'tk and Kevin Jenkins are attacked by Hunters, and Jenkins single-handedly defeats three of the alien warriors using his strength and agility. The Hunters are eventually killed, and Jenkins is left battered but alive.</what_happens>
-    <who>Krrkktnkk a'ktnnzzik'tk; Kevin Jenkins; Hunters</who>
-    <where>A customs and immigration desk on a trade station called Outlook on Forever</where>
-    <when_clues>During the Hunter attack; no specific date or time mentioned</when_clues>
-    <break_reason>The scene shifts from the aftermath of the Hunter attack to a conversation between Krrkktnkk a'ktnnzzik'tk and Kevin Jenkins on the public promenade deck of the station.</break_reason>
-    <temporal_relation_guess>days later</temporal_relation_guess>
+    <start_anchor><![CDATA[I was interrupted by an alarm. Three short howls of noise—the attack alarm.]]></start_anchor>
+    <context_summary>An attack alarm sounds on Civilian trade station 591 ‘Outlook on Forever,’ interrupting Officer Krrkktnkk's interview with Kevin Jenkins. The station is violently attacked by "Hunters," carnivorous aliens who hunt sentient beings. Jenkins, despite being shot multiple times, proves remarkably resilient and brutally kills the Hunters, saving Krrkktnkk's life.</context_summary>
+    <time_indicators>No explicit time indicators, but directly follows the previous scene.</time_indicators>
+    <break_reason>The narrative shifts abruptly from a bureaucratic interview to an unexpected and violent alien attack on the station, introducing immediate physical danger and action.</break_reason>
   </scene>
   <scene>
     <index>3</index>
     <start_anchor><![CDATA[I found the human Kevin Jenkins in conversation with one of the station’s senior lawyers on the public promenade deck.]]></start_anchor>
-    <what_happens>Krrkktnkk a'ktnnzzik'tk encounters Kevin Jenkins and a lawyer, Vedreg, discussing a petition to reclassify humans as sentient. Jenkins explains his species' biology and behavior, including their strength, resilience, and unique gland that generates combat drugs. The conversation reveals the complexities of human culture and society, including their mythology and religious beliefs.</what_happens>
-    <who>Krrkktnkk a'ktnnzzik'tk; Kevin Jenkins; Vedreg</who>
-    <where>The public promenade deck of a trade station called Outlook on Forever</where>
-    <when_clues>Twenty diurnals after the Hunter attack; no specific date or time mentioned</when_clues>
-    <break_reason>The scene shifts from the conversation between Krrkktnkk a'ktnnzzik'tk, Jenkins, and Vedreg to a description of the events that followed, including the council's decision to send a civilian fleet to Earth and the subsequent conflict.</break_reason>
-    <temporal_relation_guess>days or weeks later</temporal_relation_guess>
+    <context_summary>Weeks after the Hunter attack, the officer, now with a prosthetic arm, meets Kevin Jenkins again. Jenkins is discussing his petition to reclassify humans as sentient. They discuss human biology, strength, and resilience, which astonishes the officer and Lawyer Vedreg. Jenkins also reveals the deeply troubling concept of "Religion" on Earth, a subject that alarms both aliens.</context_summary>
+    <time_indicators>three groups of eight standard diurnals; twenty diurnals after the attack; half my life; very young age</time_indicators>
+    <break_reason>There is a significant time jump and a complete change of setting from the immediate aftermath of the attack to a later, calmer discussion about human nature and legal status.</break_reason>
   </scene>
   <scene>
     <index>4</index>
-    <start_anchor><![CDATA[Within hours, our conversation was the big talking point on a major interstellar newsfeed complete with an alarmist headline.]]></start_anchor>
-    <what_happens>The conversation between Krrkktnkk a'ktnnzzik'tk, Jenkins, and Vedreg becomes a major news story, and the council convenes a special meeting to discuss the implications of Jenkins' words. A civilian fleet is sent to Earth, and a conflict ensues.</what_happens>
-    <who>Krrkktnkk a'ktnnzzik'tk; Kevin Jenkins; Vedreg; the council</who>
-    <where>Capitol Station</where>
-    <when_clues>After the conversation between Krrkktnkk a'ktnnzzik'tk, Jenkins, and Vedreg; no specific date or time mentioned</when_clues>
-    <break_reason>The scene shifts from the council's decision to send a civilian fleet to Earth to a description of the events that followed, including the research mission to Earth and Krrkktnkk a'ktnnzzik'tk's transfer to head of security on the research station.</break_reason>
-    <temporal_relation_guess>days or weeks later</temporal_relation_guess>
+    <start_anchor><![CDATA[In hindsight, I really should have expected that Jenkins would have attracted a journalist’s attention.]]></start_anchor>
+    <context_summary>Jenkins' conversation about religion quickly goes viral on interstellar newsfeeds, leading to a special council meeting and a civilian fleet's disastrous first contact attempt with Earth. This prompts the council to amend the Galactic Treaty of Laws and launch a covert surveillance mission to Earth, with the officer transferred and promoted to head of security on the research station. Jenkins and two other human abductees, Charlotte and Jung, join the mission.</context_summary>
+    <time_indicators>Within hours; Three diurnals later; five eight-diurnals after the mission was announced; once every eight-diurnals</time_indicators>
+    <break_reason>The narrative shifts from a private conversation to galactic-level political and military actions, a significant time jump, and a new mission setting focused on Earth observation.</break_reason>
   </scene>
   <scene>
     <index>5</index>
-    <start_anchor><![CDATA[The station displaced into the Earth system five eight-diurnals after the mission was announced, using the bulk of a large ringed gas world known as “Saturn” to mask the neutrino burst of its arrival.]]></start_anchor>
-    <what_happens>Krrkktnkk a'ktnnzzik'tk is transferred to head of security on the research station, which is sent to Earth to study the human species. The station is designed to go undetected, and Krrkktnkk a'ktnnzzik'tk begins to learn more about human culture and society.</what_happens>
-    <who>Krrkktnkk a'ktnnzzik'tk</who>
-    <where>The research station in the Earth system</where>
-    <when_clues>Five eight-diurnals after the mission was announced; no specific date or time mentioned</when_clues>
-    <break_reason>The scene shifts from the research station to a description of Krrkktnkk a'ktnnzzik'tk's experiences on the station, including his interactions with the human abductees and his observations of human culture and society.</break_reason>
-    <temporal_relation_guess>days or weeks later</temporal_relation_guess>
+    <start_anchor><![CDATA[We spent a lot of time monitoring the political situation at first.]]></start_anchor>
+    <context_summary>On the stealth research station orbiting Earth, the crew, including the officer, observes human culture. The officer, initially guided by Jenkins' pessimistic view, discovers the profound beauty and complexity of human art, philosophy, and pastimes, despite their internal conflicts, particularly regarding religion. The officer concludes that humans are "tortured geniuses" who thrive on adversity and must never learn of their true superiority to other species, as it might break them.</context_summary>
+    <time_indicators>a lot of time; nearly a full diurnal; once every eight-diurnals; Up until that point</time_indicators>
+    <break_reason>This scene focuses on the long-term observation of Earth and the evolution of the officer's understanding of humanity, a distinct shift from the immediate political fallout and mission setup of the previous scene.</break_reason>
   </scene>
 </scenes>

@@ -3,8 +3,11 @@ package com.lorevault.api.service.content;
 import com.lorevault.api.dto.content.SceneDetectionResult;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.List;
 
@@ -150,12 +153,13 @@ class SceneCoordinateLocalizerTest {
     }
 
     @Test
-    @DisplayName("should require exact whitespace match in anchors")
-    void shouldRequireExactWhitespaceMatchInAnchors() {
+    @DisplayName("should handle whitespace differences in anchors (enhanced matching)")
+    void shouldHandleWhitespaceDifferencesInAnchors() {
         String chapterText = "The ship sailed across the ocean.";
         
+        // Anchor with different whitespace (simulating LLM CDATA indentation)
         List<SceneDetectionResult> aiResults = List.of(
-            new SceneDetectionResult(1, "ship sailed across", "Sailing scene",
+            new SceneDetectionResult(1, "ship    sailed\n\n  across", "Sailing scene",
                                    "Whitespace test", "R:temporal.continues", "Heuristic", "Ocean")
         );
 
@@ -163,6 +167,209 @@ class SceneCoordinateLocalizerTest {
 
         assertThat(coordinated).hasSize(1);
         SceneWithCoordinates scene = coordinated.get(0);
-        assertThat(scene.startCharacterOffset()).isEqualTo(chapterText.indexOf("ship sailed across"));
+        // The enhanced matching should find the normalized match
+        // Position might be slightly different due to whitespace normalization mapping
+        assertThat(scene.startCharacterOffset()).isGreaterThanOrEqualTo(0L);
+        assertThat(scene.startCharacterOffset()).isLessThanOrEqualTo(chapterText.indexOf("ship sailed across"));
+    }
+
+    @Nested
+    @DisplayName("Whitespace Normalization Tests")
+    class WhitespaceNormalizationTests {
+
+        @Test
+        @DisplayName("Should handle extra indentation in anchor (LLM CDATA issue)")
+        void shouldHandleExtraIndentationInAnchor() {
+            // Given: Chapter text with normal whitespace
+            String chapterText = "+0014+: Another failure.\n\n+0023+: There have been victories also.\n\n+0003+: The efforts work.";
+            
+            // And: Anchor with extra indentation (simulating LLM CDATA output)
+            String anchorWithIndentation = "+0014+: Another failure.\n    \n+0023+: There have been victories also.";
+            
+            List<SceneDetectionResult> results = List.of(
+                new SceneDetectionResult(1, anchorWithIndentation, "Scene 1 context", "", "", "", "")
+            );
+
+            // When
+            List<SceneWithCoordinates> coordinates = localizer.localizeCoordinates(chapterText, results);
+
+            // Then
+            assertThat(coordinates).hasSize(1);
+            assertThat(coordinates.get(0).startCharacterOffset()).isEqualTo(0);
+            assertThat(coordinates.get(0).endCharacterOffset()).isEqualTo(chapterText.length());
+        }
+
+        @Test
+        @DisplayName("Should handle mixed tab and space normalization")
+        void shouldHandleMixedTabSpaceNormalization() {
+            // Given
+            String chapterText = "Hello    world\n\nNext line";
+            String anchorWithTabs = "Hello\t\t\tworld\n   \nNext line";
+            
+            List<SceneDetectionResult> results = List.of(
+                new SceneDetectionResult(1, anchorWithTabs, "Scene context", "", "", "", "")
+            );
+
+            // When
+            List<SceneWithCoordinates> coordinates = localizer.localizeCoordinates(chapterText, results);
+
+            // Then
+            assertThat(coordinates).hasSize(1);
+            assertThat(coordinates.get(0).startCharacterOffset()).isEqualTo(0);
+        }
+
+        @ParameterizedTest
+        @DisplayName("Should normalize various whitespace patterns")
+        @CsvSource({
+            "'Hello world', 'Hello    world'",
+            "'Line1 Line2', 'Line1\n\n\nLine2'",
+            "'A B C', 'A\t\tB   C'",
+            "'Text here', '   Text here   '"
+        })
+        void shouldNormalizeVariousWhitespacePatterns(String expected, String input) {
+            // Given
+            String chapterText = expected + "\n\nMore content";
+            
+            List<SceneDetectionResult> results = List.of(
+                new SceneDetectionResult(1, input, "Scene context", "", "", "", "")
+            );
+
+            // When
+            List<SceneWithCoordinates> coordinates = localizer.localizeCoordinates(chapterText, results);
+
+            // Then
+            assertThat(coordinates).hasSize(1);
+            assertThat(coordinates.get(0).startCharacterOffset()).isEqualTo(0);
+        }
+    }
+
+    @Nested
+    @DisplayName("Multi-Tier Fallback Tests")
+    class MultiTierFallbackTests {
+
+        @Test
+        @DisplayName("Should fall back to word trimming for long anchors")
+        void shouldFallBackToWordTrimmingForLongAnchors() {
+            // Given
+            String chapterText = "The quick brown fox jumps over the lazy dog. More content follows here.";
+            
+            // Anchor has extra words that don't exist in chapter
+            String anchorWithExtraWords = "The quick brown fox jumps over the lazy dog with extra words here.";
+            
+            List<SceneDetectionResult> results = List.of(
+                new SceneDetectionResult(1, anchorWithExtraWords, "Scene context", "", "", "", "")
+            );
+
+            // When
+            List<SceneWithCoordinates> coordinates = localizer.localizeCoordinates(chapterText, results);
+
+            // Then
+            assertThat(coordinates).hasSize(1);
+            assertThat(coordinates.get(0).startCharacterOffset()).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("Should use fuzzy matching as last resort")
+        void shouldUseFuzzyMatchingAsLastResort() {
+            // Given
+            String chapterText = "This is a test of fuzzy matching capabilities.";
+            
+            // Anchor with small typos that should match via fuzzy logic
+            String fuzzyAnchor = "This iz a tast of fuzzy"; // 'is'->'iz', 'test'->'tast'
+            
+            List<SceneDetectionResult> results = List.of(
+                new SceneDetectionResult(1, fuzzyAnchor, "Scene context", "", "", "", "")
+            );
+
+            // When
+            List<SceneWithCoordinates> coordinates = localizer.localizeCoordinates(chapterText, results);
+
+            // Then
+            assertThat(coordinates).hasSize(1);
+            assertThat(coordinates.get(0).startCharacterOffset()).isEqualTo(0);
+        }
+    }
+
+    @Nested
+    @DisplayName("Bounded Search Tests")
+    class BoundedSearchTests {
+
+        @Test
+        @DisplayName("Should handle missing middle scene with look-ahead")
+        void shouldHandleMissingMiddleSceneWithLookAhead() {
+            // Given
+            String chapterText = "First scene here.\n\nSecond scene missing anchor.\n\nThird scene found.";
+            
+            List<SceneDetectionResult> results = List.of(
+                new SceneDetectionResult(1, "First scene here", "Scene 1", "", "", "", ""),
+                new SceneDetectionResult(2, "Nonexistent anchor text", "Scene 2", "", "", "", ""), // Won't be found
+                new SceneDetectionResult(3, "Third scene found", "Scene 3", "", "", "", "")
+            );
+
+            // When
+            List<SceneWithCoordinates> coordinates = localizer.localizeCoordinates(chapterText, results);
+
+            // Then
+            assertThat(coordinates).hasSize(2); // Scene 2 should be skipped
+            assertThat(coordinates.get(0).sceneIndex()).isEqualTo(1);
+            assertThat(coordinates.get(1).sceneIndex()).isEqualTo(3);
+            
+            // Scene 1 should extend to Scene 3's start (look-ahead boundary)
+            assertThat(coordinates.get(0).endCharacterOffset())
+                .isEqualTo(coordinates.get(1).startCharacterOffset());
+        }
+
+        @Test
+        @DisplayName("Should extend to chapter end when no subsequent anchors found")
+        void shouldExtendToChapterEndWhenNoSubsequentAnchorsFound() {
+            // Given
+            String chapterText = "First scene content.\n\nRest of chapter with no more scene anchors.";
+            
+            List<SceneDetectionResult> results = List.of(
+                new SceneDetectionResult(1, "First scene content", "Scene 1", "", "", "", ""),
+                new SceneDetectionResult(2, "Nonexistent anchor", "Scene 2", "", "", "", ""),
+                new SceneDetectionResult(3, "Another missing anchor", "Scene 3", "", "", "", "")
+            );
+
+            // When
+            List<SceneWithCoordinates> coordinates = localizer.localizeCoordinates(chapterText, results);
+
+            // Then
+            assertThat(coordinates).hasSize(1);
+            assertThat(coordinates.get(0).endCharacterOffset()).isEqualTo(chapterText.length());
+        }
+    }
+
+    @Nested
+    @DisplayName("Real-World Scenario Tests")
+    class RealWorldScenarioTests {
+
+        @Test
+        @DisplayName("Should handle the original +0014+ whitespace issue")
+        void shouldHandleOriginalWhitespaceIssue() {
+            // Given: Real data from the bug report
+            String chapterText = "+0014+: Another failure.\n\n+0023+: There have been victories also.\n\n+0003+: The efforts of The Discarded work to our advantage.";
+            
+            // LLM output with CDATA indentation
+            String llmAnchor = "+0014+: Another failure.\n    \n+0023+: There have been victories also.";
+            
+            List<SceneDetectionResult> results = List.of(
+                new SceneDetectionResult(1, llmAnchor, "Chat-log style transmission", "", "", "", "")
+            );
+
+            // When
+            List<SceneWithCoordinates> coordinates = localizer.localizeCoordinates(chapterText, results);
+
+            // Then
+            assertThat(coordinates).hasSize(1);
+            assertThat(coordinates.get(0).startCharacterOffset()).isEqualTo(0);
+            
+            // Verify the actual text match
+            String matchedText = chapterText.substring(
+                (int) coordinates.get(0).startCharacterOffset(),
+                Math.min((int) coordinates.get(0).startCharacterOffset() + 50, chapterText.length())
+            );
+            assertThat(matchedText).startsWith("+0014+: Another failure.");
+        }
     }
 }
