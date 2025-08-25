@@ -16,9 +16,11 @@
 
 ### LLM Agent Guidelines
 - Generate tests alongside implementation code
-- Focus on service-level behavioral tests over granular units
+- Focus on service-level behavioral tests over granular units  
 - Use realistic test data scenarios (TestDataBuilder patterns)
 - Mock expensive external calls (LLMs, APIs, databases in unit tests)
+- **AVOID extracting services just for testing** - prefer comprehensive service tests over service explosion
+- **Only create new services for distinct business capabilities** - not for internal validation or utility functions
 
 ## Test Architecture
 
