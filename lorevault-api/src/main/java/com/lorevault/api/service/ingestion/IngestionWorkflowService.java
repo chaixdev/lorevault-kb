@@ -13,7 +13,7 @@ import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.ScenePersistenceService;
 import com.lorevault.api.service.content.TextChunkingService;
 import com.lorevault.api.service.timeline.DefaultTemporalEdgeService;
-import com.lorevault.api.service.shared.HashService;
+import static com.lorevault.api.util.HashUtils.generateSha256Hash;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,7 +41,6 @@ public class IngestionWorkflowService {
     private final ScenePersistenceService scenePersistenceService;
     private final TextChunkingService textChunkingService;
     private final ChunkEmbeddingService chunkEmbeddingService;
-    private final HashService hashService;
     private final IngestionJobLifecycleService jobLifecycleService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
 
@@ -213,7 +212,7 @@ public class IngestionWorkflowService {
     private Chunk createChunk(WorkflowContext context, Chunk chunk) {
         // Use the normalized chunk text from TextChunkingService instead of raw chapter substring
         String chunkContent = chunk.getText(); // This contains the properly normalized text
-        String contentHash = hashService.generateSha256Hash(chunkContent);
+        String contentHash = generateSha256Hash(chunkContent);
         
         Chunk newChunk = new Chunk();
         // Legacy: still populate for backward compatibility; will migrate to relationship ordering
