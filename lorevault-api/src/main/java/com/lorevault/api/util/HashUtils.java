@@ -1,21 +1,27 @@
-package com.lorevault.api.service.shared;
-
-import org.springframework.stereotype.Service;
+package com.lorevault.api.util;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 /**
- * Utility service for generating content hashes
+ * Utility class for generating content hashes.
+ * This replaces the HashService to eliminate unnecessary service layer indirection.
  */
-@Service
-public class HashService {
+public final class HashUtils {
+
+    private HashUtils() {
+        // Utility class - prevent instantiation
+    }
 
     /**
      * Generate a SHA-256 hash of the given text
+     * 
+     * @param text the input text to hash
+     * @return the SHA-256 hash as a hexadecimal string
+     * @throws RuntimeException if SHA-256 algorithm is not available
      */
-    public String generateSha256Hash(String text) {
+    public static String generateSha256Hash(String text) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(text.getBytes(StandardCharsets.UTF_8));
@@ -25,7 +31,7 @@ public class HashService {
         }
     }
 
-    private String bytesToHex(byte[] bytes) {
+    private static String bytesToHex(byte[] bytes) {
         StringBuilder result = new StringBuilder();
         for (byte b : bytes) {
             result.append(String.format("%02x", b));

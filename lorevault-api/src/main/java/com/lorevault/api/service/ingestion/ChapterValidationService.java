@@ -5,7 +5,7 @@ import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.dto.shared.PublicationCoordinates;
-import com.lorevault.api.service.shared.HashService;
+import static com.lorevault.api.util.HashUtils.generateSha256Hash;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,6 @@ import java.util.UUID;
 @Slf4j
 public class ChapterValidationService {
 
-    private final HashService hashService;
     private final ContentPersistencePort contentPersistencePort;
 
     /**
@@ -67,7 +66,7 @@ public class ChapterValidationService {
     log.info("Validating chapter submission: bookId={}, chapterNumber={}, title={}",
         request.getBookId(), request.getChapterNumber(), request.getChapterTitle());
 
-        String contentHash = hashService.generateSha256Hash(request.getChapterText());
+        String contentHash = generateSha256Hash(request.getChapterText());
 
         // Check for existing chapter with same content
     Optional<Chapter> existingChapter = findExistingChapterByHash(contentHash);
