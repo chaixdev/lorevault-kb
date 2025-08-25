@@ -14,6 +14,7 @@ The architecture is designed to be robust, scalable, and maintainable, leveragin
 2. **Hybrid AI Architecture**: Local Gemma 3B for cost-effective pre-processing + External LLMs for complex reasoning
 3. **Asynchronous Processing**: Non-blocking ingestion with background processing pipelines
 4. **Container-First Deployment**: Docker-based deployment for consistency and scalability
+5. **Service Consolidation**: Focused business services (not micro-services) - see [Service Design Principles](../development/current/architecture/service-design-principles.md)
 
 ## Architectural Viewpoints
 

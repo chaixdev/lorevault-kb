@@ -188,6 +188,8 @@ class [ServiceName]Test {
 
 **Spring Boot Patterns**: Follow existing patterns for Controllers, Services, Repositories, DTOs
 
+**Service Design**: Refer to `/docs/development/current/architecture/service-design-principles.md` for guidance on appropriate service boundaries. Avoid over-segmentation - create services for business capabilities, not implementation details.
+
 ### Phase 5: Test Verification & Validation (MANDATORY)
 
 **⚠️ CRITICAL**: All tests must pass and provide meaningful coverage before user verification.
