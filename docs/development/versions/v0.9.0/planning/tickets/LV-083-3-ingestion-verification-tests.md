@@ -1,5 +1,7 @@
 # LV-083-3 — Ingestion verification tests for Events [user story]
 
+**Status: COMPLETE** - Implemented in SceneEventDualWriteIntegrationTest with comprehensive coverage of dual-label verification, relationship validation, and property checks. The test validates event==scene counts and all required relationships.
+
 Context
 
 - After enabling dual-write, we need tests to ensure Event creation mirrors Scenes and linkages are correct.

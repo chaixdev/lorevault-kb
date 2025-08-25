@@ -1,5 +1,7 @@
 # LV-082-3 — Mapping and weighting tests [user story]
 
+**Status: COMPLETE** - All required tests implemented with 30 new tests covering enum completeness, weight mapping, and field serialization.
+
 Context
 
 - Establish correctness of enumeration mapping and weight calculations before wiring ingestion.

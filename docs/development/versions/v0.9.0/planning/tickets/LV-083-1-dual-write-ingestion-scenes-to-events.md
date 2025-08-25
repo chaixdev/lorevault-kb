@@ -1,5 +1,7 @@
 # LV-083-1 — Dual-write: Scenes → Events on ingestion [user story]
 
+**Status: COMPLETE** - Implemented with :Event:Scene dual-labeling, chapterId properties, and comprehensive integration tests. See implementation notes in /docs/development/versions/v0.9.0/implementation/LV-083-1-dual-write-scenes-events.md
+
 Context
 
 - We need to persist :Event:Scene nodes during chapter ingestion to prepare for timeline features.
