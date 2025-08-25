@@ -3,7 +3,7 @@ package com.lorevault.api.service.content;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.timeline.TriadRelationInverter;
-import com.lorevault.api.service.shared.PromptLoaderService;
+import com.lorevault.api.application.port.PromptRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -40,7 +40,7 @@ public class TriadOrchestrationService {
     private final TriadBuilderService triadBuilder;
     private final SceneDetectionClient sceneDetectionClient;
     private final TriadXmlParser triadXmlParser;
-    private final PromptLoaderService promptLoaderService;
+    private final PromptRepositoryPort promptRepository;
 
     /**
      * Analyze scene triads and return normalized results.
@@ -50,7 +50,7 @@ public class TriadOrchestrationService {
         if (triads.isEmpty()) return List.of();
 
         // System prompt is pass2 system prompt
-        PromptTemplate systemTemplate = promptLoaderService.getSceneDetectionPass2PromptTemplate();
+        PromptTemplate systemTemplate = promptRepository.get("scene-detection-pass2");
         String systemPrompt = systemTemplate.render(Map.of());
 
         List<TriadAnalysis> out = new ArrayList<>();

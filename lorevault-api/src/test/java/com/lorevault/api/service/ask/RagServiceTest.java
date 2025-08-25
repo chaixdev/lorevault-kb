@@ -5,7 +5,7 @@ import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.dto.ask.AskDtos;
 import com.lorevault.api.dto.search.SemanticSearchDtos;
 import com.lorevault.api.service.search.SemanticSearchService;
-import com.lorevault.api.service.shared.PromptLoaderService;
+import com.lorevault.api.application.port.PromptRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -36,9 +36,7 @@ class RagServiceTest {
     private SemanticSearchService semanticSearchService;
 
     @Mock
-    private PromptLoaderService promptLoaderService;
-
-    @Mock
+    private PromptRepositoryPort mockPromptRepository;    @Mock
     private ContentPersistencePort contentPersistencePort;
 
     @Mock
@@ -57,7 +55,7 @@ class RagServiceTest {
 
     @BeforeEach
     void setUp() {
-        ragService = new RagService(semanticSearchService, promptLoaderService, contentPersistencePort, chatClient);
+        ragService = new RagService(semanticSearchService, mockPromptRepository, contentPersistencePort, chatClient);
         
         ReflectionTestUtils.setField(ragService, "modelId", "test-model");
     }
@@ -105,7 +103,7 @@ class RagServiceTest {
 
             when(semanticSearchService.search(any(SemanticSearchDtos.SemanticSearchRequest.class)))
                 .thenReturn(searchResponse);
-            when(promptLoaderService.getRagAnswerGenerationPromptTemplate())
+            when(mockPromptRepository.get("rag-answer-generation"))
                 .thenReturn(new org.springframework.ai.chat.prompt.PromptTemplate("You are a helpful assistant."));
             when(callSpec.content())
                 .thenReturn("Kaladin is a spearman. [1]");
@@ -165,7 +163,7 @@ class RagServiceTest {
 
             when(semanticSearchService.search(any(SemanticSearchDtos.SemanticSearchRequest.class)))
                 .thenReturn(searchResponse);
-            when(promptLoaderService.getRagAnswerGenerationPromptTemplate())
+            when(mockPromptRepository.get("rag-answer-generation"))
                 .thenReturn(new PromptTemplate("You are a helpful assistant."));
             when(callSpec.content())
                 .thenReturn(llmResponse);
@@ -268,7 +266,7 @@ class RagServiceTest {
 
             when(semanticSearchService.search(any(SemanticSearchDtos.SemanticSearchRequest.class)))
                 .thenReturn(searchResponse);
-            when(promptLoaderService.getRagAnswerGenerationPromptTemplate())
+            when(mockPromptRepository.get("rag-answer-generation"))
                 .thenReturn(new PromptTemplate("You are a helpful assistant."));
             when(callSpec.content())
                 .thenReturn(llmResponse);
