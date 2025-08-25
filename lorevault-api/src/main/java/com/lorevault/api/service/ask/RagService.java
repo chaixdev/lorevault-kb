@@ -13,7 +13,7 @@ import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchResponse;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SearchResultDto;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchFilters;
 import com.lorevault.api.service.search.SemanticSearchService;
-import com.lorevault.api.service.shared.PromptLoaderService;
+import com.lorevault.api.application.port.PromptRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -35,7 +35,7 @@ import java.util.stream.IntStream;
 public class RagService {
 
     private final SemanticSearchService semanticSearchService;
-    private final PromptLoaderService promptLoaderService;
+    private final PromptRepositoryPort promptRepository;
     private final ContentPersistencePort contentPersistencePort;
     
     @Qualifier("nlpBig")
@@ -239,7 +239,7 @@ public class RagService {
     }
 
     private String buildSystemPrompt() {
-        return promptLoaderService.getRagAnswerGenerationPromptTemplate().render();
+        return promptRepository.get("rag-answer-generation").render();
     }
 
     private String buildUserPrompt(String question, String context) {

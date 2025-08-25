@@ -1,7 +1,7 @@
 package com.lorevault.api.service.content;
 
 import com.lorevault.api.configuration.properties.LoreVaultPromptProperties;
-import com.lorevault.api.service.shared.PromptLoaderService;
+import com.lorevault.api.application.port.PromptRepositoryPort;
 import com.lorevault.api.service.ingestion.LlmCallLoggingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -26,7 +26,7 @@ public class SceneDetectionClient {
     
     private final ChatClient nlpSmallChatClient;
     private final ChatClient nlpBigChatClient;
-    private final PromptLoaderService promptLoaderService;
+    private final PromptRepositoryPort promptRepository;
     private final LoreVaultPromptProperties promptProperties;
     private final LlmCallLoggingService llmLog;
     
@@ -41,13 +41,13 @@ public class SceneDetectionClient {
     public SceneDetectionClient(
             @Qualifier("nlpSmall") ChatClient nlpSmallChatClient,
             @Qualifier("nlpBig") ChatClient nlpBigChatClient,
-            PromptLoaderService promptLoaderService,
+            PromptRepositoryPort promptRepository,
             LoreVaultPromptProperties promptProperties,
             @Qualifier("llmRetryTemplate") RetryTemplate retryTemplate,
             LlmCallLoggingService llmLog) {
         this.nlpSmallChatClient = nlpSmallChatClient;
         this.nlpBigChatClient = nlpBigChatClient;
-        this.promptLoaderService = promptLoaderService;
+        this.promptRepository = promptRepository;
         this.promptProperties = promptProperties;
         this.retryTemplate = retryTemplate;
         this.llmLog = llmLog;
@@ -86,7 +86,7 @@ public class SceneDetectionClient {
      * @throws RuntimeException if pass 1 fails after retries
      */
     public String detectScenesPass1(UUID jobId, String chapterText) {
-        PromptTemplate template = promptLoaderService.getSceneDetectionPass1PromptTemplate();
+        PromptTemplate template = promptRepository.get("scene-detection-pass1");
         String systemPrompt = template.render(Map.of());
         
         String modelId = promptProperties.getSceneDetectionPass1Model();
@@ -104,7 +104,7 @@ public class SceneDetectionClient {
      * @throws RuntimeException if pass 2 fails after retries  
      */
     public String detectScenesPass2(UUID jobId, String pass1XmlResult) {
-        PromptTemplate template = promptLoaderService.getSceneDetectionPass2PromptTemplate();
+        PromptTemplate template = promptRepository.get("scene-detection-pass2");
         String systemPrompt = template.render(Map.of());
         
         String modelId = promptProperties.getSceneDetectionPass2Model();
@@ -122,7 +122,7 @@ public class SceneDetectionClient {
      * @return Raw XML triad response
      */
     public String detectScenesPass2Triad(UUID jobId, String systemPrompt, Map<String, Object> userVariables) {
-        PromptTemplate userTemplate = promptLoaderService.getSceneDetectionPass2UserTemplate();
+        PromptTemplate userTemplate = promptRepository.get("scene-detection-pass2-user");
         String userInput = userTemplate.render(userVariables);
 
         String modelId = promptProperties.getSceneDetectionPass2Model();
@@ -141,7 +141,7 @@ public class SceneDetectionClient {
      */
     public String detectScenes(String chapterText) {
         // Load the system prompt (instructions) from resources
-        PromptTemplate template = promptLoaderService.getSceneDetectionPromptTemplate();
+        PromptTemplate template = promptRepository.get("scene-detection");
         String systemPrompt = template.render(Map.of());
         
         // Legacy uses small model by default
