@@ -2,41 +2,45 @@
 
 Context
 
-- Internal consumers and tests need a way to inspect temporal neighbors of an Event.
-- See planning: ../v0.9.0-scene-to-event-entity-plan.md
-- See research: ../../research/timeline-apis.md
+- Internal consumers and tests need a way to inspect temporal neighbors.
+- Primary persisted edges are Scene↔Scene neighbors from triad-based Pass 2 (LV-085-0). Event↔Event neighbors can be derived when Event↔Scene links exist.
+- See planning: ../v0.9.0-scene-to-event-entity-plan.md; Research: ../../research/timeline-apis.md and ../../research/Narrative event DAG.md
 
 Problem
 
-- Lack of a stable read interface slows iteration on edge upgrades and ordering.
+- Lack of a stable read interface slows iteration on upgrades and ordering.
 
 Proposal
 
-- Add GET /api/timeline/events/{eventId}/neighbors returning previous and next neighbors with relation, certainty, weight, rationale, and offsets.
+- Provide internal endpoints:
+  - GET /api/timeline/scenes/{sceneId}/neighbors -> { prev: TemporalNeighbor[], next: TemporalNeighbor[] } including relation, certainty, state (Confirmed/Contested/SingleSided), evidence, and counter-vote when applicable.
+  - Optionally (if needed now): GET /api/timeline/events/{eventId}/neighbors derived via the scene(s) that depict/contain the event; document limitations.
 
 Scope
 
-- Controller (internal), service, and repository method(s); controller slice tests.
+- Controller (internal), service, repository.
+- Controller slice tests to validate response contract.
 
 Out of scope
 
-- Publicized API documentation (research-only docs are sufficient for now)
+- Public docs (keep as internal for now)
 
 Technical notes
 
-- Response shape: { prev: TemporalNeighbor[], next: TemporalNeighbor[] }.
+- Treat inverse-equivalent relations as compatible when presenting neighbors.
+- For derived event neighbors, pick representative scene(s) and map through Scene neighbors; prefer Confirmed edges.
 
 Acceptance criteria
 
-- [ ] Endpoint returns neighbors for a sample event with required fields
-- [ ] Controller slice tests validate response contract
+- [ ] Endpoint returns scene neighbors with required fields and state.
+- [ ] If event endpoint included: mapping strategy documented and covered by tests.
 
 Quality gates
 
-- [ ] Web tests pass; ArchUnit rules preserved
-- [ ] After LV-085 completes: circle back to LV-084-3 validation checklist and verify determinism, cross-chapter edge handling, cycle behavior, and performance
+- [ ] Web tests pass; ArchUnit rules preserved.
+- [ ] After LV-085 completes: verify determinism, cross-chapter boundary handling, cycle downgrades, and performance.
 
 Links
 
 - Planning: ../v0.9.0-scene-to-event-entity-plan.md#085—llm-temporal-upgrades-+-neighbors-api-internal
-- Research: ../../research/timeline-apis.md
+- Research: ../../research/timeline-apis.md, ../../research/Narrative event DAG.md
