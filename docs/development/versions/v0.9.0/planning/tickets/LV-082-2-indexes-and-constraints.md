@@ -1,5 +1,7 @@
 # LV-082-2 — Indexes and constraints for Events [refactor]
 
+**Status: COMPLETE** - Implemented in Neo4jSchemaInitializer.java with constraints and indexes as specified.
+
 Context
 
 - Storage readiness requires performant lookup and ordering for Events derived from Scenes.
