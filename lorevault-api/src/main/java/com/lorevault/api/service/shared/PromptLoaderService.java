@@ -89,6 +89,15 @@ public class PromptLoaderService {
     }
 
     /**
+     * Load the user template used for Scene Detection Pass 2 triad inputs.
+     * File: prompts/scene-detection-pass2-usertemplate.xml
+     */
+    public PromptTemplate getSceneDetectionPass2UserTemplate() {
+        String userTemplatePath = promptProperties.getPromptPath("scene-detection-pass2-usertemplate.xml");
+        return getPromptTemplate("scene-detection-pass2-user", userTemplatePath);
+    }
+
+    /**
      * Generic method to load and cache prompt templates with centralized configuration.
      * 
      * @param promptKey Unique key for caching

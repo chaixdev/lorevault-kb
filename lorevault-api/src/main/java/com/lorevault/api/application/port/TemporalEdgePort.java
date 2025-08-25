@@ -46,4 +46,24 @@ public interface TemporalEdgePort {
      * Used for logging/observability before guarded creation.
      */
     int countCrossChapterCycleCandidates(UUID bookId);
+
+    /**
+     * Upsert a directed TEMPORAL edge with full properties between two scenes.
+     * Implementations must ensure idempotent behavior (MERGE semantics) and set
+     * properties exactly as provided.
+     *
+     * @return internal edge id or null if unavailable
+     */
+    Long upsertTemporalEdge(
+        UUID fromId,
+        UUID toId,
+        String type,
+        String certainty,
+        Double weight,
+        String source,
+        String rationale,
+        Long evidenceStart,
+        Long evidenceEnd,
+        UUID evidenceChunkId
+    );
 }

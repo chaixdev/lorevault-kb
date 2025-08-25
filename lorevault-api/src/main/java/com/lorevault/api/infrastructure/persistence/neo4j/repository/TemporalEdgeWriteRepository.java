@@ -28,11 +28,11 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, 
             WITH c, collect(s) AS scenes
             UNWIND range(0, size(scenes) - 2) AS i
             WITH scenes[i] AS earlier, scenes[i + 1] AS later
-            // Guard: skip if adding earlier->later would introduce a cycle
+            // Guard: skip if adding earlier->later would introduce a cycle via TEMPORAL edges
             WITH earlier, later
-            WHERE NOT EXISTS { MATCH (later)-[:MEETS*1..50]->(earlier) }
-            MERGE (earlier)-[t:MEETS]->(later)
-            SET t.type = 'HEURISTIC',
+            WHERE NOT EXISTS { MATCH (later)-[:TEMPORAL*1..50]->(earlier) }
+            MERGE (earlier)-[t:TEMPORAL]->(later)
+            SET t.type = 'R:temporal.meets',
                 t.confidence = 0.5
             RETURN count(t)
             """)
@@ -65,11 +65,11 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, 
             WITH lastScene, head(collect(s2)) AS firstScene
             
             WHERE lastScene IS NOT NULL AND firstScene IS NOT NULL
-            // Guard: skip if adding lastScene->firstScene would introduce a cycle
+            // Guard: skip if adding lastScene->firstScene would introduce a cycle via TEMPORAL edges
             WITH lastScene, firstScene
-            WHERE NOT EXISTS { MATCH (firstScene)-[:MEETS*1..500]->(lastScene) }
-            MERGE (lastScene)-[t:MEETS]->(firstScene)
-            SET t.type = 'HEURISTIC', t.confidence = 0.5
+            WHERE NOT EXISTS { MATCH (firstScene)-[:TEMPORAL*1..500]->(lastScene) }
+            MERGE (lastScene)-[t:TEMPORAL]->(firstScene)
+            SET t.type = 'R:temporal.meets', t.confidence = 0.5
             RETURN count(t)
             """)
     int mergeCrossChapterDefaultEdge(@Param("bookId") UUID bookId);
@@ -81,7 +81,7 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, 
      * @return Number of temporal edges originating from scenes in this chapter
      */
     @Query("""
-        MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene)-[t:MEETS]->()
+    MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene)-[t:TEMPORAL]->()
         RETURN count(t)
         """)
     int countTemporalEdgesFromChapter(@Param("chapterId") UUID chapterId);
@@ -99,7 +99,7 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, 
         UNWIND range(0, size(scenes) - 2) AS i
         WITH scenes[i] AS earlier, scenes[i + 1] AS later
         WITH earlier, later
-        MATCH (later)-[:MEETS*1..50]->(earlier)
+    MATCH (later)-[:TEMPORAL*1..50]->(earlier)
         RETURN count(*)
         """)
     int countInChapterCycleCandidates(@Param("bookId") UUID bookId);
@@ -125,8 +125,39 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, 
         WITH lastScene, head(collect(s2)) AS firstScene
 
         WHERE lastScene IS NOT NULL AND firstScene IS NOT NULL
-        MATCH (firstScene)-[:MEETS*1..500]->(lastScene)
+    MATCH (firstScene)-[:TEMPORAL*1..500]->(lastScene)
         RETURN count(*)
         """)
     int countCrossChapterCycleCandidates(@Param("bookId") UUID bookId);
+
+    /**
+     * Upsert a TEMPORAL edge between two scenes with full properties.
+     * Properties are set exactly to provided values. Evidence chunk id is optional.
+     */
+    @Query("""
+        MATCH (a:Scene {id: $fromId})
+        MATCH (b:Scene {id: $toId})
+        MERGE (a)-[t:TEMPORAL]->(b)
+        SET t.type = $type,
+            t.certainty = $certainty,
+            t.weight = coalesce($weight, 0.0),
+            t.source = coalesce($source, 'ai-pass2'),
+            t.rationale = coalesce($rationale, ''),
+            t.evidenceStartOffset = $evidenceStart,
+            t.evidenceEndOffset = $evidenceEnd,
+            t.evidenceChunkId = $evidenceChunkId
+        RETURN id(t)
+        """)
+    Long upsertTemporalEdge(
+            @Param("fromId") UUID fromId,
+            @Param("toId") UUID toId,
+            @Param("type") String type,
+            @Param("certainty") String certainty,
+            @Param("weight") Double weight,
+            @Param("source") String source,
+            @Param("rationale") String rationale,
+            @Param("evidenceStart") Long evidenceStart,
+            @Param("evidenceEnd") Long evidenceEnd,
+            @Param("evidenceChunkId") UUID evidenceChunkId
+    );
 }

@@ -1,47 +1,122 @@
-<scenes>
-  <scene>
-    <index>1</index>
-    <start_anchor><![CDATA[“Next!” I ordered.]]></start_anchor>
-    <context_summary>A customs officer, Krrkktnkk a'ktnnzzik'tk, processes an alien abductee, Kevin Jenkins, who claims to be a human from a category twelve temperate planet. The officer is confused by the human's species and the fact that it is considered a non-sentient specimen under the Galactic Treaty of Laws.</context_summary>
-    <break_reason>The scene shifts from the customs desk to a violent attack by Hunters, a carnivorous species that prefers the meat of fellow sentients.</break_reason>
-    <timeline_order>R:temporal.meets</timeline_order>
-    <timeline_order_certainty>Explicit</timeline_order_certainty>
-    <timeline_marker><![CDATA[Contemporary scene]]></timeline_marker>
-  </scene>
-  <scene>
-    <index>2</index>
-    <start_anchor><![CDATA[It was suicide. The Hunter had a clear shot and took it.]]></start_anchor>
-    <context_summary>Krrkktnkk a'ktnnzzik'tk and Kevin Jenkins are attacked by Hunters, and Jenkins single-handedly defeats three of the alien warriors using his strength and agility.</context_summary>
-    <break_reason>The scene shifts from the aftermath of the Hunter attack to a conversation between Krrkktnkk a'ktnnzzik'tk and Kevin Jenkins on the public promenade deck of the station.</break_reason>
-    <timeline_order>R:temporal.after</timeline_order>
-    <timeline_order_certainty>StronglyImplied</timeline_order_certainty>
-    <timeline_marker><![CDATA[During the Hunter attack]]></timeline_marker>
-  </scene>
-  <scene>
-    <index>3</index>
-    <start_anchor><![CDATA[I found the human Kevin Jenkins in conversation with one of the station’s senior lawyers on the public promenade deck.]]></start_anchor>
-    <context_summary>Krrkktnkk a'ktnnzzik'tk encounters Kevin Jenkins and a lawyer, Vedreg, discussing a petition to reclassify humans as sentient. Jenkins explains his species' biology and behavior, including their strength, resilience, and unique gland that generates combat drugs.</context_summary>
-    <break_reason>The scene shifts from the conversation between Krrkktnkk a'ktnnzzik'tk, Jenkins, and Vedreg to a description of the events that followed, including the council's decision to send a civilian fleet to Earth and the subsequent conflict.</break_reason>
-    <timeline_order>R:temporal.meets</timeline_order>
-    <timeline_order_certainty>Heuristic</timeline_order_certainty>
-    <timeline_marker><![CDATA[Twenty diurnals after the Hunter attack]]></timeline_marker>
-  </scene>
-  <scene>
-    <index>4</index>
-    <start_anchor><![CDATA[Within hours, our conversation was the big talking point on a major interstellar newsfeed complete with an alarmist headline.]]></start_anchor>
-    <context_summary>The conversation between Krrkktnkk a'ktnnzzik'tk, Jenkins, and Vedreg becomes a major news story, and the council convenes a special meeting to discuss the implications of Jenkins' words. A civilian fleet is sent to Earth, and a conflict ensues.</context_summary>
-    <break_reason>The scene shifts from the council's decision to send a civilian fleet to Earth to a description of the events that followed, including the research mission to Earth and Krrkktnkk a'ktnnzzik'tk's transfer to head of security on the research station.</break_reason>
-    <timeline_order>R:temporal.meets</timeline_order>
-    <timeline_order_certainty>Heuristic</timeline_order_certainty>
-    <timeline_marker><![CDATA[After the conversation between Krrkktnkk a'ktnnzzik'tk, Jenkins, and Vedreg]]></timeline_marker>
-  </scene>
-  <scene>
-    <index>5</index>
-    <start_anchor><![CDATA[The station displaced into the Earth system five eight-diurnals after the mission was announced, using the bulk of a large ringed gas world known as “Saturn” to mask the neutrino burst of its arrival.]]></start_anchor>
-    <context_summary>Krrkktnkk a'ktnnzzik'tk is transferred to head of security on the research station, which is sent to Earth to study the human species. The station is designed to go undetected, and Krrkktnkk a'ktnnzzik'tk begins to learn more about human culture and society.</context_summary>
-    <break_reason>The scene shifts from the research station to a description of Krrkktnkk a'ktnnzzik'tk's experiences on the station, including his interactions with the human abductees and his observations of human culture and society.</break_reason>
-    <timeline_order>R:temporal.meets</timeline_order>
-    <timeline_order_certainty>Heuristic</timeline_order_certainty>
-    <timeline_marker><![CDATA[Five eight-diurnals after the mission was announced]]></timeline_marker>
-  </scene>
-</scenes>
+```xml
+<scene_analysis>
+  <timeline_marker>immediately after the interview (alarm sounds)</timeline_marker>
+
+  <relationships>
+    <previous_to_current>
+      <temporal_type>R:temporal.overlaps</temporal_type>
+      <certainty>StronglyImplied</certainty>
+      <evidence>“I was interrupted by an alarm… I had not finished gathering my thoughts when there was a sudden violent lurch” – the alarm sounds while the interview is still in progress.</evidence>
+    </previous_to_current>
+
+    <current_to_next>
+      <temporal_type>R:temporal.before</temporal_type>
+      <certainty>Explicit</certainty>
+      <evidence>Next scene opens with “Months later… twenty diurnals after the attack”.</evidence>
+    </current_to_next>
+  </relationships>
+
+  <current_scene_entities>
+    <individuals>
+      <individual>
+        <aliases>
+          <alias>Krrkktnkk</alias>
+          <alias>Customs Officer</alias>
+        </aliases>
+        <pysical_properties>quadrupedal alien with synthetic fabric covering, cybernetic communication implant</pysical_properties>
+        <age></age>
+        <description>The customs and immigration officer conducting the interview; later wounded, loses an arm and receives a prosthetic.</description>
+      </individual>
+
+      <individual>
+        <aliases>
+          <alias>Kevin Jenkins</alias>
+          <alias>Jenkins</alias>
+          <alias>Purveyor Jenkins</alias>
+        </aliases>
+        <pysical_properties>quadriform biped, short coarse brown fur, cybernetic communication implant, high‑gravity musculature</pysical_properties>
+        <age></age>
+        <description>Abductee pre‑Contact human specimen; displays superhuman resilience during the Hunter attack.</description>
+      </individual>
+    </individuals>
+
+    <collectives>
+      <collective>
+        <aliases>
+          <alias>Hunters</alias>
+        </aliases>
+        <description>Six alien combatants; ceramic‑white skin, seven eyes, six legs, cybernetically fused pulse guns, full military combat harnesses.</description>
+      </collective>
+    </collectives>
+
+    <objects>
+      <object>
+        <type>pulse gun</type>
+        <aliases></aliases>
+        <material>metallic alloy with integrated energy core</material>
+        <purpose>directed‑energy weapon used by both officer and Hunters</purpose>
+        <description>Standard‑issue station security pulse gun, auto‑configures to the user’s species.</description>
+      </object>
+
+      <object>
+        <type>personal shield emitter</type>
+        <aliases></aliases>
+        <material>energy‑field generator</material>
+        <purpose>project a protective energy shield around the wearer</purpose>
+        <description>Worn on the officer’s harness; activates with a power dock.</description>
+      </object>
+
+      <object>
+        <type>nerve‑jam grenade</type>
+        <aliases></aliases>
+        <material>cylindrical container, coin‑sized</material>
+        <purpose>emit a disabling neuro‑pulse to incapacitate organic targets</purpose>
+        <description>Stored in the weapons locker; only two rounds remain during the fight.</description>
+      </object>
+
+      <object>
+        <type>weapons locker</type>
+        <aliases></aliases>
+        <material>metal security cabinet</material>
+        <purpose>secure storage for station armaments</purpose>
+        <description>Opens automatically when the officer’s security harness broadcasts the correct codes.</description>
+      </object>
+    </objects>
+
+    <locations>
+      <location>
+        <name>Outlook on Forever – Customs Area</name>
+        <region>Station 591, civilian trade hub</region>
+        <description>The interview corral and adjacent customs booths where the alarm erupts and the firefight unfolds.</description>
+      </location>
+    </locations>
+
+    <concepts>
+      <concept>
+        <type>attack alarm</type>
+        <description>Three short howls signalling an external assault on the station.</description>
+      </concept>
+
+      <concept>
+        <type>hull breach alarm</type>
+        <description>Long wail indicating structural damage to the station’s hull.</description>
+      </concept>
+
+      <concept>
+        <type>damage alarm</type>
+        <description>Continuous tone warning of internal system failures.</description>
+      </concept>
+    </concepts>
+
+    <events>
+      <event>
+        <name>Hunter Attack</name>
+        <event_type>combat</event_type>
+        <temporal_type>R:temporal.equals</temporal_type>
+        <certainty>Explicit</certainty>
+        <evidence>The scene describes the sudden alarm, the officer and Jenkins arming themselves, and the ensuing firefight with six Hunters.</evidence>
+      </event>
+    </events>
+  </current_scene_entities>
+</scene_analysis>
+```

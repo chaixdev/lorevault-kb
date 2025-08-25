@@ -20,7 +20,7 @@ Proposal
 
 Scope
 
-- Triad builder: construct (Prev?, Curr, Next?) for each scene within a chapter (cross-chapter retrieval can be added later). Use role labels (prev/curr/next) rather than numeric scene indices in LLM output.
+- Triad builder: construct (previous?, current, next?) for each scene within a chapter (cross-chapter retrieval can be added later). Use role labels (prev/curr/next) rather than numeric scene indices in LLM output.
 - Prompts: keep using existing prompt path key for Pass 2 (PromptLoaderService property). Replace the content with the triad instructions and 5 canonical relations (R:temporal.before|meets|overlaps|contains|equals). No property or API changes.
 - Parser: implement a tolerant parser for the new triad XML (root `<scene_analysis>`), reading:
   - `<timeline_marker>` (belongs to Curr/scene 2)
@@ -38,6 +38,7 @@ Out of scope
 - Persisting contested/confirmed states, evidence quotes, counter-votes, or entities.
 - Event Linker and Landmark attachments.
 - Any public API or storage schema changes.
+- migrations, feature flags, backward compatibility are NOT NEEDED. we perform a full db wipe and fresh chapter ingestion on each user test.
 
 Implementation details
 

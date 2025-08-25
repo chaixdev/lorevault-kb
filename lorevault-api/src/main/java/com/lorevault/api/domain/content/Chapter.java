@@ -101,6 +101,16 @@ public class Chapter {
     }
 
     /**
+     * Add an existing scene to this chapter (for triad analysis and other temporary operations)
+     */
+    public void addExistingScene(Scene scene) {
+        if (scene != null) {
+            scene.setChapter(this);
+            scenes.add(scene);
+        }
+    }
+
+    /**
      * Clear all scenes
      */
     public void clearScenes() {

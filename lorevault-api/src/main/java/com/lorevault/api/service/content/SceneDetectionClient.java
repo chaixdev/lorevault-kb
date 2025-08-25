@@ -115,6 +115,24 @@ public class SceneDetectionClient {
     }
 
     /**
+     * Pass 2 (triad): use user template to send prev/curr/next scene slices.
+     * @param jobId Job context
+     * @param systemPrompt The triad system prompt content
+     * @param userVariables Variables for the user template
+     * @return Raw XML triad response
+     */
+    public String detectScenesPass2Triad(UUID jobId, String systemPrompt, Map<String, Object> userVariables) {
+        PromptTemplate userTemplate = promptLoaderService.getSceneDetectionPass2UserTemplate();
+        String userInput = userTemplate.render(userVariables);
+
+        String modelId = promptProperties.getSceneDetectionPass2Model();
+        ChatClient chatClient = getChatClientForModel(modelId);
+        String actualModelId = getModelIdForPass("pass2");
+
+        return executeSceneDetectionCall(jobId, "scene-detection-pass2", systemPrompt, userInput, chatClient, actualModelId);
+    }
+
+    /**
      * Legacy method: single-pass scene detection using the v2 prompt.
      * 
      * @param chapterText The full chapter text to analyze

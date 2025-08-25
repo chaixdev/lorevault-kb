@@ -1,0 +1,26 @@
+<scenes>
+  <scene role="previous">
+    <context_summary>{{prev_context_summary}}</context_summary>
+    <time_indicators>{{prev_time_indicators}}</time_indicators>
+    <break_reason>{{prev_break_reason}}</break_reason>
+    <text><![CDATA[
+{{prev_text}}
+]]></text>
+  </scene>
+  <scene role="current">
+    <context_summary>{{curr_context_summary}}</context_summary>
+    <time_indicators>{{curr_time_indicators}}</time_indicators>
+    <break_reason>{{curr_break_reason}}</break_reason>
+    <text><![CDATA[
+{{curr_text}}
+]]></text>
+  </scene>
+  <scene role="next">
+    <context_summary>{{next_context_summary}}</context_summary>
+    <time_indicators>{{next_time_indicators}}</time_indicators>
+    <break_reason>{{next_break_reason}}</break_reason>
+    <text><![CDATA[
+{{next_text}}
+]]></text>
+  </scene>
+</scenes>
