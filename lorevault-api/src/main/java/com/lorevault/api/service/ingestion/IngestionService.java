@@ -20,8 +20,7 @@ import java.util.UUID;
  * Service for managing chapter ingestion orchestration.
  * Refactored to delegate responsibilities to focused services:
  * - ChapterValidationService: handles validation and duplicate detection
- * - IngestionJobLifecycleService: manages job lifecycle and status
- * - JobQueryService: handles job querying and listing
+ * - IngestionJobService: manages job lifecycle and query operations (consolidated)
  * - IngestionWorkflowService: orchestrates the processing pipeline (via ChapterProcessor)
  */
 @Service
@@ -30,8 +29,7 @@ import java.util.UUID;
 public class IngestionService {
 
     private final ChapterValidationService chapterValidationService;
-    private final IngestionJobLifecycleService jobLifecycleService;
-    private final JobQueryService jobQueryService;
+    private final IngestionJobService ingestionJobService;
     private final IngestionWorkflowService workflowService;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -59,22 +57,22 @@ public class IngestionService {
             }
             
             // Create new job for existing chapter
-            IngestionJob job = jobLifecycleService.createIngestionJob(chapterId);
+            IngestionJob job = ingestionJobService.createIngestionJob(chapterId);
             eventPublisher.publishEvent(new ChapterIngestionEvent(this, job.getId(), chapterId));
             return SubmitChapterResponse.success(job.getId(), chapterId);
         }
 
         // Create job for new chapter
-        IngestionJob job = jobLifecycleService.createIngestionJob(chapterId);
+        IngestionJob job = ingestionJobService.createIngestionJob(chapterId);
         eventPublisher.publishEvent(new ChapterIngestionEvent(this, job.getId(), chapterId));
         return SubmitChapterResponse.success(job.getId(), chapterId);
     }
 
     /**
-     * Get the status of an ingestion job using JobQueryService
+     * Get the status of an ingestion job using consolidated IngestionJobService
      */
     public Optional<JobStatusResponse> getJobStatus(UUID jobId) {
-        return jobQueryService.getJobStatus(jobId);
+        return ingestionJobService.getJobStatus(jobId);
     }
 
     /**
@@ -85,9 +83,9 @@ public class IngestionService {
     }
 
     /**
-     * List jobs using JobQueryService with pagination and filtering
+     * List jobs using consolidated IngestionJobService with pagination and filtering
      */
     public JobListResponse listJobs(String universe, String status, int limit, int offset) {
-        return jobQueryService.listJobs(universe, status, limit, offset);
+        return ingestionJobService.listJobs(universe, status, limit, offset);
     }
 }
