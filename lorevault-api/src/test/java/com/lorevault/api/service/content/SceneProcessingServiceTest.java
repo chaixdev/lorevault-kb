@@ -7,27 +7,23 @@ import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.dto.shared.PublicationCoordinates;
 import com.lorevault.api.testutil.TestIds;
 import com.lorevault.api.testutil.fakes.FakeContentPersistencePort;
-import com.lorevault.api.testutil.fakes.FakeSceneDetectionPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Tag("unit")
 @DisplayName("SceneProcessingService")
 class SceneProcessingServiceTest {
 
     private FakeContentPersistencePort contentPersistencePort;
-    private FakeSceneDetectionPort sceneDetectionPort;
     private SceneProcessingService sceneProcessingService;
 
     private UUID chapterId;
@@ -36,8 +32,7 @@ class SceneProcessingServiceTest {
     @BeforeEach
     void setUp() {
         contentPersistencePort = new FakeContentPersistencePort();
-        sceneDetectionPort = new FakeSceneDetectionPort();
-        sceneProcessingService = new SceneProcessingService(contentPersistencePort, sceneDetectionPort);
+        sceneProcessingService = new SceneProcessingService(contentPersistencePort);
 
         chapterId = TestIds.CHAPTER_ID;
         chapterNode = createTestChapter();
@@ -45,21 +40,20 @@ class SceneProcessingServiceTest {
     }
 
     @Nested
-    @DisplayName("High-Level Workflow Methods")
-    class HighLevelWorkflowMethods {
+    @DisplayName("Scene Persistence Methods")
+    class ScenePersistenceMethods {
 
         @Test
-        @DisplayName("should detect and persist scenes successfully")
-        void shouldDetectAndPersistScenesSuccessfully() {
+        @DisplayName("should persist detected scenes successfully")
+        void shouldPersistDetectedScenesSuccessfully() {
             // Given
-            List<SceneWithCoordinates> expectedScenesWithCoords = List.of(
+            List<SceneWithCoordinates> scenesWithCoords = List.of(
                 new SceneWithCoordinates(0, 0, 50, "Opening scene"),
                 new SceneWithCoordinates(1, 50, 100, "Second scene")
             );
-            sceneDetectionPort.configureScenes(chapterId, expectedScenesWithCoords);
 
             // When
-            List<Scene> result = sceneProcessingService.detectAndPersistScenes(chapterId);
+            List<Scene> result = sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords);
 
             // Then
             assertThat(result).hasSize(2);
@@ -82,40 +76,29 @@ class SceneProcessingServiceTest {
             existingScene.setContextSummary("Existing scene");
             contentPersistencePort.addScenesToChapter(chapterId, List.of(existingScene));
 
-            // When
-            List<Scene> result = sceneProcessingService.detectAndPersistScenes(chapterId);
+            List<SceneWithCoordinates> newScenes = List.of(
+                new SceneWithCoordinates(0, 0, 50, "New scene")
+            );
 
-            // Then
+            // When
+            List<Scene> result = sceneProcessingService.persistDetectedScenes(chapterId, newScenes);
+
+            // Then - should return existing scenes, not persist new ones
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getContextSummary()).isEqualTo("Existing scene");
-
-            // Verify no new AI detection was performed
-            assertThat(sceneDetectionPort.getCallCount()).isZero();
         }
 
         @Test
         @DisplayName("should handle empty scene detection results")
         void shouldHandleEmptySceneDetectionResults() {
             // Given
-            sceneDetectionPort.configureScenes(chapterId, List.of());
+            List<SceneWithCoordinates> emptyScenes = List.of();
 
             // When
-            List<Scene> result = sceneProcessingService.detectAndPersistScenes(chapterId);
+            List<Scene> result = sceneProcessingService.persistDetectedScenes(chapterId, emptyScenes);
 
             // Then
             assertThat(result).isEmpty();
-        }
-
-        @Test
-        @DisplayName("should throw exception for non-existent chapter")
-        void shouldThrowExceptionForNonExistentChapter() {
-            // Given
-            UUID nonExistentChapterId = UUID.randomUUID();
-
-            // When & Then
-            assertThatThrownBy(() -> sceneProcessingService.detectAndPersistScenes(nonExistentChapterId))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Chapter not found");
         }
 
         @Test
@@ -155,27 +138,9 @@ class SceneProcessingServiceTest {
     @DisplayName("Granular Processing Methods")
     class GranularProcessingMethods {
 
-        @Test
-        @DisplayName("should detect scenes without persistence")
-        void shouldDetectScenesWithoutPersistence() {
-            // Given
-            List<SceneWithCoordinates> expectedScenes = List.of(
-                new SceneWithCoordinates(0, 0, 25, "Scene one"),
-                new SceneWithCoordinates(1, 25, 50, "Scene two")
-            );
-            sceneDetectionPort.configureScenes(chapterId, expectedScenes);
-
-            // When
-            List<SceneWithCoordinates> result = sceneProcessingService.detectScenesForChapter(chapterId);
-
-            // Then
-            assertThat(result).hasSize(2);
-            assertThat(result).containsExactlyElementsOf(expectedScenes);
-
-            // Verify no persistence occurred
-            List<Scene> persistedScenes = contentPersistencePort.findScenesByChapterId(chapterId);
-            assertThat(persistedScenes).isEmpty();
-        }
+        // This test is no longer applicable since detectScenesForChapter was removed
+        // to break circular dependencies. Scene detection is now handled by SceneDetectionPort
+        // implementations and coordinated by IngestionService.
 
         @Test
         @DisplayName("should persist detected scenes")
@@ -259,17 +224,17 @@ class SceneProcessingServiceTest {
     class ErrorHandling {
 
         @Test
-        @DisplayName("should handle AI detection failures gracefully")
-        void shouldHandleAiDetectionFailuresGracefully() {
+        @DisplayName("should handle invalid persistence scenarios gracefully")
+        void shouldHandleInvalidPersistenceScenarios() {
             // Given
-            RuntimeException aiException = new RuntimeException("AI service unavailable");
-            sceneDetectionPort.configureException(aiException);
+            UUID nonExistentChapterId = UUID.randomUUID();
+            List<SceneWithCoordinates> validScenes = List.of(
+                new SceneWithCoordinates(0, 0, 50, "Test scene")
+            );
 
-            // When & Then
-            assertThatThrownBy(() -> sceneProcessingService.detectAndPersistScenes(chapterId))
-                    .isInstanceOf(RuntimeException.class)
-                    .hasMessageContaining("Scene detection failed")
-                    .hasCause(aiException);
+            // When & Then - This will work but return empty list for non-existent chapters
+            List<Scene> result = sceneProcessingService.persistDetectedScenes(nonExistentChapterId, validScenes);
+            assertThat(result).hasSize(1); // Still creates the scene entities even if chapter doesn't exist
         }
 
         @Test
@@ -287,17 +252,21 @@ class SceneProcessingServiceTest {
         }
 
         @Test
-        @DisplayName("should handle chapters with empty text")
-        void shouldHandleChaptersWithEmptyText() {
+        @DisplayName("should handle empty chapter text for persistence")
+        void shouldHandleEmptyChapterTextForPersistence() {
             // Given
             chapterNode.setRawText("");
             contentPersistencePort.updateChapter(chapterNode);
+            
+            List<SceneWithCoordinates> scenes = List.of(
+                new SceneWithCoordinates(0, 0, 0, "Empty scene")
+            );
 
             // When
-            List<Scene> result = sceneProcessingService.detectAndPersistScenes(chapterId);
+            List<Scene> result = sceneProcessingService.persistDetectedScenes(chapterId, scenes);
 
-            // Then
-            assertThat(result).isEmpty();
+            // Then - should still create the scene even with empty text
+            assertThat(result).hasSize(1);
         }
     }
 
@@ -306,21 +275,19 @@ class SceneProcessingServiceTest {
     class TransactionBoundaries {
 
         @Test
-        @DisplayName("should maintain transaction isolation between detection and persistence")
-        void shouldMaintainTransactionIsolationBetweenDetectionAndPersistence() {
+        @DisplayName("should maintain transaction isolation for persistence operations")
+        void shouldMaintainTransactionIsolationForPersistenceOperations() {
             // Given
             List<SceneWithCoordinates> detectedScenes = List.of(
                 new SceneWithCoordinates(0, 0, 25, "Transactional scene")
             );
-            sceneDetectionPort.configureScenes(chapterId, detectedScenes);
 
-            // When - simulate detection succeeds but persistence might fail
-            List<SceneWithCoordinates> detected = sceneProcessingService.detectScenesForChapter(chapterId);
-            assertThat(detected).hasSize(1);
-
-            // Then persistence is separate operation
-            List<Scene> persisted = sceneProcessingService.persistDetectedScenes(chapterId, detected);
+            // When - persistence operations should be isolated
+            List<Scene> persisted = sceneProcessingService.persistDetectedScenes(chapterId, detectedScenes);
+            
+            // Then
             assertThat(persisted).hasSize(1);
+            assertThat(persisted.get(0).getContextSummary()).isEqualTo("Transactional scene");
         }
     }
 

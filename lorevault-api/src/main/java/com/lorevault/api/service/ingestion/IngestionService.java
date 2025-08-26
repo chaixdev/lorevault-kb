@@ -2,6 +2,7 @@ package com.lorevault.api.service.ingestion;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.application.port.JobContextPort;
+import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import com.lorevault.api.dto.ingestion.SubmitChapterResponse;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
@@ -14,7 +15,7 @@ import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
-import com.lorevault.api.service.content.ChunkEmbeddingService;
+import com.lorevault.api.service.content.EmbeddingService;
 import com.lorevault.api.service.content.SceneProcessingService;
 import com.lorevault.api.service.content.TextChunkingService;
 import com.lorevault.api.service.timeline.DefaultTemporalEdgeService;
@@ -53,9 +54,10 @@ public class IngestionService {
     
     // Direct workflow dependencies (no more workflow service)
     private final JobContextPort jobContextPort;
+    private final SceneDetectionPort sceneDetectionPort;
     private final SceneProcessingService sceneProcessingService;
     private final TextChunkingService textChunkingService;
-    private final ChunkEmbeddingService chunkEmbeddingService;
+    private final EmbeddingService embeddingService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
 
     /**
@@ -309,9 +311,8 @@ public class IngestionService {
             return existingScenes;
         }
 
-        // Detect and persist new scenes using consolidated service
-        List<Scene> scenes = sceneProcessingService
-                .detectAndPersistScenes(context.getChapterId());
+        // Detect and persist new scenes
+        List<Scene> scenes = detectAndPersistScenes(context.getChapterId());
         
         // Create default temporal edges for the newly persisted scenes
         log.info("Creating default temporal edges for chapter {}", context.getChapterId());
@@ -321,6 +322,35 @@ public class IngestionService {
                 String.format("Detected %d semantic scenes from chapter text", scenes.size()));
         
         return scenes;
+    }
+
+    /**
+     * Detect scenes using AI and persist them to the database.
+     * This method combines scene detection and persistence to maintain proper transaction boundaries.
+     */
+    private List<Scene> detectAndPersistScenes(UUID chapterId) {
+        log.info("Detecting and persisting scenes for chapter: {}", chapterId);
+
+        // Get chapter text for AI detection
+        var chapterNode = contentPersistencePort.findChapterById(chapterId)
+                .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
+
+        String chapterText = chapterNode.getRawText();
+        if (chapterText == null || chapterText.trim().isEmpty()) {
+            log.warn("Chapter {} has no text content, cannot detect scenes", chapterId);
+            return List.of();
+        }
+
+        // Use AI to detect scenes
+        var scenesWithCoords = sceneDetectionPort.detectScenesInText(chapterId, chapterText);
+
+        if (scenesWithCoords.isEmpty()) {
+            log.info("No scenes detected for chapter {}", chapterId);
+            return List.of();
+        }
+
+        // Persist detected scenes using SceneProcessingService
+        return sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords);
     }
 
     private int executeChunkingStage(WorkflowContext context, List<Scene> scenes) {
@@ -339,7 +369,7 @@ public class IngestionService {
         updateStatus(context, IngestionStatus.EMBEDDING_CHUNKS, 
                 "Generating embeddings for chapter chunks");
 
-        int embeddedCount = chunkEmbeddingService.generateEmbeddingsForChapter(context.getChapterId());
+        int embeddedCount = embeddingService.generateEmbeddingsForChapter(context.getChapterId());
         
         log.info("Generated embeddings for {} chunks for chapter {}", 
                 embeddedCount, context.getChapterId());

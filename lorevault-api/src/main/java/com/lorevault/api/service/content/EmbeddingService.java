@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ChunkEmbeddingService {
+public class EmbeddingService {
 
     private final ContentPersistencePort contentPersistencePort; // for chunk retrieval & persistence
     private final EmbeddingPort embeddingPort; // generation port
