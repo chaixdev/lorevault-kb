@@ -9,7 +9,7 @@ import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPe
 import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jMapper;
 import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jTemporalEdgeAdapter;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
-import com.lorevault.api.infrastructure.persistence.neo4j.repository.BookGraphRepository;
+// import com.lorevault.api.infrastructure.persistence.neo4j.repository.BookGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.TemporalEdgeWriteRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -22,6 +22,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import com.lorevault.api.testing.TestImages;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +38,7 @@ class CrossChapterTemporalEdgesIntegrationTest {
 
     @Container
     @SuppressWarnings("resource")
-    static final Neo4jContainer<?> neo4j = new Neo4jContainer<>("neo4j:5.20")
+    static final Neo4jContainer<?> neo4j = new Neo4jContainer<>(TestImages.NEO4J_IMAGE)
             .withAdminPassword("testpass123");
 
     @DynamicPropertySource

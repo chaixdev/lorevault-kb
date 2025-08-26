@@ -1,4 +1,3 @@
-```xml
 <scene_analysis>
   <timeline_marker>immediately after the interview (alarm sounds)</timeline_marker>
 
@@ -119,4 +118,3 @@
     </events>
   </current_scene_entities>
 </scene_analysis>
-```

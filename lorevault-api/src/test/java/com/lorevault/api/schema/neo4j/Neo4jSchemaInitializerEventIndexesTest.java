@@ -11,6 +11,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import com.lorevault.api.testing.TestImages;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -26,7 +27,7 @@ class Neo4jSchemaInitializerEventIndexesTest {
 
     @Container
     @SuppressWarnings("resource") // Testcontainers manages lifecycle
-    static final Neo4jContainer<?> neo4j = new Neo4jContainer<>("neo4j:5.20")
+    static final Neo4jContainer<?> neo4j = new Neo4jContainer<>(TestImages.NEO4J_IMAGE)
             .withAdminPassword("testpassword");
 
     @DynamicPropertySource
