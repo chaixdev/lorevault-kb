@@ -14,10 +14,8 @@ import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
-import com.lorevault.api.dto.content.SceneWithCoordinates;
 import com.lorevault.api.service.content.ChunkEmbeddingService;
-import com.lorevault.api.service.content.SceneDetectionService;
-import com.lorevault.api.service.content.ScenePersistenceService;
+import com.lorevault.api.service.content.SceneProcessingService;
 import com.lorevault.api.service.content.TextChunkingService;
 import com.lorevault.api.service.timeline.DefaultTemporalEdgeService;
 import lombok.RequiredArgsConstructor;
@@ -55,8 +53,7 @@ public class IngestionService {
     
     // Direct workflow dependencies (no more workflow service)
     private final JobContextPort jobContextPort;
-    private final SceneDetectionService sceneDetectionService;
-    private final ScenePersistenceService scenePersistenceService;
+    private final SceneProcessingService sceneProcessingService;
     private final TextChunkingService textChunkingService;
     private final ChunkEmbeddingService chunkEmbeddingService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
@@ -312,12 +309,9 @@ public class IngestionService {
             return existingScenes;
         }
 
-        // Detect new scenes
-        List<SceneWithCoordinates> scenesWithCoordinates = sceneDetectionService
-                .detectScenesForChapter(context.getChapterId());
-        
-        List<Scene> scenes = scenePersistenceService
-                .persistDetectedScenes(context.getChapterId(), scenesWithCoordinates);
+        // Detect and persist new scenes using consolidated service
+        List<Scene> scenes = sceneProcessingService
+                .detectAndPersistScenes(context.getChapterId());
         
         // Create default temporal edges for the newly persisted scenes
         log.info("Creating default temporal edges for chapter {}", context.getChapterId());

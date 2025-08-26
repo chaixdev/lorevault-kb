@@ -1,4 +1,4 @@
-# LVREF008: Create ContentProcessingService Foundation
+# LVREF008: Create SceneProcessingService
 
 
 
@@ -18,7 +18,7 @@
 
 
 
-Content processing is split across 7 services (`SceneDetectionService`, `ScenePersistenceService`, `SceneCoordinateLocalizer`, `TextChunkingService`, `ChunkEmbeddingService`, `TriadOrchestrationService`, `SceneDetectionXmlParser`) for one business process: "Convert chapter text into structured, searchable content."
+Scene operations are split across 4 tightly-coupled services (`SceneDetectionService`, `ScenePersistenceService`, `SceneCoordinateLocalizer`, `SceneDetectionXmlParser`) that always work together and share scene data structures.
 
 
 
@@ -28,23 +28,29 @@ Content processing is split across 7 services (`SceneDetectionService`, `ScenePe
 
 ```java
 
-// 7 different services for content processing
+// 4 services that always work together
 
-SceneDetectionService       // 68 lines - calls AI
+SceneDetectionService        // 68 lines - AI scene detection
 
-├── ScenePersistenceService      // 93 lines - saves results  
+├── ScenePersistenceService      // 93 lines - database persistence  
 
 ├── SceneCoordinateLocalizer     // Coordinate calculations
 
-├── SceneDetectionXmlParser      // XML parsing logic
-
-├── TextChunkingService          // Text processing
-
-├── ChunkEmbeddingService        // Vector generation
-
-└── TriadOrchestrationService    // Scene coordination
+└── SceneDetectionXmlParser      // XML parsing logic
 
 ```
+
+
+
+These services are artificially separated but have tight coupling:
+
+- SceneDetectionService calls SceneDetectionXmlParser to parse LLM responses
+
+- Results always flow to ScenePersistenceService for database operations
+
+- SceneCoordinateLocalizer works on the same scene coordinates
+
+- All services share the same data structures and lifecycle
 
 
 
@@ -56,31 +62,31 @@ SceneDetectionService       // 68 lines - calls AI
 
 @Service
 
-public class ContentProcessingService {
+public class SceneProcessingService {
 
-    private final ContentPersistencePort persistencePort;
+    private final ContentPersistencePort contentPersistencePort;
 
     private final SceneDetectionPort sceneDetectionPort;
 
-    private final EmbeddingPort embeddingPort;
+    
+
+    // Complete scene lifecycle management
+
+    public List<Scene> detectAndPersistScenes(UUID chapterId) { ... }
+
+    public List<Scene> getScenesByChapterId(UUID chapterId) { ... }
+
+    public void deleteScenesByChapterId(UUID chapterId) { ... }
 
     
 
-    // Public API - focused business operations
+    // Private helpers (formerly separate services)
 
-    public void processChapterContent(Chapter chapter) { ... }
+    private List<SceneWithCoordinates> detectScenesInText(String text) { ... }
 
-    public ProcessingStatus getProcessingStatus(UUID chapterId) { ... }
+    private List<SceneWithCoordinates> parseSceneDetectionXml(String xml) { ... }
 
-    
-
-    // Private helpers to avoid god-service (package-private for testing if needed)
-
-    private SceneDetectionResult detectScenes(String text) { ... }
-
-    private List<TextChunk> chunkContent(SceneDetectionResult scenes) { ... }
-
-    private void generateEmbeddings(List<TextChunk> chunks) { ... }
+    private void validateSceneCoordinates(List<SceneWithCoordinates> scenes) { ... }
 
 }
 
@@ -88,31 +94,23 @@ public class ContentProcessingService {
 
 
 
-**Boundary Guidelines**:
-
-- **Scope**: Text → structured content pipeline only
-
-- **Package**: `com.lorevault.api.service.content` (separate from ingestion)
-
-- **Helpers**: Private methods for readability; avoid sub-services
-
-- **Streaming**: Consider streaming for large chapters (batch embeddings, avoid memory spikes)
-
-
-
 ## Implementation Steps
 
 
 
-1. Create new `ContentProcessingService` class
+1. Create new `SceneProcessingService` class with proper ports
 
-2. Set up basic service structure with port dependencies
+2. Move scene detection logic from `SceneDetectionService`
 
-3. Register service in Spring configuration
+3. Integrate XML parsing logic as private methods
 
-4. Create initial test structure
+4. Move persistence logic from `ScenePersistenceService`
 
-5. Prepare for gradual migration of processing logic
+5. Integrate coordinate localization logic
+
+6. Update controllers to use new service
+
+7. Remove old services and update tests
 
 
 
@@ -120,15 +118,17 @@ public class ContentProcessingService {
 
 
 
-- [ ] New `ContentProcessingService` class created
+- [ ] New `SceneProcessingService` handles scene detection, persistence, and coordination
 
-- [ ] Basic service structure with port dependencies
+- [ ] XML parsing logic integrated as private methods
 
-- [ ] Service registered in Spring configuration
+- [ ] Scene coordinate localization included
 
-- [ ] Initial tests created
+- [ ] All scene-related endpoints work identically
 
-- [ ] No functional changes yet - foundation only
+- [ ] Transaction boundaries properly managed
+
+- [ ] All original services deleted and dependencies updated
 
 
 
@@ -138,15 +138,31 @@ public class ContentProcessingService {
 
 **Files to CREATE**:
 
-- `ContentProcessingService.java` - New service foundation
+- `SceneProcessingService.java` - Unified scene service (~250 lines)
 
-- `ContentProcessingServiceTest.java` - Initial test structure
+- `SceneProcessingServiceTest.java` - Comprehensive scene tests
+
+
+
+**Files to DELETE**:
+
+- `SceneDetectionService.java`
+
+- `ScenePersistenceService.java`
+
+- `SceneCoordinateLocalizer.java`
+
+- `SceneDetectionXmlParser.java`
+
+- Related test files
 
 
 
 **Files to UPDATE**:
 
-- Spring configuration classes - Register new service
+- Controller classes - Update to use SceneProcessingService
+
+- Integration tests - Validate complete scene workflows
 
 
 
@@ -154,11 +170,15 @@ public class ContentProcessingService {
 
 
 
-- Create basic service structure tests
+- Test complete scene lifecycle: detection → persistence → retrieval
 
-- Prepare test framework for content processing workflows
+- Test transaction boundaries and error handling
 
-- No functional testing yet - this is foundation work
+- Test XML parsing with various LLM response formats
+
+- Test coordinate validation and edge cases
+
+- Integration tests for scene workflow endpoints
 
 
 
@@ -166,17 +186,19 @@ public class ContentProcessingService {
 
 
 
-**Medium Risk** - Setting up foundation for complex service consolidation.
+**Medium Risk** - Consolidating 4 services with complex logic and transaction boundaries.
 
 
 
 **Mitigation**:
 
-- Start with basic structure, no functionality migration yet
+- Preserve all existing functionality exactly
 
-- Ensure all dependencies are properly configured
+- Carefully manage transaction boundaries (detection vs persistence)
 
-- Validate service can be instantiated and basic methods work
+- Thorough testing of XML parsing edge cases
+
+- Validate coordinate calculations match existing behavior
 
 
 

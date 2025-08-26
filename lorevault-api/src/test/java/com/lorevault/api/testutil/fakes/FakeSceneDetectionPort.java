@@ -18,9 +18,12 @@ public class FakeSceneDetectionPort implements SceneDetectionPort {
     private final Map<UUID, List<SceneWithCoordinates>> scenesByChapter = new ConcurrentHashMap<>();
     private volatile RuntimeException nextException = null;
     private volatile String implementationInfo = "Fake Scene Detection Implementation";
+    private volatile int callCount = 0;
 
     @Override
     public List<SceneWithCoordinates> detectScenesInText(UUID chapterId, String chapterText) {
+        callCount++; // Track calls for testing
+        
         if (nextException != null) {
             RuntimeException toThrow = nextException;
             nextException = null; // Reset for next call
@@ -57,6 +60,11 @@ public class FakeSceneDetectionPort implements SceneDetectionPort {
         scenesByChapter.clear();
         nextException = null;
         implementationInfo = "Fake Scene Detection Implementation";
+        callCount = 0;
+    }
+
+    public int getCallCount() {
+        return callCount;
     }
 
     // Helper to create scene quickly
