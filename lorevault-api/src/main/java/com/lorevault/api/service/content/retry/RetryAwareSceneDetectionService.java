@@ -3,8 +3,7 @@ package com.lorevault.api.service.content.retry;
 import com.lorevault.api.dto.content.SceneDetectionResult;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
 import com.lorevault.api.service.content.SceneDetectionClient;
-import com.lorevault.api.service.content.SceneDetectionXmlParser;
-import com.lorevault.api.service.content.SceneCoordinateLocalizer;
+import com.lorevault.api.service.content.SceneProcessingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import com.lorevault.api.service.content.TriadOrchestrationService;
 import com.lorevault.api.service.timeline.TriadEdgePersistenceService;
@@ -27,8 +26,7 @@ import java.util.UUID;
 public class RetryAwareSceneDetectionService {
 
     private final SceneDetectionClient sceneDetectionClient;
-    private final SceneDetectionXmlParser xmlParser;
-    private final SceneCoordinateLocalizer coordinateLocalizer;
+    private final SceneProcessingService sceneProcessingService;
     private final LlmRetryStrategy llmRetryStrategy;
     private final IngestionJobService ingestionJobService;
     private final TriadOrchestrationService triadOrchestrationService;
@@ -87,7 +85,7 @@ public class RetryAwareSceneDetectionService {
             String pass1XmlResponse = sceneDetectionClient.detectScenesPass1(jobId, chapterText);
 
             // Step 2: Parse Pass 1 XML response to get initial scene segmentation
-            List<SceneDetectionResult> sceneResults = xmlParser.parseResponse(pass1XmlResponse, chapterText.length());
+            List<SceneDetectionResult> sceneResults = sceneProcessingService.parseSceneDetectionXml(pass1XmlResponse, chapterText.length());
 
             // Validate parsing results - throw exception if empty to trigger retry
             if (sceneResults.isEmpty()) {
@@ -96,7 +94,7 @@ public class RetryAwareSceneDetectionService {
             }
 
             // Step 3: Localize coordinates from Pass 1 results
-            List<SceneWithCoordinates> scenes = coordinateLocalizer.localizeCoordinates(chapterText, sceneResults);
+            List<SceneWithCoordinates> scenes = sceneProcessingService.localizeSceneCoordinates(chapterText, sceneResults);
 
             // Final validation
             if (scenes.isEmpty()) {

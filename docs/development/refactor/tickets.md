@@ -177,182 +177,217 @@
 
 ---
 
-## Phase 3: Consolidate Content Processing (2 weeks, High Risk)
+## Phase 3: Consolidate Content Processing (1.5 weeks, Medium Risk)
 
-### LVREF008: Create ContentProcessingService Foundation
+### LVREF008: Create SceneProcessingService
+
 **Priority**: High | **Effort**: 1 day | **Risk**: Medium  
 **Dependencies**: Phase 2 complete
 
-**Problem**: Content processing is split across 7 services (`SceneDetectionService`, `ScenePersistenceService`, `SceneCoordinateLocalizer`, `TextChunkingService`, `ChunkEmbeddingService`, `TriadOrchestrationService`, `SceneDetectionXmlParser`) for one business process.
+**Problem**: Scene operations are split across 4 tightly-coupled services (`SceneDetectionService`, `ScenePersistenceService`, `SceneCoordinateLocalizer`, `SceneDetectionXmlParser`) that always work together.
 
-**Goal**: Create new `ContentProcessingService` as foundation for content processing consolidation.
+**Goal**: Create unified `SceneProcessingService` for complete scene lifecycle management.
 
 **Acceptance Criteria**:
-- ✅ New `ContentProcessingService` class created
-- ✅ Basic service structure with port dependencies
-- ✅ Service registered in Spring configuration
-- ✅ Initial tests created
-- ✅ No functional changes yet
+
+- ✅ New `SceneProcessingService` handles scene detection, persistence, and coordination
+- ✅ XML parsing logic integrated as private methods
+- ✅ Scene coordinate localization included
+- ✅ All scene-related endpoints work identically
+- ✅ Transaction boundaries properly managed
 
 **Files to Create**:
-- `ContentProcessingService.java` - New service foundation
-- `ContentProcessingServiceTest.java` - Initial test structure
 
----
-
-### LVREF009: Merge Scene Detection and Persistence
-**Priority**: High | **Effort**: 2 days | **Risk**: High  
-**Dependencies**: LVREF008
-
-**Problem**: `SceneDetectionService` (68 lines) and `ScenePersistenceService` (93 lines) are always used together and share scene data structures.
-
-**Goal**: Merge scene detection and persistence operations into `ContentProcessingService`.
-
-**Acceptance Criteria**:
-- ✅ Scene detection logic moved to `ContentProcessingService`
-- ✅ Scene persistence logic merged into same service
-- ✅ All scene detection endpoints work identically
-- ✅ Scene persistence behavior preserved
-- ✅ XML parsing logic integrated
+- `SceneProcessingService.java` - Unified scene service (~250 lines)
+- `SceneProcessingServiceTest.java` - Comprehensive scene tests
 
 **Files to Delete**:
+
 - `SceneDetectionService.java`
 - `ScenePersistenceService.java`
+- `SceneCoordinateLocalizer.java`
 - `SceneDetectionXmlParser.java`
 - Related test files
 
 **Files to Update**:
-- `ContentProcessingService.java` - Add scene operations
-- Controller classes - Update dependencies
-- Integration tests - Validate scene workflows
+
+- Controller classes - Update to use SceneProcessingService
+- Integration tests - Validate complete scene workflows
 
 ---
 
-### LVREF010: Integrate Chunking and Embedding Workflows
-**Priority**: High | **Effort**: 2 days | **Risk**: High  
+### LVREF009: Rename ChunkEmbeddingService to EmbeddingService
+
+**Priority**: Medium | **Effort**: 4 hours | **Risk**: Low  
+**Dependencies**: LVREF008
+
+**Problem**: `ChunkEmbeddingService` handles more than just chunk embeddings - it's the core semantic processing service.
+
+**Goal**: Rename and expand scope to handle all embedding and semantic analysis operations.
+
+**Acceptance Criteria**:
+
+- ✅ Service renamed to `EmbeddingService`
+- ✅ All functionality preserved with identical behavior
+- ✅ Class references updated throughout codebase
+- ✅ Tests renamed and updated
+- ✅ Documentation updated
+
+**Files to Rename**:
+
+- `ChunkEmbeddingService.java` → `EmbeddingService.java`
+- `ChunkEmbeddingServiceTest.java` → `EmbeddingServiceTest.java`
+
+**Files to Update**:
+
+- All classes that inject ChunkEmbeddingService
+- Spring configuration files
+- Integration tests
+
+---
+
+### LVREF010: Integrate TriadOrchestrationService into EmbeddingService
+
+**Priority**: Medium | **Effort**: 6 hours | **Risk**: Medium  
 **Dependencies**: LVREF009
 
-**Problem**: `TextChunkingService` and `ChunkEmbeddingService` are sequential operations that are always used together.
+**Problem**: `TriadOrchestrationService` handles semantic analysis that's conceptually part of embedding/semantic processing.
 
-**Goal**: Integrate text chunking and embedding generation into unified content processing workflow.
+**Goal**: Move triad orchestration logic into `EmbeddingService` as semantic analysis capability.
 
 **Acceptance Criteria**:
-- ✅ Text chunking logic moved to `ContentProcessingService`
-- ✅ Chunk embedding generation integrated
-- ✅ Sequential processing workflow preserved
-- ✅ All embedding endpoints work identically
-- ✅ Chunk size and overlap parameters maintained
+
+- ✅ Triad orchestration methods moved to EmbeddingService
+- ✅ All temporal relationship analysis preserved
+- ✅ Cross-scene coordination logic maintained
+- ✅ Semantic analysis endpoints work identically
+- ✅ Service dependencies properly updated
 
 **Files to Delete**:
-- `TextChunkingService.java`
-- `ChunkEmbeddingService.java`
-- Related test files
+
+- `TriadOrchestrationService.java`
+- `TriadOrchestrationServiceTest.java`
 
 **Files to Update**:
-- `ContentProcessingService.java` - Add chunking and embedding
-- Configuration classes - Chunking parameters
-- Integration tests - Validate complete processing pipeline
+
+- `EmbeddingService.java` - Add triad orchestration methods
+- Classes that use TriadOrchestrationService
+- Integration tests
 
 ---
 
-### LVREF011: Consolidate Scene Coordination Logic
-**Priority**: Medium | **Effort**: 1 day | **Risk**: Medium  
-**Dependencies**: LVREF010
+### LVREF011: Keep TextChunkingService Independent
 
-**Problem**: `TriadOrchestrationService` and `SceneCoordinateLocalizer` handle scene coordination and positioning that's part of the content processing workflow.
+**Priority**: Low | **Effort**: 2 hours | **Risk**: Low  
+**Dependencies**: None (can run parallel)
 
-**Goal**: Move scene coordination and localization logic into `ContentProcessingService`.
+**Problem**: `TextChunkingService` is well-designed and focused - no consolidation needed.
+
+**Goal**: Validate that TextChunkingService remains independent and well-bounded.
 
 **Acceptance Criteria**:
-- ✅ Triad orchestration logic integrated
-- ✅ Scene coordinate localization moved
-- ✅ Cross-chapter scene coordination preserved
-- ✅ Scene positioning calculations maintained
-- ✅ All coordinate-based queries work identically
 
-**Files to Delete**:
-- `TriadOrchestrationService.java`
-- `SceneCoordinateLocalizer.java`
-- Related test files
+- ✅ TextChunkingService keeps current responsibilities
+- ✅ Service boundaries validated and documented
+- ✅ No unnecessary coupling with other services
+- ✅ Configuration parameters remain clear
+- ✅ Tests remain focused on chunking logic
 
-**Files to Update**:
-- `ContentProcessingService.java` - Add coordination logic
-- Scene-related query classes - Update dependencies
+**Files to Review**:
+
+- `TextChunkingService.java` - Validate design and boundaries
+- `TextChunkingServiceTest.java` - Ensure focused testing
 
 ---
 
 ### LVREF012: Content Processing Integration Tests
+
 **Priority**: Medium | **Effort**: 1 day | **Risk**: Low  
-**Dependencies**: LVREF011
+**Dependencies**: LVREF008, LVREF010
 
-**Problem**: Content processing tests are scattered across multiple service test classes.
+**Problem**: Need integration tests for the refined 3-service content processing architecture.
 
-**Goal**: Create comprehensive integration tests for unified content processing workflows.
+**Goal**: Create comprehensive integration tests for scene processing, chunking, and embedding workflows.
 
 **Acceptance Criteria**:
-- ✅ Complete end-to-end content processing tests
-- ✅ Scene detection → chunking → embedding pipeline tested
-- ✅ Cross-chapter processing scenarios covered
+
+- ✅ Scene detection → persistence → coordination pipeline tested
+- ✅ Text chunking workflows validated independently
+- ✅ Embedding generation → semantic analysis pipeline tested
+- ✅ Cross-service integration scenarios covered
 - ✅ Error handling and edge cases validated
-- ✅ Performance regression tests included
 
 **Files to Create**:
-- `ContentProcessingIntegrationTest.java` - Comprehensive workflow tests
+
+- `ContentProcessingIntegrationTest.java` - End-to-end workflow tests
 
 **Files to Update**:
-- `ContentProcessingServiceTest.java` - Complete unit test coverage
-- Related integration test suites
+
+- Individual service tests - Ensure focused unit testing
+- System integration tests - Validate complete pipelines
 
 ---
 
 ## Phase 4: Consolidate System Services (3 days, Low Risk)
 
-### LVREF013: Merge Health Check Services
-**Priority**: Medium | **Effort**: 4 hours | **Risk**: Low  
+### LVREF013: Create SystemHealthService
+
+**Priority**: Medium | **Effort**: 6 hours | **Risk**: Low  
 **Dependencies**: None (can run parallel to Phase 3)
 
-**Problem**: Health checking is split across `LlmHealthCheckService`, `EmbeddingHealthCheckService`, `LlmChatSlotsHealthService`, and `LlmModelInfoService`.
+**Problem**: Health checking is split across 3 services (`LlmHealthCheckService`, `EmbeddingHealthCheckService`, `LlmChatSlotsHealthService`) with overlapping concerns.
 
-**Goal**: Merge all health check services into unified `SystemHealthService`.
+**Goal**: Merge health check services into unified `SystemHealthService` while keeping `LlmModelInfoService` separate.
 
 **Acceptance Criteria**:
-- ✅ Single `SystemHealthService` handles all health checks
+
+- ✅ New `SystemHealthService` handles LLM and embedding health checks
 - ✅ All health endpoints work identically
-- ✅ Health check aggregation logic preserved
+- ✅ Health check aggregation and retry logic preserved
+- ✅ `LlmModelInfoService` remains independent (pure configuration)
 - ✅ Health metrics collection maintained
-- ✅ Individual health check logic preserved
 
 **Files to Create**:
-- `SystemHealthService.java` - Unified health service
+
+- `SystemHealthService.java` - Unified health service (~300 lines)
 
 **Files to Delete**:
+
 - `LlmHealthCheckService.java`
-- `EmbeddingHealthCheckService.java`
+- `EmbeddingHealthCheckService.java` 
 - `LlmChatSlotsHealthService.java`
-- `LlmModelInfoService.java`
 - Related test files
 
+**Files to Keep**:
+
+- `LlmModelInfoService.java` - Model configuration metadata (stays independent)
+
 **Files to Update**:
-- Health endpoint controllers - Update dependencies
+
+- Health endpoint controllers - Update to use SystemHealthService
 - Health check configurations
 
 ---
 
 ### LVREF014: System Health Integration Tests
-**Priority**: Low | **Effort**: 2 hours | **Risk**: Low  
+
+**Priority**: Low | **Effort**: 3 hours | **Risk**: Low  
 **Dependencies**: LVREF013
 
-**Problem**: Need comprehensive tests for unified health service.
+**Problem**: Need comprehensive tests for unified health service and integration with model info service.
 
 **Goal**: Create integration tests for complete system health monitoring.
 
 **Acceptance Criteria**:
+
 - ✅ All health check endpoints tested
 - ✅ Health aggregation logic validated
+- ✅ Integration with LlmModelInfoService tested
 - ✅ Error scenarios covered
 - ✅ Health metrics collection tested
 
 **Files to Create**:
+
 - `SystemHealthIntegrationTest.java` - Complete health check tests
 
 ---
@@ -449,11 +484,11 @@
 |-------|---------|----------|------|--------------|
 | **Phase 1** | LVREF001-003 | 1 week | Low | None |
 | **Phase 2** | LVREF004-007 | 1 week | Medium | Phase 1 complete |
-| **Phase 3** | LVREF008-012 | 2 weeks | High | Phase 2 complete |
+| **Phase 3** | LVREF008-012 | 1.5 weeks | Medium | Phase 2 complete |
 | **Phase 4** | LVREF013-014 | 3 days | Low | Can parallel Phase 3 |
 | **Phase 5** | LVREF015-018 | 2 days | Low | All phases complete |
 
-**Total**: 18 tickets, 3-4 weeks, 1 developer + LLM assistance
+**Total**: 18 tickets, 3.5-4 weeks, 1 developer + LLM assistance
 
 ## Success Metrics
 

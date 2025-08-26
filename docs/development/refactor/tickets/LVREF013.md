@@ -1,10 +1,10 @@
-# LVREF013: Merge Health Check Services
+# LVREF013: Create SystemHealthService
 
 
 
 **Priority**: Medium  
 
-**Effort**: 4 hours  
+**Effort**: 6 hours  
 
 **Risk**: Low  
 
@@ -18,7 +18,7 @@
 
 
 
-Health checking is split across `LlmHealthCheckService`, `EmbeddingHealthCheckService`, `LlmChatSlotsHealthService`, and `LlmModelInfoService`. All serve the same business purpose: "Monitor system health."
+Health checking is split across 3 services (`LlmHealthCheckService`, `EmbeddingHealthCheckService`, `LlmChatSlotsHealthService`) with overlapping concerns, while `LlmModelInfoService` serves a different purpose (configuration metadata).
 
 
 
@@ -28,17 +28,15 @@ Health checking is split across `LlmHealthCheckService`, `EmbeddingHealthCheckSe
 
 ```java
 
-// Multiple health check services
+// 3 health check services + 1 config service
 
-LlmHealthCheckService
+LlmHealthCheckService          // Complex health checking with retry logic
 
-├── EmbeddingHealthCheckService
+├── EmbeddingHealthCheckService    // Simple embedding validation
 
-├── LlmChatSlotsHealthService  
+├── LlmChatSlotsHealthService      // Chat client validation
 
-├── LlmModelInfoService
-
-└── Various health utilities
+└── LlmModelInfoService           // Model configuration (different concern)
 
 ```
 
@@ -58,47 +56,45 @@ public class SystemHealthService {
 
     private final EmbeddingPort embeddingPort;
 
-    private final HealthCache healthCache; // TTL cache for expensive checks
+    private final LlmModelInfoService modelInfoService; // Inject, don't absorb
 
     
 
-    // Individual health checks with caching and timeouts
+    // Unified health checking for all AI services
 
-    @Cacheable(value = "health-llm", unless = "#result.status == 'DOWN'")
+    public HealthStatus checkLlmHealth() { ... }
 
-    public HealthStatus checkLlmHealth() { 
+    public HealthStatus checkEmbeddingHealth() { ... }
 
-        return timeoutWrapper(() -> llmPort.ping(), Duration.ofSeconds(5));
-
-    }
+    public HealthStatus checkChatSlotsHealth() { ... }
 
     
 
-    // Aggregated health with fallback
+    // Aggregated health with model info context
 
     public SystemHealthResponse getOverallSystemHealth() {
 
-        // Parallel execution, fallback to "UNKNOWN" on timeout/error
+        // Use modelInfoService for context, but don't absorb it
 
     }
 
 }
 
+
+
+// Keep this separate - it's configuration, not health checking
+
+@Service  
+
+public class LlmModelInfoService {
+
+    // Pure configuration/metadata service
+
+    // Different lifecycle and responsibilities
+
+}
+
 ```
-
-
-
-**Enhancements**:
-
-- **Caching**: Cache UP results briefly (30s-2m TTL) to avoid rate limiting
-
-- **Timeouts**: 5s default timeout per check; configurable via properties
-
-- **Fallbacks**: Graceful degradation when external systems are slow
-
-- **Actuator Integration**: Expose via Spring Boot Actuator `/health` endpoint
-
-- **Standard Schema**: Consistent `{status, timestamp, details, version}` response format
 
 
 
@@ -108,13 +104,17 @@ public class SystemHealthService {
 
 1. Create new `SystemHealthService` class
 
-2. Move all health check methods from existing services
+2. Move LLM health check logic from `LlmHealthCheckService`  
 
-3. Consolidate health aggregation logic
+3. Move embedding health check logic from `EmbeddingHealthCheckService`
 
-4. Update health endpoints to use unified service
+4. Move chat slots health check logic from `LlmChatSlotsHealthService`
 
-5. Remove old health check service classes
+5. **Keep `LlmModelInfoService` separate** - inject as dependency
+
+6. Update health endpoints to use unified service
+
+7. Remove old health check services (but keep model info service)
 
 
 
@@ -122,15 +122,17 @@ public class SystemHealthService {
 
 
 
-- [ ] Single `SystemHealthService` handles all health checks
+- [ ] New `SystemHealthService` handles LLM and embedding health checks
 
 - [ ] All health endpoints work identically
 
-- [ ] Health check aggregation logic preserved
+- [ ] Health check aggregation and retry logic preserved  
+
+- [ ] `LlmModelInfoService` remains independent (pure configuration)
 
 - [ ] Health metrics collection maintained
 
-- [ ] Individual health check logic preserved
+- [ ] All 3 health check services deleted, model info service preserved
 
 
 
@@ -140,9 +142,7 @@ public class SystemHealthService {
 
 **Files to CREATE**:
 
-- `SystemHealthService.java` - Unified health service
-
-- `SystemHealthServiceTest.java` - Consolidated tests
+- `SystemHealthService.java` - Unified health service (~300 lines)
 
 
 
@@ -154,15 +154,19 @@ public class SystemHealthService {
 
 - `LlmChatSlotsHealthService.java`
 
-- `LlmModelInfoService.java`
-
 - Related test files
+
+
+
+**Files to KEEP**:
+
+- `LlmModelInfoService.java` - Model configuration metadata (stays independent)
 
 
 
 **Files to UPDATE**:
 
-- Health endpoint controllers - Update dependencies
+- Health endpoint controllers - Update to use SystemHealthService
 
 - Health check configurations
 
