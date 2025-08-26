@@ -2,6 +2,7 @@ package com.lorevault.api.service.ingestion;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.application.port.JobContextPort;
+import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
@@ -9,12 +10,13 @@ import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.ingestion.StatusRecord;
+import com.lorevault.api.dto.content.SceneWithCoordinates;
 import com.lorevault.api.dto.ingestion.JobListResponse;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import com.lorevault.api.dto.ingestion.SubmitChapterResponse;
 import com.lorevault.api.event.ChapterIngestionEvent;
-import com.lorevault.api.service.content.ChunkEmbeddingService;
+import com.lorevault.api.service.content.EmbeddingService;
 import com.lorevault.api.service.content.SceneProcessingService;
 import com.lorevault.api.service.content.TextChunkingService;
 import com.lorevault.api.service.timeline.DefaultTemporalEdgeService;
@@ -47,9 +49,10 @@ class IngestionServiceTest {
     @Mock private IngestionJobService ingestionJobService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private JobContextPort jobContextPort;
+    @Mock private SceneDetectionPort sceneDetectionPort;
     @Mock private SceneProcessingService sceneProcessingService;
     @Mock private TextChunkingService textChunkingService;
-    @Mock private ChunkEmbeddingService chunkEmbeddingService;
+    @Mock private EmbeddingService embeddingService;
     @Mock private DefaultTemporalEdgeService defaultTemporalEdgeService;
 
     @InjectMocks
@@ -181,22 +184,31 @@ class IngestionServiceTest {
             // Given
             List<Scene> scenes = createTestScenes(2);
             List<Chunk> chunks = createTestChunks(3);
+            List<SceneWithCoordinates> scenesWithCoords = List.of(
+                new SceneWithCoordinates(0, 0, 50, "Scene 1"),
+                new SceneWithCoordinates(1, 50, 100, "Scene 2")
+            );
 
+            // Mock scene detection workflow
             when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
-            when(sceneProcessingService.detectAndPersistScenes(chapterId)).thenReturn(scenes);
+            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneDetectionPort.detectScenesInText(chapterId, testChapter.getRawText())).thenReturn(scenesWithCoords);
+            when(sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords)).thenReturn(scenes);
+            
             when(textChunkingService.extractChunks(anyString())).thenReturn(chunks);
-            when(chunkEmbeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(6);
+            when(embeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(6);
 
             // When
             ingestionService.processChapter(testJob, testChapter);
 
             // Then
             verify(jobContextPort).setCurrentJobId(jobId);
-            verify(sceneProcessingService).detectAndPersistScenes(chapterId);
+            verify(sceneDetectionPort).detectScenesInText(chapterId, testChapter.getRawText());
+            verify(sceneProcessingService).persistDetectedScenes(chapterId, scenesWithCoords);
             verify(defaultTemporalEdgeService).createAllDefaults(bookId);
             verify(textChunkingService, times(2)).extractChunks(anyString());
             verify(contentPersistencePort, times(2)).addChunksToScene(any(), any());
-            verify(chunkEmbeddingService).generateEmbeddingsForChapter(chapterId);
+            verify(embeddingService).generateEmbeddingsForChapter(chapterId);
             verify(ingestionJobService).completeJob(testJob, chapterId, testChapter.getRawText().length());
             verify(jobContextPort).clearCurrentJobId();
         }
@@ -210,16 +222,17 @@ class IngestionServiceTest {
 
             when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(existingScenes);
             when(textChunkingService.extractChunks(anyString())).thenReturn(chunks);
-            when(chunkEmbeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(2);
+            when(embeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(2);
 
             // When
             ingestionService.processChapter(testJob, testChapter);
 
-            // Then
-            verify(sceneProcessingService, never()).detectAndPersistScenes(any());
+            // Then - Scene detection should be skipped when scenes already exist
+            verify(sceneDetectionPort, never()).detectScenesInText(any(), anyString());
+            verify(sceneProcessingService, never()).persistDetectedScenes(any(), any());
             verify(defaultTemporalEdgeService, never()).createAllDefaults(any());
             verify(textChunkingService).extractChunks(anyString());
-            verify(chunkEmbeddingService).generateEmbeddingsForChapter(chapterId);
+            verify(embeddingService).generateEmbeddingsForChapter(chapterId);
             verify(ingestionJobService).completeJob(testJob, chapterId, testChapter.getRawText().length());
         }
 
@@ -229,7 +242,8 @@ class IngestionServiceTest {
             // Given
             RuntimeException llmError = new RuntimeException("LLM API call failed");
             when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
-            when(sceneProcessingService.detectAndPersistScenes(chapterId)).thenThrow(llmError);
+            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneDetectionPort.detectScenesInText(chapterId, testChapter.getRawText())).thenThrow(llmError);
 
             // When
             ingestionService.processChapter(testJob, testChapter);
@@ -244,8 +258,14 @@ class IngestionServiceTest {
         void processChapter_nonRetryableError_failsJobWithoutCleanup() {
             // Given
             RuntimeException error = new RuntimeException("Database connection failed");
+            List<SceneWithCoordinates> scenesWithCoords = List.of(
+                new SceneWithCoordinates(0, 0, 50, "Scene 1")
+            );
+            
             when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
-            when(sceneProcessingService.detectAndPersistScenes(chapterId)).thenThrow(error);
+            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneDetectionPort.detectScenesInText(chapterId, testChapter.getRawText())).thenReturn(scenesWithCoords);
+            when(sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords)).thenThrow(error);
 
             // When
             ingestionService.processChapter(testJob, testChapter);
@@ -267,7 +287,7 @@ class IngestionServiceTest {
 
             List<Scene> scenes = createTestScenes(1);
             when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(scenes);
-            when(chunkEmbeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(0);
+            when(embeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(0);
 
             // When
             ingestionService.processChapter(testJob, emptyChapter);
