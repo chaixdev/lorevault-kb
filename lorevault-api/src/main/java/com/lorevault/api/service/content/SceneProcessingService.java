@@ -1,7 +1,6 @@
 package com.lorevault.api.service.content;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
-import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.dto.content.SceneDetectionResult;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
@@ -24,20 +23,17 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Unified service responsible for complete scene processing lifecycle:
- * AI-powered scene detection, XML parsing, coordinate localization, and
- * persistence.
+ * Unified service responsible for scene processing operations:
+ * XML parsing, coordinate localization, and persistence.
  * 
  * Consolidates the functionality previously spread across:
- * - SceneDetectionService (AI detection orchestration)
  * - ScenePersistenceService (database persistence)
  * - SceneCoordinateLocalizer (coordinate calculation)
  * - SceneDetectionXmlParser (XML response parsing)
  * 
- * This service provides both high-level workflow methods and granular
- * operations
- * to support different usage patterns (IngestionService vs
- * RetryAwareSceneDetectionService).
+ * This service provides granular operations to support different usage patterns.
+ * Note: AI scene detection is handled by SceneDetectionPort implementations
+ * and RetryAwareSceneDetectionService to avoid circular dependencies.
  */
 @Service
 @RequiredArgsConstructor
@@ -45,42 +41,10 @@ import java.util.stream.Collectors;
 public class SceneProcessingService {
 
     private final ContentPersistencePort contentPersistencePort;
-    private final SceneDetectionPort sceneDetectionPort;
 
     // =============================================================================
     // HIGH-LEVEL WORKFLOW METHODS
     // =============================================================================
-
-    /**
-     * Complete scene processing workflow: detect scenes using AI and persist to
-     * database.
-     * This is the primary method for most use cases.
-     * 
-     * @param chapterId The UUID of the chapter to process
-     * @return List of persisted Scene entities
-     * @throws IllegalArgumentException if chapter not found
-     */
-    public List<Scene> detectAndPersistScenes(UUID chapterId) {
-        log.info("Starting complete scene processing for chapter: {}", chapterId);
-
-        // Check if scenes already exist to avoid duplicate processing
-        List<Scene> existingScenes = contentPersistencePort.findScenesByChapterId(chapterId);
-        if (!existingScenes.isEmpty()) {
-            log.info("Chapter {} already has {} scenes; returning existing", chapterId, existingScenes.size());
-            return existingScenes;
-        }
-
-        // Detect scenes using AI
-        List<SceneWithCoordinates> scenesWithCoords = detectScenesForChapter(chapterId);
-
-        if (scenesWithCoords.isEmpty()) {
-            log.info("No scenes detected for chapter {}", chapterId);
-            return List.of();
-        }
-
-        // Persist detected scenes
-        return persistDetectedScenes(chapterId, scenesWithCoords);
-    }
 
     /**
      * Retrieve all scenes for a chapter.
@@ -106,42 +70,6 @@ public class SceneProcessingService {
     // =============================================================================
     // GRANULAR PROCESSING METHODS
     // =============================================================================
-
-    /**
-     * Detect scenes using AI without persisting them.
-     * Used when you need the detection results for further processing.
-     * 
-     * @param chapterId The UUID of the chapter to analyze
-     * @return List of SceneWithCoordinates ready for persistence
-     * @throws IllegalArgumentException if chapter not found
-     */
-    public List<SceneWithCoordinates> detectScenesForChapter(UUID chapterId) {
-        log.info("Detecting scenes for chapter: {}", chapterId);
-
-        var chapterNode = contentPersistencePort.findChapterById(chapterId)
-                .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
-
-        String chapterText = chapterNode.getRawText();
-        if (chapterText == null || chapterText.trim().isEmpty()) {
-            log.warn("Chapter {} has no text content, cannot detect scenes", chapterId);
-            return List.of();
-        }
-
-        log.debug("Using scene detection implementation: {}", sceneDetectionPort.getImplementationInfo());
-
-        try {
-            List<SceneWithCoordinates> scenesWithCoords = sceneDetectionPort.detectScenesInText(chapterId, chapterText);
-
-            log.info("Successfully detected {} scenes for chapter {}",
-                    scenesWithCoords.size(), chapterId);
-
-            return scenesWithCoords;
-
-        } catch (Exception e) {
-            log.error("Failed to detect scenes for chapter {}: {}", chapterId, e.getMessage(), e);
-            throw new RuntimeException("Scene detection failed for chapter " + chapterId, e);
-        }
-    }
 
     /**
      * Persist detected scenes to the database.

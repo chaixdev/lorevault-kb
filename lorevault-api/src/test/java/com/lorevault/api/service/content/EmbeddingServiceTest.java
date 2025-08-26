@@ -19,15 +19,15 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("service")
-@DisplayName("ChunkEmbeddingService")
-class ChunkEmbeddingServiceTest {
+@DisplayName("EmbeddingService")
+class EmbeddingServiceTest {
 
     @Test
     @DisplayName("should return 0 when chapter has no chunks")
     void shouldReturnZeroWhenNoChunks() {
         ContentPersistencePort repo = new FakeContentPersistencePort();
         var embed = new FakeEmbeddingPort("fake-model", 8);
-        var svc = new ChunkEmbeddingService(repo, embed);
+        var svc = new EmbeddingService(repo, embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);
 
@@ -47,7 +47,7 @@ class ChunkEmbeddingServiceTest {
     void shouldEmbedOnlyWhenNeeded() throws Exception {
         FakeContentPersistencePort repo = new FakeContentPersistencePort();
         var embed = new FakeEmbeddingPort("fake-model", 8);
-        var svc = new ChunkEmbeddingService(repo, embed);
+        var svc = new EmbeddingService(repo, embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);
 
