@@ -41,7 +41,7 @@ public class IngestionWorkflowService {
     private final ScenePersistenceService scenePersistenceService;
     private final TextChunkingService textChunkingService;
     private final ChunkEmbeddingService chunkEmbeddingService;
-    private final IngestionJobLifecycleService jobLifecycleService;
+    private final IngestionJobService ingestionJobService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
 
     /**
@@ -89,7 +89,7 @@ public class IngestionWorkflowService {
             executeChunkingStage(context, scenes);
             executeEmbeddingStage(context);
 
-            jobLifecycleService.completeJob(job, context.getChapterId(), 
+            ingestionJobService.completeJob(job, context.getChapterId(), 
                     getChapterLength(context.getChapterText()));
             
         } catch (Exception e) {
@@ -231,10 +231,10 @@ public class IngestionWorkflowService {
 
         if (isRetryableError(e)) {
             log.warn("LLM API failure detected - cleaning up data for retry");
-            jobLifecycleService.failJobWithCleanup(context.getJob(), 
+            ingestionJobService.failJobWithCleanup(context.getJob(), 
                     "LLM API call failed: " + e.getMessage());
         } else {
-            jobLifecycleService.failJob(context.getJob(), 
+            ingestionJobService.failJob(context.getJob(), 
                     "Chapter processing failed: " + e.getMessage());
         }
     }
@@ -250,7 +250,7 @@ public class IngestionWorkflowService {
     }
 
     private void updateStatus(WorkflowContext context, IngestionStatus status, String description) {
-        jobLifecycleService.updateJobStatus(context.getJobId(), status, description, Collections.emptyMap());
+        ingestionJobService.updateJobStatus(context.getJobId(), status, description, Collections.emptyMap());
     }
 
     private int getChapterLength(String chapterText) {

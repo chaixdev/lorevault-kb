@@ -5,7 +5,7 @@ import com.lorevault.api.dto.content.SceneWithCoordinates;
 import com.lorevault.api.service.content.SceneDetectionClient;
 import com.lorevault.api.service.content.SceneDetectionXmlParser;
 import com.lorevault.api.service.content.SceneCoordinateLocalizer;
-import com.lorevault.api.service.ingestion.IngestionJobLifecycleService;
+import com.lorevault.api.service.ingestion.IngestionJobService;
 import com.lorevault.api.service.content.TriadOrchestrationService;
 import com.lorevault.api.service.timeline.TriadEdgePersistenceService;
 import com.lorevault.api.service.content.retry.LlmRetryStrategy.LlmRetryConfig;
@@ -30,7 +30,7 @@ public class RetryAwareSceneDetectionService {
     private final SceneDetectionXmlParser xmlParser;
     private final SceneCoordinateLocalizer coordinateLocalizer;
     private final LlmRetryStrategy llmRetryStrategy;
-    private final IngestionJobLifecycleService jobLifecycleService;
+    private final IngestionJobService ingestionJobService;
     private final TriadOrchestrationService triadOrchestrationService;
     private final TriadEdgePersistenceService triadEdgePersistenceService;
 
@@ -161,7 +161,7 @@ public class RetryAwareSceneDetectionService {
      */
     private void updateJobStatus(UUID jobId, String description) {
         try {
-            jobLifecycleService.updateJobStatus(
+            ingestionJobService.updateJobStatus(
                     jobId,
                     com.lorevault.api.domain.ingestion.IngestionStatus.DETECTING_SCENES,
                     description,
