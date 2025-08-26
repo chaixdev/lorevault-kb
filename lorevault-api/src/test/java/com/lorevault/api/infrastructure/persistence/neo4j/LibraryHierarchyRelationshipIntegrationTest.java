@@ -20,6 +20,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import com.lorevault.api.testing.TestImages;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -40,7 +41,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LibraryHierarchyRelationshipIntegrationTest {
 
     @Container
-    static Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>("neo4j:5.20")
+    @SuppressWarnings("resource")
+    static Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>(TestImages.NEO4J_IMAGE)
             .withAdminPassword("testpass123");
 
     @DynamicPropertySource
@@ -54,6 +56,7 @@ class LibraryHierarchyRelationshipIntegrationTest {
     private ContentPersistencePort contentPersistencePort;
     
     @Autowired
+    @SuppressWarnings("unused")
     private UniverseGraphRepository universeRepo;
     
     @Autowired

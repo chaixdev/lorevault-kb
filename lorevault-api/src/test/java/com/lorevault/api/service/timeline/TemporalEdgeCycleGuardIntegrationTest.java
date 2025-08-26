@@ -19,6 +19,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import com.lorevault.api.testing.TestImages;
 
 import java.util.List;
 import java.util.UUID;
@@ -33,7 +34,7 @@ class TemporalEdgeCycleGuardIntegrationTest {
 
     @Container
     @SuppressWarnings("resource")
-    static final Neo4jContainer<?> neo4j = new Neo4jContainer<>("neo4j:5.20")
+    static final Neo4jContainer<?> neo4j = new Neo4jContainer<>(TestImages.NEO4J_IMAGE)
             .withAdminPassword("testpass123");
 
     @DynamicPropertySource
