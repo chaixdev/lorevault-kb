@@ -12,6 +12,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import com.lorevault.api.testing.TestImages;
 
 import java.util.UUID;
 
@@ -29,7 +30,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 public class DefaultTemporalEdgeServiceIntegrationTest {
 
     @Container
-    static Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>("neo4j:5.21.0")
+    @SuppressWarnings("resource")
+    static Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>(TestImages.NEO4J_IMAGE)
             .withAdminPassword("testpassword");
 
     @DynamicPropertySource

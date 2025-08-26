@@ -9,17 +9,18 @@ import com.lorevault.api.infrastructure.persistence.neo4j.model.BookNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.SeriesNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.BookGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.SeriesGraphRepository;
-import com.lorevault.api.infrastructure.persistence.neo4j.repository.UniverseGraphRepository;
+// no direct use of UniverseGraphRepository in this test
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.neo4j.DataNeo4jTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.neo4j.core.Neo4jTemplate;
+// import org.springframework.data.neo4j.core.Neo4jTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import com.lorevault.api.testing.TestImages;
 
 import java.util.Optional;
 
@@ -35,8 +36,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class Neo4jRelationshipIntegrationTest {
 
     @Container
-    static Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>("neo4j:5.20")
-            .withAdminPassword("testpass123");
+    @SuppressWarnings("resource")
+    static Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>(TestImages.NEO4J_IMAGE)
+        .withAdminPassword("testpass123");
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
@@ -48,8 +50,7 @@ public class Neo4jRelationshipIntegrationTest {
     @Autowired
     private Neo4jContentPersistenceAdapter adapter;
 
-    @Autowired
-    private UniverseGraphRepository universeRepository;
+    // Repositories for assertions
 
     @Autowired
     private SeriesGraphRepository seriesRepository;
@@ -57,8 +58,7 @@ public class Neo4jRelationshipIntegrationTest {
     @Autowired
     private BookGraphRepository bookRepository;
 
-    @Autowired
-    private Neo4jTemplate neo4jTemplate;
+    // Neo4jTemplate not used directly; remove to avoid unused field warning
 
     @Test
     void shouldCreateProperRelationshipsForSeriesInUniverse() {
@@ -67,7 +67,7 @@ public class Neo4jRelationshipIntegrationTest {
         Series series = Series.create(universe.getId(), universe.getName(), "Test Series");
 
         // When
-        Universe savedUniverse = adapter.createUniverse(universe);
+    Universe savedUniverse = adapter.createUniverse(universe);
         Series savedSeries = adapter.createSeries(series);
 
         // Then
@@ -75,6 +75,8 @@ public class Neo4jRelationshipIntegrationTest {
         assertThat(seriesNode).isPresent();
         assertThat(seriesNode.get().getUniverse()).isNotNull();
         assertThat(seriesNode.get().getUniverse().getId()).isEqualTo(savedUniverse.getId());
+    // Sanity
+    assertThat(savedUniverse.getId()).isNotNull();
     }
 
     @Test
@@ -109,7 +111,7 @@ public class Neo4jRelationshipIntegrationTest {
         Book book = Book.createStandalone(universe.getId(), universe.getName(), "Standalone Book");
 
         // When
-        Universe savedUniverse = adapter.createUniverse(universe);
+        adapter.createUniverse(universe);
         Book savedBook = adapter.createBook(book);
 
         // Then
