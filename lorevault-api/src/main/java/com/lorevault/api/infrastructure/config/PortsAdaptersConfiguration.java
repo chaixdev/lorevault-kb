@@ -45,17 +45,4 @@ public class PortsAdaptersConfiguration {
     public JobContextPort jobContextPort(ThreadLocalJobContextAdapter adapter) {
         return adapter;
     }
-    
-    // Future: Add other implementations
-    // @Bean
-    // @ConditionalOnProperty(name = "lorevault.ai.scene-detection.provider", havingValue = "local")
-    // public SceneDetectionPort localSceneDetectionPort() {
-    //     return new LocalSceneDetectionAdapter();
-    // }
-    
-    // @Bean
-    // @ConditionalOnProperty(name = "lorevault.ai.scene-detection.provider", havingValue = "mock")
-    // public SceneDetectionPort mockSceneDetectionPort() {
-    //     return new MockSceneDetectionAdapter();
-    // }
 }

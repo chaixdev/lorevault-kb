@@ -149,33 +149,4 @@ lorevault:
       similarity-function: cosine
       dimensions: 1536
 
-  # Multi-LLM provider configuration (disabled by default, requires valid structure for properties binding)
-  multi-llm:
-    enabled: false  # Feature disabled
-    retry:
-      max-attempts: 3
-      base-delay-ms: 1000
-      max-delay-ms: 10000
-      backoff-multiplier: 2.0
-      jitter-factor: 0.1
-    providers:
-      default:
-        name: default
-        base-url: http://localhost
-        api-key: unused
-        chat-model: unused
-        temperature: 0.7
-        top-p: 1.0
-        max-tokens: 2048
-    prompts:
-      base-path: classpath:prompts
-      scene-detection: scene-detection.md
-    tasks:
-      embeddings:
-        primary: default
-        fallback: default
-      extract-scenes:
-        primary: default
-        fallback: default
-
   
