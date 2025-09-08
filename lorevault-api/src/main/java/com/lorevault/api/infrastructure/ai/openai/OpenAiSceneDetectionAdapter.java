@@ -25,27 +25,6 @@ public class OpenAiSceneDetectionAdapter implements SceneDetectionPort {
     private final RetryAwareSceneDetectionService retryAwareSceneDetectionService;
     private final JobContextPort jobContextPort;
     
-    // Keep static methods for backward compatibility during transition period
-    // TODO: Remove these after all callers are refactored to use JobContextPort
-    
-    /**
-     * @deprecated Use JobContextPort.setCurrentJobId() instead
-     */
-    @Deprecated(forRemoval = true)
-    public static void setCurrentJobId(UUID jobId) {
-        // This method is now a no-op since we use JobContextPort injection
-        // Static access patterns should be refactored to dependency injection
-    }
-    
-    /**
-     * @deprecated Use JobContextPort.clearCurrentJobId() instead
-     */
-    @Deprecated(forRemoval = true)
-    public static void clearCurrentJobId() {
-        // This method is now a no-op since we use JobContextPort injection
-        // Static access patterns should be refactored to dependency injection
-    }
-    
     @Override
     public List<SceneWithCoordinates> detectScenesInText(UUID chapterId, String chapterText) {
         try {
