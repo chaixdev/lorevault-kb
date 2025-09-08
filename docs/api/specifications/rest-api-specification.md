@@ -5,13 +5,36 @@
 ## Current API Structure
 
 ### Command Endpoints (`/api/command/`)
-- `/api/command/ingest` - Submit content files for processing
-- `/api/command/library/create-*` - Create universe/series/book hierarchy
+
+**Ingestion Commands**
+- `POST /api/command/ingest` - Submit content files for processing (replaces legacy `/api/v1/chapters`)
+  - Request: Multipart form with content files and metadata
+  - Response: `202 Accepted` with `jobId` for tracking
+  - Supports chapter, scene, and bulk content ingestion
+
+**Library Management Commands**  
+- `POST /api/command/library/create-universe` - Create universe hierarchy node
+- `POST /api/command/library/create-series` - Create series within universe
+- `POST /api/command/library/create-book` - Create book within series
 
 ### Query Endpoints (`/api/query/`)
-- `/api/query/jobs` - Monitor processing jobs and status
-- `/api/query/ask/*` - Q&A operations (vector search, RAG)
-- `/api/query/health` - System health and diagnostics
+
+**Job Management Queries**
+- `GET /api/query/jobs` - List ingestion jobs with filtering support
+  - Query parameters: `status`, `limit`, `offset`, `universeId`, `seriesId`
+- `GET /api/query/jobs/{id}` - Get specific job status and detailed progress
+
+**Search & Q&A Queries**
+- `POST /api/query/ask/vector` - Semantic search over chunk content
+  - Natural language queries with vector similarity matching
+  - Returns ranked chunks with relevance scores
+- `POST /api/query/ask/rag` - RAG-based question answering  
+  - Intelligent answers with source attribution and citations
+  - Leverages semantic search for context retrieval
+
+**System Health Queries**
+- `GET /api/query/health` - System health diagnostics and component status
+- `GET /api/query/health/llm` - LLM service connectivity and model status
 
 ## Core Principles
 
