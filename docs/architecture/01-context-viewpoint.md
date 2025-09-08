@@ -12,41 +12,44 @@ This viewpoint describes the relationships, dependencies, and interactions betwe
 LoreVault is an intelligent knowledge ingestion service that automatically builds structured lore graphs from narrative text. The system operates as a service-oriented platform transforming unstructured content into a navigable, query-ready graph (chapters → scenes → chunks; future: entities & relationships).
 
 ### Core Responsibilities
-1. **Content Ingestion**: Accept and process narrative text through REST API
-2. **Scene Detection & Chunking**: Derive semantic scenes and retrieval-friendly chunks (embeddings deferred)
-3. **Graph Persistence**: Persist hierarchical content in Neo4j with integrity constraints
-4. **Job Lifecycle Tracking**: Asynchronous ingestion workflow with status history
-5. **(Future) Knowledge Extraction**: Entity & relationship mining (planned ≥ v0.6.0)
-6. **(Future) Semantic Search**: Vector-based retrieval (planned v0.5.0)
+
+1. **Content Ingestion**: Accept and process narrative text through CQRS-aligned REST API
+2. **Scene Detection & Chunking**: Derive semantic scenes and retrieval-friendly chunks with vector embeddings
+3. **Graph Persistence**: Persist hierarchical content in Neo4j with native vector indexing
+4. **Job Lifecycle Tracking**: Asynchronous ingestion workflow with comprehensive status history
+5. **Semantic Search**: Vector-based natural language queries over chunk content
+6. **RAG Question Answering**: Intelligent answers with source attribution and citations
 
 ### System Boundaries
 
 **Within LoreVault System:**
-- REST API (Spring Boot)
-- Ingestion orchestration & background processors
-- AI-assisted scene detection (LLM calls)
-- Neo4j graph persistence adapter (port-driven)
-- Status audit trail (StatusRecord nodes)
+- CQRS-aligned REST API (Spring Boot) with command/query separation
+- Consolidated service architecture (Ingestion, Query, System services)
+- AI-assisted scene detection and content processing
+- Neo4j graph persistence with native vector indexing
+- Comprehensive status tracking and audit trail
 
 **Outside LoreVault System:**
-- External LLM provider(s) for scene detection
-- (Future) Embedding/vector providers
+- External LLM providers for scene detection and RAG processing
+- Embedding providers for vector generation
 - Client applications / integrators
 - Monitoring / logging infrastructure
 
 ## External Dependencies
 
-### Current External Services (v0.4.0)
+### Current External Services
 
 #### Large Language Model Providers
-- **Purpose**: Scene boundary & summary detection
-- **Risk**: Latency / availability affects ingestion throughput, not API uptime
-- **Mitigation**: Retry with backoff; failure triggers cleanup for safe retry
+- **Purpose**: Scene boundary detection, RAG question answering, content processing
+- **Risk**: Latency / availability affects ingestion throughput and query response times
+- **Mitigation**: Retry with backoff; failure triggers cleanup for safe retry; graceful degradation
 
-### Deferred (Not active in v0.4.0)
-#### Embedding / Vector Providers
-- Semantic search disabled (endpoint returns 501)
-- Will introduce vector storage and similarity queries in v0.5.0
+#### Embedding Providers
+- **Purpose**: Vector embedding generation for semantic search
+- **Risk**: Service availability affects search functionality
+- **Mitigation**: Cached embeddings, fallback providers, error handling
+
+### Active Services (Fully Operational)
 
 ## External Actors
 
@@ -56,7 +59,7 @@ LoreVault is an intelligent knowledge ingestion service that automatically build
 
 **Secondary Users**
 - System Operators (deployment / monitoring)
-- Future Knowledge Consumers (semantic + entity queries) – partial functionality now (no semantic search yet)
+- Knowledge Consumers (semantic search and Q&A)
 
 ## System Context Diagram
 
@@ -76,7 +79,7 @@ graph TD
 
     subgraph "External AI Services"
         LLM[LLM APIs]
-        EMB[(Embedding APIs - Future)]
+        EMB[(Embedding APIs)]
     end
 
     subgraph "Clients"
@@ -109,7 +112,7 @@ graph TD
     style GRAPH fill:#FFF2CC,stroke:#D6B656,stroke-width:2px
     style PROC fill:#F8CECC,stroke:#B85450,stroke-width:2px
     style LLM fill:#E1D5E7,stroke:#9673A6,stroke-width:1px
-    style EMB fill:#EEEEEE,stroke:#999999,stroke-dasharray: 4 2
+    style EMB fill:#E1D5E7,stroke:#9673A6,stroke-width:1px
 ```
 
 ## Integration Patterns
@@ -121,52 +124,52 @@ graph TD
 4. Status records appended (audit trail) until COMPLETE / FAILED
 5. On failure: scenes & chunks cleaned for idempotent retry
 
-### (Deferred) Semantic Search Flow
-- Placeholder endpoint returns 501 until embeddings introduced.
+### Semantic Search Flow
+
+1. Client submits POST /api/query/ask/vector with natural language query
+2. System generates query embedding and performs vector similarity search on chunk embeddings
+3. Ranked results returned with scores and snippets
 
 ## Environmental Constraints
 
 ### Development
+
 - Single Neo4j container (no Postgres)
 - Testcontainers Neo4j for integration tests (isolated graph state)
-- No vector store yet (design reserved for v0.5.0)
 
 ### Production (Target)
+
 - Neo4j causal cluster (future scaling) – current phase uses single instance
 - Asynchronous ingestion threads isolated from request threads
-- Planned introduction of vector index (Neo4j or external) post v0.4.0
+- Native vector indexing enabled in Neo4j for semantic search
 
 ### Security
-- API authentication (future hardening roadmap) – basic controls current
+
+- API authentication: basic controls currently; hardening planned
 - Encrypted outbound LLM traffic
 - Content hash uniqueness prevents duplicate ingestion
 
-## Updated Assumptions (v0.4.0)
-1. Semantic search postponed; no embeddings stored yet
-2. Chapter → Scene → Chunk hierarchy is authoritative graph structure
-3. Status history retained indefinitely (volume modest at v0.4.0 scale)
-4. Retry strategy must leave graph in clean state (hard requirement)
+## Current Assumptions
 
-## Removed / Changed (from earlier RDBMS design)
-- Postgres, JPA, Flyway eliminated; replaced by Spring Data Neo4j
-- No relational schema migrations; constraints applied programmatically
-- Entity classes are lightweight POJOs decoupled from persistence
-- Job & status queries now port-driven with potential future Cypher optimization
+1. Native vector indexing operational in Neo4j with embedding storage
+2. Chapter → Scene → Chunk hierarchy with native vector search capabilities
+3. Status history retained indefinitely (volume modest at current scale)
+4. Retry strategy maintains graph consistency (hard requirement)
+5. CQRS command/query separation provides clear API boundaries
 
-## Risks & Mitigations (Current Phase)
+## Service Architecture
+
+- **Consolidated Design**: Streamlined service areas (Ingestion, Query, System) with clear business capability boundaries
+- **CQRS Structure**: API separation with `/api/command/` and `/api/query/` endpoints
+- **Ports & Adapters**: External dependencies abstracted behind ports for testability and flexibility
+
+## Risk Management
+
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Naive in-memory filtering in adapter | Performance degradation at scale | Replace with targeted Cypher (planned) |
-| LLM latency/failure | Slower ingestion / retries | Backoff + cleanup for deterministic retriable state |
-| Missing ordering metadata on relationships | Complex ordering queries later | Future relationship properties (HAS_SCENE.index) |
-| Constraint drift | Duplicate chapters | Startup constraint initializer |
-
-## Roadmap Alignment
-- v0.4.0: Graph migration foundation (DONE/NEAR DONE)
-- v0.5.0: Embeddings + semantic search (vector layer, similarity ranking)
-- v0.6.0: Entity extraction & relationship expansion
-
----
-This context reflects the post-migration Neo4j architecture (v0.4.0) and intentionally excludes deferred vector/semantic components.
+| LLM service outages | Processing delays | Retry logic with exponential backoff |
+| Vector search performance | Query latency | Neo4j native indexing with optimized queries |
+| Graph database failures | System unavailability | Transactional consistency with rollback capability |
+| Content processing errors | Job failures | Comprehensive error handling with detailed status tracking |
 
 
