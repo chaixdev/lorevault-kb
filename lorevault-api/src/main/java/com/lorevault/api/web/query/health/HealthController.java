@@ -1,9 +1,6 @@
 package com.lorevault.api.web.query.health;
 
-import com.lorevault.api.service.system.LlmHealthCheckService;
-import com.lorevault.api.service.system.LlmChatSlotsHealthService;
-import com.lorevault.api.service.system.EmbeddingHealthCheckService;
-import com.lorevault.api.service.system.metrics.HealthMetricsCollector;
+import com.lorevault.api.service.system.SystemHealthService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.info.BuildProperties;
@@ -23,16 +20,16 @@ import java.util.Optional;
 public class HealthController {
 
     private final Optional<BuildProperties> buildProperties;
-    private final LlmHealthCheckService llmHealthCheckService;
-    private final LlmChatSlotsHealthService chatSlotsHealthService;
-    private final EmbeddingHealthCheckService embeddingHealthCheckService;
+    private final SystemHealthService systemHealthService;
 
     @GetMapping
     public Map<String, Object> getHealth() {
-        boolean llmHealthy = llmHealthCheckService.isLlmServiceHealthy();
-        var embStatus = embeddingHealthCheckService.getLastStatus();
+        var systemHealth = systemHealthService.getOverallSystemHealth();
+        
+        boolean llmHealthy = systemHealth.llmHealth().isHealthy();
+        var embStatus = systemHealth.embeddingHealth();
         boolean embHealthy = embStatus.healthy();
-        boolean overall = llmHealthy && embHealthy;
+        boolean overall = systemHealth.isOverallHealthy();
 
         Map<String, Object> embeddingsMap = new HashMap<>();
         embeddingsMap.put("healthy", embHealthy);
@@ -43,7 +40,7 @@ public class HealthController {
         }
 
         Map<String, Object> chatSlots = new HashMap<>();
-        chatSlotsHealthService.checkSlots().forEach((slot, status) -> {
+        systemHealth.chatSlotsHealth().forEach((slot, status) -> {
             chatSlots.put(slot, Map.of(
                 "healthy", status.isHealthy(),
                 "model", status.getModelName(),
@@ -66,47 +63,5 @@ public class HealthController {
             "timestamp", Instant.now().toString(),
             "checks", checks
         );
-    }
-
-    @GetMapping("/llm")
-    public Map<String, Object> getLlmHealth() {
-        var modelResults = llmHealthCheckService.checkAllModels();
-        boolean allHealthy = modelResults.values().stream().allMatch(HealthMetricsCollector.ModelHealthStatus::isHealthy);
-        Map<String, Object> models = new HashMap<>();
-        modelResults.forEach((modelId, status) -> {
-            models.put(modelId, Map.of(
-                "healthy", status.isHealthy(),
-                "name", status.getModelName(),
-                "status", status.isHealthy() ? "operational" : "error"
-            ));
-        });
-        Map<String, Object> slots = new HashMap<>();
-        chatSlotsHealthService.checkSlots().forEach((slot, status) -> {
-            slots.put(slot, Map.of(
-                "healthy", status.isHealthy(),
-                "model", status.getModelName(),
-                "lastAttemptMs", status.getLastAttemptDurationMs(),
-                "status", status.isHealthy() ? "operational" : "error"
-            ));
-        });
-        return Map.of(
-            "healthy", allHealthy,
-            "service", "LLM API",
-            "timestamp", Instant.now().toString(),
-            "description", allHealthy ? "All models operational" : "One or more models have issues",
-            "models", models,
-            "slots", slots
-        );
-    }
-
-    @GetMapping("/embeddings")
-    public Map<String, Object> getEmbeddingHealth() {
-        var status = embeddingHealthCheckService.checkEmbeddingService();
-        Map<String, Object> m = new HashMap<>();
-        m.put("healthy", status.healthy());
-        m.put("dimension", status.dimension());
-        m.put("durationMs", status.durationMs());
-        if (!status.healthy() && status.error() != null) m.put("error", status.error());
-        return m;
     }
 }

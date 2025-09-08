@@ -27,6 +27,12 @@ springdoc:
     path: /api/docs
   swagger-ui:
     path: /api/swagger-ui.html
+  # Include actuator endpoints in the generated OpenAPI
+  show-actuator: true
+  group-configs:
+    - group: actuator
+      paths-to-match: 
+        - /actuator/**
 
 # Actuator Configuration
 management:
@@ -36,7 +42,14 @@ management:
         include: health,info
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: always
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: "*"
+        liveness:
+          include: "*"
 
 # LoreVault Configuration (cleaned)
 lorevault:
