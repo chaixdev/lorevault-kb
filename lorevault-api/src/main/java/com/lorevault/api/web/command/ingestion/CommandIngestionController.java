@@ -7,6 +7,7 @@ import com.lorevault.api.web.command.ingestion.builder.CoordinatesBuilder;
 import com.lorevault.api.web.command.ingestion.extractor.FileContentExtractor;
 import com.lorevault.api.web.command.ingestion.response.ErrorResponseFactory;
 import com.lorevault.api.web.command.ingestion.validation.FileUploadValidator;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -21,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/command/ingest")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Ingestion", description = "Content ingestion operations")
 public class CommandIngestionController {
 
 	private final IngestionService ingestionService;

@@ -4,6 +4,7 @@ import com.lorevault.api.service.system.LlmHealthCheckService;
 import com.lorevault.api.service.system.LlmChatSlotsHealthService;
 import com.lorevault.api.service.system.EmbeddingHealthCheckService;
 import com.lorevault.api.service.system.metrics.HealthMetricsCollector;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +19,7 @@ import java.util.Optional;
 @RestController("queryHealthController")
 @RequestMapping("/api/query/health")
 @RequiredArgsConstructor
+@Tag(name = "Health", description = "System health monitoring")
 public class HealthController {
 
     private final Optional<BuildProperties> buildProperties;

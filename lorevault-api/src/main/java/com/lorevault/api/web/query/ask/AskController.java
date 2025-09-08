@@ -6,6 +6,7 @@ import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchRequest;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchResponse;
 import com.lorevault.api.service.ask.RagService;
 import com.lorevault.api.service.search.SemanticSearchService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/query")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Query", description = "Content search and Q&A operations")
 public class AskController {
 
     private final SemanticSearchService semanticSearchService;

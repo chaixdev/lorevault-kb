@@ -53,15 +53,15 @@ public class LoreVaultApiApplication {
 
 ## Acceptance Criteria
 
-- [ ] SpringDoc OpenAPI dependency added to project
-- [ ] OpenAPI 3.0 specification generated automatically
-- [ ] API documentation accessible at `/v3/api-docs` endpoint
-- [ ] Basic API metadata configured (title, version, description)
-- [ ] Main controller groups tagged for organization
-- [ ] Postman can import API specification from `/v3/api-docs`
-- [ ] Swagger UI available for development (optional)
-- [ ] No impact on application startup time or performance
-- [ ] Documentation excludes internal/actuator endpoints
+- [x] SpringDoc OpenAPI dependency added to project
+- [x] OpenAPI 3.0 specification generated automatically
+- [x] API documentation accessible at `/v3/api-docs` endpoint
+- [x] Basic API metadata configured (title, version, description)
+- [x] Main controller groups tagged for organization
+- [x] Postman can import API specification from `/v3/api-docs`
+- [x] Swagger UI available for development (optional)
+- [x] No impact on application startup time or performance
+- [x] Documentation excludes internal/actuator endpoints
 
 ## Files to Modify
 
