@@ -1,45 +1,96 @@
 # API Documentation
 
-## REST API Specifications
+## Live API Documentation
 
-### Current API (v0.7.1+)
-- **[REST API Specification](specifications/rest-api-specification.md)** - Complete CQRS API documentation
-- **[Health Endpoint Specification](specifications/health-endpoint-specification.md)** - System health monitoring
+### Auto-Generated OpenAPI Specification
 
-## Postman Collections
+The LoreVault API provides **live, auto-generated documentation** that is always up-to-date:
 
-### Testing Collections
-- **[LoreVault API v0.8.0 CQRS](collections/LoreVault-API-v0.8.0-CQRS.postman_collection.json)** - Comprehensive CQRS endpoint testing
-- **[Legacy Collection](collections/LoreVault_API_Collection.postman_collection.json)** - Pre-CQRS collection (deprecated)
+- **📋 OpenAPI JSON**: `http://localhost:18080/api/docs` - Import into Postman/tools
+- **🌐 Interactive Docs**: `http://localhost:18080/api/swagger-ui.html` - Browse and test endpoints
+- **📦 SDK Generation**: Use OpenAPI spec for client library generation
+
+**Benefits**:
+- ✅ Always synchronized with code changes
+- ✅ Complete request/response schemas
+- ✅ Ready for Postman import
+- ✅ Interactive endpoint testing
+
+### Using the Auto-Generated Documentation
+
+**For API Testing**:
+1. Start the LoreVault API (`mvn -pl lorevault-api spring-boot:run`)
+2. Import OpenAPI spec into Postman from `http://localhost:18080/api/docs`
+3. All endpoints, schemas, and examples are automatically included
+
+**For Development**:
+- Browse interactive documentation at `/api/swagger-ui.html`
+- Explore endpoint organization by domain tags
+- Test requests directly from the browser interface
+
+## Design Philosophy
+
+### API Design Specifications
+- **[REST API Design Philosophy](specifications/rest-api-specification.md)** - CQRS patterns, naming conventions, and design principles
+- **[Health Endpoint Philosophy](specifications/health-endpoint-specification.md)** - Health monitoring patterns and diagnostics
+
+These guides focus on **consistency principles** for adding new endpoints rather than detailed API specs (which are auto-generated).
 
 ## API Evolution
 
+### Current Version: v0.8.3
+- **OpenAPI 3.0 Integration**: Auto-generated documentation and Postman collections
+- **CQRS Architecture**: Clear command/query separation (`/api/command/*` and `/api/query/*`)
+- **RAG Question Answering**: Advanced Q&A with citations and metadata
+- **Comprehensive Health Checks**: Hierarchical system diagnostics
+
+### Version History
+- **v0.8.0**: RAG question answering with citations
+- **v0.7.1**: CQRS restructuring with async job processing
 - **v0.7.0**: Initial vector search endpoints
-- **v0.7.1**: CQRS restructuring (`/api/command/*` and `/api/query/*`)
-- **v0.8.0**: RAG question answering with citations (in development)
 
-Import the Postman collections to get started with API testing immediately.
+### Future Enhancements
+- **v0.9.0**: Spoiler-aware filtering and advanced entity queries
+- **v1.0.0**: Production authentication and advanced lore exploration
 
-## 🔧 Update Instructions
+## Migration from Manual Collections
 
-**For LLM Assistants and Contributors:**
+**Previous Workflow** (Deprecated):
+- ❌ Manually maintained Postman collections
+- ❌ Static API specifications requiring updates
+- ❌ Risk of documentation drift from implementation
 
-### Folder Boundaries
-- **specifications/**: Only REST API endpoint documentation and OpenAPI specs
-- **collections/**: Only Postman collections and testing artifacts
-- **Do not add**: Data models (go to `../data-model/`), process specs (go to `../processes/`)
+**Current Workflow** (Recommended):
+- ✅ Import live OpenAPI specification into Postman
+- ✅ Always current with latest endpoint changes
+- ✅ Complete schemas and validation automatically included
 
-### When Adding API Documentation
-- **New endpoints**: Update `specifications/rest-api-specification.md`
-- **New collections**: Add to `collections/` with descriptive naming
-- **Breaking changes**: Document migration notes in the main spec
+## 🔧 Development Guidelines
+
+### For Contributors Adding New Endpoints
+
+**Step 1: Follow Design Philosophy**
+- Review [REST API Design Philosophy](specifications/rest-api-specification.md)
+- Use established CQRS patterns and naming conventions
+- Add appropriate `@Tag` annotations for OpenAPI organization
+
+**Step 2: Validate Auto-Documentation**
+- Ensure endpoint appears in auto-generated docs
+- Verify request/response schemas are complete
+- Test Postman import from `/api/docs` endpoint
+
+**Step 3: Update Philosophy Guides** 
+- Document new patterns in design philosophy guides
+- Update principles if introducing new endpoint categories
+- Maintain consistency guidelines for future development
+
+### Folder Structure
+- **specifications/**: Design philosophy and consistency guides
+- **~~collections/~~**: Removed (replaced by auto-generated OpenAPI)
 
 ### Cross-Reference Requirements
-- **Link to data models**: Use `../data-model/` paths
-- **Reference processes**: Use `../processes/` paths  
-- **Architecture context**: Use `../architecture/` paths
+- **Data models**: Reference `../data-model/` for entity specifications
+- **Processes**: Reference `../processes/` for workflow documentation  
+- **Architecture**: Reference `../architecture/` for system design
 
-### Naming Conventions
-- Collections: `ProjectName-API-vX.Y.Z-Description.postman_collection.json`
-- Specifications: Use kebab-case with `.md` extension
-- Always include version information for collections
+This approach ensures API documentation remains accurate, accessible, and maintainable while reducing manual overhead.

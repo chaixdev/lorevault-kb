@@ -2,6 +2,7 @@ package com.lorevault.api.web.command.library;
 
 import com.lorevault.api.dto.library.*;
 import com.lorevault.api.service.library.LibraryService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/command/library")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Library", description = "Publication hierarchy management")
 public class LibraryCommandController {
 
     private final LibraryService catalogService;

@@ -4,6 +4,7 @@ import com.lorevault.api.dto.ingestion.JobStatusResponse;
 import com.lorevault.api.dto.ingestion.JobListResponse;
 import com.lorevault.api.dto.shared.ErrorResponse;
 import com.lorevault.api.service.ingestion.IngestionService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import java.util.UUID;
 @RequestMapping("/api/query/jobs")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Jobs", description = "Ingestion job monitoring and status")
 public class JobsController {
 
     private final IngestionService ingestionService;
