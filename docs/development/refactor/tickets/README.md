@@ -4,7 +4,7 @@
 
 **Epic**: Service Consolidation & Complexity Reduction  
 
-**Total Tickets**: 18  
+**Total Tickets**: 19  
 
 **Estimated Effort**: 3-4 weeks  
 
@@ -54,7 +54,9 @@
 
 | [LVREF017](./LVREF017.md) | Comprehensive Integration Testing | 5 | High | 1d | Low | 016 |
 
-| LVREF018 | Documentation Updates | 5 | Medium | 4h | Low | 017 |
+| [LVREF018](./LVREF018.md) | Documentation Updates | 5 | Medium | 4h | Low | 017 |
+
+| [LVREF019](./LVREF019.md) | Add Minimal OpenAPI Documentation Support | 4 | Low | 2h | Low | None* |
 
 
 
