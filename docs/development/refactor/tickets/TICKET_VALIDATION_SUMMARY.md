@@ -24,7 +24,7 @@
    - Rename `ChunkEmbeddingService` to `EmbeddingService` (better scope)
    - 4 hours, Low risk, simple rename operation
 
-5. **LVREF010.md** - **CREATED** 
+5. **LVREF010.md** - **DISCARDED - TOMBSTONE** 
    - Integrate `TriadOrchestrationService` into `EmbeddingService` 
    - 6 hours, Medium risk, semantic analysis consolidation
 
