@@ -2,24 +2,16 @@ version: '3.8'
 
 services:
   neo4j:
-    image: neo4j:5.20
+    image: neo4j:5.26
     container_name: lorevault-neo4j
     environment:
-      NEO4J_AUTH: neo4j/testpassword
-      NEO4J_SERVER_MEMORY_HEAP_INITIAL__SIZE: 512m
-      NEO4J_SERVER_MEMORY_HEAP_MAX__SIZE: 512m
-      NEO4J_dbms_security_auth__enabled: 'true'
+      NEO4J_AUTH: neo4j/neosecret
     ports:
       - "7474:7474"   # HTTP Browser
       - "7687:7687"   # Bolt
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
-    healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "testpassword", "RETURN 1;"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
 volumes:
   neo4j_data:

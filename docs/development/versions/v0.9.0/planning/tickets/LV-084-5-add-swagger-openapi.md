@@ -1,5 +1,7 @@
 # LV-084-5 — Add Swagger/OpenAPI for API Spec Autogeneration [technical story]
 
+Status: COMPLETE
+
 ## Context
 
 We need a reliable, automated source of truth for the LoreVault API surface so clients and internal tools can discover endpoints, payloads, and error models. Adding OpenAPI/Swagger integration will allow us to auto-generate an API specification, publish docs, and enable tooling (SDK generation, Postman collections, contract checks) aligned with our CQRS design.

@@ -56,15 +56,15 @@ Entity Categories — definitions (for <scene_entities>)
   <relationships>
     <!-- Omit this block if 'previous' scene is absent -->
     <previous_to_current>
-      <temporal_type>{R:temporal.before|R:temporal.meets|R:temporal.overlaps|R:temporal.contains|R:temporal.equals}</temporal_type>
-      <certainty>{Explicit|StronglyImplied|WeaklyImplied|Heuristic}</certainty>
+      <temporal_type>Choose one of: R:temporal.before | R:temporal.meets | R:temporal.overlaps | R:temporal.contains | R:temporal.equals</temporal_type>
+      <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied | Heuristic</certainty>
       <evidence>≤120 chars, verbatim or tight paraphrase grounding the relation</evidence>
     </previous_to_current>
 
     <!-- Omit this block if 'next' scene is absent -->
     <current_to_next>
-      <temporal_type>{R:temporal.before|R:temporal.meets|R:temporal.overlaps|R:temporal.contains|R:temporal.equals}</temporal_type>
-      <certainty>{Explicit|StronglyImplied|WeaklyImplied|Heuristic}</certainty>
+      <temporal_type>Choose one of: R:temporal.before | R:temporal.meets | R:temporal.overlaps | R:temporal.contains | R:temporal.equals</temporal_type>
+      <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied | Heuristic</certainty>
       <evidence>≤120 chars, verbatim or tight paraphrase grounding the relation</evidence>
     </current_to_next>
   </relationships>
@@ -109,8 +109,8 @@ Entity Categories — definitions (for <scene_entities>)
         <name></name>
         <event_type>e.g. 'meeting' or 'era'</event_type>
         <!-- temporal_type in relation to the scene-->
-        <temporal_type>{R:temporal.before|R:temporal.meets|R:temporal.overlaps|R:temporal.contains|R:temporal.equals}</temporal_type>
-        <certainty>{Explicit|StronglyImplied|WeaklyImplied|Heuristic}</certainty>
+        <temporal_type>Choose one of: R:temporal.before | R:temporal.meets | R:temporal.overlaps | R:temporal.contains | R:temporal.equals</temporal_type>
+        <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied | Heuristic</certainty>
         <evidence>≤120 chars, verbatim or tight paraphrase grounding the relation</evidence>
       </event>
     </events>

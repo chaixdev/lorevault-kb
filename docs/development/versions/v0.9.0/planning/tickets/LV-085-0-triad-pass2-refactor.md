@@ -1,5 +1,7 @@
 # LV-085-0 — Triad-based Pass 2 refactor (no external behavior change) [refactor]
 
+Status: COMPLETE
+
 Context
 
 - We are pivoting Pass 2 from a "single-scene mapping" to a triad-only temporal resolver (Prev–Curr–Next) per the Narrative Event DAG spec.

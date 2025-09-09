@@ -1,5 +1,7 @@
 # LV-086-2 — Summary NLQ POC endpoint [research]
 
+Status: NOT IMPLEMENTED
+
 Context
 
 - Provide a proof-of-concept endpoint to summarize "what happened so far" up to a chapter boundary.

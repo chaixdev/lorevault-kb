@@ -19,11 +19,17 @@ Key properties
 Relationships
 
 - `(LlmCallRecord)-[:OF_JOB]->(IngestionJob)`
-- `(LlmCallRecord)-[:OF_STATUS]->(StatusRecord)` (optional)
+- `(LlmCallRecord)-[:OF_STATUS]->(StatusRecord)` (optional, triad-level when applicable)
 
 Note on verification
 
 - Tests verify relationships with small Cypher checks rather than relying on SDN hydration. See `LlmCallRecordGraphRepository.hasOfJobRelation(...)`.
+
+Constraints and linkage (v0.8.3+)
+
+- Each LLM call should link to exactly one ingestion job and, when emitted during triad processing, to the specific triad status record.
+- `statusRecordId` is stored redundantly on the call node for indexing/traceability in addition to the relationship.
+- Multiple LLM calls may occur per triad due to retries; each call gets its own record.
 
 Retention and size
 

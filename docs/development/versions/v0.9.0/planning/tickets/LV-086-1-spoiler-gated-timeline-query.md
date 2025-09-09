@@ -1,5 +1,7 @@
 # LV-086-1 — Spoiler-gated timeline query endpoints [user story]
 
+Status: NOT IMPLEMENTED
+
 Context
 
 - We need read endpoints to list ordered Events up to a chapter boundary (spoiler gate).

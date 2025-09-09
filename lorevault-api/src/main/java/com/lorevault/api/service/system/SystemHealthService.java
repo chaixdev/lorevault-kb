@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -44,12 +46,17 @@ public class SystemHealthService {
     
     private final LoreVaultModelsProperties modelsProperties;
     private final ModelRegistryService modelRegistryService;
+    private final Environment environment;
 
     @Value("${lorevault.llm.health.enabled:true}")
     private boolean healthEnabled;
 
     @Value("${lorevault.embedding.health.enabled:true}")
     private boolean embeddingHealthEnabled;
+
+    // Global toggle to skip startup health checks entirely (useful for tests)
+    @Value("${lorevault.system.health.startup.enabled:true}")
+    private boolean startupHealthCheckEnabled;
 
     @Value("${lorevault.embedding.health.test-text:health_check}")
     private String embeddingTestText;
@@ -65,6 +72,16 @@ public class SystemHealthService {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void performStartupHealthCheck() {
+        // Allow tests or other environments to disable startup health checks entirely
+        if (!startupHealthCheckEnabled) {
+            log.info("Skipping system health checks due to lorevault.system.health.startup.enabled=false");
+            return;
+        }
+        // Never run startup health checks during unit/integration tests
+        if (environment != null && environment.acceptsProfiles(Profiles.of("test"))) {
+            log.info("Skipping system health checks in 'test' profile");
+            return;
+        }
         if (!healthEnabled) {
             log.info("System health checks disabled via lorevault.llm.health.enabled=false");
             return;

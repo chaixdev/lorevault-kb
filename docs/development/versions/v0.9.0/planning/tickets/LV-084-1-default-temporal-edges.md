@@ -1,5 +1,7 @@
 # LV-084-1 — Default TEMPORAL edges (MEETS@Heuristic) [user story]
 
+Status: COMPLETE
+
 Context
 
 - To build a skeleton timeline, link consecutive scenes/events with default TEMPORAL edges.
