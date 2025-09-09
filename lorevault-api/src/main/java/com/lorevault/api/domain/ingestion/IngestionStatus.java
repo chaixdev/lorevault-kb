@@ -18,8 +18,19 @@ public enum IngestionStatus {
     
     /**
      * The local SLM is actively analyzing the text to identify semantic scene boundaries
+     * @deprecated Use SCENE_SEGMENTATION for new code. Kept for backward compatibility.
      */
     DETECTING_SCENES,
+    
+    /**
+     * Pass 1: Scene boundary detection and segmentation
+     */
+    SCENE_SEGMENTATION,
+    
+    /**
+     * Pass 2: Triad-based analysis (prev/curr/next) for temporal relations
+     */
+    SCENE_TRIAD_ANALYSIS,
     
     /**
      * The local SLM is performing its initial pass to extract all potential entity mentions
@@ -31,20 +42,20 @@ public enum IngestionStatus {
      */
     EMBEDDING_CHUNKS,
     
-    /**
-     * The RAG loop is active for character entities. The system is synthesizing structured data for characters
-     */
-    SYNTHESIZING_CHARACTERS,
+    // /**
+    //  * The RAG loop is active for character entities. The system is synthesizing structured data for characters
+    //  */
+    // SYNTHESIZING_CHARACTERS,
     
-    /**
-     * The RAG loop is active for location entities
-     */
-    SYNTHESIZING_LOCATIONS,
+    // /**
+    //  * The RAG loop is active for location entities
+    //  */
+    // SYNTHESIZING_LOCATIONS,
     
-    /**
-     * The RAG loop is active for item entities
-     */
-    SYNTHESIZING_ITEMS,
+    // /**
+    //  * The RAG loop is active for item entities
+    //  */
+    // SYNTHESIZING_ITEMS,
     
     /**
      * All synthesis is complete. The system is performing final conflict resolution and saving enhanced entity data
@@ -75,12 +86,14 @@ public enum IngestionStatus {
         return switch (this) {
             case QUEUED -> 0;
             case PREPROCESSING_STARTED -> 5;
-            case DETECTING_SCENES -> 15;
-            case EXTRACTING_ENTITIES -> 30;
-            case EMBEDDING_CHUNKS -> 45;
-            case SYNTHESIZING_CHARACTERS -> 60;
-            case SYNTHESIZING_LOCATIONS -> 75;
-            case SYNTHESIZING_ITEMS -> 85;
+            case DETECTING_SCENES -> 15; // Keep for backward compatibility
+            case SCENE_SEGMENTATION -> 15;
+            case SCENE_TRIAD_ANALYSIS -> 25;
+            case EXTRACTING_ENTITIES -> 35;
+            case EMBEDDING_CHUNKS -> 50;
+            // case SYNTHESIZING_CHARACTERS -> 60;
+            // case SYNTHESIZING_LOCATIONS -> 75;
+            // case SYNTHESIZING_ITEMS -> 85;
             case PERSISTING_DATA -> 95;
             case COMPLETE -> 100;
             case FAILED -> -1; // Indicates error state

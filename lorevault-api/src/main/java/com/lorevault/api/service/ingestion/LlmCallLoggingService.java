@@ -83,6 +83,15 @@ public class LlmCallLoggingService {
                 StatusRecord cur = job.getCurrentStatus();
                 if (cur != null) {
                     rec.setStatusRecordId(cur.getId());
+                    log.debug("[LLM-LOG] Linking LLM call step={} to current status {}", step, cur.getId());
+                } else {
+                    // Fallback: use most recent status from history if current is not populated
+                    var history = contentPersistencePort.findStatusHistoryForJob(jobId);
+                    if (history != null && !history.isEmpty()) {
+                        StatusRecord last = history.get(history.size() - 1);
+                        rec.setStatusRecordId(last.getId());
+                        log.debug("[LLM-LOG] Linking LLM call step={} to last status {} (fallback)", step, last.getId());
+                    }
                 }
             });
         } catch (Exception e) {

@@ -1,5 +1,7 @@
 # LV-084-4 — Publication Hierarchy Command Endpoints [technical story]
 
+Status: COMPLETE
+
 ## Context
 
 You are implementing command endpoints to establish publication hierarchy (Universe/Series/Book) before chapter ingestion, eliminating string-based matching risks identified in LV-084-1.

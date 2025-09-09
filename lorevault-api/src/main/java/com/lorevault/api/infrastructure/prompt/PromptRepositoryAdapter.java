@@ -35,7 +35,7 @@ public class PromptRepositoryAdapter implements PromptRepositoryPort {
                     throw new RuntimeException("Prompt resource not found: " + resourcePath);
                 }
 
-                // Create template
+                // Create template (renderer selection is based on file extension by Spring AI)
                 PromptTemplate template = new PromptTemplate(resource);
                 log.debug("Loaded prompt: {}", name);
                 

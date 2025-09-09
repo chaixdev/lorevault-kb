@@ -1,5 +1,7 @@
 # LV-084-2 — Cycle guard for precedence edges [refactor]
 
+Status: COMPLETE
+
 **Status: COMPLETE** - Implemented in DefaultTemporalEdgeService and TemporalEdgeWriteRepository with comprehensive cycle detection queries and integration tests (TemporalEdgeCycleGuardIntegrationTest) covering both in-chapter and cross-chapter scenarios.
 
 Context

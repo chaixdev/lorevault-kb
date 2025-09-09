@@ -40,7 +40,15 @@ public class TriadBuilderService {
             return List.of();
         }
 
-        List<Scene> scenes = new ArrayList<>(contentPort.findScenesByChapterId(chapterId));
+        // Prefer in-memory scenes if provided (e.g., retry-aware pipeline builds temp scenes)
+        List<Scene> scenes = new ArrayList<>();
+        if (chapter.getScenes() != null && !chapter.getScenes().isEmpty()) {
+            scenes.addAll(chapter.getScenes());
+            log.debug("TriadBuilder: using {} in-memory scenes for chapter {}", scenes.size(), chapterId);
+        } else {
+            scenes.addAll(contentPort.findScenesByChapterId(chapterId));
+            log.debug("TriadBuilder: loaded {} scenes from graph for chapter {}", scenes.size(), chapterId);
+        }
         scenes.sort(Comparator.comparingInt(Scene::getSceneIndex));
         if (scenes.isEmpty()) {
             log.info("TriadBuilder: no scenes found for chapter {}", chapterId);

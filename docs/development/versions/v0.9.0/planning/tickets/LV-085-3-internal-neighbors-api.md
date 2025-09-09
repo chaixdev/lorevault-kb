@@ -1,5 +1,7 @@
 # LV-085-3 — Internal neighbors API for events [user story]
 
+Status: DEFERRED
+
 **Status: DEFERRED** - Not needed for local development mode where developers can inspect Neo4j graph directly.
 
 Context
