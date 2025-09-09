@@ -216,6 +216,8 @@ class SystemHealthServiceTest {
         // Given
         mockHealthyLlm();
         mockHealthyEmbedding();
+        // Override global test property to allow startup health check to run in this unit test
+        ReflectionTestUtils.setField(service, "startupHealthCheckEnabled", true);
 
         // When - should not throw exceptions
         service.performStartupHealthCheck();

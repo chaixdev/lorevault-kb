@@ -1,5 +1,7 @@
 # LV-086-4 — GraphRAG alignment and docs [research]
 
+Status: NOT IMPLEMENTED
+
 Context
 
 - Align the POC and future endpoints with the GraphRAG proposal.

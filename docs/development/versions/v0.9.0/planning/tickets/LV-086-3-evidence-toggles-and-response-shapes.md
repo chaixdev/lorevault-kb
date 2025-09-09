@@ -1,5 +1,7 @@
 # LV-086-3 — Evidence toggles and stable response shapes [refactor]
 
+Status: NOT IMPLEMENTED
+
 Context
 
 - Timeline responses should remain compact, with optional evidence fields controlled by a flag.

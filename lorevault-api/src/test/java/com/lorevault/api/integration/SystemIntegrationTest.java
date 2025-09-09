@@ -167,7 +167,7 @@ class SystemIntegrationTest {
                 assertThat(jobStatus.getCurrentStatus()).isIn(
                     IngestionStatus.COMPLETE, 
                     IngestionStatus.EMBEDDING_CHUNKS,
-                    IngestionStatus.DETECTING_SCENES,
+                    IngestionStatus.SCENE_SEGMENTATION,
                     IngestionStatus.EMBEDDING_CHUNKS
                 );
             });

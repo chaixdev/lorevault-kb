@@ -179,14 +179,14 @@ class IngestionJobServiceTest {
             );
 
             // Act
-            ingestionJobService.updateJobStatus(testJobId, IngestionStatus.DETECTING_SCENES, 
-                    "Scene detection in progress", properties);
+            ingestionJobService.updateJobStatus(testJobId, IngestionStatus.SCENE_SEGMENTATION, 
+                    "Scene segmentation in progress", properties);
 
             // Assert
             verify(contentPersistencePort).addStatusRecord(eq(testJobId), statusRecordCaptor.capture());
             StatusRecord statusRecord = statusRecordCaptor.getValue();
-            assertThat(statusRecord.getStatus()).isEqualTo(IngestionStatus.DETECTING_SCENES);
-            assertThat(statusRecord.getStepDescription()).isEqualTo("Scene detection in progress");
+            assertThat(statusRecord.getStatus()).isEqualTo(IngestionStatus.SCENE_SEGMENTATION);
+            assertThat(statusRecord.getStepDescription()).isEqualTo("Scene segmentation in progress");
             assertThat(statusRecord.getProperties()).containsAllEntriesOf(properties);
         }
     }
@@ -213,7 +213,7 @@ class IngestionJobServiceTest {
             JobStatusResponse jobStatus = response.get();
             assertThat(jobStatus.getJobId()).isEqualTo(testJobId);
             assertThat(jobStatus.getChapterId()).isEqualTo(testChapterId);
-            assertThat(jobStatus.getCurrentStatus()).isEqualTo(IngestionStatus.DETECTING_SCENES);
+            assertThat(jobStatus.getCurrentStatus()).isEqualTo(IngestionStatus.SCENE_SEGMENTATION);
             assertThat(jobStatus.getProgressPercent()).isEqualTo(75);
             assertThat(jobStatus.getRecentUpdates()).hasSize(2);
         }
@@ -236,7 +236,7 @@ class IngestionJobServiceTest {
         void shouldListJobsWithUniverseFilterAndPagination() {
             // Arrange
             String universe = "TestUniverse";
-            String status = "DETECTING_SCENES";
+            String status = "SCENE_SEGMENTATION";
             int limit = 10;
             int offset = 0;
 
@@ -260,7 +260,7 @@ class IngestionJobServiceTest {
             JobListResponse.JobSummary jobSummary = response.getJobs().get(0);
             assertThat(jobSummary.getJobId()).isEqualTo(testJobId);
             assertThat(jobSummary.getChapterId()).isEqualTo(testChapterId);
-            assertThat(jobSummary.getStatus()).isEqualTo(IngestionStatus.DETECTING_SCENES);
+            assertThat(jobSummary.getStatus()).isEqualTo(IngestionStatus.SCENE_SEGMENTATION);
         }
 
         @Test
@@ -301,7 +301,7 @@ class IngestionJobServiceTest {
 
             // Assert
             assertThat(response.getJobs()).hasSize(1);
-            assertThat(response.getJobs().get(0).getStatus()).isEqualTo(IngestionStatus.DETECTING_SCENES);
+            assertThat(response.getJobs().get(0).getStatus()).isEqualTo(IngestionStatus.SCENE_SEGMENTATION);
         }
     }
 
@@ -321,7 +321,7 @@ class IngestionJobServiceTest {
                 UUID.randomUUID(),
                 testJobId,
                 testTimestamp,
-                IngestionStatus.DETECTING_SCENES,
+                IngestionStatus.SCENE_SEGMENTATION,
                 "Processing chapter content",
                 75,
                 Map.of("step", "scene_detection")
@@ -374,7 +374,7 @@ class IngestionJobServiceTest {
         StatusRecord queuedRecord = new StatusRecord(UUID.randomUUID(), testJobId, testTimestamp,
                 IngestionStatus.QUEUED, "Job queued", 0, Map.of());
         StatusRecord detectingRecord = new StatusRecord(UUID.randomUUID(), testJobId, testTimestamp.plusMinutes(5),
-                IngestionStatus.DETECTING_SCENES, "Processing started", 25, Map.of());
+                IngestionStatus.SCENE_SEGMENTATION, "Processing started", 25, Map.of());
         
         return List.of(queuedRecord, detectingRecord);
     }

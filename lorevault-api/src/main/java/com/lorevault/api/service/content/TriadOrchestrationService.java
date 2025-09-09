@@ -2,8 +2,10 @@ package com.lorevault.api.service.content;
 
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
+import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.timeline.TriadRelationInverter;
 import com.lorevault.api.application.port.PromptRepositoryPort;
+import com.lorevault.api.service.ingestion.IngestionJobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -41,6 +43,7 @@ public class TriadOrchestrationService {
     private final SceneDetectionClient sceneDetectionClient;
     private final TriadXmlParser triadXmlParser;
     private final PromptRepositoryPort promptRepository;
+    private final IngestionJobService ingestionJobService;
 
     /**
      * Analyze scene triads and return normalized results.
@@ -54,9 +57,28 @@ public class TriadOrchestrationService {
         String systemPrompt = systemTemplate.render(Map.of());
 
         List<TriadAnalysis> out = new ArrayList<>();
+        int triadIndex = 0;
         for (TriadBuilderService.SceneTriad t : triads) {
             Map<String, Object> vars = buildUserVars(chapter, t);
+
+            // Create per-triad status record so LLM call links to it
+            Map<String, Object> statusProps = new HashMap<>();
+            statusProps.put("triadIndex", triadIndex++);
+            statusProps.put("prevSceneId", t.previous() != null ? t.previous().getId() : null);
+            statusProps.put("currentSceneId", t.current().getId());
+            statusProps.put("nextSceneId", t.next() != null ? t.next().getId() : null);
+
+            log.debug("TriadOrchestrator: emitting status SCENE_TRIAD_ANALYSIS for triadIndex={} prev={} curr={} next={}",
+                    statusProps.get("triadIndex"), statusProps.get("prevSceneId"), statusProps.get("currentSceneId"), statusProps.get("nextSceneId"));
+            ingestionJobService.updateJobStatus(
+                jobId,
+                IngestionStatus.SCENE_TRIAD_ANALYSIS,
+                "Triad analysis for scenes [prev, curr, next]",
+                statusProps
+            );
+
             String xml = sceneDetectionClient.detectScenesPass2Triad(jobId, systemPrompt, vars);
+            log.debug("TriadOrchestrator: received triad XML for triadIndex={}", statusProps.get("triadIndex"));
             TriadXmlParser.TriadResult parsed = triadXmlParser.parse(xml);
             String inv = parsed.prevToCurr() != null ?
                     TriadRelationInverter.invertPrevToCurr(parsed.prevToCurr().temporalType()) : null;

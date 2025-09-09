@@ -1,4 +1,6 @@
-# LV-085Problem
+# LV-085-2 — Idempotent promotion and evidence handling [refactor]
+
+Status: NEEDS RE-EVALUATION / UPDATE
 
 - Evidence fields (evidenceStart, evidenceEnd, evidenceChunkId) are persisted but not intelligently merged across multiple votes.
 - Counter-vote evidence is lost when edges are updated, reducing audit trail quality.

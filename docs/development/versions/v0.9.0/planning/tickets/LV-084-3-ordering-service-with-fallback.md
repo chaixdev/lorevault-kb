@@ -1,5 +1,7 @@
 # LV-084-3 — Ordering service with edges-first, sceneIndex fallback [user story]
 
+Status: COMPLETE
+
 **Status: COMPLETE** - Implemented in EventOrderingService with topological sorting using TEMPORAL edges first, sceneIndex+UUID fallback for disconnected scenes. Comprehensive unit tests in EventOrderingServiceTest validate ordering behavior in both edge-based and fallback modes.
 
 Context

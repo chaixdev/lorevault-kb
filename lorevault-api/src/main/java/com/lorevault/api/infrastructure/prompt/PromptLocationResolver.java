@@ -41,7 +41,8 @@ public class PromptLocationResolver {
     }
 
     private String getSceneDetectionPass2UserPath() {
-        return promptProperties.getPromptPath("scene-detection-pass2-usertemplate.xml");
+        // Use .st extension to ensure ST4 template renderer is selected
+        return promptProperties.getPromptPath("scene-detection-pass2-usertemplate.st");
     }
 
     private String getRagAnswerGenerationPath() {

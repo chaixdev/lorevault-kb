@@ -41,9 +41,9 @@ public class RetryAwareSceneDetectionService {
         // Configure retry strategy for scene detection
         LlmRetryConfig retryConfig = LlmRetryConfig.defaultConfig();
 
-        // Update job status to indicate retry attempt
-        updateJobStatus(jobId,
-                String.format("Detecting scenes with retry (up to %d attempts)", retryConfig.getMaxAttempts()));
+    // Update job status to indicate retry attempt (single status entry)
+    updateJobStatus(jobId,
+        String.format("Scene segmentation (Pass 1) starting with retry (max %d attempts)", retryConfig.getMaxAttempts()));
 
         // Execute scene detection with retry
         LlmRetryResult<List<SceneWithCoordinates>> retryResult = llmRetryStrategy.executeWithRetry(
@@ -52,7 +52,7 @@ public class RetryAwareSceneDetectionService {
                 () -> performFullSceneDetection(jobId, chapterId, chapterText));
 
         if (retryResult.isSuccess()) {
-            String successMsg = String.format("Scene detection succeeded after %d/%d attempts in %d ms",
+        String successMsg = String.format("Scene segmentation (Pass 1) succeeded after %d/%d attempts in %d ms",
                     retryResult.getAttemptsUsed(), retryConfig.getMaxAttempts(),
                     retryResult.getTotalDurationMs());
             updateJobStatus(jobId, successMsg);
@@ -61,7 +61,7 @@ public class RetryAwareSceneDetectionService {
             return retryResult.getResult();
 
         } else {
-            String failureMsg = String.format("Scene detection failed after %d attempts in %d ms: %s",
+        String failureMsg = String.format("Scene segmentation (Pass 1) failed after %d attempts in %d ms: %s",
                     retryResult.getAttemptsUsed(), retryResult.getTotalDurationMs(),
                     retryResult.getLastException().getMessage());
             updateJobStatus(jobId, failureMsg);
@@ -81,6 +81,15 @@ public class RetryAwareSceneDetectionService {
      */
     private List<SceneWithCoordinates> performFullSceneDetection(UUID jobId, UUID chapterId, String chapterText) {
         try {
+            // Update status for Pass 1: Scene Segmentation
+            // Single explicit status to mark start of Pass 1
+            ingestionJobService.updateJobStatus(
+                jobId,
+                com.lorevault.api.domain.ingestion.IngestionStatus.SCENE_SEGMENTATION,
+                "Scene segmentation (Pass 1): starting",
+                java.util.Map.of()
+            );
+
             // Pass 1: Initial scene segmentation with rich hints
             String pass1XmlResponse = sceneDetectionClient.detectScenesPass1(jobId, chapterText);
 
@@ -140,6 +149,12 @@ public class RetryAwareSceneDetectionService {
             }
             
             // Run triad orchestration with populated chapter
+            ingestionJobService.updateJobStatus(
+                jobId,
+                com.lorevault.api.domain.ingestion.IngestionStatus.SCENE_TRIAD_ANALYSIS,
+                "Triad analysis (Pass 2): starting",
+                java.util.Map.of()
+            );
             var triadAnalyses = triadOrchestrationService.analyzeChapterTriads(jobId, chapter);
             triadEdgePersistenceService.applyTriadAnalyses(triadAnalyses);
 
@@ -161,7 +176,7 @@ public class RetryAwareSceneDetectionService {
         try {
             ingestionJobService.updateJobStatus(
                     jobId,
-                    com.lorevault.api.domain.ingestion.IngestionStatus.DETECTING_SCENES,
+                    com.lorevault.api.domain.ingestion.IngestionStatus.SCENE_SEGMENTATION,
                     description,
                     java.util.Map.of("timestamp", java.time.LocalDateTime.now().toString()));
         } catch (Exception e) {

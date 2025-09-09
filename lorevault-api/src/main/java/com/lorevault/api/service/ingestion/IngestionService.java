@@ -300,13 +300,13 @@ public class IngestionService {
     }
 
     private List<Scene> executeSceneDetectionStage(WorkflowContext context) {
-        updateStatus(context, IngestionStatus.DETECTING_SCENES, 
+    updateStatus(context, IngestionStatus.SCENE_SEGMENTATION, 
                 "Analyzing chapter text with AI to identify semantic scene boundaries");
 
         // Check for existing scenes first
         List<Scene> existingScenes = contentPersistencePort.findScenesByChapterId(context.getChapterId());
         if (!existingScenes.isEmpty()) {
-            updateStatus(context, IngestionStatus.DETECTING_SCENES, 
+        updateStatus(context, IngestionStatus.SCENE_SEGMENTATION, 
                     String.format("Found %d existing scenes, proceeding to chunking", existingScenes.size()));
             return existingScenes;
         }
@@ -318,7 +318,7 @@ public class IngestionService {
         log.info("Creating default temporal edges for chapter {}", context.getChapterId());
         defaultTemporalEdgeService.createAllDefaults(context.getChapter().getBookId());
         
-        updateStatus(context, IngestionStatus.DETECTING_SCENES, 
+    updateStatus(context, IngestionStatus.SCENE_SEGMENTATION, 
                 String.format("Detected %d semantic scenes from chapter text", scenes.size()));
         
         return scenes;

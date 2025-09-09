@@ -60,7 +60,7 @@ class JobsControllerWebMvcTest {
         JobStatusResponse resp = new JobStatusResponse(
                 jobId,
                 chapterId,
-                IngestionStatus.DETECTING_SCENES,
+                IngestionStatus.SCENE_SEGMENTATION,
                 15,
                 LocalDateTime.now().minusMinutes(1),
                 null,
@@ -72,7 +72,7 @@ class JobsControllerWebMvcTest {
         mockMvc.perform(get("/api/query/jobs/" + jobId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.jobId").value(jobId.toString()))
-                .andExpect(jsonPath("$.currentStatus").value("DETECTING_SCENES"))
+                .andExpect(jsonPath("$.currentStatus").value("SCENE_SEGMENTATION"))
                 .andExpect(jsonPath("$.isComplete").value(false));
     }
 

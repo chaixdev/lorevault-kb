@@ -1,5 +1,7 @@
 # LV-085-1 — LLM temporal upgrades for edges [user story]
 
+Status: NEEDS UPDATE
+
 Context
 
 - **UPDATED POST LV-085-0**: Triad-based Pass 2 is implemented and provides dual votes per adjacency (prev→curr, curr→next) with certainty levels and evidence.
