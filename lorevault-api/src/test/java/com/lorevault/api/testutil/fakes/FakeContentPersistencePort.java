@@ -249,6 +249,11 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
                 .findFirst();
     }
 
+    @Override
+    public List<Universe> findAllUniverses() {
+        return new ArrayList<>(universes.values());
+    }
+
     // Publication Hierarchy - Series
     @Override
     public Series createSeries(Series series) {
@@ -267,6 +272,13 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
         return series.values().stream()
                 .filter(s -> Objects.equals(s.getName(), name) && Objects.equals(s.getUniverseId(), universeId))
                 .findFirst();
+    }
+
+    @Override
+    public List<Series> findSeriesByUniverseId(UUID universeId) {
+        return series.values().stream()
+                .filter(s -> Objects.equals(s.getUniverseId(), universeId))
+                .collect(Collectors.toList());
     }
 
     // Publication Hierarchy - Books
@@ -296,5 +308,19 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
                           && Objects.equals(b.getUniverseId(), universeId) 
                           && b.getSeriesId() == null)
                 .findFirst();
+    }
+
+    @Override
+    public List<Book> findBooksByUniverseId(UUID universeId) {
+        return books.values().stream()
+                .filter(b -> Objects.equals(b.getUniverseId(), universeId))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Book> findBooksBySeriesId(UUID seriesId) {
+        return books.values().stream()
+                .filter(b -> Objects.equals(b.getSeriesId(), seriesId))
+                .collect(Collectors.toList());
     }
 }

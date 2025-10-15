@@ -350,6 +350,13 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
         return universeRepo.findByName(name).map(mapper::toDomain);
     }
 
+    @Override
+    public List<Universe> findAllUniverses() {
+        return universeRepo.findAll().stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
     // Publication Hierarchy - Series
     @Override
     public Series createSeries(Series series) {
@@ -375,6 +382,16 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     @Override
     public Optional<Series> findSeriesByNameAndUniverseId(String name, UUID universeId) {
         return seriesRepo.findByNameAndUniverseId(name, universeId).map(mapper::toDomain);
+    }
+
+    @Override
+    public List<Series> findSeriesByUniverseId(UUID universeId) {
+        if (universeId == null) {
+            return List.of();
+        }
+        return seriesRepo.findByUniverseId(universeId).stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 
     // Publication Hierarchy - Books
@@ -414,5 +431,25 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     @Override
     public Optional<Book> findStandaloneBookByTitleAndUniverseId(String title, UUID universeId) {
         return bookRepo.findStandaloneByTitleAndUniverseId(title, universeId).map(mapper::toDomain);
+    }
+
+    @Override
+    public List<Book> findBooksByUniverseId(UUID universeId) {
+        if (universeId == null) {
+            return List.of();
+        }
+        return bookRepo.findByUniverseId(universeId).stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Book> findBooksBySeriesId(UUID seriesId) {
+        if (seriesId == null) {
+            return List.of();
+        }
+        return bookRepo.findBySeriesId(seriesId).stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 }

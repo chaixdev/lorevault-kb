@@ -193,12 +193,21 @@ class PortsAndAdaptersArchitectureTest {
             .as("Services should be annotated with @Service");
     
     @ArchTest
-    static final ArchRule controllers_should_be_rest_controllers = 
+    static final ArchRule api_controllers_should_be_rest_controllers = 
         classes()
             .that().haveSimpleNameEndingWith("Controller")
             .and().resideInAPackage("..web..")
+            .and().resideOutsideOfPackage("..web.ui..")
             .should().beAnnotatedWith("org.springframework.web.bind.annotation.RestController")
-            .as("Controllers should be annotated with @RestController");
+            .as("API controllers should be annotated with @RestController");
+
+    @ArchTest
+    static final ArchRule ui_controllers_should_be_mvc_controllers = 
+        classes()
+            .that().haveSimpleNameEndingWith("Controller")
+            .and().resideInAPackage("..web.ui..")
+            .should().beAnnotatedWith("org.springframework.stereotype.Controller")
+            .as("UI controllers should be annotated with @Controller");
     
     @ArchTest
     static final ArchRule configurations_should_be_spring_configurations = 

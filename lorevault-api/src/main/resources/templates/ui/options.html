@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="universeOptions">
+    <option value="" th:text="${universes == null || universes.isEmpty() ? 'No universes yet' : 'Select a universe'}"
+            th:selected="${selectedUniverseId == null}"></option>
+    <option th:each="universe : ${universes}"
+            th:value="${universe.id}"
+            th:text="${universe.name}"
+            th:selected="${selectedUniverseId != null and selectedUniverseId.equals(universe.id)}"></option>
+</th:block>
+
+<th:block th:fragment="seriesOptions">
+    <option value="" th:selected="${selectedSeriesId == null}">Standalone book</option>
+    <option th:each="item : ${series}"
+            th:value="${item.id}"
+            th:text="${item.name}"
+            th:selected="${selectedSeriesId != null and selectedSeriesId.equals(item.id)}"></option>
+</th:block>
+
+<th:block th:fragment="bookOptions">
+    <option value="" th:selected="${selectedBookId == null}">Select a book</option>
+    <option th:each="book : ${books}"
+            th:value="${book.id}"
+            th:text="${book.label}"
+            th:selected="${selectedBookId != null and selectedBookId.equals(book.id)}"></option>
+</th:block>
+</body>
+</html>
