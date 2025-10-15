@@ -73,15 +73,19 @@ public interface ContentPersistencePort {
     Universe createUniverse(Universe universe);
     Optional<Universe> findUniverseById(UUID id);
     Optional<Universe> findUniverseByName(String name);
+    List<Universe> findAllUniverses();
 
     // Publication Hierarchy - Series
     Series createSeries(Series series);
     Optional<Series> findSeriesById(UUID id);
     Optional<Series> findSeriesByNameAndUniverseId(String name, UUID universeId);
+    List<Series> findSeriesByUniverseId(UUID universeId);
 
     // Publication Hierarchy - Books
     Book createBook(Book book);
     Optional<Book> findBookById(UUID id);
     Optional<Book> findBookByTitleAndSeriesId(String title, UUID seriesId);
     Optional<Book> findStandaloneBookByTitleAndUniverseId(String title, UUID universeId);
+    List<Book> findBooksByUniverseId(UUID universeId);
+    List<Book> findBooksBySeriesId(UUID seriesId);
 }

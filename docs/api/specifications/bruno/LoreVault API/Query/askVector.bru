@@ -1,0 +1,25 @@
+meta {
+  name: askVector
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/query/ask/vector
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "query": "",
+    "topK": 0,
+    "threshold": "",
+    "filters": {
+      "universe": "",
+      "series": "",
+      "bookNumber": 0,
+      "chapterNumber": 0
+    }
+  }
+}

@@ -1,0 +1,11 @@
+meta {
+  name: Actuator root web endpoint
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/actuator
+  body: none
+  auth: inherit
+}

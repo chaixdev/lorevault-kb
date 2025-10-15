@@ -1,0 +1,18 @@
+meta {
+  name: createSeries
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/command/library/create-series
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "universeId": "",
+    "name": ""
+  }
+}
