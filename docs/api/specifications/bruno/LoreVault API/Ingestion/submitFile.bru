@@ -1,0 +1,21 @@
+meta {
+  name: submitFile
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/command/ingest
+  body: multipartForm
+  auth: inherit
+}
+
+params:query {
+  bookId: 
+  chapterNumber: 
+  ~chapterTitle: 
+}
+
+body:multipart-form {
+  file: 
+}

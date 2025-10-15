@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="universeForm(message, messageType)"
+     id="create-universe-panel"
+     class="rounded-lg border border-slate-700/50 bg-gradient-to-br from-slate-900/60 to-slate-900/40 p-5 shadow-lg">
+    <div class="flex items-center gap-3 mb-4">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
+            <svg class="h-6 w-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        </div>
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-purple-400">Step 1</p>
+            <h3 class="text-base font-semibold text-white">Universe</h3>
+        </div>
+    </div>
+    <p class="text-xs text-slate-400 mb-4">Top-level container for your lore</p>
+
+    <form th:object="${createUniverseForm}"
+          class="space-y-4"
+          th:hx-post="@{/ui/library/universes}"
+          hx-target="#create-universe-panel"
+          hx-swap="outerHTML">
+        <div>
+            <label for="universe-name" class="block text-sm font-medium text-slate-200">Universe name</label>
+            <input id="universe-name"
+                   th:field="*{name}"
+                   name="name"
+                   type="text"
+                   placeholder="e.g. Cosmere, Middle Earth"
+                   class="mt-2 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white placeholder-slate-500 transition focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/40"/>
+            <p th:if="${#fields.hasErrors('name')}"
+               class="mt-2 flex items-center gap-1.5 text-sm text-rose-400">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span th:text="${#fields.errors('name')[0]}"></span>
+            </p>
+        </div>
+
+        <div th:if="${#fields.hasGlobalErrors()}"
+             class="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2.5 text-sm text-rose-200">
+            <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
+        </div>
+
+        <div th:if="${message != null}"
+             th:classappend=" ${messageType} == 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-slate-500/40 bg-slate-500/10 text-slate-200'"
+             class="rounded-lg border px-3 py-2.5 text-sm flex items-start gap-2">
+            <svg th:if="${messageType} == 'success'" class="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <svg th:if="${messageType} != 'success'" class="h-5 w-5 text-blue-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <p th:text="${message}"></p>
+        </div>
+
+        <div class="pt-2">
+            <button type="submit"
+                    class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-purple-500/80 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Create Universe
+            </button>
+        </div>
+    </form>
+
+    <th:block th:if="${refreshUniverses}">
+        <script>htmx.trigger(document.body, 'refresh-universes');</script>
+    </th:block>
+</div>
+
+<div th:fragment="seriesForm(universes, message, messageType)"
+     id="create-series-panel"
+     class="rounded-lg border border-slate-700/50 bg-gradient-to-br from-slate-900/60 to-slate-900/40 p-5 shadow-lg">
+    <div class="flex items-center gap-3 mb-4">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
+            <svg class="h-6 w-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+        </div>
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-blue-400">Step 2</p>
+            <h3 class="text-base font-semibold text-white">Series</h3>
+        </div>
+    </div>
+    <p class="text-xs text-slate-400 mb-4">Group related books together <span class="text-slate-500">(optional)</span></p>
+
+    <form th:object="${createSeriesForm}"
+          class="space-y-4"
+          th:hx-post="@{/ui/library/series}"
+          hx-target="#create-series-panel"
+          hx-swap="outerHTML">
+        <div>
+            <label for="series-universe" class="block text-sm font-medium text-slate-200">Universe</label>
+        <select id="series-universe"
+            th:field="*{universeId}"
+            name="universeId"
+            class="mt-2 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            data-universe-options
+            th:hx-get="@{/ui/library/options/universes}"
+            hx-trigger="load, refresh"
+            hx-target="this"
+            hx-swap="innerHTML">
+                <option value="" th:text="${universes.isEmpty() ? 'Create a universe first →' : 'Select universe...'}"
+                        th:if="${universes == null || universes.isEmpty()}"></option>
+                <option th:each="universe : ${universes}"
+                        th:value="${universe.id}"
+                        th:text="${universe.name}"
+                        th:selected="${createSeriesForm.universeId != null and createSeriesForm.universeId.equals(universe.id)}"></option>
+            </select>
+            <p th:if="${#fields.hasErrors('universeId')}"
+               class="mt-2 flex items-center gap-1.5 text-sm text-rose-400">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span th:text="${#fields.errors('universeId')[0]}"></span>
+            </p>
+        </div>
+        <div>
+            <label for="series-name" class="block text-sm font-medium text-slate-200">Series name</label>
+            <input id="series-name"
+                   th:field="*{name}"
+                   name="name"
+                   type="text"
+                   placeholder="e.g. Stormlight Archive"
+                   class="mt-2 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white placeholder-slate-500 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"/>
+            <p th:if="${#fields.hasErrors('name')}"
+               class="mt-2 flex items-center gap-1.5 text-sm text-rose-400">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span th:text="${#fields.errors('name')[0]}"></span>
+            </p>
+        </div>
+
+        <div th:if="${#fields.hasGlobalErrors()}"
+             class="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2.5 text-sm text-rose-200">
+            <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
+        </div>
+
+        <div th:if="${message != null}"
+             th:classappend=" ${messageType} == 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-slate-500/40 bg-slate-500/10 text-slate-200'"
+             class="rounded-lg border px-3 py-2.5 text-sm flex items-start gap-2">
+            <svg th:if="${messageType} == 'success'" class="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <svg th:if="${messageType} != 'success'" class="h-5 w-5 text-blue-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <p th:text="${message}"></p>
+        </div>
+
+        <div class="pt-2">
+            <button type="submit"
+                    class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500/80 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Create Series
+            </button>
+        </div>
+    </form>
+
+    <th:block th:if="${refreshSeriesUniverseId != null}">
+        <script th:inline="javascript">
+            htmx.trigger(document.body, 'refresh-series', {universeId: /*[[${refreshSeriesUniverseId}]]*/ null});
+        </script>
+    </th:block>
+</div>
+
+<div th:fragment="bookForm(universes, seriesList, message, messageType)"
+     id="create-book-panel"
+     class="rounded-lg border border-slate-700/50 bg-gradient-to-br from-slate-900/60 to-slate-900/40 p-5 shadow-lg">
+    <div class="flex items-center gap-3 mb-4">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
+            <svg class="h-6 w-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+            </svg>
+        </div>
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Step 3</p>
+            <h3 class="text-base font-semibold text-white">Book</h3>
+        </div>
+    </div>
+    <p class="text-xs text-slate-400 mb-4">Add to universe, optionally in a series</p>
+
+    <form th:object="${createBookForm}"
+          class="space-y-4"
+          th:hx-post="@{/ui/library/books}"
+          hx-target="#create-book-panel"
+          hx-swap="outerHTML">
+        <div>
+            <label for="book-universe" class="block text-sm font-medium text-slate-200">Universe</label>
+        <select id="book-universe"
+            th:field="*{universeId}"
+            name="universeId"
+            class="mt-2 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            data-universe-options
+            th:hx-get="@{/ui/library/options/universes}"
+            hx-trigger="load, refresh"
+            hx-target="this"
+            hx-swap="innerHTML"
+                    hx-on="change: (function(){ const target = document.querySelector('#book-series-select'); if(target){ target.value=''; htmx.trigger(target, 'refresh'); }})();">
+                <option value="" th:text="${universes.isEmpty() ? 'Create a universe first →' : 'Select universe...'}"
+                        th:if="${universes == null || universes.isEmpty()}"></option>
+                <option th:each="universe : ${universes}"
+                        th:value="${universe.id}"
+                        th:text="${universe.name}"
+                        th:selected="${createBookForm.universeId != null and createBookForm.universeId.equals(universe.id)}"></option>
+            </select>
+            <p th:if="${#fields.hasErrors('universeId')}"
+               class="mt-2 flex items-center gap-1.5 text-sm text-rose-400">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span th:text="${#fields.errors('universeId')[0]}"></span>
+            </p>
+        </div>
+
+        <div>
+            <label for="book-series-select" class="block text-sm font-medium text-slate-200">Series <span class="text-xs text-slate-500">(optional)</span></label>
+        <select id="book-series-select"
+            th:field="*{seriesId}"
+            name="seriesId"
+            class="mt-2 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            data-series-options
+                    th:hx-get="@{/ui/library/options/series}"
+            hx-trigger="load, refresh"
+            hx-target="this"
+            hx-swap="innerHTML"
+            hx-include="#book-universe">
+                <option value="">Standalone book</option>
+                <option th:each="series : ${seriesList}"
+                        th:value="${series.id}"
+                        th:text="${series.name}"
+                        th:selected="${createBookForm.seriesId != null and createBookForm.seriesId.equals(series.id)}"></option>
+            </select>
+            <p th:if="${#fields.hasErrors('seriesId')}"
+               class="mt-2 flex items-center gap-1.5 text-sm text-rose-400">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span th:text="${#fields.errors('seriesId')[0]}"></span>
+            </p>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2">
+            <div>
+                <label for="book-title" class="block text-sm font-medium text-slate-200">Book title</label>
+                <input id="book-title"
+                       th:field="*{title}"
+                       name="title"
+                       type="text"
+                       placeholder="e.g. The Final Empire"
+                       class="mt-2 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white placeholder-slate-500 transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+                <p th:if="${#fields.hasErrors('title')}"
+                   class="mt-2 flex items-center gap-1.5 text-sm text-rose-400">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span th:text="${#fields.errors('title')[0]}"></span>
+                </p>
+            </div>
+            <div>
+                <label for="book-number" class="block text-sm font-medium text-slate-200">
+                    Book #
+                    <span class="text-xs text-slate-500">(if in series)</span>
+                </label>
+                <input id="book-number"
+                       th:field="*{bookNumber}"
+                       name="bookNumber"
+                       type="number"
+                       min="1"
+                       placeholder="1"
+                       class="mt-2 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white placeholder-slate-500 transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+                <p th:if="${#fields.hasErrors('bookNumber')}"
+                   class="mt-2 flex items-center gap-1.5 text-sm text-rose-400">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span th:text="${#fields.errors('bookNumber')[0]}"></span>
+                </p>
+            </div>
+        </div>
+
+        <div th:if="${#fields.hasGlobalErrors()}"
+             class="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2.5 text-sm text-rose-200">
+            <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
+        </div>
+
+        <div th:if="${message != null}"
+             th:classappend=" ${messageType} == 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-slate-500/40 bg-slate-500/10 text-slate-200'"
+             class="rounded-lg border px-3 py-2.5 text-sm flex items-start gap-2">
+            <svg th:if="${messageType} == 'success'" class="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <svg th:if="${messageType} != 'success'" class="h-5 w-5 text-blue-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <p th:text="${message}"></p>
+        </div>
+
+        <div class="pt-2">
+            <button type="submit"
+                    class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500/80 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Create Book
+            </button>
+        </div>
+    </form>
+
+    <th:block th:if="${refreshBooksUniverseId != null}">
+        <script th:inline="javascript">
+            htmx.trigger(document.body, 'refresh-books', {universeId: /*[[${refreshBooksUniverseId}]]*/ null});
+            htmx.trigger(document.body, 'refresh-series', {universeId: /*[[${refreshBooksUniverseId}]]*/ null});
+        </script>
+    </th:block>
+</div>
+                       th:field="*{bookNumber}"
+                       name="bookNumber"
+                       type="number"
+                       min="1"
+                       placeholder="1"
+                       class="mt-2 w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+                <p th:if="${#fields.hasErrors('bookNumber')}"
+                   class="mt-2 text-sm text-rose-400"
+                   th:text="${#fields.errors('bookNumber')[0]}"></p>
+            </div>
+        </div>
+
+        <div th:if="${#fields.hasGlobalErrors()}"
+             class="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+            <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
+        </div>
+
+        <div th:if="${message != null}"
+             th:classappend=" ${messageType} == 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-slate-500/40 bg-slate-500/10 text-slate-200'"
+             class="rounded-lg border px-3 py-2 text-sm">
+            <p th:text="${message}"></p>
+        </div>
+
+        <div class="pt-2">
+            <button type="submit"
+                    class="inline-flex w-full justify-center rounded-lg bg-emerald-500/80 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-400">
+                Save book
+            </button>
+        </div>
+    </form>
+
+    <th:block th:if="${refreshBooksUniverseId != null}">
+        <script th:inline="javascript">
+            htmx.trigger(document.body, 'refresh-books', {universeId: /*[[${refreshBooksUniverseId}]]*/ null});
+            htmx.trigger(document.body, 'refresh-series', {universeId: /*[[${refreshBooksUniverseId}]]*/ null});
+        </script>
+    </th:block>
+</div>
+
+<!-- Combined form for creating universe + series + book -->
+<div th:fragment="combinedForm(message, messageType)"
+     id="create-library-panel"
+     class="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl shadow-slate-900/20">
+    <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Library Builder</p>
+    <h2 class="mt-2 text-xl font-semibold text-white">Create a complete book entry</h2>
+    <p class="mt-1 text-sm text-slate-400">Create or select universe, optionally add a series, and create a book in one go.</p>
+
+    <form th:object="${createLibraryForm}"
+          class="mt-5 space-y-5"
+          th:hx-post="@{/ui/library/combined}"
+          hx-target="#create-library-panel"
+          hx-swap="outerHTML">
+
+        <!-- Universe Section -->
+        <div class="rounded-lg border border-slate-700/50 bg-slate-900/40 p-4 space-y-4">
+            <h3 class="text-sm font-semibold text-slate-300">Universe</h3>
+            
+            <div>
+                <label for="existing-universe" class="text-sm font-medium text-slate-200">Select existing universe</label>
+                <select id="existing-universe"
+                        th:field="*{existingUniverseId}"
+                        class="mt-2 w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+                    <option value="">-- or create new below --</option>
+                    <option th:each="univ : ${universes}"
+                            th:value="${univ.id}"
+                            th:text="${univ.name}"></option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+                <div class="h-px flex-1 bg-slate-700"></div>
+                <span>OR</span>
+                <div class="h-px flex-1 bg-slate-700"></div>
+            </div>
+
+            <div>
+                <label for="new-universe-name" class="text-sm font-medium text-slate-200">Create new universe</label>
+                <input id="new-universe-name"
+                       th:field="*{newUniverseName}"
+                       type="text"
+                       placeholder="e.g. Cosmere"
+                       class="mt-2 w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+                <p th:if="${#fields.hasErrors('newUniverseName')}"
+                   class="mt-2 text-sm text-rose-400"
+                   th:text="${#fields.errors('newUniverseName')[0]}"></p>
+            </div>
+        </div>
+
+        <!-- Series Section (Optional) -->
+        <div class="rounded-lg border border-slate-700/50 bg-slate-900/40 p-4 space-y-4">
+            <h3 class="text-sm font-semibold text-slate-300">Series <span class="font-normal text-slate-500">(optional)</span></h3>
+            
+            <div>
+                <label for="existing-series" class="text-sm font-medium text-slate-200">Select existing series</label>
+                <select id="existing-series"
+                        th:field="*{existingSeriesId}"
+                        class="mt-2 w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+                    <option value="">-- or create new below, or leave blank --</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+                <div class="h-px flex-1 bg-slate-700"></div>
+                <span>OR</span>
+                <div class="h-px flex-1 bg-slate-700"></div>
+            </div>
+
+            <div>
+                <label for="new-series-name" class="text-sm font-medium text-slate-200">Create new series</label>
+                <input id="new-series-name"
+                       th:field="*{newSeriesName}"
+                       type="text"
+                       placeholder="e.g. Mistborn"
+                       class="mt-2 w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+                <p th:if="${#fields.hasErrors('newSeriesName')}"
+                   class="mt-2 text-sm text-rose-400"
+                   th:text="${#fields.errors('newSeriesName')[0]}"></p>
+            </div>
+        </div>
+
+        <!-- Book Section -->
+        <div class="rounded-lg border border-slate-700/50 bg-slate-900/40 p-4 space-y-4">
+            <h3 class="text-sm font-semibold text-slate-300">Book <span class="text-rose-400">*</span></h3>
+            
+            <div>
+                <label for="book-title" class="text-sm font-medium text-slate-200">Book title</label>
+                <input id="book-title"
+                       th:field="*{bookTitle}"
+                       type="text"
+                       placeholder="e.g. The Final Empire"
+                       class="mt-2 w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+                <p th:if="${#fields.hasErrors('bookTitle')}"
+                   class="mt-2 text-sm text-rose-400"
+                   th:text="${#fields.errors('bookTitle')[0]}"></p>
+            </div>
+
+            <div>
+                <label for="book-number" class="text-sm font-medium text-slate-200">Book number in series <span class="text-xs text-slate-500">(only if creating/selecting a series)</span></label>
+                <input id="book-number"
+                       th:field="*{bookNumber}"
+                       type="number"
+                       min="1"
+                       placeholder="e.g. 1"
+                       class="mt-2 w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+                <p th:if="${#fields.hasErrors('bookNumber')}"
+                   class="mt-2 text-sm text-rose-400"
+                   th:text="${#fields.errors('bookNumber')[0]}"></p>
+            </div>
+        </div>
+
+        <div th:if="${#fields.hasGlobalErrors()}"
+             class="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+            <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
+        </div>
+
+        <div th:if="${message != null}"
+             th:classappend="${messageType} == 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-slate-500/40 bg-slate-500/10 text-slate-200'"
+             class="rounded-lg border px-3 py-2 text-sm">
+            <p th:text="${message}"></p>
+        </div>
+
+        <div class="pt-2">
+            <button type="submit"
+                    class="inline-flex w-full justify-center rounded-lg bg-emerald-500/80 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-400">
+                Create book entry
+            </button>
+        </div>
+    </form>
+
+    <th:block th:if="${refreshUniverses}">
+        <script>htmx.trigger(document.body, 'refresh-universes');</script>
+    </th:block>
+</div>
+</body>
+</html>

@@ -1,0 +1,11 @@
+meta {
+  name: Actuator web endpoint 'health-path'
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/actuator/health/**
+  body: none
+  auth: inherit
+}

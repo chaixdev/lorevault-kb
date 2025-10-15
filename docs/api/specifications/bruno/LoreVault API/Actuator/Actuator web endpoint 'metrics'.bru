@@ -1,0 +1,11 @@
+meta {
+  name: Actuator web endpoint 'metrics'
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/actuator/metrics
+  body: none
+  auth: inherit
+}

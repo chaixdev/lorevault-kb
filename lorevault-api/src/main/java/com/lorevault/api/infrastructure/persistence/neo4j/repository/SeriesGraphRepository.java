@@ -5,6 +5,7 @@ import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -13,4 +14,6 @@ public interface SeriesGraphRepository extends Neo4jRepository<SeriesNode, UUID>
     
     @Query("MATCH (s:Series) WHERE s.name = $name AND s.universeId = $universeId RETURN s")
     Optional<SeriesNode> findByNameAndUniverseId(String name, UUID universeId);
+
+    List<SeriesNode> findByUniverseId(UUID universeId);
 }
