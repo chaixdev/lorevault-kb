@@ -1,6 +1,16 @@
 # LV-086-1 — Spoiler-gated timeline query endpoints [user story]
 
-Status: NOT IMPLEMENTED
+**Status:** DEFERRED
+
+**Reason:** Blocked by event-driven ingestion refactor (LVREF epic). Timeline query features depend on stable event-driven foundation for clean handler integration points, reliable per-stage observability, and consistent event-driven patterns.
+
+**Resume After:** LVREF Phase 3 completion (est. Week 4+)
+
+**Reference:** `../../refactor/event-driven-ingestion-refactor-v0100.md`
+
+---
+
+## Original Specification
 
 Context
 

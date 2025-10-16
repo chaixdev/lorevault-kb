@@ -166,7 +166,7 @@
                 <div x-show="activeTab === 'upload'" x-cloak>
                     <div class="grid gap-6 lg:grid-cols-2">
                         <div id="chapter-upload-panel"
-                             th:replace="~{ui/ingestion :: uploadForm(universes=${universes}, books=${booksForUniverse}, message=${uploadMessage}, messageType=${uploadMessageType})}"></div>
+                             th:replace="~{ui/ingestion :: uploadForm(libraryHierarchy=${libraryHierarchy}, message=${uploadMessage}, messageType=${uploadMessageType})}"></div>
 
                         <!-- Upload Help Card -->
                         <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6">

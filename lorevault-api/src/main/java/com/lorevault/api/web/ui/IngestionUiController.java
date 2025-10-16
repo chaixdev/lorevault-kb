@@ -108,6 +108,13 @@ public class IngestionUiController {
         .toList();
     model.addAttribute("universes", universes);
 
+    // Load all books for the hierarchical selector
+    java.util.List<LibraryQueryService.BookSummary> allBooks = universes.stream()
+            .flatMap(u -> libraryQueryService.listBooksForUniverse(u.id()).stream())
+            .toList();
+    com.lorevault.api.web.ui.view.LibraryHierarchy hierarchy = com.lorevault.api.web.ui.view.LibraryHierarchy.from(allBooks);
+    model.addAttribute("libraryHierarchy", hierarchy);
+
     java.util.List<com.lorevault.api.web.ui.view.BookOption> books = universeId != null
         ? libraryQueryService.listBooksForUniverse(universeId).stream()
         .map(com.lorevault.api.web.ui.view.BookOption::from)
