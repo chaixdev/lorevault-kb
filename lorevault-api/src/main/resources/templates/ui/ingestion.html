@@ -1,9 +1,21 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <body>
-<div th:fragment="uploadForm(universes, books, message, messageType)"
+<div th:fragment="uploadForm(libraryHierarchy, message, messageType)"
      id="chapter-upload-panel"
-     class="rounded-xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl">
+     class="rounded-xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl"
+     x-data="{ 
+         selectedBookId: null, 
+         selectedBookTitle: '', 
+         fileName: '',
+         showBookSelector: false,
+         selectBook(id, title) {
+             this.selectedBookId = id;
+             this.selectedBookTitle = title;
+             this.showBookSelector = false;
+             document.getElementById('hidden-book-id').value = id;
+         }
+     }">
     <div class="flex items-center gap-3 mb-4">
         <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/20 to-amber-600/20">
             <svg class="h-7 w-7 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -12,7 +24,7 @@
         </div>
         <div>
             <h2 class="text-xl font-semibold text-white">Upload Chapter</h2>
-            <p class="text-sm text-slate-400">Add a chapter file to your book</p>
+            <p class="text-sm text-slate-400">Select a book and upload your chapter file</p>
         </div>
     </div>
 
@@ -22,55 +34,61 @@
           hx-target="#chapter-upload-panel"
           hx-swap="outerHTML"
           hx-encoding="multipart/form-data"
-          enctype="multipart/form-data"
-          x-data="{ fileName: '' }">
+          enctype="multipart/form-data">
         
+        <!-- Hidden field for book ID -->
+        <input type="hidden" id="hidden-book-id" name="bookId" th:field="*{bookId}" />
+        
+        <!-- Book Selector -->
         <div>
-            <label for="upload-universe" class="block text-sm font-medium text-slate-200">Universe</label>
-            <select id="upload-universe"
-                    th:field="*{universeId}"
-                    name="universeId"
-                    class="mt-2 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white transition focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
-                    data-universe-options
-                    th:hx-get="@{/ui/library/options/universes}"
-                    hx-trigger="load, refresh"
-                    hx-target="this"
-                    hx-swap="innerHTML"
-                    hx-on="change: (function(){ const target = document.querySelector('#upload-book'); if(target){ target.value=''; htmx.trigger(target, 'refresh'); }})();">
-                <option value="" th:text="${universes == null || universes.isEmpty() ? 'No universes available' : 'Select a universe...'}"
-                        th:selected="${chapterUploadForm.universeId == null}"></option>
-                <option th:each="universe : ${universes}"
-                        th:value="${universe.id}"
-                        th:text="${universe.name}"
-                        th:selected="${chapterUploadForm.universeId != null and chapterUploadForm.universeId.equals(universe.id)}"></option>
-            </select>
-            <p th:if="${#fields.hasErrors('universeId')}"
-               class="mt-2 flex items-center gap-1.5 text-sm text-rose-400">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <span th:text="${#fields.errors('universeId')[0]}"></span>
-            </p>
-        </div>
+            <label class="block text-sm font-medium text-slate-200 mb-3">Select Book</label>
+            
+            <!-- Selected Book Display or Browse Button -->
+            <div x-show="!selectedBookId" class="space-y-3">
+                <button type="button" 
+                        @click="showBookSelector = !showBookSelector"
+                        class="w-full rounded-lg border-2 border-dashed border-slate-700 bg-slate-950/50 px-6 py-8 text-center transition hover:border-amber-400/50 hover:bg-slate-950/80">
+                    <svg class="mx-auto h-12 w-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                    <p class="mt-3 text-sm font-medium text-amber-400">Browse Books</p>
+                    <p class="mt-1 text-xs text-slate-500">Click to select from your library</p>
+                </button>
+            </div>
 
-        <div>
-            <label for="upload-book" class="block text-sm font-medium text-slate-200">Book</label>
-            <select id="upload-book"
-                    th:field="*{bookId}"
-                    name="bookId"
-                    class="mt-2 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white transition focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
-                    data-book-options
-                    th:hx-get="@{/ui/library/options/books}"
-                    hx-trigger="load, refresh"
-                    hx-target="this"
-                    hx-swap="innerHTML"
-                    hx-include="#upload-universe">
-                <option value="" th:selected="${chapterUploadForm.bookId == null}">Select a book...</option>
-                <option th:each="book : ${books}"
-                        th:value="${book.id}"
-                        th:text="${book.displayLabel()}"
-                        th:selected="${chapterUploadForm.bookId != null and chapterUploadForm.bookId.equals(book.id)}"></option>
-            </select>
+            <!-- Selected Book Card -->
+            <div x-show="selectedBookId" x-cloak class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/20">
+                            <svg class="h-6 w-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-emerald-200" x-text="selectedBookTitle"></p>
+                            <p class="text-xs text-emerald-400/70">Selected for upload</p>
+                        </div>
+                    </div>
+                    <button type="button" 
+                            @click="selectedBookId = null; selectedBookTitle = ''; document.getElementById('hidden-book-id').value = ''"
+                            class="text-emerald-400 hover:text-emerald-300 transition">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Book Selector Modal/Panel -->
+            <div x-show="showBookSelector" 
+                 x-cloak
+                 @click.away="showBookSelector = false"
+                 class="mt-3 rounded-lg border border-slate-700 bg-slate-900 p-4 max-h-96 overflow-y-auto">
+                
+                <div th:replace="~{ui/ingestion :: bookSelectorContent(libraryHierarchy=${libraryHierarchy})}"></div>
+            </div>
+
             <p th:if="${#fields.hasErrors('bookId')}"
                class="mt-2 flex items-center gap-1.5 text-sm text-rose-400">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,6 +97,9 @@
                 <span th:text="${#fields.errors('bookId')[0]}"></span>
             </p>
         </div>
+
+        <!-- Existing Chapters Display (populated via HTMX) -->
+        <div id="book-chapters-display"></div>
 
         <div class="grid gap-4 sm:grid-cols-2">
             <div>
@@ -179,5 +200,170 @@
         <script>htmx.trigger(document.body, 'refresh-jobs');</script>
     </th:block>
 </div>
+
+<!-- Book Selector Content Fragment -->
+<div th:fragment="bookSelectorContent(libraryHierarchy)">
+    <!-- Empty State -->
+    <div th:if="${libraryHierarchy.universes().isEmpty()}" 
+         class="rounded-lg border border-dashed border-slate-700 bg-slate-900/40 px-6 py-8 text-center">
+        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-800/50">
+            <svg class="h-6 w-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+            </svg>
+        </div>
+        <h3 class="mt-3 text-sm font-semibold text-slate-300">No books available</h3>
+        <p class="mt-1 text-xs text-slate-500">Create a book in the Library Manager first</p>
+    </div>
+
+    <!-- Library Hierarchy -->
+    <div th:if="${!libraryHierarchy.universes().isEmpty()}" class="space-y-6">
+        <!-- Universe Groups -->
+        <div th:each="universe : ${libraryHierarchy.universes()}" class="space-y-3">
+            <!-- Universe Header -->
+            <div class="flex items-center gap-2 pb-2 border-b border-slate-700">
+                <svg class="h-4 w-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <h3 class="text-sm font-semibold text-purple-300" th:text="${universe.name()}"></h3>
+            </div>
+
+            <!-- Series in Universe -->
+            <div th:if="${!universe.series().isEmpty()}" class="space-y-4">
+                <div th:each="series : ${universe.series()}" class="space-y-2">
+                    <!-- Series Header -->
+                    <div class="flex items-center gap-2">
+                        <svg class="h-3.5 w-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                        </svg>
+                        <p class="text-xs font-medium text-blue-300" th:text="${series.name()}"></p>
+                    </div>
+
+                    <!-- Books in Series Grid -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                            <button th:each="book : ${series.books()}" 
+                                type="button"
+                                @click="selectBook($el.dataset.bookId, $el.dataset.bookTitle)"
+                                th:data-book-id="${book.id()}"
+                                th:data-book-title="${book.displayTitle()}"
+                                th:hx-get="@{/ui/library-options/book-chapters/{bookId}(bookId=${book.id()})}"
+                                hx-trigger="click"
+                                hx-target="#book-chapters-display"
+                                hx-swap="innerHTML"
+                                class="group relative rounded-lg border border-slate-700 bg-slate-800/40 p-3 text-left transition hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/10">
+                            <div class="flex flex-col h-full">
+                                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 mb-2">
+                                    <span class="text-lg font-bold text-emerald-400" th:text="${book.bookNumber() != null ? '#' + book.bookNumber() : '📖'}"></span>
+                                </div>
+                                <p class="text-xs font-medium text-white line-clamp-2 flex-1" th:text="${book.title()}"></p>
+                                <p class="mt-1 text-xs text-slate-500">Book <span th:text="${book.bookNumber()}"></span></p>
+                            </div>
+                            <div class="absolute inset-0 rounded-lg ring-2 ring-emerald-500 opacity-0 group-hover:opacity-100 transition pointer-events-none"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Standalone Books in Universe -->
+            <div th:if="${!universe.standaloneBooks().isEmpty()}" class="space-y-2">
+                <p class="text-xs font-medium text-slate-400">Standalone Books</p>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    <button th:each="book : ${universe.standaloneBooks()}" 
+                            type="button"
+                            @click="selectBook($el.dataset.bookId, $el.dataset.bookTitle)"
+                            th:data-book-id="${book.id()}"
+                            th:data-book-title="${book.title()}"
+                            th:hx-get="@{/ui/library-options/book-chapters/{bookId}(bookId=${book.id()})}"
+                            hx-trigger="click"
+                            hx-target="#book-chapters-display"
+                            hx-swap="innerHTML"
+                            class="group relative rounded-lg border border-slate-700 bg-slate-800/40 p-3 text-left transition hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/10">
+                        <div class="flex flex-col h-full">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-slate-600/20 to-slate-700/20 mb-2">
+                                <svg class="h-6 w-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                                </svg>
+                            </div>
+                            <p class="text-xs font-medium text-white line-clamp-2" th:text="${book.title()}"></p>
+                        </div>
+                        <div class="absolute inset-0 rounded-lg ring-2 ring-emerald-500 opacity-0 group-hover:opacity-100 transition pointer-events-none"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Book Chapters Content Fragment -->
+<div th:fragment="bookChaptersContent(chapters, bookId)">
+    <!-- Empty State -->
+    <div th:if="${chapters.isEmpty()}" 
+         class="rounded-lg border border-dashed border-amber-700/50 bg-amber-900/10 px-4 py-3">
+        <div class="flex items-start gap-3">
+            <svg class="h-5 w-5 text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div>
+                <p class="text-sm font-medium text-amber-300">First Chapter</p>
+                <p class="text-xs text-amber-400/80 mt-0.5">This book has no chapters yet. You're uploading the first one!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chapters List -->
+    <div th:if="${!chapters.isEmpty()}" 
+         class="rounded-lg border border-slate-700 bg-slate-800/40 overflow-hidden">
+        <div class="bg-slate-800/60 px-4 py-2 border-b border-slate-700">
+            <div class="flex items-center justify-between">
+                <p class="text-xs font-semibold text-slate-300">Existing Chapters</p>
+                <span class="text-xs text-slate-500" th:text="${chapters.size()} + ' chapter' + (${chapters.size()} > 1 ? 's' : '')"></span>
+            </div>
+        </div>
+        <div class="divide-y divide-slate-700 max-h-48 overflow-y-auto">
+            <div th:each="chapter : ${chapters}" 
+                 class="px-4 py-2.5 hover:bg-slate-700/30 transition">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-emerald-500/10">
+                            <span class="text-xs font-bold text-emerald-400" th:text="${chapter.chapterNumber()}"></span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-white truncate" th:text="${chapter.title()}"></p>
+                            <p class="text-xs text-slate-400" th:if="${chapter.sceneCount() != null}" 
+                               th:text="${chapter.sceneCount()} + ' scene' + (${chapter.sceneCount()} != 1 ? 's' : '')"></p>
+                        </div>
+                    </div>
+                    <span th:if="${chapter.status()}" 
+                          class="text-xs px-2 py-0.5 rounded-full shrink-0"
+                          th:classappend="${chapter.status() == 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}"
+                          th:text="${chapter.status()}"></span>
+                </div>
+            </div>
+        </div>
+        <div class="bg-slate-800/60 px-4 py-2 border-t border-slate-700">
+            <p class="text-xs text-slate-400">
+                💡 Next available chapter number: <span class="font-semibold text-emerald-400" th:text="${chapters.size() + 1}"></span>
+            </p>
+        </div>
+    </div>
+    
+    <!-- Auto-fill chapter number -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        (function() {
+            var nextChapter = /*[[${chapters.size() + 1}]]*/ 1;
+            var chapterInput = document.getElementById('chapter-number');
+            if (chapterInput) {
+                chapterInput.value = nextChapter;
+                // Add a subtle highlight animation
+                chapterInput.classList.add('ring-2', 'ring-emerald-500/40');
+                setTimeout(() => {
+                    chapterInput.classList.remove('ring-2', 'ring-emerald-500/40');
+                }, 1500);
+            }
+        })();
+        /*]]>*/
+    </script>
+</div>
+
 </body>
 </html>

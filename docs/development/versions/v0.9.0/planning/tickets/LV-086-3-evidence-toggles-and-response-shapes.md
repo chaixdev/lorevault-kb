@@ -1,6 +1,16 @@
 # LV-086-3 — Evidence toggles and stable response shapes [refactor]
 
-Status: NOT IMPLEMENTED
+**Status:** DEFERRED
+
+**Reason:** Blocked by event-driven ingestion refactor (LVREF epic). Response shapes should be designed against event-driven architecture patterns for consistency and maintainability.
+
+**Resume After:** LVREF Phase 3 completion (est. Week 4+)
+
+**Reference:** `../../refactor/event-driven-ingestion-refactor-v0100.md`
+
+---
+
+## Original Specification
 
 Context
 

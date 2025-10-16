@@ -1,6 +1,16 @@
 # LV-086-2 — Summary NLQ POC endpoint [research]
 
-Status: NOT IMPLEMENTED
+**Status:** DEFERRED
+
+**Reason:** Blocked by event-driven ingestion refactor (LVREF epic). NLQ summarization should be built on stable event-driven foundation to enable clean integration and testing.
+
+**Resume After:** LVREF Phase 3 completion (est. Week 4+)
+
+**Reference:** `../../refactor/event-driven-ingestion-refactor-v0100.md`
+
+---
+
+## Original Specification
 
 Context
 
