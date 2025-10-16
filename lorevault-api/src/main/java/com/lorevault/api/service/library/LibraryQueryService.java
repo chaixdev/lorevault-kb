@@ -4,6 +4,8 @@ import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Universe;
+import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ import java.util.UUID;
 public class LibraryQueryService {
 
     private final ContentPersistencePort contentPersistencePort;
+    private final ChapterGraphRepository chapterGraphRepository;
 
     public List<UniverseSummary> listUniverses() {
         List<UniverseSummary> universes = contentPersistencePort.findAllUniverses().stream()
@@ -79,30 +82,63 @@ public class LibraryQueryService {
 
     public record SeriesSummary(UUID id, UUID universeId, String name) { }
 
-    public record BookSummary(UUID id,
-                              UUID universeId,
-                              UUID seriesId,
-                              String universeName,
-                              String seriesName,
-                              Integer bookNumber,
-                              String title) {
-
+    public record BookSummary(
+            UUID id,
+            String title,
+            Integer bookNumber,
+            UUID seriesId,
+            String seriesName,
+            UUID universeId,
+            String universeName
+    ) {
         public static BookSummary from(Book book) {
             return new BookSummary(
                     book.getId(),
-                    book.getUniverseId(),
-                    book.getSeriesId(),
-                    book.getUniverse(),
-                    book.getSeries(),
+                    book.getTitle(),
                     book.getBookNumber(),
-                    book.getTitle()
+                    book.getSeriesId(),
+                    book.getSeries(),
+                    book.getUniverseId(),
+                    book.getUniverse()
             );
         }
-
+        
         public String displayLabel() {
-            String seriesPart = (seriesName == null || seriesName.isBlank()) ? "" : (seriesName + " ");
-            String numberPart = bookNumber == null ? "" : ("#" + bookNumber + " ");
-            return (seriesPart + numberPart + (title == null ? "" : title)).trim();
+            if (bookNumber != null) {
+                return "#" + bookNumber + " - " + title;
+            }
+            return title;
         }
+    }
+    
+    public record ChapterSummary(
+            UUID id,
+            Integer chapterNumber,
+            String title,
+            Integer sceneCount
+    ) {}
+
+    public List<ChapterSummary> listChaptersForBook(UUID bookId) {
+        log.info("[QUERY] Fetching chapters for bookId={}", bookId);
+        List<ChapterNode> chapters = chapterGraphRepository.findByBookId(bookId);
+        log.info("[QUERY] Repository returned {} chapters for bookId={}", chapters.size(), bookId);
+        
+        List<ChapterSummary> summaries = chapters.stream()
+                .map(ch -> {
+                    UUID nodeBookId = ch.getBook() != null ? ch.getBook().getId() : null;
+                    int sceneCount = ch.getScenes() != null ? ch.getScenes().size() : 0;
+                    log.info("[QUERY] Chapter: id={}, number={}, title={}, bookId={}, scenes={}, sceneCount={}", 
+                            ch.getId(), ch.getChapterNumber(), ch.getChapterTitle(), nodeBookId, 
+                            ch.getScenes(), sceneCount);
+                    return new ChapterSummary(
+                            ch.getId(),
+                            ch.getChapterNumber(),
+                            ch.getChapterTitle(),
+                            sceneCount
+                    );
+                })
+                .toList();
+                
+        return summaries;
     }
 }

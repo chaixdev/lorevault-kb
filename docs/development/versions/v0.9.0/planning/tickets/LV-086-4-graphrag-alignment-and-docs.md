@@ -1,6 +1,16 @@
 # LV-086-4 — GraphRAG alignment and docs [research]
 
-Status: NOT IMPLEMENTED
+**Status:** DEFERRED
+
+**Reason:** Blocked by event-driven ingestion refactor (LVREF epic). GraphRAG alignment documentation should describe patterns against stable event-driven architecture.
+
+**Resume After:** LVREF Phase 4 completion (est. Week 5+)
+
+**Reference:** `../../refactor/event-driven-ingestion-refactor-v0100.md`
+
+---
+
+## Original Specification
 
 Context
 

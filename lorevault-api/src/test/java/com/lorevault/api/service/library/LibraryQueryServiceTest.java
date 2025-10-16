@@ -4,6 +4,7 @@ import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Universe;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,11 +24,14 @@ class LibraryQueryServiceTest {
     @Mock
     private ContentPersistencePort contentPersistencePort;
 
+    @Mock
+    private ChapterGraphRepository chapterGraphRepository;
+
     private LibraryQueryService service;
 
     @BeforeEach
     void setUp() {
-        service = new LibraryQueryService(contentPersistencePort);
+        service = new LibraryQueryService(contentPersistencePort, chapterGraphRepository);
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.lorevault.api.web.ui;
 
 import com.lorevault.api.service.library.LibraryQueryService;
 import com.lorevault.api.web.ui.view.BookOption;
+import com.lorevault.api.web.ui.view.LibraryHierarchy;
 import com.lorevault.api.web.ui.view.SeriesOption;
 import com.lorevault.api.web.ui.view.UniverseOption;
 import lombok.RequiredArgsConstructor;
@@ -9,16 +10,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 import java.util.UUID;
 
-@Controller
-@RequestMapping("/ui/library/options")
-@RequiredArgsConstructor
 @Slf4j
+@Controller
+@RequestMapping("/ui/library-options")
+@RequiredArgsConstructor
 public class LibraryOptionsController {
 
     private final LibraryQueryService libraryQueryService;
@@ -75,4 +77,43 @@ public class LibraryOptionsController {
         model.addAttribute("selectedBookId", resolvedSelected);
         return "ui/options :: bookOptions";
     }
+
+        @GetMapping("/book-selector")
+    public String getBookSelector(Model model) {
+        // TODO: Implement book hierarchy query
+        LibraryHierarchy hierarchy = new LibraryHierarchy(List.of());
+        model.addAttribute("libraryHierarchy", hierarchy);
+        return "ui/ingestion :: bookSelectorContent";
+    }
+
+    @GetMapping("/book-chapters/{bookId}")
+    public String getBookChapters(@PathVariable UUID bookId, Model model) {
+        log.info("[CHAPTERS] Fetching chapters for bookId={}", bookId);
+        
+        List<ChapterSummary> chapters = libraryQueryService.listChaptersForBook(bookId).stream()
+                .map(ch -> new ChapterSummary(
+                        ch.id(),
+                        ch.chapterNumber(),
+                        ch.title(),
+                        ch.sceneCount(),
+                        null // Status not available yet
+                ))
+                .toList();
+        
+        log.info("[CHAPTERS] Found {} chapters for bookId={}: {}", 
+                chapters.size(), bookId, 
+                chapters.stream().map(ch -> String.format("Ch%d: %s", ch.chapterNumber(), ch.title())).toList());
+        
+        model.addAttribute("chapters", chapters);
+        model.addAttribute("bookId", bookId);
+        return "ui/ingestion :: bookChaptersContent";
+    }
+
+    public record ChapterSummary(
+            UUID chapterId,
+            Integer chapterNumber,
+            String title,
+            Integer sceneCount,
+            String status
+    ) {}
 }
