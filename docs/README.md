@@ -4,6 +4,7 @@
 
 New to LoreVault? Begin with these essential documents:
 
+- **[Implementation State Report](IMPLEMENTATION_STATE.md)** — Current feature status, gaps, and progress
 - **[Project Summary](project_summary.md)** — Vision, features, and roadmap overview
 - **[Release Notes](development/current/RELEASE_NOTES.md)** — Latest changes and version history
 - **[Architecture Overview](architecture/README.md)** — System design and technical foundations
@@ -12,6 +13,7 @@ New to LoreVault? Begin with these essential documents:
 
 ### Core Documentation
 
+- **[Implementation State Report](IMPLEMENTATION_STATE.md)** - Current feature status, what's working, and what's planned
 - **[Project Summary](project_summary.md)** - Vision, roadmap, and feature overview
 
 ### Architecture & Design

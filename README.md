@@ -83,30 +83,54 @@ lorevault/
 
 ## API Endpoints
 
-- `GET /api/status`
-- `GET /actuator/health`
-- `GET /actuator/info`
-- `GET /api/health`
-- `GET /api/health/llm`
-- `POST /api/ingestion/chapters` (submit chapter)
+### Library Management
+- `POST /api/library/create-universe` (create universe)
+- `POST /api/library/create-series` (create series)
+- `POST /api/library/create-book` (create book)
+
+### Content Ingestion
+- `POST /api/ingestion/chapters` (submit chapter with multipart form)
 - `GET /api/ingestion/jobs/{id}` (job status)
-- `GET /api/ingestion/jobs` (list jobs)
-- `POST /api/search/semantic` → 501 (semantic search deferred to v0.5.0)
+- `GET /api/ingestion/jobs` (list all jobs)
+
+### Search & Query
+- `POST /api/search/semantic` (semantic search over content)
+- `POST /api/ask/vector` (vector search - debug endpoint)
+- `POST /api/ask/rag` (RAG question answering with citations)
+
+### Health & Monitoring
+- `GET /api/health` (system health)
+- `GET /api/health/llm` (LLM provider health)
+- `GET /api/health/embeddings` (embedding provider health)
+- `GET /actuator/health` (Spring Boot actuator)
+- `GET /actuator/info` (build info)
 
 ## Documentation
 
-See `docs/` for architecture viewpoints & specifications.
+See `docs/` for comprehensive documentation:
+
+- **[Implementation State Report](docs/IMPLEMENTATION_STATE.md)** - Detailed status of all features (what works, what's missing, what's next)
+- **[Project Summary](docs/project_summary.md)** - Vision, roadmap, and long-term goals
+- **[Architecture](docs/architecture/)** - System design and technical foundations
+- **[API Specifications](docs/api/)** - REST API documentation and Postman collections
 
 ## Version Roadmap
 
-- ✅ v0.4.0 Graph Migration & Architecture hardening (current)
-- ⏳ v0.5.0 Semantic Search & Embeddings (upcoming)
-- 📝 v0.6.0 Entity Extraction
+- ✅ v0.8.1 - Performance & Architecture Optimization (latest stable)
+- 🚧 v0.8.3-SNAPSHOT - Default temporal edges (MEETS) (current development)
+- ⏳ v0.9.0 - Timeline & Scene Events (in planning)
+- 📋 v0.10.0 - Spoiler-Aware Search
+- 📋 v1.0.0 - MVP with Production Polish
 
-## Migration Notes
+See [docs/IMPLEMENTATION_STATE.md](docs/IMPLEMENTATION_STATE.md) for complete roadmap and current feature status.
 
-Legacy Postgres/JPA artifacts removed; domain objects now plain POJOs mapped to Neo4j node models. Temporary mapper will be deleted once ingestion flow no longer constructs transitional objects.
+## Recent Changes (v0.8.3-SNAPSHOT)
+
+- Default temporal edges (MEETS) created during ingestion
+- In-chapter edges between consecutive scenes
+- Cross-chapter edges linking chapters
+- Idempotent, bookId-scoped sweep operations
 
 ---
 
-Semantic search currently returns 501 until embeddings are introduced.
+For detailed status of what's implemented, in-progress, or planned, see **[docs/IMPLEMENTATION_STATE.md](docs/IMPLEMENTATION_STATE.md)**.
