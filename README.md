@@ -2,6 +2,9 @@
 
 An Agentic Knowledge Ingestion Service for fictional universes.
 
+> **📊 Current Status:** See [docs/QUICK_STATUS.md](docs/QUICK_STATUS.md) for at-a-glance feature status  
+> **📖 Full Report:** See [docs/IMPLEMENTATION_STATE.md](docs/IMPLEMENTATION_STATE.md) for comprehensive details
+
 ## Quick Start
 
 ### Prerequisites
@@ -10,7 +13,7 @@ An Agentic Knowledge Ingestion Service for fictional universes.
 - Maven 3.6+
 - Docker and Docker Compose
 
-### Stack (v0.4.0)
+### Stack (v0.8.3-SNAPSHOT)
 
 - Spring Boot 3
 - Neo4j (graph persistence) – replaces prior Postgres/JPA
