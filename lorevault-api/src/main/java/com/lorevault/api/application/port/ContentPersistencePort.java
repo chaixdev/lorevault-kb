@@ -10,6 +10,7 @@ import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.StatusRecord;
 import com.lorevault.api.domain.ingestion.LlmCallRecord;
 
+import java.util.AbstractMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,12 +23,25 @@ public interface ContentPersistencePort {
     Optional<Chapter> findChapterByContentHash(String contentHash);
     boolean chapterExistsByContentHash(String contentHash);
     Chapter updateChapter(Chapter chapter);
+    
+    /**
+     * Return Chapter IDs for a book where chapterNumber <= uptoChapterNumber, ordered by chapterNumber.
+     * Used by triad builder to find preceding chapters for cross-chapter scene triads.
+     */
+    List<UUID> findChapterIdsUpTo(UUID bookId, int uptoChapterNumber);
 
     // Scenes
     Scene addSceneToChapter(UUID chapterId, Scene scene);
     List<Scene> addScenesToChapter(UUID chapterId, List<Scene> scenes);
     List<Scene> findScenesByChapterId(UUID chapterId);
     int deleteScenesByChapterId(UUID chapterId);
+    
+    /**
+     * Find directed precedence edges among scene events within a chapter.
+     * Edges represent strict "earlier -> later" constraints.
+     * Used by event ordering service for topological sort.
+     */
+    List<AbstractMap.SimpleEntry<UUID, UUID>> findChapterTemporalEdges(UUID chapterId);
 
     // Chunks
     List<Chunk> addChunksToChapter(UUID chapterId, List<Chunk> chunks);

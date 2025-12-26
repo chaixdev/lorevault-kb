@@ -1,6 +1,5 @@
 package com.lorevault.api.service.content;
 
-import com.lorevault.api.application.port.ChapterLookupPort;
 import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
@@ -26,7 +25,6 @@ public class TriadBuilderService {
     public record SceneTriad(Scene previous, Scene current, Scene next) {}
 
     private final ContentPersistencePort contentPort;
-    private final ChapterLookupPort chapterLookupPort;
 
     /**
      * Build scene triads for the provided chapter.
@@ -74,7 +72,7 @@ public class TriadBuilderService {
             int currentNumber = chapter.getChapterNumber();
             if (currentNumber <= 1) return null;
 
-            List<UUID> chapterIds = chapterLookupPort.findChapterIdsUpTo(chapter.getBookId(), currentNumber);
+            List<UUID> chapterIds = contentPort.findChapterIdsUpTo(chapter.getBookId(), currentNumber);
             if (chapterIds == null || chapterIds.isEmpty()) return null;
 
             int idx = chapterIds.indexOf(chapter.getId());
