@@ -1,6 +1,6 @@
 package com.lorevault.api.service.timeline;
 
-import com.lorevault.api.application.port.EventOrderingPort;
+import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
 import org.junit.jupiter.api.DisplayName;
@@ -18,8 +18,8 @@ import static org.mockito.Mockito.when;
 @DisplayName("EventOrderingService")
 class EventOrderingServiceTest {
 
-    private final EventOrderingPort port = Mockito.mock(EventOrderingPort.class);
-    private final EventOrderingService service = new EventOrderingService(port);
+    private final ContentPersistencePort contentPort = Mockito.mock(ContentPersistencePort.class);
+    private final EventOrderingService service = new EventOrderingService(contentPort);
 
     private Scene scene(UUID id, int sceneIndex) {
         Scene s = new Scene();
@@ -37,8 +37,8 @@ class EventOrderingServiceTest {
         Scene s1 = scene(UUID.randomUUID(), 1);
         Scene s2 = scene(UUID.randomUUID(), 2);
 
-        when(port.findChapterScenes(chapterId)).thenReturn(List.of(s0, s1, s2));
-        when(port.findChapterTemporalEdges(chapterId)).thenReturn(List.of(
+        when(contentPort.findScenesByChapterId(chapterId)).thenReturn(List.of(s0, s1, s2));
+        when(contentPort.findChapterTemporalEdges(chapterId)).thenReturn(List.of(
                 new SimpleEntry<>(s0.getId(), s1.getId()),
                 new SimpleEntry<>(s1.getId(), s2.getId())
         ));
@@ -55,9 +55,9 @@ class EventOrderingServiceTest {
         Scene b = scene(UUID.randomUUID(), 1);
         Scene c = scene(UUID.randomUUID(), 2);
 
-        when(port.findChapterScenes(chapterId)).thenReturn(List.of(a, b, c));
+        when(contentPort.findScenesByChapterId(chapterId)).thenReturn(List.of(a, b, c));
         // c before a, a before b → c, a, b
-        when(port.findChapterTemporalEdges(chapterId)).thenReturn(List.of(
+        when(contentPort.findChapterTemporalEdges(chapterId)).thenReturn(List.of(
                 new SimpleEntry<>(c.getId(), a.getId()),
                 new SimpleEntry<>(a.getId(), b.getId())
         ));
@@ -75,8 +75,8 @@ class EventOrderingServiceTest {
         Scene b = scene(UUID.fromString("00000000-0000-0000-0000-000000000000"), 2);
         Scene c = scene(UUID.fromString("00000000-0000-0000-0000-000000000010"), 1);
 
-        when(port.findChapterScenes(chapterId)).thenReturn(List.of(a, b, c));
-        when(port.findChapterTemporalEdges(chapterId)).thenReturn(List.of());
+        when(contentPort.findScenesByChapterId(chapterId)).thenReturn(List.of(a, b, c));
+        when(contentPort.findChapterTemporalEdges(chapterId)).thenReturn(List.of());
 
         List<Scene> out = service.orderChapterEvents(chapterId);
         assertThat(out).containsExactly(c, b, a);
@@ -89,19 +89,19 @@ class EventOrderingServiceTest {
         UUID c1 = UUID.randomUUID();
         UUID c2 = UUID.randomUUID();
 
-        when(port.findBookChapterIdsUpTo(bookId, 2)).thenReturn(List.of(c1, c2));
+        when(contentPort.findChapterIdsUpTo(bookId, 2)).thenReturn(List.of(c1, c2));
 
         Scene c1s0 = scene(UUID.randomUUID(), 0);
         Scene c1s1 = scene(UUID.randomUUID(), 1);
         Scene c2s0 = scene(UUID.randomUUID(), 0);
 
-        when(port.findChapterScenes(c1)).thenReturn(List.of(c1s0, c1s1));
-        when(port.findChapterTemporalEdges(c1)).thenReturn(List.of(
+        when(contentPort.findScenesByChapterId(c1)).thenReturn(List.of(c1s0, c1s1));
+        when(contentPort.findChapterTemporalEdges(c1)).thenReturn(List.of(
                 new SimpleEntry<>(c1s0.getId(), c1s1.getId())
         ));
 
-        when(port.findChapterScenes(c2)).thenReturn(List.of(c2s0));
-        when(port.findChapterTemporalEdges(c2)).thenReturn(List.of());
+        when(contentPort.findScenesByChapterId(c2)).thenReturn(List.of(c2s0));
+        when(contentPort.findChapterTemporalEdges(c2)).thenReturn(List.of());
 
         List<Scene> out = service.orderBookEventsUpToChapter(bookId, 2);
         assertThat(out).containsExactly(c1s0, c1s1, c2s0);

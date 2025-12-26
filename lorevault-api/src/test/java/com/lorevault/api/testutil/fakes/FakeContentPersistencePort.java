@@ -85,6 +85,23 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
     }
 
     @Override
+    public List<UUID> findChapterIdsUpTo(UUID bookId, int uptoChapterNumber) {
+        // Return chapter IDs for this book up to the specified chapter number, ordered
+        return chapters.values().stream()
+                .filter(c -> Objects.equals(c.getBookId(), bookId))
+                .filter(c -> c.getChapterNumber() != null && c.getChapterNumber() <= uptoChapterNumber)
+                .sorted(Comparator.comparingInt(Chapter::getChapterNumber))
+                .map(Chapter::getId)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<AbstractMap.SimpleEntry<UUID, UUID>> findChapterTemporalEdges(UUID chapterId) {
+        // Return empty list - temporal edges not tracked in fake
+        return List.of();
+    }
+
+    @Override
     public List<Chunk> addChunksToChapter(UUID chapterId, List<Chunk> chunks) {
         chunksByChapter.computeIfAbsent(chapterId, k -> new ArrayList<>()).addAll(chunks);
         return chunks;
