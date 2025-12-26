@@ -1,6 +1,5 @@
 package com.lorevault.api.infrastructure.ai.openai;
 
-import com.lorevault.api.application.port.JobContextPort;
 import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
 import com.lorevault.api.service.content.retry.RetryAwareSceneDetectionService;
@@ -15,7 +14,6 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.lenient;
 
 /**
  * TCK for OpenAiSceneDetectionAdapter using mocked service.
@@ -24,12 +22,11 @@ import static org.mockito.Mockito.lenient;
 public class OpenAiSceneDetectionAdapterTckTest extends SceneDetectionPortTCK {
 
     @Mock private RetryAwareSceneDetectionService mockRetryService;
-    @Mock private JobContextPort mockJobContextPort;
     private OpenAiSceneDetectionAdapter adapter;
 
     @BeforeEach
     void setUp() {
-        adapter = new OpenAiSceneDetectionAdapter(mockRetryService, mockJobContextPort);
+        adapter = new OpenAiSceneDetectionAdapter(mockRetryService);
         
         // Mock successful scene detection response
         SceneWithCoordinates mockScene = new SceneWithCoordinates(

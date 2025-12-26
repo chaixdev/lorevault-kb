@@ -1,7 +1,6 @@
 package com.lorevault.api.handler;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
-import com.lorevault.api.application.port.JobContextPort;
 import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
@@ -42,7 +41,6 @@ class SceneDetectionHandlerTest {
     @Mock private SceneDetectionPort sceneDetectionPort;
     @Mock private SceneProcessingService sceneProcessingService;
     @Mock private IngestionJobService ingestionJobService;
-    @Mock private JobContextPort jobContextPort;
     @Mock private DefaultTemporalEdgeService defaultTemporalEdgeService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -87,18 +85,16 @@ class SceneDetectionHandlerTest {
 
             when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(sceneDetectionPort.detectScenesInText(chapterId, testChapter.getRawText())).thenReturn(sceneCoords);
+            when(sceneDetectionPort.detectScenesInText(jobId, chapterId, testChapter.getRawText())).thenReturn(sceneCoords);
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
 
             // When
             handler.handleChapterPersisted(testEvent);
 
             // Then
-            verify(jobContextPort).setCurrentJobId(jobId);
-            verify(sceneDetectionPort).detectScenesInText(chapterId, testChapter.getRawText());
+            verify(sceneDetectionPort).detectScenesInText(jobId, chapterId, testChapter.getRawText());
             verify(sceneProcessingService).persistDetectedScenes(chapterId, sceneCoords);
             verify(defaultTemporalEdgeService).createAllDefaults(bookId);
-            verify(jobContextPort).clearCurrentJobId();
 
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
@@ -121,7 +117,7 @@ class SceneDetectionHandlerTest {
             handler.handleChapterPersisted(testEvent);
 
             // Then
-            verify(sceneDetectionPort, never()).detectScenesInText(any(), anyString());
+            verify(sceneDetectionPort, never()).detectScenesInText(any(), any(), anyString());
             verify(sceneProcessingService, never()).persistDetectedScenes(any(), any());
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
@@ -140,7 +136,7 @@ class SceneDetectionHandlerTest {
             // Given
             when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(sceneDetectionPort.detectScenesInText(any(), anyString()))
+            when(sceneDetectionPort.detectScenesInText(any(), any(), anyString()))
                     .thenThrow(new RuntimeException("LLM API timeout"));
 
             // When
@@ -156,7 +152,6 @@ class SceneDetectionHandlerTest {
             assertThat(failedEvent.isRetryable()).isTrue(); // LLM errors are retryable
 
             verify(ingestionJobService).updateJobStatus(eq(jobId), eq(IngestionStatus.FAILED), anyString(), any());
-            verify(jobContextPort).clearCurrentJobId();
         }
 
         @Test
@@ -174,12 +169,11 @@ class SceneDetectionHandlerTest {
             verify(eventPublisher).publishEvent(eventCaptor.capture());
             
             assertThat(eventCaptor.getValue().getFailedStage()).isEqualTo("SCENE_DETECTION");
-            verify(jobContextPort).clearCurrentJobId();
         }
 
         @Test
-        @DisplayName("Should always clear job context even on failure")
-        void handleChapterPersisted_anyError_clearsContext() {
+        @DisplayName("Should emit failure on database error")
+        void handleChapterPersisted_databaseError_emitsFailure() {
             // Given
             when(contentPersistencePort.findScenesByChapterId(chapterId))
                     .thenThrow(new RuntimeException("Database error"));
@@ -188,8 +182,9 @@ class SceneDetectionHandlerTest {
             handler.handleChapterPersisted(testEvent);
 
             // Then
-            verify(jobContextPort).setCurrentJobId(jobId);
-            verify(jobContextPort).clearCurrentJobId();
+            ArgumentCaptor<IngestionFailedEvent> eventCaptor = ArgumentCaptor.forClass(IngestionFailedEvent.class);
+            verify(eventPublisher).publishEvent(eventCaptor.capture());
+            assertThat(eventCaptor.getValue().getFailedStage()).isEqualTo("SCENE_DETECTION");
         }
     }
 
@@ -209,7 +204,7 @@ class SceneDetectionHandlerTest {
             handler.handleChapterPersisted(testEvent);
 
             // Then
-            verify(sceneDetectionPort, never()).detectScenesInText(any(), anyString());
+            verify(sceneDetectionPort, never()).detectScenesInText(any(), any(), anyString());
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
