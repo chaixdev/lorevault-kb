@@ -15,7 +15,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Handles chapter processing events asynchronously after transaction commit
+ * Handles chapter processing events asynchronously after transaction commit.
+ * 
+ * DISABLED: Event listener disabled during event-driven pipeline refactor.
+ * The new IngestionPipelineStarter → SceneDetectionHandler → ChunkingHandler → 
+ * EmbeddingHandler → CompletionHandler pipeline now handles chapter processing.
+ * 
+ * This class is kept temporarily for reference and will be removed once the 
+ * new pipeline is fully validated.
  */
 @Component
 @RequiredArgsConstructor
@@ -25,8 +32,9 @@ public class ChapterProcessor {
     private final ContentPersistencePort contentPersistencePort;
     private final IngestionService ingestionService;
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Async("ingestionTaskExecutor")
+    // DISABLED: Old synchronous flow - replaced by event-driven handlers
+    // @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    // @Async("ingestionTaskExecutor")
     public void handleChapterIngestion(ChapterIngestionEvent event) {
         log.info("Processing chapter ingestion event for job {} and chapter {} on thread {}",
                 event.getJobId(), event.getChapterId(), Thread.currentThread().getName());
