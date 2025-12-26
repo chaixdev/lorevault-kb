@@ -104,8 +104,11 @@ public class LibraryQueryService {
         }
         
         public String displayLabel() {
+            if (seriesName != null && !seriesName.isBlank() && bookNumber != null) {
+                return seriesName + " #" + bookNumber + " " + title;
+            }
             if (bookNumber != null) {
-                return "#" + bookNumber + " - " + title;
+                return "#" + bookNumber + " " + title;
             }
             return title;
         }
