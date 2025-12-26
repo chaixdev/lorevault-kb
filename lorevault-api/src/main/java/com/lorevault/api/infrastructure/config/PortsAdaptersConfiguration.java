@@ -1,8 +1,6 @@
 package com.lorevault.api.infrastructure.config;
 
-import com.lorevault.api.application.port.JobContextPort;
 import com.lorevault.api.application.port.SceneDetectionPort;
-import com.lorevault.api.infrastructure.adapter.ThreadLocalJobContextAdapter;
 import com.lorevault.api.infrastructure.ai.openai.OpenAiSceneDetectionAdapter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -36,13 +34,4 @@ public class PortsAdaptersConfiguration {
      * registered as @Component beans based on the property value.
      */
     // No longer needed - adapters self-register via @ConditionalOnProperty
-    
-    /**
-     * Configure the job context port implementation.
-     * Uses thread-local storage for job ID management.
-     */
-    @Bean
-    public JobContextPort jobContextPort(ThreadLocalJobContextAdapter adapter) {
-        return adapter;
-    }
 }
