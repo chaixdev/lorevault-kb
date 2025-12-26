@@ -1,5 +1,7 @@
 package com.lorevault.api.service.content.retry;
 
+import com.lorevault.api.application.port.SceneDetectionException;
+import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.dto.content.SceneDetectionResult;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
 import com.lorevault.api.service.content.SceneDetectionClient;
@@ -13,17 +15,18 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Enhanced scene detection service that provides better LLM retry handling
- * and communicates retry attempts through ingestion job status updates.
+ * Scene detection service that implements SceneDetectionPort directly.
+ * Provides LLM retry handling and communicates retry attempts through job status updates.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class RetryAwareSceneDetectionService {
+public class RetryAwareSceneDetectionService implements SceneDetectionPort {
 
     private final SceneDetectionClient sceneDetectionClient;
     private final SceneProcessingService sceneProcessingService;
@@ -32,11 +35,29 @@ public class RetryAwareSceneDetectionService {
     private final TriadOrchestrationService triadOrchestrationService;
     private final TriadEdgePersistenceService triadEdgePersistenceService;
 
+    @Override
+    public List<SceneWithCoordinates> detectScenesInText(UUID jobId, UUID chapterId, String chapterText) {
+        // Handle null or empty text gracefully
+        if (chapterText == null || chapterText.trim().isEmpty()) {
+            log.warn("Chapter {} has no text content for scene detection", chapterId);
+            return Collections.emptyList();
+        }
+        
+        log.info("Starting scene detection with retry for chapter {} (job {}, length={} chars)", 
+                 chapterId, jobId, chapterText.length());
+
+        try {
+            return detectScenesWithRetry(jobId, chapterId, chapterText);
+        } catch (Exception e) {
+            log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage(), e);
+            throw new SceneDetectionException("Scene detection failed: " + e.getMessage(), e);
+        }
+    }
+
     /**
-     * Detect scenes with retry logic and job status updates
+     * Internal method: Detect scenes with retry logic and job status updates
      */
-    public List<SceneWithCoordinates> detectScenesWithRetry(UUID jobId, UUID chapterId, String chapterText) {
-        log.info("Starting retry-aware scene detection for chapter {} (job {})", chapterId, jobId);
+    private List<SceneWithCoordinates> detectScenesWithRetry(UUID jobId, UUID chapterId, String chapterText) {
 
         // Configure retry strategy for scene detection
         LlmRetryConfig retryConfig = LlmRetryConfig.defaultConfig();
@@ -183,5 +204,15 @@ public class RetryAwareSceneDetectionService {
             log.debug("Failed to update job status for job {}: {}", jobId, e.getMessage());
             // Don't fail the main operation if status update fails
         }
+    }
+
+    @Override
+    public boolean isAvailable() {
+        return sceneDetectionClient != null;
+    }
+
+    @Override
+    public String getImplementationInfo() {
+        return "OpenAI Scene Detection with Retry";
     }
 }
