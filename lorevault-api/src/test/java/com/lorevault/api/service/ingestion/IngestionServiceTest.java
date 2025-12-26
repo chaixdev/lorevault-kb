@@ -37,7 +37,6 @@ import static org.mockito.Mockito.*;
  * - SceneDetectionHandlerTest
  * - ChunkingHandlerTest  
  * - EmbeddingHandlerTest
- * - CompletionHandlerTest
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("IngestionService Tests")
