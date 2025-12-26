@@ -1,13 +1,13 @@
 package com.lorevault.api.handler;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
-import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChapterPersistedEvent;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
+import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.SceneProcessingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import com.lorevault.api.service.timeline.DefaultTemporalEdgeService;
@@ -42,7 +42,7 @@ import java.util.UUID;
 public class SceneDetectionHandler {
 
     private final ContentPersistencePort contentPersistencePort;
-    private final SceneDetectionPort sceneDetectionPort;
+    private final SceneDetectionService sceneDetectionService;
     private final SceneProcessingService sceneProcessingService;
     private final IngestionJobService ingestionJobService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
@@ -107,7 +107,7 @@ public class SceneDetectionHandler {
         }
 
         // Use AI to detect scenes (passing jobId for status tracking)
-        var scenesWithCoords = sceneDetectionPort.detectScenesInText(jobId, chapterId, chapterText);
+        var scenesWithCoords = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
 
         if (scenesWithCoords.isEmpty()) {
             log.info("[SCENE_DETECTION] No scenes detected for chapter {}", chapterId);
