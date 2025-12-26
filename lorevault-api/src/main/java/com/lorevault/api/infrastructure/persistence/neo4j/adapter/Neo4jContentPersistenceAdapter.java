@@ -44,6 +44,10 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     private final SeriesGraphRepository seriesRepo;
     private final BookGraphRepository bookRepo;
     
+    // Read repositories (for event ordering and chapter lookup)
+    private final ChapterReadRepository chapterReadRepo;
+    private final TemporalReadRepository temporalReadRepo;
+    
     private final Neo4jMapper mapper;
 
     @Override
@@ -115,6 +119,18 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
         var existing = sceneRepo.findByChapterId(chapterId);
         sceneRepo.deleteByChapterId(chapterId);
         return existing.size();
+    }
+
+    @Override
+    public List<UUID> findChapterIdsUpTo(UUID bookId, int uptoChapterNumber) {
+        return chapterReadRepo.findChapterIdsUpTo(bookId, uptoChapterNumber);
+    }
+
+    @Override
+    public List<AbstractMap.SimpleEntry<UUID, UUID>> findChapterTemporalEdges(UUID chapterId) {
+        return temporalReadRepo.findChapterEventEdges(chapterId).stream()
+                .map(p -> new AbstractMap.SimpleEntry<>(p.getFromId(), p.getToId()))
+                .collect(Collectors.toList());
     }
 
     @Override

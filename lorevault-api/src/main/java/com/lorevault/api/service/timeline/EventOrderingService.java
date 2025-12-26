@@ -1,6 +1,6 @@
 package com.lorevault.api.service.timeline;
 
-import com.lorevault.api.application.port.EventOrderingPort;
+import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Scene;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,13 +12,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EventOrderingService {
 
-    private final EventOrderingPort port;
+    private final ContentPersistencePort contentPort;
 
     /**
      * Order events within a chapter using precedence edges first, then sceneIndex and UUID as stable tie-breakers.
      */
     public List<Scene> orderChapterEvents(UUID chapterId) {
-        List<Scene> scenes = new ArrayList<>(port.findChapterScenes(chapterId));
+        List<Scene> scenes = new ArrayList<>(contentPort.findScenesByChapterId(chapterId));
         if (scenes.isEmpty()) return List.of();
 
         Map<UUID, Scene> byId = scenes.stream().collect(Collectors.toMap(Scene::getId, s -> s));
@@ -26,7 +26,7 @@ public class EventOrderingService {
         Map<UUID, Integer> indeg = new HashMap<>();
         byId.keySet().forEach(id -> { adj.put(id, new ArrayList<>()); indeg.put(id, 0); });
 
-        for (var e : port.findChapterTemporalEdges(chapterId)) {
+        for (var e : contentPort.findChapterTemporalEdges(chapterId)) {
             UUID from = e.getKey();
             UUID to = e.getValue();
             if (byId.containsKey(from) && byId.containsKey(to)) {
@@ -69,7 +69,7 @@ public class EventOrderingService {
      * Order events across chapters up to N by concatenating per-chapter orders by chapterNumber sequence.
      */
     public List<Scene> orderBookEventsUpToChapter(UUID bookId, int uptoChapterNumber) {
-        List<UUID> chapterIds = port.findBookChapterIdsUpTo(bookId, uptoChapterNumber);
+        List<UUID> chapterIds = contentPort.findChapterIdsUpTo(bookId, uptoChapterNumber);
         List<Scene> all = new ArrayList<>();
         for (UUID chapterId : chapterIds) {
             all.addAll(orderChapterEvents(chapterId));
