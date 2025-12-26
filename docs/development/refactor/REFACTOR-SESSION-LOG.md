@@ -2,7 +2,7 @@
 
 > **Purpose:** Reference document for continuing refactor work across agent sessions.  
 > **Last Updated:** 26 December 2025  
-> **Current Branch:** `refactor/phase2-cleanup` (ready to merge to main)
+> **Current Branch:** `refactor/phase3-handlers` (ready for optional Phase 4 or merge to main)
 
 ---
 
@@ -133,20 +133,75 @@ List<UUID> findBookChapterIdsUpTo(UUID bookId, int uptoChapterNumber);
 
 ---
 
-## Phase 3: Handler Consolidation ⏳ PENDING
+## Phase 3: Handler Consolidation ✅ COMPLETE
+
+**Branch:** `refactor/phase3-handlers` (1 commit ahead of phase2-cleanup)  
+**Impact:** -394 net lines  
+**Tests:** 263 passing
 
 ### Goal
-Reduce handler proliferation. The current pipeline has separate handlers for each stage, but some stages are trivially sequential and could be combined.
+Reduce handler proliferation by merging trivial sequential handlers that don't provide value as separate async boundaries.
 
-### Candidates for Evaluation
+### What Changed
 
-1. **ChapterPersistenceHandler + SceneDetectionHandler** - Always sequential, could be one handler
-2. **Consider removing ContentPersistenceHandler** - It just saves the chapter and emits an event
+Reduced from **5 handlers** to **3 handlers** by merging:
 
-### Approach
-- Profile actual usage patterns
-- Consider whether the async boundaries provide value or just add complexity
-- Maintain idempotency guarantees
+1. **IngestionPipelineStarter → SceneDetectionHandler**  
+   - Was just a chapter lookup to get `bookId`
+   - Now SceneDetectionHandler listens directly to `ChapterIngestionEvent`
+   - Eliminates one async hop + transaction boundary
+
+2. **CompletionHandler → EmbeddingHandler**  
+   - Was just gathering stats and calling `completeJob()`
+   - Now EmbeddingHandler handles completion inline
+   - Eliminates one async hop for simple finalization
+
+### New Pipeline
+
+**Before (5 handlers):**
+```
+ChapterIngestionEvent → IngestionPipelineStarter → ChapterPersistedEvent
+                              ↓
+                     SceneDetectionHandler → ScenesDetectedEvent
+                              ↓
+                     ChunkingHandler → ChunksCreatedEvent
+                              ↓
+                     EmbeddingHandler → EmbeddingsGeneratedEvent
+                              ↓
+                     CompletionHandler → IngestionCompletedEvent
+```
+
+**After (3 handlers):**
+```
+ChapterIngestionEvent → SceneDetectionHandler → ScenesDetectedEvent
+                              ↓
+                     ChunkingHandler → ChunksCreatedEvent
+                              ↓
+                     EmbeddingHandler → IngestionCompletedEvent
+```
+
+### Files Deleted
+
+```
+handler/IngestionPipelineStarter.java (-56 lines)
+handler/CompletionHandler.java (-64 lines)
+test/handler/IngestionPipelineStarterTest.java (-112 lines)
+test/handler/CompletionHandlerTest.java (-70 lines)
+```
+
+### Why Keep 3 Handlers?
+
+| Handler | Complexity | Reason to Keep Separate |
+|---------|------------|-------------------------|
+| **SceneDetectionHandler** | Heavy | AI scene detection with retry logic, LLM calls, triad analysis |
+| **ChunkingHandler** | Medium | CPU-bound text processing - can run in parallel across chapters |
+| **EmbeddingHandler** | Heavy | I/O-bound API calls to embedding service, includes completion |
+
+### Commit
+
+```
+ef7f540 - refactor: Consolidate handlers - merge IngestionPipelineStarter and CompletionHandler
+```
 
 ---
 
@@ -231,14 +286,15 @@ mvn test -pl lorevault-api
 
 ## Metrics Summary
 
-| Metric | Before Refactor | After Phase 1 | After Phase 2 |
-|--------|-----------------|---------------|---------------|
-| Net Lines | baseline | +1,244 | +746 |
-| Port Interfaces | ~10 | ~10 | 5 |
-| Port Adapters | ~12 | ~10 | 6 |
-| Test Count | ~280 | 283 | 283 |
+| Metric | Before Refactor | After Phase 1 | After Phase 2 | After Phase 3 |
+|--------|-----------------|---------------|---------------|---------------|
+| Net Lines | baseline | +1,244 | +746 | +352 |
+| Port Interfaces | ~10 | ~10 | 5 | 5 |
+| Port Adapters | ~12 | ~10 | 6 | 6 |
+| Handlers | 0 (sync orchestration) | 5 | 5 | 3 |
+| Test Count | ~280 | 283 | 283 | 263 |
 
-The Phase 1 increase was structural (adding event infrastructure). Phase 2 removed ceremony (-498 lines), bringing net change to +746 from baseline. Further phases should reduce this further.
+Phase 1 added event infrastructure (+1,244). Phase 2 removed ports (-498). Phase 3 consolidated handlers (-394).
 
 ---
 
