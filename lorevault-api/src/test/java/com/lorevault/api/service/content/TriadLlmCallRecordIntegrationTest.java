@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import com.lorevault.api.testing.TestImages;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,7 +41,7 @@ class TriadLlmCallRecordIntegrationTest {
 
     @SuppressWarnings("resource") // Testcontainers manages lifecycle
     @Container
-    static final Neo4jContainer<?> neo4j = new Neo4jContainer<>("neo4j:5.15")
+    static final Neo4jContainer<?> neo4j = new Neo4jContainer<>(TestImages.NEO4J_IMAGE)
             .withAdminPassword("testpassword")
             .withReuse(true);
 
