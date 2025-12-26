@@ -4,7 +4,7 @@ import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
-import com.lorevault.api.event.ingestion.ChapterPersistedEvent;
+import com.lorevault.api.event.ChapterIngestionEvent;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
 import com.lorevault.api.service.content.SceneDetectionService;
@@ -27,10 +27,11 @@ import java.util.UUID;
 /**
  * Handler for scene detection stage of the ingestion pipeline.
  * 
- * Listens to: ChapterPersistedEvent
+ * Listens to: ChapterIngestionEvent (legacy event from IngestionService)
  * Emits: ScenesDetectedEvent (on success) or IngestionFailedEvent (on failure)
  * 
  * Responsibilities:
+ * - Bridge from legacy ingestion event to new pipeline
  * - Use AI to detect semantic scene boundaries in chapter text
  * - Persist detected scenes to the database
  * - Create default temporal edges between scenes
@@ -51,14 +52,19 @@ public class SceneDetectionHandler {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void handleChapterPersisted(ChapterPersistedEvent event) {
+    public void handleChapterIngestion(ChapterIngestionEvent event) {
         UUID jobId = event.getJobId();
         UUID chapterId = event.getChapterId();
-        UUID bookId = event.getBookId();
         
-        log.info("[SCENE_DETECTION] Starting for job={}, chapter={}", jobId, chapterId);
+        log.info("[SCENE_DETECTION] Starting pipeline for job={}, chapter={}", jobId, chapterId);
         
         try {
+            // Look up the chapter to get the bookId
+            Chapter chapter = contentPersistencePort.findChapterById(chapterId)
+                    .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
+            
+            UUID bookId = chapter.getBookId();
+            
             updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION, 
                     "Analyzing chapter text with AI to identify semantic scene boundaries");
 

@@ -5,7 +5,7 @@ import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
-import com.lorevault.api.event.ingestion.ChapterPersistedEvent;
+import com.lorevault.api.event.ChapterIngestionEvent;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
 import com.lorevault.api.service.content.SceneDetectionService;
@@ -51,7 +51,7 @@ class SceneDetectionHandlerTest {
     private UUID chapterId;
     private UUID bookId;
     private Chapter testChapter;
-    private ChapterPersistedEvent testEvent;
+    private ChapterIngestionEvent testEvent;
 
     @BeforeEach
     void setUp() {
@@ -64,7 +64,7 @@ class SceneDetectionHandlerTest {
         testChapter.setBookId(bookId);
         testChapter.setRawText("Test chapter content for scene detection.");
 
-        testEvent = new ChapterPersistedEvent(this, jobId, chapterId, bookId);
+        testEvent = new ChapterIngestionEvent(this, jobId, chapterId);
     }
 
     @Nested
@@ -89,7 +89,7 @@ class SceneDetectionHandlerTest {
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
 
             // When
-            handler.handleChapterPersisted(testEvent);
+            handler.handleChapterIngestion(testEvent);
 
             // Then
             verify(sceneDetectionService).detectScenesInText(jobId, chapterId, testChapter.getRawText());
@@ -112,9 +112,10 @@ class SceneDetectionHandlerTest {
             // Given
             List<Scene> existingScenes = List.of(createScene(0), createScene(1));
             when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(existingScenes);
+            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
 
             // When
-            handler.handleChapterPersisted(testEvent);
+            handler.handleChapterIngestion(testEvent);
 
             // Then
             verify(sceneDetectionService, never()).detectScenesInText(any(), any(), anyString());
@@ -140,7 +141,7 @@ class SceneDetectionHandlerTest {
                     .thenThrow(new RuntimeException("LLM API timeout"));
 
             // When
-            handler.handleChapterPersisted(testEvent);
+            handler.handleChapterIngestion(testEvent);
 
             // Then
             ArgumentCaptor<IngestionFailedEvent> eventCaptor = ArgumentCaptor.forClass(IngestionFailedEvent.class);
@@ -158,11 +159,10 @@ class SceneDetectionHandlerTest {
         @DisplayName("Should handle chapter not found error")
         void handleChapterPersisted_chapterNotFound_emitsFailure() {
             // Given
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.empty());
 
             // When
-            handler.handleChapterPersisted(testEvent);
+            handler.handleChapterIngestion(testEvent);
 
             // Then
             ArgumentCaptor<IngestionFailedEvent> eventCaptor = ArgumentCaptor.forClass(IngestionFailedEvent.class);
@@ -175,11 +175,12 @@ class SceneDetectionHandlerTest {
         @DisplayName("Should emit failure on database error")
         void handleChapterPersisted_databaseError_emitsFailure() {
             // Given
+            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
             when(contentPersistencePort.findScenesByChapterId(chapterId))
                     .thenThrow(new RuntimeException("Database error"));
 
             // When
-            handler.handleChapterPersisted(testEvent);
+            handler.handleChapterIngestion(testEvent);
 
             // Then
             ArgumentCaptor<IngestionFailedEvent> eventCaptor = ArgumentCaptor.forClass(IngestionFailedEvent.class);
@@ -201,7 +202,7 @@ class SceneDetectionHandlerTest {
             when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
 
             // When
-            handler.handleChapterPersisted(testEvent);
+            handler.handleChapterIngestion(testEvent);
 
             // Then
             verify(sceneDetectionService, never()).detectScenesInText(any(), any(), anyString());
@@ -220,7 +221,7 @@ class SceneDetectionHandlerTest {
             when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
 
             // When
-            handler.handleChapterPersisted(testEvent);
+            handler.handleChapterIngestion(testEvent);
 
             // Then
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
