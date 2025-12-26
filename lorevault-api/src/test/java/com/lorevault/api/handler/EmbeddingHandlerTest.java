@@ -1,8 +1,11 @@
 package com.lorevault.api.handler;
 
+import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.domain.content.Chapter;
+import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChunksCreatedEvent;
-import com.lorevault.api.event.ingestion.EmbeddingsGeneratedEvent;
+import com.lorevault.api.event.ingestion.IngestionCompletedEvent;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
 import com.lorevault.api.service.content.EmbeddingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
@@ -17,6 +20,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,6 +32,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("EmbeddingHandler Tests")
 class EmbeddingHandlerTest {
 
+    @Mock private ContentPersistencePort contentPersistencePort;
     @Mock private EmbeddingService embeddingService;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -38,6 +44,8 @@ class EmbeddingHandlerTest {
     private UUID chapterId;
     private UUID bookId;
     private ChunksCreatedEvent testEvent;
+    private Chapter testChapter;
+    private IngestionJob testJob;
 
     @BeforeEach
     void setUp() {
@@ -45,6 +53,14 @@ class EmbeddingHandlerTest {
         chapterId = UUID.randomUUID();
         bookId = UUID.randomUUID();
         testEvent = new ChunksCreatedEvent(this, jobId, chapterId, bookId, 10);
+        
+        testChapter = new Chapter();
+        testChapter.setId(chapterId);
+        testChapter.setBookId(bookId);
+        testChapter.setRawText("Test chapter content");
+        
+        testJob = new IngestionJob();
+        testJob.setId(jobId);
     }
 
     @Nested
@@ -52,25 +68,29 @@ class EmbeddingHandlerTest {
     class HappyPathTests {
 
         @Test
-        @DisplayName("Should generate embeddings and emit EmbeddingsGeneratedEvent")
+        @DisplayName("Should generate embeddings and emit IngestionCompletedEvent")
         void handleChunksCreated_generatesEmbeddingsSuccessfully() {
             // Given
             when(embeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(10);
+            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(List.of());
+            when(contentPersistencePort.countChunksByChapterId(chapterId)).thenReturn(10);
+            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(contentPersistencePort.findJob(jobId)).thenReturn(Optional.of(testJob));
 
             // When
             handler.handleChunksCreated(testEvent);
 
             // Then
             verify(embeddingService).generateEmbeddingsForChapter(chapterId);
+            verify(ingestionJobService).completeJob(testJob, chapterId, testChapter.getRawText().length());
 
-            ArgumentCaptor<EmbeddingsGeneratedEvent> eventCaptor = ArgumentCaptor.forClass(EmbeddingsGeneratedEvent.class);
+            ArgumentCaptor<IngestionCompletedEvent> eventCaptor = ArgumentCaptor.forClass(IngestionCompletedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
             
-            EmbeddingsGeneratedEvent emittedEvent = eventCaptor.getValue();
+            IngestionCompletedEvent emittedEvent = eventCaptor.getValue();
             assertThat(emittedEvent.getJobId()).isEqualTo(jobId);
             assertThat(emittedEvent.getChapterId()).isEqualTo(chapterId);
-            assertThat(emittedEvent.getBookId()).isEqualTo(bookId);
-            assertThat(emittedEvent.getEmbeddedChunkCount()).isEqualTo(10);
+            assertThat(emittedEvent.getTotalEmbeddings()).isEqualTo(10);
         }
 
         @Test
@@ -93,14 +113,18 @@ class EmbeddingHandlerTest {
             // Given
             ChunksCreatedEvent zeroChunksEvent = new ChunksCreatedEvent(this, jobId, chapterId, bookId, 0);
             when(embeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(0);
+            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(List.of());
+            when(contentPersistencePort.countChunksByChapterId(chapterId)).thenReturn(0);
+            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(contentPersistencePort.findJob(jobId)).thenReturn(Optional.of(testJob));
 
             // When
             handler.handleChunksCreated(zeroChunksEvent);
 
             // Then
-            ArgumentCaptor<EmbeddingsGeneratedEvent> eventCaptor = ArgumentCaptor.forClass(EmbeddingsGeneratedEvent.class);
+            ArgumentCaptor<IngestionCompletedEvent> eventCaptor = ArgumentCaptor.forClass(IngestionCompletedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
-            assertThat(eventCaptor.getValue().getEmbeddedChunkCount()).isEqualTo(0);
+            assertThat(eventCaptor.getValue().getTotalEmbeddings()).isEqualTo(0);
         }
     }
 
