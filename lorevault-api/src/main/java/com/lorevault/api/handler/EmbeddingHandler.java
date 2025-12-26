@@ -1,8 +1,10 @@
 package com.lorevault.api.handler;
 
+import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChunksCreatedEvent;
-import com.lorevault.api.event.ingestion.EmbeddingsGeneratedEvent;
+import com.lorevault.api.event.ingestion.IngestionCompletedEvent;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
 import com.lorevault.api.service.content.EmbeddingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
@@ -20,20 +22,22 @@ import java.util.Collections;
 import java.util.UUID;
 
 /**
- * Handler for embedding generation stage of the ingestion pipeline.
+ * Handler for embedding generation and completion stage of the ingestion pipeline.
  * 
  * Listens to: ChunksCreatedEvent
- * Emits: EmbeddingsGeneratedEvent (on success) or IngestionFailedEvent (on failure)
+ * Emits: IngestionCompletedEvent (on success) or IngestionFailedEvent (on failure)
  * 
  * Responsibilities:
  * - Generate vector embeddings for all chunks in the chapter
  * - Store embeddings in the database for semantic search
+ * - Gather final statistics and mark job complete
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class EmbeddingHandler {
 
+    private final ContentPersistencePort contentPersistencePort;
     private final EmbeddingService embeddingService;
     private final IngestionJobService ingestionJobService;
     private final ApplicationEventPublisher eventPublisher;
@@ -62,7 +66,8 @@ public class EmbeddingHandler {
             log.info("[EMBEDDING] Completed for chapter {}: {} embeddings generated", 
                     chapterId, embeddedCount);
             
-            emitEmbeddingsGenerated(jobId, chapterId, bookId, embeddedCount);
+            // Complete the ingestion job (merged from CompletionHandler)
+            completeIngestion(jobId, chapterId, embeddedCount);
             
         } catch (Exception e) {
             log.error("[EMBEDDING] Failed for job={}, chapter={}: {}", 
@@ -71,12 +76,37 @@ public class EmbeddingHandler {
         }
     }
 
-    private void emitEmbeddingsGenerated(UUID jobId, UUID chapterId, UUID bookId, int embeddedCount) {
-        log.info("[EMBEDDING] Emitting EmbeddingsGeneratedEvent: job={}, chapter={}, embeddedCount={}", 
-                jobId, chapterId, embeddedCount);
+    private void completeIngestion(UUID jobId, UUID chapterId, int embeddedCount) {
+        log.info("[COMPLETION] Processing for job={}, chapter={}", jobId, chapterId);
         
-        eventPublisher.publishEvent(new EmbeddingsGeneratedEvent(
-                this, jobId, chapterId, bookId, embeddedCount));
+        try {
+            // Gather statistics
+            int sceneCount = contentPersistencePort.findScenesByChapterId(chapterId).size();
+            int chunkCount = contentPersistencePort.countChunksByChapterId(chapterId);
+            
+            // Get chapter length for job completion
+            Chapter chapter = contentPersistencePort.findChapterById(chapterId)
+                    .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
+            int chapterLength = chapter.getRawText() != null ? chapter.getRawText().length() : 0;
+            
+            // Get the job and mark complete
+            var job = contentPersistencePort.findJob(jobId)
+                    .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+            
+            ingestionJobService.completeJob(job, chapterId, chapterLength);
+            
+            log.info("[COMPLETION] Job {} completed: {} scenes, {} chunks, {} embeddings", 
+                    jobId, sceneCount, chunkCount, embeddedCount);
+            
+            // Emit completion event
+            eventPublisher.publishEvent(new IngestionCompletedEvent(
+                    this, jobId, chapterId, sceneCount, chunkCount, embeddedCount));
+            
+        } catch (Exception e) {
+            log.error("[COMPLETION] Failed for job={}, chapter={}: {}", 
+                    jobId, chapterId, e.getMessage(), e);
+            // Don't emit failure - the work is done, just completion tracking failed
+        }
     }
 
     private void emitFailure(UUID jobId, UUID chapterId, String stage, Exception e) {
