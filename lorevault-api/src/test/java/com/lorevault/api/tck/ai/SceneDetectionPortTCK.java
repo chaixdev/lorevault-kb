@@ -25,9 +25,10 @@ public abstract class SceneDetectionPortTCK {
     @Test
     void detectScenesInText_returns_list_never_null() {
         SceneDetectionPort port = createPort();
+        UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         
-        List<SceneWithCoordinates> scenes = port.detectScenesInText(chapterId, "Some chapter text");
+        List<SceneWithCoordinates> scenes = port.detectScenesInText(jobId, chapterId, "Some chapter text");
         
         assertThat(scenes).isNotNull();
         // May be empty, but never null
@@ -36,9 +37,10 @@ public abstract class SceneDetectionPortTCK {
     @Test
     void detectScenesInText_handles_empty_text_gracefully() {
         SceneDetectionPort port = createPort();
+        UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         
-        List<SceneWithCoordinates> scenes = port.detectScenesInText(chapterId, "");
+        List<SceneWithCoordinates> scenes = port.detectScenesInText(jobId, chapterId, "");
         
         assertThat(scenes).isNotNull();
         // Should handle empty text without throwing
@@ -47,9 +49,10 @@ public abstract class SceneDetectionPortTCK {
     @Test
     void detectScenesInText_handles_null_text_gracefully() {
         SceneDetectionPort port = createPort();
+        UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         
-        List<SceneWithCoordinates> scenes = port.detectScenesInText(chapterId, null);
+        List<SceneWithCoordinates> scenes = port.detectScenesInText(jobId, chapterId, null);
         
         assertThat(scenes).isNotNull();
         // Should handle null text without throwing

@@ -1,7 +1,6 @@
 package com.lorevault.api.handler;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
-import com.lorevault.api.application.port.JobContextPort;
 import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
@@ -46,7 +45,6 @@ public class SceneDetectionHandler {
     private final SceneDetectionPort sceneDetectionPort;
     private final SceneProcessingService sceneProcessingService;
     private final IngestionJobService ingestionJobService;
-    private final JobContextPort jobContextPort;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -61,9 +59,6 @@ public class SceneDetectionHandler {
         log.info("[SCENE_DETECTION] Starting for job={}, chapter={}", jobId, chapterId);
         
         try {
-            // Set job context for retry-aware operations
-            jobContextPort.setCurrentJobId(jobId);
-            
             updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION, 
                     "Analyzing chapter text with AI to identify semantic scene boundaries");
 
@@ -77,7 +72,7 @@ public class SceneDetectionHandler {
             }
 
             // Detect and persist new scenes
-            List<Scene> scenes = detectAndPersistScenes(chapterId);
+            List<Scene> scenes = detectAndPersistScenes(jobId, chapterId);
             
             if (scenes.isEmpty()) {
                 log.warn("[SCENE_DETECTION] No scenes detected for chapter {}", chapterId);
@@ -96,12 +91,10 @@ public class SceneDetectionHandler {
             log.error("[SCENE_DETECTION] Failed for job={}, chapter={}: {}", 
                     jobId, chapterId, e.getMessage(), e);
             emitFailure(jobId, chapterId, "SCENE_DETECTION", e);
-        } finally {
-            jobContextPort.clearCurrentJobId();
         }
     }
 
-    private List<Scene> detectAndPersistScenes(UUID chapterId) {
+    private List<Scene> detectAndPersistScenes(UUID jobId, UUID chapterId) {
         log.info("[SCENE_DETECTION] Detecting scenes for chapter {}", chapterId);
 
         Chapter chapter = contentPersistencePort.findChapterById(chapterId)
@@ -113,8 +106,8 @@ public class SceneDetectionHandler {
             return List.of();
         }
 
-        // Use AI to detect scenes
-        var scenesWithCoords = sceneDetectionPort.detectScenesInText(chapterId, chapterText);
+        // Use AI to detect scenes (passing jobId for status tracking)
+        var scenesWithCoords = sceneDetectionPort.detectScenesInText(jobId, chapterId, chapterText);
 
         if (scenesWithCoords.isEmpty()) {
             log.info("[SCENE_DETECTION] No scenes detected for chapter {}", chapterId);

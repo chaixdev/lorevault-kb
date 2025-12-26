@@ -21,7 +21,7 @@ public class FakeSceneDetectionPort implements SceneDetectionPort {
     private volatile int callCount = 0;
 
     @Override
-    public List<SceneWithCoordinates> detectScenesInText(UUID chapterId, String chapterText) {
+    public List<SceneWithCoordinates> detectScenesInText(UUID jobId, UUID chapterId, String chapterText) {
         callCount++; // Track calls for testing
         
         if (nextException != null) {

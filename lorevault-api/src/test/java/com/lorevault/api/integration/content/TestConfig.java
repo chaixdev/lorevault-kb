@@ -1,6 +1,5 @@
 package com.lorevault.api.integration.content;
 
-import com.lorevault.api.infrastructure.adapter.ThreadLocalJobContextAdapter;
 import com.lorevault.api.infrastructure.ai.openai.OpenAiSceneDetectionAdapter;
 import com.lorevault.api.service.content.retry.RetryAwareSceneDetectionService;
 import org.mockito.Mockito;
@@ -34,11 +33,6 @@ public class TestConfig {
     @Bean
     public RetryAwareSceneDetectionService retryAwareSceneDetectionService() {
         return Mockito.mock(RetryAwareSceneDetectionService.class);
-    }
-
-    @Bean
-    public ThreadLocalJobContextAdapter threadLocalJobContextAdapter() {
-        return Mockito.mock(ThreadLocalJobContextAdapter.class);
     }
 
     @Bean

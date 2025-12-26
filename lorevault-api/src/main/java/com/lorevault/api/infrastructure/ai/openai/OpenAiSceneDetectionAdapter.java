@@ -1,6 +1,5 @@
 package com.lorevault.api.infrastructure.ai.openai;
 
-import com.lorevault.api.application.port.JobContextPort;
 import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.application.port.SceneDetectionException;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
@@ -23,10 +22,9 @@ import java.util.UUID;
 public class OpenAiSceneDetectionAdapter implements SceneDetectionPort {
     
     private final RetryAwareSceneDetectionService retryAwareSceneDetectionService;
-    private final JobContextPort jobContextPort;
     
     @Override
-    public List<SceneWithCoordinates> detectScenesInText(UUID chapterId, String chapterText) {
+    public List<SceneWithCoordinates> detectScenesInText(UUID jobId, UUID chapterId, String chapterText) {
         try {
             // Handle null or empty text gracefully
             if (chapterText == null || chapterText.trim().isEmpty()) {
@@ -37,17 +35,8 @@ public class OpenAiSceneDetectionAdapter implements SceneDetectionPort {
             log.debug("Starting OpenAI scene detection with retry for chapter {} (length={} chars)", 
                      chapterId, chapterText.length());
             
-            // Get current job ID from JobContextPort
-            UUID jobId = jobContextPort.getCurrentJobId();
-            
-            if (jobId != null) {
-                // Use retry-aware service with job status updates
-                return retryAwareSceneDetectionService.detectScenesWithRetry(jobId, chapterId, chapterText);
-            } else {
-                // Fallback: use retry-aware service without job status updates
-                log.warn("No job ID available for scene detection - status updates will be skipped");
-                return retryAwareSceneDetectionService.detectScenesWithRetry(null, chapterId, chapterText);
-            }
+            // Use retry-aware service with job status updates
+            return retryAwareSceneDetectionService.detectScenesWithRetry(jobId, chapterId, chapterText);
             
         } catch (Exception e) {
             log.error("OpenAI scene detection failed for chapter {}: {}", chapterId, e.getMessage(), e);
