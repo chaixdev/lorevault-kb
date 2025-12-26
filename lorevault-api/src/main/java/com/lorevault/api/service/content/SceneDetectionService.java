@@ -1,16 +1,12 @@
-package com.lorevault.api.service.content.retry;
+package com.lorevault.api.service.content;
 
-import com.lorevault.api.application.port.SceneDetectionException;
-import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.dto.content.SceneDetectionResult;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
-import com.lorevault.api.service.content.SceneDetectionClient;
-import com.lorevault.api.service.content.SceneProcessingService;
-import com.lorevault.api.service.ingestion.IngestionJobService;
-import com.lorevault.api.service.content.TriadOrchestrationService;
-import com.lorevault.api.service.timeline.TriadEdgePersistenceService;
+import com.lorevault.api.service.content.retry.LlmRetryStrategy;
 import com.lorevault.api.service.content.retry.LlmRetryStrategy.LlmRetryConfig;
 import com.lorevault.api.service.content.retry.LlmRetryStrategy.LlmRetryResult;
+import com.lorevault.api.service.ingestion.IngestionJobService;
+import com.lorevault.api.service.timeline.TriadEdgePersistenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,13 +16,18 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Scene detection service that implements SceneDetectionPort directly.
- * Provides LLM retry handling and communicates retry attempts through job status updates.
+ * Service for AI-powered scene detection within chapter text.
+ * 
+ * This is a business logic service that orchestrates:
+ * - LLM calls via SceneDetectionClient
+ * - XML parsing and coordinate localization via SceneProcessingService
+ * - Retry handling with status updates
+ * - Triad analysis for temporal relationships
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class RetryAwareSceneDetectionService implements SceneDetectionPort {
+public class SceneDetectionService {
 
     private final SceneDetectionClient sceneDetectionClient;
     private final SceneProcessingService sceneProcessingService;
@@ -35,7 +36,15 @@ public class RetryAwareSceneDetectionService implements SceneDetectionPort {
     private final TriadOrchestrationService triadOrchestrationService;
     private final TriadEdgePersistenceService triadEdgePersistenceService;
 
-    @Override
+    /**
+     * Detect semantic scenes within chapter text using AI.
+     * 
+     * @param jobId The UUID of the ingestion job (for status tracking)
+     * @param chapterId The UUID of the chapter
+     * @param chapterText The full text content to analyze
+     * @return List of detected scenes with their coordinates
+     * @throws RuntimeException if the detection process fails
+     */
     public List<SceneWithCoordinates> detectScenesInText(UUID jobId, UUID chapterId, String chapterText) {
         // Handle null or empty text gracefully
         if (chapterText == null || chapterText.trim().isEmpty()) {
@@ -50,7 +59,7 @@ public class RetryAwareSceneDetectionService implements SceneDetectionPort {
             return detectScenesWithRetry(jobId, chapterId, chapterText);
         } catch (Exception e) {
             log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage(), e);
-            throw new SceneDetectionException("Scene detection failed: " + e.getMessage(), e);
+            throw new RuntimeException("Scene detection failed: " + e.getMessage(), e);
         }
     }
 
@@ -204,15 +213,5 @@ public class RetryAwareSceneDetectionService implements SceneDetectionPort {
             log.debug("Failed to update job status for job {}: {}", jobId, e.getMessage());
             // Don't fail the main operation if status update fails
         }
-    }
-
-    @Override
-    public boolean isAvailable() {
-        return sceneDetectionClient != null;
-    }
-
-    @Override
-    public String getImplementationInfo() {
-        return "OpenAI Scene Detection with Retry";
     }
 }

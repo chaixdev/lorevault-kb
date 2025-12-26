@@ -1,7 +1,6 @@
 package com.lorevault.api.integration.content;
 
-import com.lorevault.api.application.port.SceneDetectionPort;
-import com.lorevault.api.service.content.retry.RetryAwareSceneDetectionService;
+import com.lorevault.api.service.content.SceneDetectionService;
 import org.mockito.Mockito;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -31,12 +30,11 @@ public class TestConfig {
     }
 
     /**
-     * Mock the SceneDetectionPort for integration tests.
-     * RetryAwareSceneDetectionService now implements this port directly.
+     * Mock the SceneDetectionService for integration tests.
      */
     @Bean
     @Primary
-    public SceneDetectionPort sceneDetectionPort() {
-        return Mockito.mock(SceneDetectionPort.class);
+    public SceneDetectionService sceneDetectionService() {
+        return Mockito.mock(SceneDetectionService.class);
     }
 }
