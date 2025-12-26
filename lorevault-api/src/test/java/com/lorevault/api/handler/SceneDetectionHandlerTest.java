@@ -1,7 +1,6 @@
 package com.lorevault.api.handler;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
-import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
@@ -9,6 +8,7 @@ import com.lorevault.api.dto.content.SceneWithCoordinates;
 import com.lorevault.api.event.ingestion.ChapterPersistedEvent;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
+import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.SceneProcessingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import com.lorevault.api.service.timeline.DefaultTemporalEdgeService;
@@ -38,7 +38,7 @@ import static org.mockito.Mockito.*;
 class SceneDetectionHandlerTest {
 
     @Mock private ContentPersistencePort contentPersistencePort;
-    @Mock private SceneDetectionPort sceneDetectionPort;
+    @Mock private SceneDetectionService sceneDetectionService;
     @Mock private SceneProcessingService sceneProcessingService;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private DefaultTemporalEdgeService defaultTemporalEdgeService;
@@ -85,14 +85,14 @@ class SceneDetectionHandlerTest {
 
             when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(sceneDetectionPort.detectScenesInText(jobId, chapterId, testChapter.getRawText())).thenReturn(sceneCoords);
+            when(sceneDetectionService.detectScenesInText(jobId, chapterId, testChapter.getRawText())).thenReturn(sceneCoords);
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
 
             // When
             handler.handleChapterPersisted(testEvent);
 
             // Then
-            verify(sceneDetectionPort).detectScenesInText(jobId, chapterId, testChapter.getRawText());
+            verify(sceneDetectionService).detectScenesInText(jobId, chapterId, testChapter.getRawText());
             verify(sceneProcessingService).persistDetectedScenes(chapterId, sceneCoords);
             verify(defaultTemporalEdgeService).createAllDefaults(bookId);
 
@@ -117,7 +117,7 @@ class SceneDetectionHandlerTest {
             handler.handleChapterPersisted(testEvent);
 
             // Then
-            verify(sceneDetectionPort, never()).detectScenesInText(any(), any(), anyString());
+            verify(sceneDetectionService, never()).detectScenesInText(any(), any(), anyString());
             verify(sceneProcessingService, never()).persistDetectedScenes(any(), any());
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
@@ -136,7 +136,7 @@ class SceneDetectionHandlerTest {
             // Given
             when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(sceneDetectionPort.detectScenesInText(any(), any(), anyString()))
+            when(sceneDetectionService.detectScenesInText(any(), any(), anyString()))
                     .thenThrow(new RuntimeException("LLM API timeout"));
 
             // When
@@ -204,7 +204,7 @@ class SceneDetectionHandlerTest {
             handler.handleChapterPersisted(testEvent);
 
             // Then
-            verify(sceneDetectionPort, never()).detectScenesInText(any(), any(), anyString());
+            verify(sceneDetectionService, never()).detectScenesInText(any(), any(), anyString());
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
