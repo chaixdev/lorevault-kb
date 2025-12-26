@@ -1,25 +1,16 @@
 package com.lorevault.api.service.ingestion;
 
 import com.lorevault.api.application.port.ContentPersistencePort;
-import com.lorevault.api.application.port.JobContextPort;
-import com.lorevault.api.application.port.SceneDetectionPort;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.content.Chapter;
-import com.lorevault.api.domain.content.Chunk;
-import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.ingestion.StatusRecord;
-import com.lorevault.api.dto.content.SceneWithCoordinates;
 import com.lorevault.api.dto.ingestion.JobListResponse;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import com.lorevault.api.dto.ingestion.SubmitChapterResponse;
 import com.lorevault.api.event.ChapterIngestionEvent;
-import com.lorevault.api.service.content.EmbeddingService;
-import com.lorevault.api.service.content.SceneProcessingService;
-import com.lorevault.api.service.content.TextChunkingService;
-import com.lorevault.api.service.timeline.DefaultTemporalEdgeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -30,16 +21,23 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.util.*;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Comprehensive test suite for IngestionService covering all consolidated functionality:
- * - Chapter submission and validation (formerly ChapterValidationService)
- * - Workflow orchestration (formerly IngestionWorkflowService) 
- * - Job management integration (via IngestionJobService)
+ * Test suite for IngestionService covering:
+ * - Chapter submission and validation
+ * - Job management integration
+ * - Event publishing for async pipeline
+ * 
+ * Note: Workflow orchestration tests have moved to handler tests:
+ * - SceneDetectionHandlerTest
+ * - ChunkingHandlerTest  
+ * - EmbeddingHandlerTest
+ * - CompletionHandlerTest
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("IngestionService Tests")
@@ -48,12 +46,6 @@ class IngestionServiceTest {
     @Mock private ContentPersistencePort contentPersistencePort;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private ApplicationEventPublisher eventPublisher;
-    @Mock private JobContextPort jobContextPort;
-    @Mock private SceneDetectionPort sceneDetectionPort;
-    @Mock private SceneProcessingService sceneProcessingService;
-    @Mock private TextChunkingService textChunkingService;
-    @Mock private EmbeddingService embeddingService;
-    @Mock private DefaultTemporalEdgeService defaultTemporalEdgeService;
 
     @InjectMocks
     private IngestionService ingestionService;
@@ -175,131 +167,6 @@ class IngestionServiceTest {
     }
 
     @Nested
-    @DisplayName("Workflow Orchestration Tests")
-    class WorkflowOrchestrationTests {
-
-        @Test
-        @DisplayName("Should execute complete workflow for new chapter")
-        void processChapter_newChapter_executesCompleteWorkflow() {
-            // Given
-            List<Scene> scenes = createTestScenes(2);
-            List<Chunk> chunks = createTestChunks(3);
-            List<SceneWithCoordinates> scenesWithCoords = List.of(
-                new SceneWithCoordinates(0, 0, 50, "Scene 1"),
-                new SceneWithCoordinates(1, 50, 100, "Scene 2")
-            );
-
-            // Mock scene detection workflow
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(sceneDetectionPort.detectScenesInText(chapterId, testChapter.getRawText())).thenReturn(scenesWithCoords);
-            when(sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords)).thenReturn(scenes);
-            
-            when(textChunkingService.extractChunks(anyString())).thenReturn(chunks);
-            when(embeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(6);
-
-            // When
-            ingestionService.processChapter(testJob, testChapter);
-
-            // Then
-            verify(jobContextPort).setCurrentJobId(jobId);
-            verify(sceneDetectionPort).detectScenesInText(chapterId, testChapter.getRawText());
-            verify(sceneProcessingService).persistDetectedScenes(chapterId, scenesWithCoords);
-            verify(defaultTemporalEdgeService).createAllDefaults(bookId);
-            verify(textChunkingService, times(2)).extractChunks(anyString());
-            verify(contentPersistencePort, times(2)).addChunksToScene(any(), any());
-            verify(embeddingService).generateEmbeddingsForChapter(chapterId);
-            verify(ingestionJobService).completeJob(testJob, chapterId, testChapter.getRawText().length());
-            verify(jobContextPort).clearCurrentJobId();
-        }
-
-        @Test
-        @DisplayName("Should use existing scenes when available")
-        void processChapter_existingScenes_skipsSceneDetection() {
-            // Given
-            List<Scene> existingScenes = createTestScenes(1);
-            List<Chunk> chunks = createTestChunks(2);
-
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(existingScenes);
-            when(textChunkingService.extractChunks(anyString())).thenReturn(chunks);
-            when(embeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(2);
-
-            // When
-            ingestionService.processChapter(testJob, testChapter);
-
-            // Then - Scene detection should be skipped when scenes already exist
-            verify(sceneDetectionPort, never()).detectScenesInText(any(), anyString());
-            verify(sceneProcessingService, never()).persistDetectedScenes(any(), any());
-            verify(defaultTemporalEdgeService, never()).createAllDefaults(any());
-            verify(textChunkingService).extractChunks(anyString());
-            verify(embeddingService).generateEmbeddingsForChapter(chapterId);
-            verify(ingestionJobService).completeJob(testJob, chapterId, testChapter.getRawText().length());
-        }
-
-        @Test
-        @DisplayName("Should handle LLM errors with cleanup")
-        void processChapter_llmError_failsJobWithCleanup() {
-            // Given
-            RuntimeException llmError = new RuntimeException("LLM API call failed");
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(sceneDetectionPort.detectScenesInText(chapterId, testChapter.getRawText())).thenThrow(llmError);
-
-            // When
-            ingestionService.processChapter(testJob, testChapter);
-
-            // Then
-            verify(ingestionJobService).failJobWithCleanup(testJob, "LLM API call failed: LLM API call failed");
-            verify(jobContextPort).clearCurrentJobId();
-        }
-
-        @Test
-        @DisplayName("Should handle non-retryable errors without cleanup")
-        void processChapter_nonRetryableError_failsJobWithoutCleanup() {
-            // Given
-            RuntimeException error = new RuntimeException("Database connection failed");
-            List<SceneWithCoordinates> scenesWithCoords = List.of(
-                new SceneWithCoordinates(0, 0, 50, "Scene 1")
-            );
-            
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(sceneDetectionPort.detectScenesInText(chapterId, testChapter.getRawText())).thenReturn(scenesWithCoords);
-            when(sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords)).thenThrow(error);
-
-            // When
-            ingestionService.processChapter(testJob, testChapter);
-
-            // Then
-            verify(ingestionJobService).failJob(testJob, "Chapter processing failed: Database connection failed");
-            verify(ingestionJobService, never()).failJobWithCleanup(any(), any());
-            verify(jobContextPort).clearCurrentJobId();
-        }
-
-        @Test
-        @DisplayName("Should handle empty chapter text gracefully")
-        void processChapter_emptyChapterText_handlesGracefully() {
-            // Given
-            Chapter emptyChapter = new Chapter();
-            emptyChapter.setId(chapterId);
-            emptyChapter.setBookId(bookId);
-            emptyChapter.setRawText(null);
-
-            List<Scene> scenes = createTestScenes(1);
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(scenes);
-            when(embeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(0);
-
-            // When
-            ingestionService.processChapter(testJob, emptyChapter);
-
-            // Then
-            verify(textChunkingService, never()).extractChunks(any());
-            verify(contentPersistencePort, never()).addChunksToScene(any(), any());
-            verify(ingestionJobService).completeJob(testJob, chapterId, 0);
-        }
-    }
-
-    @Nested
     @DisplayName("Job Management Integration Tests")
     class JobManagementIntegrationTests {
 
@@ -373,21 +240,6 @@ class IngestionServiceTest {
             assertThat(response.getMessage()).isNotNull();
             verify(ingestionJobService).createIngestionJob(chapterId);
         }
-
-        @Test
-        @DisplayName("Should ensure job context cleanup even on failure")
-        void processChapter_anyError_clearsJobContext() {
-            // Given
-            when(contentPersistencePort.findScenesByChapterId(chapterId))
-                    .thenThrow(new RuntimeException("Unexpected error"));
-
-            // When
-            ingestionService.processChapter(testJob, testChapter);
-
-            // Then
-            verify(jobContextPort).setCurrentJobId(jobId);
-            verify(jobContextPort).clearCurrentJobId();
-        }
     }
 
     // Test data creation helper methods
@@ -432,33 +284,5 @@ class IngestionServiceTest {
         request.setChapterTitle("Test Chapter");
         request.setChapterText("This is test chapter content that is long enough to be meaningful for testing purposes.");
         return request;
-    }
-
-    private List<Scene> createTestScenes(int count) {
-        List<Scene> scenes = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            Scene scene = new Scene();
-            scene.setId(UUID.randomUUID());
-            scene.setChapter(testChapter);
-            scene.setSceneIndex(i);
-            scene.setStartCharacterOffset((long) (i * 20));
-            scene.setEndCharacterOffset((long) ((i + 1) * 20));
-            scene.setText("Test scene " + i);
-            scenes.add(scene);
-        }
-        return scenes;
-    }
-
-    private List<Chunk> createTestChunks(int count) {
-        List<Chunk> chunks = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            Chunk chunk = new Chunk();
-            chunk.setText("Test chunk " + i);
-            chunk.setStartCharInChapter(i * 10);
-            chunk.setEndCharInChapter((i + 1) * 10);
-            chunk.setChunkNumberInChapter(i + 1);
-            chunks.add(chunk);
-        }
-        return chunks;
     }
 }
