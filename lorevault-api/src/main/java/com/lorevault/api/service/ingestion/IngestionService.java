@@ -30,7 +30,7 @@ import static com.lorevault.api.util.HashUtils.generateSha256Hash;
  * - Publishing events to trigger async processing pipeline
  * 
  * Processing is handled by event-driven handlers:
- * SceneDetectionHandler → ChunkingHandler → EmbeddingHandler → CompletionHandler
+ * SceneDetectionHandler → ChunkingHandler → EmbeddingHandler
  */
 @Service
 @RequiredArgsConstructor
