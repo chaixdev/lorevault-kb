@@ -5,13 +5,11 @@ import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ChapterIngestionEvent;
-import com.lorevault.api.event.ingestion.IngestionFailedEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
 import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.SceneProcessingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import com.lorevault.api.service.timeline.DefaultTemporalEdgeService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
@@ -38,16 +36,31 @@ import java.util.UUID;
  * - Update job status throughout the process
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class SceneDetectionHandler {
 
     private final ContentPersistencePort contentPersistencePort;
     private final SceneDetectionService sceneDetectionService;
     private final SceneProcessingService sceneProcessingService;
-    private final IngestionJobService ingestionJobService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
     private final ApplicationEventPublisher eventPublisher;
+    private final PipelineStageSupport stageSupport;
+
+    public SceneDetectionHandler(
+            ContentPersistencePort contentPersistencePort,
+            SceneDetectionService sceneDetectionService,
+            SceneProcessingService sceneProcessingService,
+            IngestionJobService ingestionJobService,
+            DefaultTemporalEdgeService defaultTemporalEdgeService,
+            ApplicationEventPublisher eventPublisher
+    ) {
+        this.contentPersistencePort = contentPersistencePort;
+        this.sceneDetectionService = sceneDetectionService;
+        this.sceneProcessingService = sceneProcessingService;
+        this.defaultTemporalEdgeService = defaultTemporalEdgeService;
+        this.eventPublisher = eventPublisher;
+        this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
+    }
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -58,14 +71,19 @@ public class SceneDetectionHandler {
         
         log.info("[SCENE_DETECTION] Starting pipeline for job={}, chapter={}", jobId, chapterId);
         
-        try {
+        stageSupport.runStage(
+            this,
+            "SCENE_DETECTION",
+            jobId,
+            chapterId,
+            () -> {
             // Look up the chapter to get the bookId
             Chapter chapter = contentPersistencePort.findChapterById(chapterId)
                     .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
             
             UUID bookId = chapter.getBookId();
             
-            updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION, 
+                    stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
                     "Analyzing chapter text with AI to identify semantic scene boundaries");
 
             // Check for existing scenes (idempotency)
@@ -74,7 +92,7 @@ public class SceneDetectionHandler {
                 log.info("[SCENE_DETECTION] Found {} existing scenes for chapter {}, skipping detection", 
                         existingScenes.size(), chapterId);
                 emitScenesDetected(jobId, chapterId, bookId, existingScenes);
-                return;
+                return null;
             }
 
             // Detect and persist new scenes
@@ -88,16 +106,15 @@ public class SceneDetectionHandler {
             log.info("[SCENE_DETECTION] Creating default temporal edges for book {}", bookId);
             defaultTemporalEdgeService.createAllDefaults(bookId);
             
-            updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
+                    stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
                     String.format("Detected %d semantic scenes from chapter text", scenes.size()));
             
             emitScenesDetected(jobId, chapterId, bookId, scenes);
-            
-        } catch (Exception e) {
-            log.error("[SCENE_DETECTION] Failed for job={}, chapter={}: {}", 
-                    jobId, chapterId, e.getMessage(), e);
-            emitFailure(jobId, chapterId, "SCENE_DETECTION", e);
-        }
+
+            return null;
+                },
+                this::isRetryableError
+        );
     }
 
     private List<Scene> detectAndPersistScenes(UUID jobId, UUID chapterId) {
@@ -133,17 +150,6 @@ public class SceneDetectionHandler {
         eventPublisher.publishEvent(new ScenesDetectedEvent(this, jobId, chapterId, bookId, sceneIds));
     }
 
-    private void emitFailure(UUID jobId, UUID chapterId, String stage, Exception e) {
-        boolean retryable = isRetryableError(e);
-        
-        eventPublisher.publishEvent(new IngestionFailedEvent(
-                this, jobId, chapterId, stage, e.getMessage(), retryable));
-        
-        // Also update job status to failed
-        ingestionJobService.updateJobStatus(jobId, IngestionStatus.FAILED, 
-                stage + " failed: " + e.getMessage(), java.util.Collections.emptyMap());
-    }
-
     private boolean isRetryableError(Exception e) {
         String message = e.getMessage();
         return message != null && (
@@ -152,9 +158,5 @@ public class SceneDetectionHandler {
                 message.contains("Empty response") || 
                 message.contains("timeout") ||
                 message.contains("rate limit"));
-    }
-
-    private void updateJobStatus(UUID jobId, IngestionStatus status, String description) {
-        ingestionJobService.updateJobStatus(jobId, status, description, java.util.Collections.emptyMap());
     }
 }

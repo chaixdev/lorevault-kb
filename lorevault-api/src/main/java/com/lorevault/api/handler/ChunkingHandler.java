@@ -6,11 +6,9 @@ import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChunksCreatedEvent;
-import com.lorevault.api.event.ingestion.IngestionFailedEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
 import com.lorevault.api.service.content.TextChunkingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
@@ -21,7 +19,6 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,14 +36,25 @@ import static com.lorevault.api.util.HashUtils.generateSha256Hash;
  * - Persist chunks with scene relationships
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class ChunkingHandler {
 
     private final ContentPersistencePort contentPersistencePort;
     private final TextChunkingService textChunkingService;
-    private final IngestionJobService ingestionJobService;
     private final ApplicationEventPublisher eventPublisher;
+    private final PipelineStageSupport stageSupport;
+
+    public ChunkingHandler(
+            ContentPersistencePort contentPersistencePort,
+            TextChunkingService textChunkingService,
+            IngestionJobService ingestionJobService,
+            ApplicationEventPublisher eventPublisher
+    ) {
+        this.contentPersistencePort = contentPersistencePort;
+        this.textChunkingService = textChunkingService;
+        this.eventPublisher = eventPublisher;
+        this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
+    }
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -59,8 +67,13 @@ public class ChunkingHandler {
         log.info("[CHUNKING] Starting for job={}, chapter={}, sceneCount={}", 
                 jobId, chapterId, event.getSceneCount());
         
-        try {
-            updateJobStatus(jobId, IngestionStatus.EMBEDDING_CHUNKS, 
+        stageSupport.runStage(
+            this,
+                "CHUNKING",
+                jobId,
+                chapterId,
+                () -> {
+            stageSupport.updateJobStatus(jobId, IngestionStatus.EMBEDDING_CHUNKS,
                     "Breaking down scenes into embeddable text chunks");
 
             // Check for existing chunks (idempotency)
@@ -69,7 +82,7 @@ public class ChunkingHandler {
                 log.info("[CHUNKING] Found {} existing chunks for chapter {}, skipping", 
                         existingCount, chapterId);
                 emitChunksCreated(jobId, chapterId, bookId, existingCount);
-                return;
+                return null;
             }
 
             // Get chapter text for chunk extraction
@@ -80,26 +93,25 @@ public class ChunkingHandler {
             if (chapterText == null || chapterText.isEmpty()) {
                 log.warn("[CHUNKING] Chapter {} has no text content", chapterId);
                 emitChunksCreated(jobId, chapterId, bookId, 0);
-                return;
+                return null;
             }
 
             // Get scenes and create chunks
             List<Scene> scenes = contentPersistencePort.findScenesByChapterId(chapterId);
             int totalChunks = createChunksFromScenes(chapterText, scenes);
             
-            updateJobStatus(jobId, IngestionStatus.EMBEDDING_CHUNKS,
+                stageSupport.updateJobStatus(jobId, IngestionStatus.EMBEDDING_CHUNKS,
                     String.format("Created %d chunks from %d scenes", totalChunks, scenes.size()));
             
             log.info("[CHUNKING] Completed for chapter {}: {} chunks from {} scenes", 
                     chapterId, totalChunks, scenes.size());
             
             emitChunksCreated(jobId, chapterId, bookId, totalChunks);
-            
-        } catch (Exception e) {
-            log.error("[CHUNKING] Failed for job={}, chapter={}: {}", 
-                    jobId, chapterId, e.getMessage(), e);
-            emitFailure(jobId, chapterId, "CHUNKING", e);
-        }
+
+            return null;
+                },
+                e -> false
+        );
     }
 
     private int createChunksFromScenes(String chapterText, List<Scene> scenes) {
@@ -169,17 +181,5 @@ public class ChunkingHandler {
                 jobId, chapterId, chunkCount);
         
         eventPublisher.publishEvent(new ChunksCreatedEvent(this, jobId, chapterId, bookId, chunkCount));
-    }
-
-    private void emitFailure(UUID jobId, UUID chapterId, String stage, Exception e) {
-        eventPublisher.publishEvent(new IngestionFailedEvent(
-                this, jobId, chapterId, stage, e.getMessage(), false));
-        
-        ingestionJobService.updateJobStatus(jobId, IngestionStatus.FAILED, 
-                stage + " failed: " + e.getMessage(), Collections.emptyMap());
-    }
-
-    private void updateJobStatus(UUID jobId, IngestionStatus status, String description) {
-        ingestionJobService.updateJobStatus(jobId, status, description, Collections.emptyMap());
     }
 }
