@@ -12,10 +12,18 @@ import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import jakarta.annotation.PostConstruct;
+
+import java.util.function.Supplier;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,6 +48,43 @@ public class IngestionService {
     private final ContentPersistencePort contentPersistencePort;
     private final IngestionJobService ingestionJobService;
     private final ApplicationEventPublisher eventPublisher;
+
+    /**
+     * Optional transaction manager used to isolate best-effort lookup queries.
+     *
+     * Why: some Neo4j/SDN failures terminate the *current* transaction; if we swallow that exception and
+     * keep executing more queries in the same transaction, we can hit "Cannot run more queries in this transaction".
+     * Running these lookups in a REQUIRES_NEW read-only transaction prevents poisoning the submit transaction.
+     */
+    @Autowired(required = false)
+    @Nullable
+    private PlatformTransactionManager transactionManager;
+
+    private TransactionTemplate requiresNewReadOnlyTx;
+
+    @PostConstruct
+    void initTransactionTemplates() {
+        PlatformTransactionManager tm = this.transactionManager;
+        if (tm == null) {
+            return;
+        }
+        TransactionTemplate template = new TransactionTemplate(tm);
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        template.setReadOnly(true);
+        this.requiresNewReadOnlyTx = template;
+    }
+
+    private <T> T bestEffortLookup(String operation, Supplier<T> supplier, T fallback) {
+        try {
+            if (requiresNewReadOnlyTx != null) {
+                return requiresNewReadOnlyTx.execute(status -> supplier.get());
+            }
+            return supplier.get();
+        } catch (Exception e) {
+            log.warn("Best-effort lookup failed ({}): {}", operation, e.getMessage(), e);
+            return fallback;
+        }
+    }
 
     /**
      * Context object for chapter validation results
@@ -149,34 +194,31 @@ public class IngestionService {
      * Check if a chapter has an active processing job
      */
     private boolean checkForActiveJob(UUID chapterId) {
-        try {
-            return contentPersistencePort.hasActiveJobForChapter(chapterId);
-        } catch (Exception e) {
-            log.warn("Failed to check for active job for chapter {}: {}", chapterId, e.getMessage());
-            return false;
-        }
+        return bestEffortLookup(
+            "hasActiveJobForChapter chapterId=" + chapterId,
+            () -> contentPersistencePort.hasActiveJobForChapter(chapterId),
+            false
+        );
     }
 
     /**
      * Find the most recent job for a chapter
      */
     private Optional<UUID> findMostRecentJobId(UUID chapterId) {
-        try {
-            return contentPersistencePort.findMostRecentJobForChapter(chapterId)
-                    .map(IngestionJob::getId);
-        } catch (Exception e) {
-            log.warn("Failed to find most recent job for chapter {}: {}", chapterId, e.getMessage());
-            return Optional.empty();
-        }
+        return bestEffortLookup(
+            "findMostRecentJobForChapter chapterId=" + chapterId,
+            () -> contentPersistencePort.findMostRecentJobForChapter(chapterId)
+                .map(IngestionJob::getId),
+            Optional.empty()
+        );
     }
 
     private Optional<Chapter> findExistingChapterByHash(String contentHash) {
-        try {
-            return contentPersistencePort.findChapterByContentHash(contentHash);
-        } catch (Exception e) {
-            log.warn("Graph lookup failed for content hash {}: {}", contentHash, e.getMessage());
-            return Optional.empty();
-        }
+        return bestEffortLookup(
+            "findChapterByContentHash hash=" + contentHash,
+            () -> contentPersistencePort.findChapterByContentHash(contentHash),
+            Optional.empty()
+        );
     }
 
     private UUID createNewChapter(SubmitChapterRequest request, String contentHash) {

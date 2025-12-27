@@ -10,6 +10,7 @@ import com.lorevault.api.dto.ingestion.JobStatusResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -91,7 +92,7 @@ public class IngestionJobService {
     /**
      * Mark job as failed
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void failJob(IngestionJob job, String errorMessage) {
         StatusRecord failureStatus = new StatusRecord(
                 UUID.randomUUID(), 
@@ -118,7 +119,7 @@ public class IngestionJobService {
      * Mark job as failed and clean up any partially processed data
      * This allows a clean retry of the chapter later
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void failJobWithCleanup(IngestionJob job, String errorMessage) {
         UUID chapterId = job.getChapterId();
         
@@ -135,7 +136,7 @@ public class IngestionJobService {
     /**
      * Update job status with new status record
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void updateJobStatus(UUID jobId, IngestionStatus status, String description, Map<String, Object> properties) {
         StatusRecord statusRecord = new StatusRecord(
             UUID.randomUUID(),

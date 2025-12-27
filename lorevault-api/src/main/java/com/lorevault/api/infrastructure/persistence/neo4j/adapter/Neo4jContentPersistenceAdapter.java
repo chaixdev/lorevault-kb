@@ -26,10 +26,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Component
 @RequiredArgsConstructor
 @Transactional
+@SuppressWarnings("null")
 public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
 
     private final ChapterGraphRepository chapterRepo;
@@ -52,41 +54,46 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
 
     @Override
     public Chapter createChapter(Chapter chapter) {
-        ChapterNode node = mapper.toNode(chapter);
+        ChapterNode node = Objects.requireNonNull(mapper.toNode(chapter), "chapter must not be null");
         if (node.getId() == null) {
             node.setId(UUID.randomUUID());
         }
         // Establish Chapter -> Book relationship if bookId provided
-        if (chapter.getBookId() != null) {
-            bookRepo.findById(chapter.getBookId()).ifPresent(node::setBook);
+        UUID bookId = chapter.getBookId();
+        if (bookId != null) {
+            bookRepo.findById(bookId).ifPresent(node::setBook);
         }
         return mapper.toDomain(chapterRepo.save(node));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Chapter> findChapterById(UUID id) {
         return chapterRepo.findById(id).map(mapper::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Chapter> findChapterByContentHash(String contentHash) {
         return chapterRepo.findByContentHash(contentHash).map(mapper::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean chapterExistsByContentHash(String contentHash) {
         return chapterRepo.existsByContentHash(contentHash);
     }
 
     @Override
     public Chapter updateChapter(Chapter chapter) {
-        return mapper.toDomain(chapterRepo.save(mapper.toNode(chapter)));
+        ChapterNode node = Objects.requireNonNull(mapper.toNode(chapter), "chapter must not be null");
+        return mapper.toDomain(chapterRepo.save(node));
     }
 
     @Override
     public Scene addSceneToChapter(UUID chapterId, Scene scene) {
         ChapterNode chapterNode = chapterRepo.findById(chapterId).orElseThrow();
-        SceneNode sceneNode = mapper.toNode(scene);
+        SceneNode sceneNode = Objects.requireNonNull(mapper.toNode(scene), "scene must not be null");
         if (sceneNode.getId() == null) sceneNode.setId(UUID.randomUUID());
         // Ensure the scene carries the chapterId for efficient lookups when also labeled :Event
         if (sceneNode.getChapterId() == null) {
@@ -99,17 +106,58 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
             scenes = new ArrayList<>();
             chapterNode.setScenes(scenes);
         }
-        scenes.add(sceneNode);
+
+        // Idempotency: avoid duplicating HAS_SCENE relationships on retries.
+        UUID sceneId = sceneNode.getId();
+        boolean alreadyLinked = scenes.stream()
+                .map(SceneNode::getId)
+                .anyMatch(existingId -> Objects.equals(existingId, sceneId));
+        if (!alreadyLinked) {
+            scenes.add(sceneNode);
+        }
         chapterRepo.save(chapterNode);
         return mapper.toDomain(sceneNode);
     }
 
     @Override
     public List<Scene> addScenesToChapter(UUID chapterId, List<Scene> scenes) {
-        return scenes.stream().map(s -> addSceneToChapter(chapterId, s)).collect(Collectors.toList());
+        ChapterNode chapterNode = chapterRepo.findById(chapterId).orElseThrow();
+        List<SceneNode> sceneNodes = scenes.stream()
+                .map(s -> Objects.requireNonNull(mapper.toNode(s), "scene must not be null"))
+                .collect(Collectors.toList());
+        
+        sceneNodes.forEach(sceneNode -> {
+            if (sceneNode.getId() == null) sceneNode.setId(UUID.randomUUID());
+            if (sceneNode.getChapterId() == null) {
+                sceneNode.setChapterId(chapterNode.getId());
+            }
+        });
+        
+        sceneNodes = sceneRepo.saveAll(sceneNodes);
+        
+        var chapterScenes = chapterNode.getScenes();
+        if (chapterScenes == null) {
+            chapterScenes = new ArrayList<>();
+            chapterNode.setScenes(chapterScenes);
+        }
+
+        // Idempotency: avoid duplicating HAS_SCENE relationships on retries.
+        Set<UUID> existingSceneIds = chapterScenes.stream()
+                .map(SceneNode::getId)
+                .collect(Collectors.toSet());
+        for (SceneNode sceneNode : sceneNodes) {
+            UUID sceneId = sceneNode.getId();
+            if (sceneId == null || existingSceneIds.add(sceneId)) {
+                chapterScenes.add(sceneNode);
+            }
+        }
+        chapterRepo.save(chapterNode);
+        
+        return mapper.toSceneDomainList(sceneNodes);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Scene> findScenesByChapterId(UUID chapterId) {
         return mapper.toSceneDomainList(sceneRepo.findByChapterId(chapterId));
     }
@@ -122,11 +170,13 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UUID> findChapterIdsUpTo(UUID bookId, int uptoChapterNumber) {
         return chapterReadRepo.findChapterIdsUpTo(bookId, uptoChapterNumber);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<AbstractMap.SimpleEntry<UUID, UUID>> findChapterTemporalEdges(UUID chapterId) {
         return temporalReadRepo.findChapterEventEdges(chapterId).stream()
                 .map(p -> new AbstractMap.SimpleEntry<>(p.getFromId(), p.getToId()))
@@ -136,16 +186,35 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     @Override
     public List<Chunk> addChunksToChapter(UUID chapterId, List<Chunk> chunks) {
         ChapterNode chapter = chapterRepo.findById(chapterId).orElseThrow();
-        List<ChunkNode> chunkNodes = mapper.toChunkNodeList(chunks);
-        for (ChunkNode chunk : chunkNodes) {
+        List<ChunkNode> chunkNodes = chunks.stream()
+                .map(c -> Objects.requireNonNull(mapper.toNode(c), "chunk must not be null"))
+                .toList();
+        chunkNodes.forEach(chunk -> {
             if (chunk.getId() == null) chunk.setId(UUID.randomUUID());
-            chunkRepo.save(chunk);
-        }
+        });
+        chunkRepo.saveAll(chunkNodes);
+        
         var existing = chapter.getChunks();
-        if (existing != null) {
-            existing.addAll(chunkNodes);
-            existing.sort(Comparator.comparing(ChunkNode::getChunkNumberInChapter));
+        if (existing == null) {
+            existing = new ArrayList<>();
+            chapter.setChunks(existing);
         }
+
+        // Idempotency: avoid duplicating HAS_CHUNK relationships on retries.
+        Set<UUID> existingChunkIds = existing.stream()
+                .map(ChunkNode::getId)
+                .collect(Collectors.toSet());
+        for (ChunkNode chunkNode : chunkNodes) {
+            UUID chunkId = chunkNode.getId();
+            if (chunkId == null || existingChunkIds.add(chunkId)) {
+                existing.add(chunkNode);
+            }
+        }
+
+        existing.sort(Comparator.comparing(
+                ChunkNode::getChunkNumberInChapter,
+                Comparator.nullsLast(Comparator.naturalOrder())
+        ));
         chapterRepo.save(chapter);
         return mapper.toChunkDomainList(chunkNodes);
     }
@@ -153,18 +222,32 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     @Override
     public Chunk addChunkToScene(UUID sceneId, Chunk chunk) {
         SceneNode scene = sceneRepo.findById(sceneId).orElseThrow();
-        ChunkNode chunkNode = mapper.toNode(chunk);
+        ChunkNode chunkNode = Objects.requireNonNull(mapper.toNode(chunk), "chunk must not be null");
         if (chunkNode.getId() == null) chunkNode.setId(UUID.randomUUID());
-        chunkNode = chunkRepo.save(chunkNode);
+        ChunkNode savedChunkNode = chunkRepo.save(chunkNode);
         if (scene.getChunks() == null) scene.setChunks(new ArrayList<>());
-        SceneHasChunk rel = new SceneHasChunk();
-        rel.setChunk(chunkNode);
-        try {
-            rel.setChunkIndex(chunkNode.getChunkNumberInChapter());
-        } catch (Exception ignored) {}
-        scene.getChunks().add(rel);
+
+        // Idempotency: avoid duplicating HAS_CHUNK relationships for the same chunk.
+        boolean alreadyLinked = scene.getChunks().stream()
+                .map(SceneHasChunk::getChunk)
+                .filter(Objects::nonNull)
+                .map(ChunkNode::getId)
+            .anyMatch(existingId -> Objects.equals(existingId, savedChunkNode.getId()));
+
+        if (!alreadyLinked) {
+            SceneHasChunk rel = new SceneHasChunk();
+            rel.setChunk(savedChunkNode);
+
+            // Defensive: chunkIndex is optional; avoid NPEs on partially-built chunks.
+            Integer idx = savedChunkNode.getChunkNumberInChapter();
+            if (idx != null) {
+                rel.setChunkIndex(idx);
+            }
+
+            scene.getChunks().add(rel);
+        }
         sceneRepo.save(scene);
-        return mapper.toDomain(chunkNode);
+        return mapper.toDomain(savedChunkNode);
     }
 
     @Override
@@ -174,12 +257,13 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
 
     @Override
     public IngestionJob createJob(IngestionJob job) {
-        IngestionJobNode jobNode = mapper.toNode(job);
+        IngestionJobNode jobNode = Objects.requireNonNull(mapper.toNode(job), "job must not be null");
         if (jobNode.getId() == null) jobNode.setId(UUID.randomUUID());
         return mapper.toDomain(jobRepo.save(jobNode));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<IngestionJob> findJob(UUID id) {
     // Load job along with current status so callers can access currentStatus without additional queries
     return jobRepo.findByIdWithCurrentStatus(id).map(mapper::toDomain);
@@ -187,31 +271,37 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
 
     @Override
     public IngestionJob updateJob(IngestionJob job) {
-        return mapper.toDomain(jobRepo.save(mapper.toNode(job)));
+        IngestionJobNode node = Objects.requireNonNull(mapper.toNode(job), "job must not be null");
+        return mapper.toDomain(jobRepo.save(node));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<IngestionJob> findMostRecentJobForChapter(UUID chapterId) {
         return jobRepo.findLatestForChapter(chapterId).map(mapper::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean hasActiveJobForChapter(UUID chapterId) {
         return jobRepo.existsActiveForChapter(chapterId);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<IngestionJob> findJobsByChapterIds(List<UUID> chapterIds) {
         if (chapterIds == null || chapterIds.isEmpty()) return List.of();
         return mapper.toIngestionJobDomainList(jobRepo.findByChapterIds(chapterIds));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<IngestionJob> findAllJobs() {
         return mapper.toIngestionJobDomainList(jobRepo.findAll());
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Chapter> findChaptersByUniverse(String universe) {
         if (universe == null || universe.isBlank()) return List.of();
         return mapper.toChapterDomainList(chapterRepo.findAll().stream()
@@ -221,7 +311,7 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
 
     @Override
     public StatusRecord addStatusRecord(UUID jobId, StatusRecord record) {
-        var recordNode = mapper.toNode(record);
+        var recordNode = Objects.requireNonNull(mapper.toNode(record), "record must not be null");
         if (recordNode.getId() == null) recordNode.setId(UUID.randomUUID());
         if (recordNode.getJobId() == null) recordNode.setJobId(jobId);
 
@@ -236,6 +326,7 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<StatusRecord> findStatusHistoryForJob(UUID jobId) {
         return mapper.toStatusRecordDomainList(statusRepo.findStatusHistoryForJob(jobId));
     }
@@ -243,15 +334,17 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     // LLM Call Records
     @Override
     public LlmCallRecord addLlmCallRecord(LlmCallRecord record) {
-        LlmCallRecordNode node = mapper.toNode(record);
+        LlmCallRecordNode node = Objects.requireNonNull(mapper.toNode(record), "record must not be null");
         if (node.getId() == null) node.setId(UUID.randomUUID());
         
         // Establish relationships for Neo4j graph visualization
-        if (record.getJobId() != null) {
-            jobRepo.findById(record.getJobId()).ifPresent(node::setJob);
+        UUID jobId = record.getJobId();
+        if (jobId != null) {
+            jobRepo.findById(jobId).ifPresent(node::setJob);
         }
-        if (record.getStatusRecordId() != null) {
-            statusRepo.findById(record.getStatusRecordId()).ifPresent(node::setStatus);
+        UUID statusRecordId = record.getStatusRecordId();
+        if (statusRecordId != null) {
+            statusRepo.findById(statusRecordId).ifPresent(node::setStatus);
         }
         
         node = llmCallRepo.save(node);
@@ -259,16 +352,19 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<LlmCallRecord> findLlmCallsByJob(UUID jobId) {
         return llmCallRepo.findByJobId(jobId).stream().map(mapper::toDomain).toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<LlmCallRecord> findLlmCallsByJobAndStep(UUID jobId, String step) {
         return llmCallRepo.findByJobIdAndStep(jobId, step).stream().map(mapper::toDomain).toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Chunk> findChunksByChapterId(UUID chapterId) {
         long start = System.currentTimeMillis();
         List<ChunkNode> viaScenes = chunkRepo.findByChapterIdViaScenes(chapterId);
@@ -296,11 +392,13 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean chunksExistForChapter(UUID chapterId) {
         return chunkRepo.existsForChapterViaScenes(chapterId) || chunkRepo.existsForChapter(chapterId);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public int countChunksByChapterId(UUID chapterId) {
         int via = chunkRepo.countByChapterIdViaScenes(chapterId);
         return via > 0 ? via : chunkRepo.countByChapterId(chapterId);
@@ -308,7 +406,7 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
 
     @Override
     public IngestionJob createJobWithChapter(IngestionJob job, UUID chapterId) {
-        var jobNode = mapper.toNode(job);
+        var jobNode = Objects.requireNonNull(mapper.toNode(job), "job must not be null");
         if (jobNode.getId() == null) jobNode.setId(UUID.randomUUID());
         ChapterNode chapter = chapterRepo.findById(chapterId).orElseThrow();
         jobNode.setChapter(chapter);
@@ -318,20 +416,26 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
 
     @Override
     public Chunk updateChunk(Chunk chunk) {
-        return mapper.toDomain(chunkRepo.save(mapper.toNode(chunk)));
+        ChunkNode node = Objects.requireNonNull(mapper.toNode(chunk), "chunk must not be null");
+        return mapper.toDomain(chunkRepo.save(node));
     }
 
     @Override
     public List<Chunk> updateChunks(List<Chunk> chunks) {
         long start = System.currentTimeMillis();
         if (chunks == null || chunks.isEmpty()) return List.of();
-        List<ChunkNode> saved = chunks.stream().map(mapper::toNode).map(chunkRepo::save).toList();
+        List<ChunkNode> nodes = chunks.stream()
+                .map(c -> Objects.requireNonNull(mapper.toNode(c), "chunk must not be null"))
+                .collect(Collectors.toList());
+        Iterable<ChunkNode> saved = chunkRepo.saveAll(nodes);
+        List<ChunkNode> savedList = StreamSupport.stream(saved.spliterator(), false).toList();
         long ms = System.currentTimeMillis() - start;
-        System.out.println("[Neo4jAdapter] updateChunks persisted=" + saved.size() + " ms=" + ms);
-        return mapper.toChunkDomainList(saved);
+        System.out.println("[Neo4jAdapter] updateChunks persisted=" + savedList.size() + " ms=" + ms);
+        return mapper.toChunkDomainList(savedList);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Chunk> findAllChunksWithEmbeddings() {
         long start = System.currentTimeMillis();
         List<ChunkNode> chunks = chunkRepo.findAllWithEmbeddings();
@@ -341,6 +445,7 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Chunk> findChunkById(UUID id) {
         return chunkRepo.findById(id).map(mapper::toDomain);
     }
@@ -357,16 +462,19 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Universe> findUniverseById(UUID id) {
         return universeRepo.findById(id).map(mapper::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Universe> findUniverseByName(String name) {
         return universeRepo.findByName(name).map(mapper::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Universe> findAllUniverses() {
         return universeRepo.findAll().stream()
                 .map(mapper::toDomain)
@@ -376,14 +484,15 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     // Publication Hierarchy - Series
     @Override
     public Series createSeries(Series series) {
-        SeriesNode node = mapper.toNode(series);
+        SeriesNode node = Objects.requireNonNull(mapper.toNode(series), "series must not be null");
         if (node.getId() == null) {
             node.setId(UUID.randomUUID());
         }
         
         // Establish relationship to Universe
-        UniverseNode universeNode = universeRepo.findById(series.getUniverseId())
-            .orElseThrow(() -> new IllegalArgumentException("Universe not found: " + series.getUniverseId()));
+        UUID universeId = Objects.requireNonNull(series.getUniverseId(), "series.universeId must not be null");
+        UniverseNode universeNode = universeRepo.findById(universeId)
+            .orElseThrow(() -> new IllegalArgumentException("Universe not found: " + universeId));
         node.setUniverse(universeNode);
         
         SeriesNode saved = seriesRepo.save(node);
@@ -391,16 +500,19 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Series> findSeriesById(UUID id) {
         return seriesRepo.findById(id).map(mapper::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Series> findSeriesByNameAndUniverseId(String name, UUID universeId) {
         return seriesRepo.findByNameAndUniverseId(name, universeId).map(mapper::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Series> findSeriesByUniverseId(UUID universeId) {
         if (universeId == null) {
             return List.of();
@@ -413,20 +525,22 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     // Publication Hierarchy - Books
     @Override
     public Book createBook(Book book) {
-        BookNode node = mapper.toNode(book);
+        BookNode node = Objects.requireNonNull(mapper.toNode(book), "book must not be null");
         if (node.getId() == null) {
             node.setId(UUID.randomUUID());
         }
         
         // Establish relationship to Universe
-        UniverseNode universeNode = universeRepo.findById(book.getUniverseId())
-            .orElseThrow(() -> new IllegalArgumentException("Universe not found: " + book.getUniverseId()));
+        UUID universeId = Objects.requireNonNull(book.getUniverseId(), "book.universeId must not be null");
+        UniverseNode universeNode = universeRepo.findById(universeId)
+            .orElseThrow(() -> new IllegalArgumentException("Universe not found: " + universeId));
         node.setUniverseNode(universeNode);
         
         // Establish relationship to Series if book is part of a series
         if (book.getSeriesId() != null) {
-            SeriesNode seriesNode = seriesRepo.findById(book.getSeriesId())
-                .orElseThrow(() -> new IllegalArgumentException("Series not found: " + book.getSeriesId()));
+            UUID seriesId = book.getSeriesId();
+            SeriesNode seriesNode = seriesRepo.findById(seriesId)
+                .orElseThrow(() -> new IllegalArgumentException("Series not found: " + seriesId));
             node.setSeriesNode(seriesNode);
         }
         
@@ -435,21 +549,25 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Book> findBookById(UUID id) {
         return bookRepo.findById(id).map(mapper::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Book> findBookByTitleAndSeriesId(String title, UUID seriesId) {
         return bookRepo.findByTitleAndSeriesId(title, seriesId).map(mapper::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Book> findStandaloneBookByTitleAndUniverseId(String title, UUID universeId) {
         return bookRepo.findStandaloneByTitleAndUniverseId(title, universeId).map(mapper::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Book> findBooksByUniverseId(UUID universeId) {
         if (universeId == null) {
             return List.of();
@@ -460,6 +578,7 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Book> findBooksBySeriesId(UUID seriesId) {
         if (seriesId == null) {
             return List.of();
