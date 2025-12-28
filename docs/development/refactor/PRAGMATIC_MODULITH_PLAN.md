@@ -33,10 +33,12 @@ This plan intentionally relaxes Clean Architecture for the stable Knowledge Grap
 ### 1.4 SDN Modeling Rules (IDs, relationships, equality)
 Annotating domain entities with SDN reduces mapping overhead, but SDN has sharp edges. These rules keep the model predictable:
 
-*   **Stable IDs only:** Prefer explicit IDs (`UUID`/String) with `@Id` (and `@GeneratedValue` only if you truly want SDN-generated IDs). Avoid relying on Neo4j internal IDs.
+*   **Stable IDs only (UUIDv7):** Use explicit UUIDv7 identifiers for aggregates with `@Id` (avoid Neo4j internal IDs). Prefer representing IDs as `UUID` in Java; serialize as needed at API boundaries.
 *   **Relationship properties are first-class:** If a relationship needs properties (ordering, indices, provenance, timestamps), model it with `@RelationshipProperties` instead of “just a list”.
 *   **Avoid recursive equality:** Do not include relationships in `equals/hashCode`/`toString`. Equality should be based on the stable ID only.
-*   **Ordering is explicit:** If ordering matters (e.g., chunks within a chapter/scene), store it explicitly (relationship property or node field) and test it.
+*   **Ordering policy (derived vs explicit):**
+    *   **Derived** when order is intrinsic/canonical (e.g., Chapter → Chunk ordered by `chunkNumberInChapter`).
+    *   **Explicit** when order is contextual to the association (e.g., Scene → Chunk ordered by relationship `chunkIndex` via `@RelationshipProperties`).
 
 ## 2. Phase 1: Ingestion Feature (Pilot)
 
