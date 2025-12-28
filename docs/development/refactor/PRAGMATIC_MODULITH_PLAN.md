@@ -1,7 +1,7 @@
 # Refactoring Plan: Pragmatic Modulith & Hybrid Architecture
 
 **Date:** December 27, 2025
-**Status:** Approved
+**Status:** Phase 1 Complete (Dec 28, 2025)
 **Goal:** Reduce architectural bloat by adopting a "Pragmatic Modulith" approach for core graph entities while retaining Ports & Adapters for volatile infrastructure (AI, Vector Search).
 
 ## 1. Core Philosophy
@@ -42,40 +42,42 @@ Annotating domain entities with SDN reduces mapping overhead, but SDN has sharp 
 
 ## 2. Phase 1: Ingestion Feature (Pilot)
 
+**Status: COMPLETED (Dec 28, 2025)**
+
 We will start by refactoring the `IngestionJob` and related entities.
 
 ### 2.1. Merge Domain & Persistence Models
 *   **Target:** `com.lorevault.api.domain.ingestion.*`
 *   **Action:**
-    *   Annotate `IngestionJob` with `@Node("IngestionJob")`.
-    *   Annotate `StatusRecord` with `@Node("StatusRecord")`.
-    *   Annotate `LlmCallRecord` with `@Node("LlmCallRecord")`.
-    *   Move relationship fields (e.g., `@Relationship`) from the old `*Node` classes to these domain classes.
+    *   [x] Annotate `IngestionJob` with `@Node("IngestionJob")`.
+    *   [x] Annotate `StatusRecord` with `@Node("StatusRecord")`.
+    *   [x] Annotate `LlmCallRecord` with `@Node("LlmCallRecord")`.
+    *   [x] Move relationship fields (e.g., `@Relationship`) from the old `*Node` classes to these domain classes.
 
 ### 2.2. Update Repositories
 *   **Target:** `com.lorevault.api.infrastructure.persistence.neo4j.repository.*`
 *   **Action:**
-    *   Update `IngestionJobGraphRepository` to return `IngestionJob` instead of `IngestionJobNode`.
-    *   Update `StatusRecordGraphRepository` to return `StatusRecord`.
-    *   Update `LlmCallRecordGraphRepository` to return `LlmCallRecord`.
+    *   [x] Update `IngestionJobGraphRepository` to return `IngestionJob` instead of `IngestionJobNode`.
+    *   [x] Update `StatusRecordGraphRepository` to return `StatusRecord`.
+    *   [x] Update `LlmCallRecordGraphRepository` to return `LlmCallRecord`.
 
 ### 2.3. Refactor Service
 *   **Target:** `IngestionJobService`
 *   **Action:**
-    *   Inject `IngestionJobGraphRepository`, `StatusRecordGraphRepository` directly.
-    *   Remove calls to `ContentPersistencePort`.
-    *   Remove `Neo4jMapper` usage for these types.
+    *   [x] Inject `IngestionJobGraphRepository`, `StatusRecordGraphRepository` directly.
+    *   [x] Remove calls to `ContentPersistencePort`.
+    *   [x] Remove `Neo4jMapper` usage for these types.
 
 ### 2.4. Cleanup
 *   **Delete:** `IngestionJobNode`, `StatusRecordNode`, `LlmCallRecordNode`.
 *   **Delete:** Corresponding methods in `ContentPersistencePort`, `Neo4jContentPersistenceAdapter`, and `Neo4jMapper`.
 
 ### 2.5 Definition of Done (Phase 1)
-*   Domain ingestion types are SDN entities (`@Node`) and repositories return domain types.
-*   No codepath uses `Neo4jMapper` for ingestion types.
-*   No codepath uses `ContentPersistencePort` for ingestion/job/status/LLM call persistence.
-*   Unit tests cover idempotent writes and null-safety for ingestion relationships.
-*   **Deletion budget hit:** remove the old ingestion `*Node` classes and the matching mapper/adapter/port surface area in the same phase.
+*   [x] Domain ingestion types are SDN entities (`@Node`) and repositories return domain types.
+*   [x] No codepath uses `Neo4jMapper` for ingestion types.
+*   [x] No codepath uses `ContentPersistencePort` for ingestion/job/status/LLM call persistence.
+*   [x] Unit tests cover idempotent writes and null-safety for ingestion relationships.
+*   [x] **Deletion budget hit:** remove the old ingestion `*Node` classes and the matching mapper/adapter/port surface area in the same phase.
 
 ## 3. Phase 2: Library & Content (Core Graph)
 

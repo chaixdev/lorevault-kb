@@ -7,6 +7,8 @@ import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.ingestion.StatusRecord;
 import com.lorevault.api.dto.ingestion.JobListResponse;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.StatusRecordGraphRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,6 +40,12 @@ class IngestionJobServiceTest {
     @Mock
     private ContentPersistencePort contentPersistencePort;
 
+    @Mock
+    private IngestionJobGraphRepository jobRepo;
+
+    @Mock
+    private StatusRecordGraphRepository statusRepo;
+
     @Captor
     private ArgumentCaptor<IngestionJob> jobCaptor;
 
@@ -52,7 +60,7 @@ class IngestionJobServiceTest {
 
     @BeforeEach
     void setUp() {
-        ingestionJobService = new IngestionJobService(contentPersistencePort);
+        ingestionJobService = new IngestionJobService(contentPersistencePort, jobRepo, statusRepo);
     }
 
     @Nested
@@ -68,8 +76,7 @@ class IngestionJobServiceTest {
             mockPersistedJob.setChapterId(testChapterId);
             mockPersistedJob.setCreatedAt(testTimestamp);
 
-            when(contentPersistencePort.createJobWithChapter(any(IngestionJob.class), eq(testChapterId)))
-                    .thenReturn(mockPersistedJob);
+            when(jobRepo.save(any(IngestionJob.class))).thenReturn(mockPersistedJob);
 
             // Act
             IngestionJob result = ingestionJobService.createIngestionJob(testChapterId);
@@ -82,16 +89,17 @@ class IngestionJobServiceTest {
             assertThat(result.getCurrentStatus().getStatus()).isEqualTo(IngestionStatus.QUEUED);
 
             // Verify job creation
-            verify(contentPersistencePort).createJobWithChapter(jobCaptor.capture(), eq(testChapterId));
+            verify(jobRepo).save(jobCaptor.capture());
             IngestionJob capturedJob = jobCaptor.getValue();
             assertThat(capturedJob.getId()).isNotNull();
             assertThat(capturedJob.getChapterId()).isEqualTo(testChapterId);
 
             // Verify status record creation
-            verify(contentPersistencePort).addStatusRecord(eq(testJobId), statusRecordCaptor.capture());
+            verify(statusRepo).save(statusRecordCaptor.capture());
             StatusRecord capturedStatus = statusRecordCaptor.getValue();
             assertThat(capturedStatus.getJobId()).isEqualTo(testJobId);
             assertThat(capturedStatus.getStatus()).isEqualTo(IngestionStatus.QUEUED);
+            verify(jobRepo).swapCurrentStatus(testJobId, capturedStatus.getId());
         }
 
         @Test
@@ -103,7 +111,8 @@ class IngestionJobServiceTest {
             int chunkCount = 25;
 
             when(contentPersistencePort.countChunksByChapterId(testChapterId)).thenReturn(chunkCount);
-            when(contentPersistencePort.findJob(testJobId)).thenReturn(Optional.of(job));
+            when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.of(job));
+            when(jobRepo.save(any(IngestionJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             // Act
             ingestionJobService.completeJob(job, testChapterId, chapterLength);
@@ -114,11 +123,12 @@ class IngestionJobServiceTest {
             assertThat(job.getCompletedAt()).isNotNull();
 
             // Verify status record saved
-            verify(contentPersistencePort).addStatusRecord(eq(testJobId), statusRecordCaptor.capture());
+            verify(statusRepo).save(statusRecordCaptor.capture());
             StatusRecord completionStatus = statusRecordCaptor.getValue();
             assertThat(completionStatus.getStatus()).isEqualTo(IngestionStatus.COMPLETE);
-            assertThat(completionStatus.getProperties()).containsEntry("chunkCount", chunkCount);
-            assertThat(completionStatus.getProperties()).containsEntry("chapterLength", chapterLength);
+            assertThat(completionStatus.getProperties()).containsEntry("chunkCount", String.valueOf(chunkCount));
+            assertThat(completionStatus.getProperties()).containsEntry("chapterLength", String.valueOf(chapterLength));
+            verify(jobRepo).swapCurrentStatus(testJobId, completionStatus.getId());
         }
 
         @Test
@@ -127,8 +137,8 @@ class IngestionJobServiceTest {
             // Arrange
             IngestionJob job = createTestJob();
             String errorMessage = "Processing failed due to invalid content format";
-
-            when(contentPersistencePort.findJob(testJobId)).thenReturn(Optional.of(job));
+            when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.of(job));
+            when(jobRepo.save(any(IngestionJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             // Act
             ingestionJobService.failJob(job, errorMessage);
@@ -140,7 +150,7 @@ class IngestionJobServiceTest {
             assertThat(job.getCompletedAt()).isNotNull();
 
             // Verify status record saved
-            verify(contentPersistencePort).addStatusRecord(eq(testJobId), any(StatusRecord.class));
+            verify(statusRepo).save(any(StatusRecord.class));
         }
 
         @Test
@@ -154,7 +164,8 @@ class IngestionJobServiceTest {
 
             when(contentPersistencePort.deleteChunksByChapterId(testChapterId)).thenReturn(deletedChunks);
             when(contentPersistencePort.deleteScenesByChapterId(testChapterId)).thenReturn(deletedScenes);
-            when(contentPersistencePort.findJob(testJobId)).thenReturn(Optional.of(job));
+            when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.of(job));
+            when(jobRepo.save(any(IngestionJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             // Act
             ingestionJobService.failJobWithCleanup(job, errorMessage);
@@ -183,11 +194,13 @@ class IngestionJobServiceTest {
                     "Scene segmentation in progress", properties);
 
             // Assert
-            verify(contentPersistencePort).addStatusRecord(eq(testJobId), statusRecordCaptor.capture());
+            verify(statusRepo).save(statusRecordCaptor.capture());
             StatusRecord statusRecord = statusRecordCaptor.getValue();
             assertThat(statusRecord.getStatus()).isEqualTo(IngestionStatus.SCENE_SEGMENTATION);
             assertThat(statusRecord.getStepDescription()).isEqualTo("Scene segmentation in progress");
-            assertThat(statusRecord.getProperties()).containsAllEntriesOf(properties);
+            assertThat(statusRecord.getProperties()).containsEntry("step", "scene_detection");
+            assertThat(statusRecord.getProperties()).containsEntry("progress", "75");
+            verify(jobRepo).swapCurrentStatus(testJobId, statusRecord.getId());
         }
     }
 
@@ -202,8 +215,8 @@ class IngestionJobServiceTest {
             IngestionJob job = createTestJobWithStatus();
             List<StatusRecord> statusHistory = createStatusHistory();
 
-            when(contentPersistencePort.findJob(testJobId)).thenReturn(Optional.of(job));
-            when(contentPersistencePort.findStatusHistoryForJob(testJobId)).thenReturn(statusHistory);
+            when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.of(job));
+            when(statusRepo.findStatusHistoryForJob(testJobId)).thenReturn(statusHistory);
 
             // Act
             Optional<JobStatusResponse> response = ingestionJobService.getJobStatus(testJobId);
@@ -222,7 +235,7 @@ class IngestionJobServiceTest {
         @DisplayName("Should return empty when job not found")
         void shouldReturnEmptyWhenJobNotFound() {
             // Arrange
-            when(contentPersistencePort.findJob(testJobId)).thenReturn(Optional.empty());
+            when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.empty());
 
             // Act
             Optional<JobStatusResponse> response = ingestionJobService.getJobStatus(testJobId);
@@ -244,7 +257,7 @@ class IngestionJobServiceTest {
             List<IngestionJob> jobs = List.of(createTestJobWithStatus());
 
             when(contentPersistencePort.findChaptersByUniverse(universe)).thenReturn(chapters);
-            when(contentPersistencePort.findJobsByChapterIds(any())).thenReturn(jobs);
+            when(jobRepo.findByChapterIds(any())).thenReturn(jobs);
             when(contentPersistencePort.findChapterById(testChapterId)).thenReturn(Optional.of(createTestChapter()));
 
             // Act
@@ -272,7 +285,7 @@ class IngestionJobServiceTest {
                     createCompletedJob()
             );
 
-            when(contentPersistencePort.findAllJobs()).thenReturn(allJobs);
+                when(jobRepo.findAllWithCurrentStatus()).thenReturn(allJobs);
             when(contentPersistencePort.findChapterById(any())).thenReturn(Optional.of(createTestChapter()));
 
             // Act
@@ -293,7 +306,7 @@ class IngestionJobServiceTest {
                     createFailedJob()          // FAILED (inactive)
             );
 
-            when(contentPersistencePort.findAllJobs()).thenReturn(jobs);
+                when(jobRepo.findAllWithCurrentStatus()).thenReturn(jobs);
             when(contentPersistencePort.findChapterById(any())).thenReturn(Optional.of(createTestChapter()));
 
             // Act
@@ -344,7 +357,7 @@ class IngestionJobServiceTest {
                 IngestionStatus.COMPLETE,
                 "Chapter processing completed",
                 100,
-                Map.of("chunkCount", 20)
+            Map.of("chunkCount", "20")
         );
         job.setCurrentStatus(completedStatus);
         return job;

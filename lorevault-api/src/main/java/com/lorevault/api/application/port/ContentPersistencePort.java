@@ -6,9 +6,6 @@ import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.content.Universe;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Book;
-import com.lorevault.api.domain.ingestion.IngestionJob;
-import com.lorevault.api.domain.ingestion.StatusRecord;
-import com.lorevault.api.domain.ingestion.LlmCallRecord;
 
 import java.util.AbstractMap;
 import java.util.List;
@@ -60,25 +57,6 @@ public interface ContentPersistencePort {
      * Used by RAG to retrieve full chunk text for LLM context.
      */
     Optional<Chunk> findChunkById(UUID id);
-
-    // Jobs
-    IngestionJob createJob(IngestionJob job);
-    IngestionJob createJobWithChapter(IngestionJob job, UUID chapterId);
-    Optional<IngestionJob> findJob(UUID id);
-    IngestionJob updateJob(IngestionJob job);
-    Optional<IngestionJob> findMostRecentJobForChapter(UUID chapterId);
-    boolean hasActiveJobForChapter(UUID chapterId);
-    List<IngestionJob> findJobsByChapterIds(List<UUID> chapterIds);
-    List<IngestionJob> findAllJobs();
-
-    // Status Records
-    StatusRecord addStatusRecord(UUID jobId, StatusRecord record);
-    List<StatusRecord> findStatusHistoryForJob(UUID jobId);
-
-    // LLM Call Records
-    LlmCallRecord addLlmCallRecord(LlmCallRecord record);
-    List<LlmCallRecord> findLlmCallsByJob(UUID jobId);
-    List<LlmCallRecord> findLlmCallsByJobAndStep(UUID jobId, String step);
 
     // Queries
     List<Chapter> findChaptersByUniverse(String universe);

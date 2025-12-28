@@ -3,6 +3,10 @@ package com.lorevault.api.domain.ingestion;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.neo4j.core.schema.Id;
+import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Relationship;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -14,7 +18,9 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Node("LlmCallRecord")
 public class LlmCallRecord {
+    @Id
     private UUID id;
 
     // Linkage
@@ -48,5 +54,13 @@ public class LlmCallRecord {
     private String responseHash; // SHA-256 of response for integrity when truncated
     private Boolean truncated; // whether response was truncated to max size
 
+    @CreatedDate
     private LocalDateTime createdAt; // set by persistence layer
+
+    // Optional convenience relationships (not required for queries but useful visually)
+    @Relationship(type = "OF_JOB", direction = Relationship.Direction.OUTGOING)
+    private IngestionJob job;
+
+    @Relationship(type = "OF_STATUS", direction = Relationship.Direction.OUTGOING)
+    private StatusRecord status;
 }

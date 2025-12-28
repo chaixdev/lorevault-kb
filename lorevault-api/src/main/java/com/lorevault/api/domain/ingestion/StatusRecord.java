@@ -3,6 +3,10 @@ package com.lorevault.api.domain.ingestion;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.neo4j.core.schema.Id;
+import org.springframework.data.neo4j.core.schema.CompositeProperty;
+import org.springframework.data.neo4j.core.schema.Node;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -15,7 +19,9 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Node("StatusRecord")
 public class StatusRecord {
+    @Id
     private UUID id;
 
     /**
@@ -26,6 +32,7 @@ public class StatusRecord {
     /**
      * The precise time this status was recorded
      */
+    @CreatedDate
     private LocalDateTime timestamp;
 
     /**
@@ -47,5 +54,6 @@ public class StatusRecord {
      * A flexible field to store structured metadata relevant to this event
      * (e.g., entities extracted, error details, performance metrics)
      */
-    private Map<String, Object> properties;
+    @CompositeProperty(prefix = "prop")
+    private Map<String, String> properties;
 }

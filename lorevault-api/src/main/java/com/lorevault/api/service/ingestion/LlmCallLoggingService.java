@@ -1,9 +1,11 @@
 package com.lorevault.api.service.ingestion;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.configuration.properties.LoreVaultLlmLoggingProperties;
 import com.lorevault.api.domain.ingestion.LlmCallRecord;
 import com.lorevault.api.domain.ingestion.StatusRecord;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.LlmCallRecordGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.StatusRecordGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,7 +22,9 @@ import java.util.UUID;
 public class LlmCallLoggingService {
 
     private final LoreVaultLlmLoggingProperties props;
-    private final ContentPersistencePort contentPersistencePort;
+    private final IngestionJobGraphRepository jobRepo;
+    private final StatusRecordGraphRepository statusRepo;
+    private final LlmCallRecordGraphRepository llmCallRepo;
 
     public LlmCallRecord logCall(
             UUID jobId,
@@ -79,17 +83,20 @@ public class LlmCallLoggingService {
 
         // Attach to current StatusRecord if available
         try {
-            contentPersistencePort.findJob(jobId).ifPresent(job -> {
+            jobRepo.findByIdWithCurrentStatus(jobId).ifPresent(job -> {
+                rec.setJob(job);
                 StatusRecord cur = job.getCurrentStatus();
                 if (cur != null) {
                     rec.setStatusRecordId(cur.getId());
+                    rec.setStatus(cur);
                     log.debug("[LLM-LOG] Linking LLM call step={} to current status {}", step, cur.getId());
                 } else {
                     // Fallback: use most recent status from history if current is not populated
-                    var history = contentPersistencePort.findStatusHistoryForJob(jobId);
+                    var history = statusRepo.findStatusHistoryForJob(jobId);
                     if (history != null && !history.isEmpty()) {
                         StatusRecord last = history.get(history.size() - 1);
                         rec.setStatusRecordId(last.getId());
+                        rec.setStatus(last);
                         log.debug("[LLM-LOG] Linking LLM call step={} to last status {} (fallback)", step, last.getId());
                     }
                 }
@@ -98,8 +105,7 @@ public class LlmCallLoggingService {
             log.debug("[LLM-LOG] Unable to resolve current status for job {}: {}", jobId, e.getMessage());
         }
 
-        // Persist via adapter repository
-    return contentPersistencePort.addLlmCallRecord(rec);
+        return llmCallRepo.save(rec);
     }
 
     private String safePreview(String s) {

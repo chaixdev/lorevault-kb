@@ -5,6 +5,7 @@ import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChunksCreatedEvent;
 import com.lorevault.api.event.ingestion.IngestionCompletedEvent;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
 import com.lorevault.api.service.content.EmbeddingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +36,8 @@ public class EmbeddingHandler {
 
     private final ContentPersistencePort contentPersistencePort;
     private final EmbeddingService embeddingService;
-        private final IngestionJobService ingestionJobService;
+                private final IngestionJobService ingestionJobService;
+        private final IngestionJobGraphRepository jobRepo;
     private final ApplicationEventPublisher eventPublisher;
         private final PipelineStageSupport stageSupport;
 
@@ -43,11 +45,13 @@ public class EmbeddingHandler {
                         ContentPersistencePort contentPersistencePort,
                         EmbeddingService embeddingService,
                         IngestionJobService ingestionJobService,
+                        IngestionJobGraphRepository jobRepo,
                         ApplicationEventPublisher eventPublisher
         ) {
                 this.contentPersistencePort = contentPersistencePort;
                 this.embeddingService = embeddingService;
                 this.ingestionJobService = ingestionJobService;
+        this.jobRepo = jobRepo;
                 this.eventPublisher = eventPublisher;
                 this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         }
@@ -103,7 +107,7 @@ public class EmbeddingHandler {
             int chapterLength = chapter.getRawText() != null ? chapter.getRawText().length() : 0;
             
             // Get the job and mark complete
-            var job = contentPersistencePort.findJob(jobId)
+            var job = jobRepo.findByIdWithCurrentStatus(jobId)
                     .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
             
             ingestionJobService.completeJob(job, chapterId, chapterLength);

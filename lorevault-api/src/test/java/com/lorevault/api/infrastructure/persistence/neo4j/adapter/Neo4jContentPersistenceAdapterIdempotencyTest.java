@@ -30,9 +30,6 @@ class Neo4jContentPersistenceAdapterIdempotencyTest {
     @Mock private ChapterGraphRepository chapterRepo;
     @Mock private SceneGraphRepository sceneRepo;
     @Mock private ChunkGraphRepository chunkRepo;
-    @Mock private IngestionJobGraphRepository jobRepo;
-    @Mock private StatusRecordGraphRepository statusRepo;
-    @Mock private LlmCallRecordGraphRepository llmCallRepo;
     @Mock private UniverseGraphRepository universeRepo;
     @Mock private SeriesGraphRepository seriesRepo;
     @Mock private BookGraphRepository bookRepo;
@@ -48,9 +45,6 @@ class Neo4jContentPersistenceAdapterIdempotencyTest {
                 chapterRepo,
                 sceneRepo,
                 chunkRepo,
-                jobRepo,
-                statusRepo,
-                llmCallRepo,
                 universeRepo,
                 seriesRepo,
                 bookRepo,

@@ -1,13 +1,13 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.repository;
 
-import com.lorevault.api.infrastructure.persistence.neo4j.model.LlmCallRecordNode;
+import com.lorevault.api.domain.ingestion.LlmCallRecord;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 
 import java.util.List;
 import java.util.UUID;
 
-public interface LlmCallRecordGraphRepository extends Neo4jRepository<LlmCallRecordNode, UUID> {
+public interface LlmCallRecordGraphRepository extends Neo4jRepository<LlmCallRecord, UUID> {
 
     @Query("""
     MATCH (r:LlmCallRecord {jobId: $jobId})
@@ -15,7 +15,7 @@ public interface LlmCallRecordGraphRepository extends Neo4jRepository<LlmCallRec
     OPTIONAL MATCH (r)-[:OF_STATUS]->(s:StatusRecord)
     RETURN r, j AS job, s AS status ORDER BY r.createdAt ASC
     """)
-    List<LlmCallRecordNode> findByJobId(UUID jobId);
+    List<LlmCallRecord> findByJobId(UUID jobId);
 
     @Query("""
     MATCH (r:LlmCallRecord {jobId: $jobId, step: $step})
@@ -23,7 +23,7 @@ public interface LlmCallRecordGraphRepository extends Neo4jRepository<LlmCallRec
     OPTIONAL MATCH (r)-[:OF_STATUS]->(s:StatusRecord)
     RETURN r, j AS job, s AS status ORDER BY r.createdAt ASC
     """)
-    List<LlmCallRecordNode> findByJobIdAndStep(UUID jobId, String step);
+    List<LlmCallRecord> findByJobIdAndStep(UUID jobId, String step);
 
     /**
      * Existence checks via Cypher are more reliable than relying on SDN relationship hydration,

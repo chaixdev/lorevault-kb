@@ -20,6 +20,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -44,6 +45,7 @@ class IngestionServiceTest {
 
     @Mock private ContentPersistencePort contentPersistencePort;
     @Mock private IngestionJobService ingestionJobService;
+    @Mock private IngestionJobGraphRepository jobRepo;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
@@ -100,8 +102,8 @@ class IngestionServiceTest {
         void submitChapter_duplicateContentWithActiveJob_returnsExistingJob() {
             // Given
             when(contentPersistencePort.findChapterByContentHash(anyString())).thenReturn(Optional.of(testChapter));
-            when(contentPersistencePort.hasActiveJobForChapter(chapterId)).thenReturn(true);
-            when(contentPersistencePort.findMostRecentJobForChapter(chapterId)).thenReturn(Optional.of(testJob));
+            when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(true);
+            when(jobRepo.findLatestForChapter(chapterId)).thenReturn(Optional.of(testJob));
 
             // When
             SubmitChapterResponse response = ingestionService.submitChapter(testRequest);
@@ -120,7 +122,7 @@ class IngestionServiceTest {
         void submitChapter_duplicateContentNoActiveJob_createsNewJob() {
             // Given
             when(contentPersistencePort.findChapterByContentHash(anyString())).thenReturn(Optional.of(testChapter));
-            when(contentPersistencePort.hasActiveJobForChapter(chapterId)).thenReturn(false);
+            when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(false);
             when(ingestionJobService.createIngestionJob(chapterId)).thenReturn(testJob);
 
             // When
@@ -209,8 +211,8 @@ class IngestionServiceTest {
         void submitChapter_missingActiveJob_createsNewJob() {
             // Given
             when(contentPersistencePort.findChapterByContentHash(anyString())).thenReturn(Optional.of(testChapter));
-            when(contentPersistencePort.hasActiveJobForChapter(chapterId)).thenReturn(true);
-            when(contentPersistencePort.findMostRecentJobForChapter(chapterId)).thenReturn(Optional.empty());
+            when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(true);
+            when(jobRepo.findLatestForChapter(chapterId)).thenReturn(Optional.empty());
             when(ingestionJobService.createIngestionJob(chapterId)).thenReturn(testJob);
 
             // When
@@ -227,7 +229,7 @@ class IngestionServiceTest {
         void submitChapter_persistenceError_handlesGracefully() {
             // Given
             when(contentPersistencePort.findChapterByContentHash(anyString())).thenReturn(Optional.of(testChapter));
-            when(contentPersistencePort.hasActiveJobForChapter(chapterId))
+            when(jobRepo.existsActiveForChapter(chapterId))
                     .thenThrow(new RuntimeException("Connection failed"));
             when(ingestionJobService.createIngestionJob(chapterId)).thenReturn(testJob);
 

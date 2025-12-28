@@ -7,6 +7,7 @@ import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChunksCreatedEvent;
 import com.lorevault.api.event.ingestion.IngestionCompletedEvent;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
 import com.lorevault.api.service.content.EmbeddingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,7 @@ class EmbeddingHandlerTest {
     @Mock private ContentPersistencePort contentPersistencePort;
     @Mock private EmbeddingService embeddingService;
     @Mock private IngestionJobService ingestionJobService;
+    @Mock private IngestionJobGraphRepository jobRepo;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
@@ -75,7 +77,7 @@ class EmbeddingHandlerTest {
             when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(List.of());
             when(contentPersistencePort.countChunksByChapterId(chapterId)).thenReturn(10);
             when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(contentPersistencePort.findJob(jobId)).thenReturn(Optional.of(testJob));
+            when(jobRepo.findByIdWithCurrentStatus(jobId)).thenReturn(Optional.of(testJob));
 
             // When
             handler.handleChunksCreated(testEvent);
@@ -116,7 +118,7 @@ class EmbeddingHandlerTest {
             when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(List.of());
             when(contentPersistencePort.countChunksByChapterId(chapterId)).thenReturn(0);
             when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(contentPersistencePort.findJob(jobId)).thenReturn(Optional.of(testJob));
+            when(jobRepo.findByIdWithCurrentStatus(jobId)).thenReturn(Optional.of(testJob));
 
             // When
             handler.handleChunksCreated(zeroChunksEvent);

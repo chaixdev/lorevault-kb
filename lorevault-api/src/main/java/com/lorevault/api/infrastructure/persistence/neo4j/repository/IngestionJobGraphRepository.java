@@ -1,6 +1,6 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.repository;
 
-import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode;
+import com.lorevault.api.domain.ingestion.IngestionJob;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 
@@ -8,14 +8,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface IngestionJobGraphRepository extends Neo4jRepository<IngestionJobNode, UUID> {
+public interface IngestionJobGraphRepository extends Neo4jRepository<IngestionJob, UUID> {
 
     @Query("""
             MATCH (j:IngestionJob {id: $id})
             OPTIONAL MATCH (j)-[:HAS_CURRENT_STATUS]->(cur:StatusRecord)
             RETURN j, cur
             """)
-    Optional<IngestionJobNode> findByIdWithCurrentStatus(UUID id);
+        Optional<IngestionJob> findByIdWithCurrentStatus(UUID id);
 
     @Query("""
             MATCH (j:IngestionJob {chapterId: $chapterId})
@@ -23,14 +23,21 @@ public interface IngestionJobGraphRepository extends Neo4jRepository<IngestionJo
             RETURN j, cur
             ORDER BY j.createdAt DESC LIMIT 1
             """)
-    Optional<IngestionJobNode> findLatestForChapter(UUID chapterId);
+        Optional<IngestionJob> findLatestForChapter(UUID chapterId);
 
     @Query("""
             MATCH (j:IngestionJob) WHERE j.chapterId IN $chapterIds
             OPTIONAL MATCH (j)-[:HAS_CURRENT_STATUS]->(cur:StatusRecord)
             RETURN j, cur
             """)
-    List<IngestionJobNode> findByChapterIds(List<UUID> chapterIds);
+    List<IngestionJob> findByChapterIds(List<UUID> chapterIds);
+
+    @Query("""
+            MATCH (j:IngestionJob)
+            OPTIONAL MATCH (j)-[:HAS_CURRENT_STATUS]->(cur:StatusRecord)
+            RETURN j, cur
+            """)
+    List<IngestionJob> findAllWithCurrentStatus();
 
     @Query("""
             MATCH (j:IngestionJob {chapterId: $chapterId})-[:HAS_CURRENT_STATUS]->(s:StatusRecord)

@@ -7,19 +7,14 @@ import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.content.Universe;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Book;
-import com.lorevault.api.domain.ingestion.IngestionJob;
-import com.lorevault.api.domain.ingestion.StatusRecord;
-import com.lorevault.api.domain.ingestion.LlmCallRecord;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.IngestionJobNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneHasChunk;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.UniverseNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.SeriesNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.model.BookNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.*;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.LlmCallRecordNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,9 +32,6 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     private final ChapterGraphRepository chapterRepo;
     private final SceneGraphRepository sceneRepo;
     private final ChunkGraphRepository chunkRepo;
-    private final IngestionJobGraphRepository jobRepo;
-    private final StatusRecordGraphRepository statusRepo;
-    private final LlmCallRecordGraphRepository llmCallRepo;
     
     // Hierarchy repositories
     private final UniverseGraphRepository universeRepo;
@@ -256,51 +248,6 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     }
 
     @Override
-    public IngestionJob createJob(IngestionJob job) {
-        IngestionJobNode jobNode = Objects.requireNonNull(mapper.toNode(job), "job must not be null");
-        if (jobNode.getId() == null) jobNode.setId(UUID.randomUUID());
-        return mapper.toDomain(jobRepo.save(jobNode));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<IngestionJob> findJob(UUID id) {
-    // Load job along with current status so callers can access currentStatus without additional queries
-    return jobRepo.findByIdWithCurrentStatus(id).map(mapper::toDomain);
-    }
-
-    @Override
-    public IngestionJob updateJob(IngestionJob job) {
-        IngestionJobNode node = Objects.requireNonNull(mapper.toNode(job), "job must not be null");
-        return mapper.toDomain(jobRepo.save(node));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<IngestionJob> findMostRecentJobForChapter(UUID chapterId) {
-        return jobRepo.findLatestForChapter(chapterId).map(mapper::toDomain);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public boolean hasActiveJobForChapter(UUID chapterId) {
-        return jobRepo.existsActiveForChapter(chapterId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<IngestionJob> findJobsByChapterIds(List<UUID> chapterIds) {
-        if (chapterIds == null || chapterIds.isEmpty()) return List.of();
-        return mapper.toIngestionJobDomainList(jobRepo.findByChapterIds(chapterIds));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<IngestionJob> findAllJobs() {
-        return mapper.toIngestionJobDomainList(jobRepo.findAll());
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public List<Chapter> findChaptersByUniverse(String universe) {
         if (universe == null || universe.isBlank()) return List.of();
@@ -309,59 +256,6 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
                 .collect(Collectors.toList()));
     }
 
-    @Override
-    public StatusRecord addStatusRecord(UUID jobId, StatusRecord record) {
-        var recordNode = Objects.requireNonNull(mapper.toNode(record), "record must not be null");
-        if (recordNode.getId() == null) recordNode.setId(UUID.randomUUID());
-        if (recordNode.getJobId() == null) recordNode.setJobId(jobId);
-
-        recordNode = statusRepo.save(recordNode);
-
-        jobRepo.findById(jobId)
-                .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
-
-        jobRepo.swapCurrentStatus(jobId, recordNode.getId());
-
-        return mapper.toDomain(recordNode);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<StatusRecord> findStatusHistoryForJob(UUID jobId) {
-        return mapper.toStatusRecordDomainList(statusRepo.findStatusHistoryForJob(jobId));
-    }
-
-    // LLM Call Records
-    @Override
-    public LlmCallRecord addLlmCallRecord(LlmCallRecord record) {
-        LlmCallRecordNode node = Objects.requireNonNull(mapper.toNode(record), "record must not be null");
-        if (node.getId() == null) node.setId(UUID.randomUUID());
-        
-        // Establish relationships for Neo4j graph visualization
-        UUID jobId = record.getJobId();
-        if (jobId != null) {
-            jobRepo.findById(jobId).ifPresent(node::setJob);
-        }
-        UUID statusRecordId = record.getStatusRecordId();
-        if (statusRecordId != null) {
-            statusRepo.findById(statusRecordId).ifPresent(node::setStatus);
-        }
-        
-        node = llmCallRepo.save(node);
-        return mapper.toDomain(node);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<LlmCallRecord> findLlmCallsByJob(UUID jobId) {
-        return llmCallRepo.findByJobId(jobId).stream().map(mapper::toDomain).toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<LlmCallRecord> findLlmCallsByJobAndStep(UUID jobId, String step) {
-        return llmCallRepo.findByJobIdAndStep(jobId, step).stream().map(mapper::toDomain).toList();
-    }
 
     @Override
     @Transactional(readOnly = true)
@@ -402,16 +296,6 @@ public class Neo4jContentPersistenceAdapter implements ContentPersistencePort {
     public int countChunksByChapterId(UUID chapterId) {
         int via = chunkRepo.countByChapterIdViaScenes(chapterId);
         return via > 0 ? via : chunkRepo.countByChapterId(chapterId);
-    }
-
-    @Override
-    public IngestionJob createJobWithChapter(IngestionJob job, UUID chapterId) {
-        var jobNode = Objects.requireNonNull(mapper.toNode(job), "job must not be null");
-        if (jobNode.getId() == null) jobNode.setId(UUID.randomUUID());
-        ChapterNode chapter = chapterRepo.findById(chapterId).orElseThrow();
-        jobNode.setChapter(chapter);
-        jobNode.setChapterId(chapter.getId());
-        return mapper.toDomain(jobRepo.save(jobNode));
     }
 
     @Override

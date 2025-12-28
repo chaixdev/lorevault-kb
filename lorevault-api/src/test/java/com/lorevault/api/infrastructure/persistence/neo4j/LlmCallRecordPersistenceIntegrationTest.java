@@ -3,14 +3,11 @@ package com.lorevault.api.infrastructure.persistence.neo4j;
 import com.lorevault.api.configuration.properties.LoreVaultLlmLoggingProperties;
 import com.lorevault.api.domain.ingestion.LlmCallRecord;
 import com.lorevault.api.domain.ingestion.IngestionJob;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jMapper;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.*;
 import com.lorevault.api.service.ingestion.LlmCallLoggingService;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.neo4j.DataNeo4jTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.test.annotation.Commit;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -31,7 +28,6 @@ import static org.assertj.core.api.Assertions.*;
  * Verifies end-to-end persistence, linking, and truncation behavior.
  */
 @DataNeo4jTest
-@Import({Neo4jContentPersistenceAdapter.class, Neo4jMapper.class})
 @Testcontainers
 @ActiveProfiles("test")
 @Tag("integration")
@@ -51,9 +47,6 @@ class LlmCallRecordPersistenceIntegrationTest {
     }
 
     @Autowired
-    private Neo4jContentPersistenceAdapter persistenceAdapter;
-
-    @Autowired
     private LlmCallRecordGraphRepository llmCallRepo;
 
     @Autowired
@@ -65,8 +58,6 @@ class LlmCallRecordPersistenceIntegrationTest {
     @Autowired
     private StatusRecordGraphRepository statusRepo;
 
-    // Mapper is provided via @Import but isn't needed directly here
-
     private LlmCallLoggingService loggingService;
 
     @BeforeEach
@@ -77,8 +68,8 @@ class LlmCallRecordPersistenceIntegrationTest {
         jobRepo.deleteAll();
 
         // Use truncation config for this test
-    var truncationProps = new LoreVaultLlmLoggingProperties(true, true, 50, true);
-    loggingService = new LlmCallLoggingService(truncationProps, persistenceAdapter);
+        var truncationProps = new LoreVaultLlmLoggingProperties(true, true, 50, true);
+        loggingService = new LlmCallLoggingService(truncationProps, jobRepo, statusRepo, llmCallRepo);
     }
 
     @Test
@@ -91,7 +82,7 @@ class LlmCallRecordPersistenceIntegrationTest {
         job.setId(jobId);
         job.setChapterId(UUID.randomUUID());
         job.setCreatedAt(LocalDateTime.now());
-        job = persistenceAdapter.createJob(job);
+        job = jobRepo.save(job);
 
         // For now, skip status linkage and test without it
         // Act: Log an LLM call
@@ -117,7 +108,7 @@ class LlmCallRecordPersistenceIntegrationTest {
         assertThat(logged.getId()).isNotNull();
 
         // Retrieve via repository
-        List<LlmCallRecord> retrieved = persistenceAdapter.findLlmCallsByJob(jobId);
+        List<LlmCallRecord> retrieved = llmCallRepo.findByJobId(jobId);
         assertThat(retrieved).hasSize(1);
         
         LlmCallRecord record = retrieved.get(0);
@@ -155,7 +146,7 @@ class LlmCallRecordPersistenceIntegrationTest {
         job.setId(jobId);
         job.setChapterId(UUID.randomUUID());
         job.setCreatedAt(LocalDateTime.now());
-        job = persistenceAdapter.createJob(job);
+        job = jobRepo.save(job);
 
         // Act: Log two different pass calls for the same job
         LlmCallRecord pass1 = loggingService.logCall(
@@ -193,17 +184,17 @@ class LlmCallRecordPersistenceIntegrationTest {
         );
 
         // Assert: Verify both records exist
-        List<LlmCallRecord> allCalls = persistenceAdapter.findLlmCallsByJob(jobId);
+        List<LlmCallRecord> allCalls = llmCallRepo.findByJobId(jobId);
         assertThat(allCalls).hasSize(2);
 
         // Verify by step filtering
-        List<LlmCallRecord> pass1Calls = persistenceAdapter.findLlmCallsByJobAndStep(jobId, "scene-detection-pass1");
+        List<LlmCallRecord> pass1Calls = llmCallRepo.findByJobIdAndStep(jobId, "scene-detection-pass1");
         assertThat(pass1Calls).hasSize(1);
         assertThat(pass1Calls.get(0).getStep()).isEqualTo("scene-detection-pass1");
         assertThat(pass1Calls.get(0).getResponseBody()).isEqualTo("Pass 1 response that is short");
         assertThat(pass1Calls.get(0).getTruncated()).isFalse(); // Short, not truncated
 
-        List<LlmCallRecord> pass2Calls = persistenceAdapter.findLlmCallsByJobAndStep(jobId, "scene-detection-pass2");
+        List<LlmCallRecord> pass2Calls = llmCallRepo.findByJobIdAndStep(jobId, "scene-detection-pass2");
         assertThat(pass2Calls).hasSize(1);
         assertThat(pass2Calls.get(0).getStep()).isEqualTo("scene-detection-pass2");
         assertThat(pass2Calls.get(0).getResponseBody()).isEqualTo("Pass 2 response that is also short");
@@ -239,7 +230,7 @@ class LlmCallRecordPersistenceIntegrationTest {
         assertThat(logged.getStatusRecordId()).isNull();
 
         // Verify persistence
-        List<LlmCallRecord> retrieved = persistenceAdapter.findLlmCallsByJob(nonExistentJobId);
+        List<LlmCallRecord> retrieved = llmCallRepo.findByJobId(nonExistentJobId);
         assertThat(retrieved).hasSize(1);
         assertThat(retrieved.get(0).getJobId()).isEqualTo(nonExistentJobId);
         assertThat(retrieved.get(0).getStatusRecordId()).isNull();
@@ -253,7 +244,7 @@ class LlmCallRecordPersistenceIntegrationTest {
         job.setId(jobId);
         job.setChapterId(UUID.randomUUID());
         job.setCreatedAt(LocalDateTime.now());
-        job = persistenceAdapter.createJob(job);
+        job = jobRepo.save(job);
 
         String exactSize50Response = "12345678901234567890123456789012345678901234567890"; // exactly 50 chars
 
@@ -290,7 +281,7 @@ class LlmCallRecordPersistenceIntegrationTest {
         job.setId(jobId);
         job.setChapterId(UUID.randomUUID());
         job.setCreatedAt(LocalDateTime.now());
-        job = persistenceAdapter.createJob(job);
+        job = jobRepo.save(job);
 
         // Act: Log an LLM call
         LlmCallRecord record = loggingService.logCall(
@@ -310,20 +301,20 @@ class LlmCallRecordPersistenceIntegrationTest {
             150
         );
 
-    // Verify the record is persisted for the job
-    List<LlmCallRecord> retrievedRecords = persistenceAdapter.findLlmCallsByJob(jobId);
-    assertThat(retrievedRecords).hasSize(1);
-    LlmCallRecord persisted = retrievedRecords.get(0);
-    assertThat(persisted.getJobId()).isEqualTo(jobId);
+        // Verify the record is persisted for the job
+        List<LlmCallRecord> retrievedRecords = llmCallRepo.findByJobId(jobId);
+        assertThat(retrievedRecords).hasSize(1);
+        LlmCallRecord persisted = retrievedRecords.get(0);
+        assertThat(persisted.getJobId()).isEqualTo(jobId);
 
-    // Assert relationship existence via Cypher-based repository check
-    boolean hasJobRel = llmCallRepo.hasOfJobRelation(persisted.getId(), jobId);
-    assertThat(hasJobRel).isTrue();
+        // Assert relationship existence via Cypher-based repository check
+        boolean hasJobRel = llmCallRepo.hasOfJobRelation(persisted.getId(), jobId);
+        assertThat(hasJobRel).isTrue();
 
-    // And ensure the relationship also loads when using the aliasing query (defense in depth)
-    var nodes = llmCallRepo.findByJobId(jobId);
-    assertThat(nodes).hasSize(1);
-    assertThat(nodes.get(0).getJob()).isNotNull();
-    assertThat(nodes.get(0).getJob().getId()).isEqualTo(jobId);
+        // And ensure the relationship also loads when using the aliasing query (defense in depth)
+        var nodes = llmCallRepo.findByJobId(jobId);
+        assertThat(nodes).hasSize(1);
+        assertThat(nodes.get(0).getJob()).isNotNull();
+        assertThat(nodes.get(0).getJob().getId()).isEqualTo(jobId);
     }
 }

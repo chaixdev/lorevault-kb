@@ -10,6 +10,7 @@ import com.lorevault.api.event.ChapterIngestionEvent;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.ingestion.IngestionJob;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,7 @@ public class IngestionService {
 
     private final ContentPersistencePort contentPersistencePort;
     private final IngestionJobService ingestionJobService;
+    private final IngestionJobGraphRepository jobRepo;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -196,7 +198,7 @@ public class IngestionService {
     private boolean checkForActiveJob(UUID chapterId) {
         return bestEffortLookup(
             "hasActiveJobForChapter chapterId=" + chapterId,
-            () -> contentPersistencePort.hasActiveJobForChapter(chapterId),
+            () -> jobRepo.existsActiveForChapter(chapterId),
             false
         );
     }
@@ -207,7 +209,7 @@ public class IngestionService {
     private Optional<UUID> findMostRecentJobId(UUID chapterId) {
         return bestEffortLookup(
             "findMostRecentJobForChapter chapterId=" + chapterId,
-            () -> contentPersistencePort.findMostRecentJobForChapter(chapterId)
+            () -> jobRepo.findLatestForChapter(chapterId)
                 .map(IngestionJob::getId),
             Optional.empty()
         );

@@ -1,13 +1,13 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.repository;
 
-import com.lorevault.api.infrastructure.persistence.neo4j.model.StatusRecordNode;
+import com.lorevault.api.domain.ingestion.StatusRecord;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 
 import java.util.List;
 import java.util.UUID;
 
-public interface StatusRecordGraphRepository extends Neo4jRepository<StatusRecordNode, UUID> {
+public interface StatusRecordGraphRepository extends Neo4jRepository<StatusRecord, UUID> {
 
     @Query("""
             MATCH (j:IngestionJob {id: $jobId})
@@ -20,6 +20,6 @@ public interface StatusRecordGraphRepository extends Neo4jRepository<StatusRecor
             RETURN sr
             ORDER BY idx
     """)
-    List<StatusRecordNode> findStatusHistoryForJob(UUID jobId);
+    List<StatusRecord> findStatusHistoryForJob(UUID jobId);
 
 }

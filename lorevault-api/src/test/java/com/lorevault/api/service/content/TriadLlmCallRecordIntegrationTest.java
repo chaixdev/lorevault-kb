@@ -1,10 +1,12 @@
 package com.lorevault.api.service.content;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.ingestion.LlmCallRecord;
 import com.lorevault.api.domain.ingestion.StatusRecord;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.LlmCallRecordGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.StatusRecordGraphRepository;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -53,7 +55,13 @@ class TriadLlmCallRecordIntegrationTest {
     }
 
     @Autowired
-    private ContentPersistencePort contentPersistencePort;
+    private IngestionJobGraphRepository jobRepo;
+
+    @Autowired
+    private StatusRecordGraphRepository statusRepo;
+
+    @Autowired
+    private LlmCallRecordGraphRepository llmCallRepo;
 
     @Autowired
     private IngestionJobService ingestionJobService;
@@ -72,7 +80,7 @@ class TriadLlmCallRecordIntegrationTest {
         job.setChapterId(testChapterId);
         job.setCreatedAt(LocalDateTime.now());
 
-        contentPersistencePort.createJobWithChapter(job, testChapterId);
+        jobRepo.save(job);
     }
 
     @Test
@@ -99,7 +107,7 @@ class TriadLlmCallRecordIntegrationTest {
         );
 
         // Get the current status record that was just created
-        IngestionJob job = contentPersistencePort.findJob(testJobId).orElseThrow();
+        IngestionJob job = jobRepo.findByIdWithCurrentStatus(testJobId).orElseThrow();
         StatusRecord currentStatus = job.getCurrentStatus();
         assertThat(currentStatus).isNotNull();
         assertThat(currentStatus.getStatus()).isEqualTo(IngestionStatus.SCENE_TRIAD_ANALYSIS);
@@ -122,10 +130,12 @@ class TriadLlmCallRecordIntegrationTest {
         llmCallRecord.setLatencyMs(1500L);
         llmCallRecord.setCreatedAt(LocalDateTime.now());
 
-        contentPersistencePort.addLlmCallRecord(llmCallRecord);
+        llmCallRecord.setJob(job);
+        llmCallRecord.setStatus(currentStatus);
+        llmCallRepo.save(llmCallRecord);
 
         // Assert - Verify the linking worked correctly
-        List<LlmCallRecord> callRecords = contentPersistencePort.findLlmCallsByJobAndStep(testJobId, "scene-detection-pass2");
+        List<LlmCallRecord> callRecords = llmCallRepo.findByJobIdAndStep(testJobId, "scene-detection-pass2");
         assertThat(callRecords).hasSize(1);
 
         LlmCallRecord savedRecord = callRecords.get(0);
@@ -133,17 +143,21 @@ class TriadLlmCallRecordIntegrationTest {
         assertThat(savedRecord.getStep()).isEqualTo("scene-detection-pass2");
         assertThat(savedRecord.getInputPreview()).startsWith("[userTemplate=scene-detection-pass2-user]");
 
+        // Verify graph relationships exist
+        assertThat(llmCallRepo.hasOfJobRelation(savedRecord.getId(), testJobId)).isTrue();
+        assertThat(llmCallRepo.hasOfStatusRelation(savedRecord.getId(), currentStatus.getId())).isTrue();
+
         // Verify the status record contains the expected triad metadata
-        List<StatusRecord> statusHistory = contentPersistencePort.findStatusHistoryForJob(testJobId);
+        List<StatusRecord> statusHistory = statusRepo.findStatusHistoryForJob(testJobId);
         StatusRecord triadStatusRecord = statusHistory.stream()
             .filter(status -> status.getStatus() == IngestionStatus.SCENE_TRIAD_ANALYSIS)
             .findFirst()
             .orElseThrow();
 
-        assertThat(triadStatusRecord.getProperties()).containsEntry("triadIndex", 0);
-        assertThat(triadStatusRecord.getProperties()).containsEntry("prevSceneId", scene1Id);
-        assertThat(triadStatusRecord.getProperties()).containsEntry("currentSceneId", scene2Id);
-        assertThat(triadStatusRecord.getProperties()).containsEntry("nextSceneId", scene3Id);
+        assertThat(triadStatusRecord.getProperties()).containsEntry("triadIndex", "0");
+        assertThat(triadStatusRecord.getProperties()).containsEntry("prevSceneId", scene1Id.toString());
+        assertThat(triadStatusRecord.getProperties()).containsEntry("currentSceneId", scene2Id.toString());
+        assertThat(triadStatusRecord.getProperties()).containsEntry("nextSceneId", scene3Id.toString());
         assertThat(triadStatusRecord.getStepDescription()).isEqualTo("Triad analysis for scenes [prev, curr, next]");
     }
 
@@ -164,29 +178,39 @@ class TriadLlmCallRecordIntegrationTest {
             Map.of("triadIndex", 0, "prevSceneId", scene1Id, "currentSceneId", scene2Id, "nextSceneId", scene3Id)
         );
 
-        IngestionJob job1 = contentPersistencePort.findJob(testJobId).orElseThrow();
+        IngestionJob job1 = jobRepo.findByIdWithCurrentStatus(testJobId).orElseThrow();
         StatusRecord firstTriadStatus = job1.getCurrentStatus();
 
         // Second triad
+        Map<String, Object> secondTriadProps = new java.util.HashMap<>();
+        secondTriadProps.put("triadIndex", 1);
+        secondTriadProps.put("prevSceneId", scene2Id);
+        secondTriadProps.put("currentSceneId", scene3Id);
+        secondTriadProps.put("nextSceneId", null);
+
         ingestionJobService.updateJobStatus(
             testJobId,
             IngestionStatus.SCENE_TRIAD_ANALYSIS,
             "Triad analysis for scenes [prev, curr, next]",
-            Map.of("triadIndex", 1, "prevSceneId", scene2Id, "currentSceneId", scene3Id, "nextSceneId", (UUID) null)
+            secondTriadProps
         );
 
-        IngestionJob job2 = contentPersistencePort.findJob(testJobId).orElseThrow();
+        IngestionJob job2 = jobRepo.findByIdWithCurrentStatus(testJobId).orElseThrow();
         StatusRecord secondTriadStatus = job2.getCurrentStatus();
 
         // Act - Create LLM call records for both triads
         LlmCallRecord firstCall = createTriadLlmCallRecord(firstTriadStatus.getId());
         LlmCallRecord secondCall = createTriadLlmCallRecord(secondTriadStatus.getId());
 
-        contentPersistencePort.addLlmCallRecord(firstCall);
-        contentPersistencePort.addLlmCallRecord(secondCall);
+        firstCall.setJob(job1);
+        firstCall.setStatus(firstTriadStatus);
+        secondCall.setJob(job2);
+        secondCall.setStatus(secondTriadStatus);
+        llmCallRepo.save(firstCall);
+        llmCallRepo.save(secondCall);
 
         // Assert - Verify both records are linked correctly
-        List<LlmCallRecord> allTriadCalls = contentPersistencePort.findLlmCallsByJobAndStep(testJobId, "scene-detection-pass2");
+        List<LlmCallRecord> allTriadCalls = llmCallRepo.findByJobIdAndStep(testJobId, "scene-detection-pass2");
         assertThat(allTriadCalls).hasSize(2);
 
         // Verify each call is linked to the correct status record
@@ -194,13 +218,13 @@ class TriadLlmCallRecordIntegrationTest {
             .containsExactlyInAnyOrder(firstTriadStatus.getId(), secondTriadStatus.getId());
 
         // Verify the status records have different triad indices
-        List<StatusRecord> triadStatuses = contentPersistencePort.findStatusHistoryForJob(testJobId).stream()
+        List<StatusRecord> triadStatuses = statusRepo.findStatusHistoryForJob(testJobId).stream()
             .filter(status -> status.getStatus() == IngestionStatus.SCENE_TRIAD_ANALYSIS)
             .toList();
 
         assertThat(triadStatuses).hasSize(2);
         assertThat(triadStatuses).extracting(status -> status.getProperties().get("triadIndex"))
-            .containsExactlyInAnyOrder(0, 1);
+            .containsExactlyInAnyOrder("0", "1");
     }
 
     @Test
@@ -228,26 +252,26 @@ class TriadLlmCallRecordIntegrationTest {
         );
 
         // Assert - Verify metadata is retrievable and correct
-        List<StatusRecord> statusHistory = contentPersistencePort.findStatusHistoryForJob(testJobId);
+        List<StatusRecord> statusHistory = statusRepo.findStatusHistoryForJob(testJobId);
         StatusRecord triadStatus = statusHistory.stream()
             .filter(status -> status.getStatus() == IngestionStatus.SCENE_TRIAD_ANALYSIS)
             .findFirst()
             .orElseThrow();
 
         assertThat(triadStatus.getProperties())
-            .containsEntry("triadIndex", 2)
-            .containsEntry("prevSceneId", prevSceneId)
-            .containsEntry("currentSceneId", currSceneId)
-            .containsEntry("nextSceneId", nextSceneId);
+            .containsEntry("triadIndex", "2")
+            .containsEntry("prevSceneId", prevSceneId.toString())
+            .containsEntry("currentSceneId", currSceneId.toString())
+            .containsEntry("nextSceneId", nextSceneId.toString());
 
         // Verify the specific scene IDs can be extracted for debugging/analysis
-        Object retrievedPrevId = triadStatus.getProperties().get("prevSceneId");
-        Object retrievedCurrId = triadStatus.getProperties().get("currentSceneId");
-        Object retrievedNextId = triadStatus.getProperties().get("nextSceneId");
+        String retrievedPrevId = triadStatus.getProperties().get("prevSceneId");
+        String retrievedCurrId = triadStatus.getProperties().get("currentSceneId");
+        String retrievedNextId = triadStatus.getProperties().get("nextSceneId");
 
-        assertThat(retrievedPrevId).isEqualTo(prevSceneId);
-        assertThat(retrievedCurrId).isEqualTo(currSceneId);
-        assertThat(retrievedNextId).isEqualTo(nextSceneId);
+        assertThat(retrievedPrevId).isEqualTo(prevSceneId.toString());
+        assertThat(retrievedCurrId).isEqualTo(currSceneId.toString());
+        assertThat(retrievedNextId).isEqualTo(nextSceneId.toString());
     }
 
     private LlmCallRecord createTriadLlmCallRecord(UUID statusRecordId) {

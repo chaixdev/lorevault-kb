@@ -7,9 +7,6 @@ import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.content.Universe;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Book;
-import com.lorevault.api.domain.ingestion.IngestionJob;
-import com.lorevault.api.domain.ingestion.LlmCallRecord;
-import com.lorevault.api.domain.ingestion.StatusRecord;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -24,9 +21,6 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
     public final Map<UUID, Chapter> chapters = new ConcurrentHashMap<>();
     public final Map<UUID, List<Scene>> scenesByChapter = new ConcurrentHashMap<>();
     public final Map<UUID, List<Chunk>> chunksByChapter = new ConcurrentHashMap<>();
-    public final Map<UUID, IngestionJob> jobs = new ConcurrentHashMap<>();
-    public final Map<UUID, List<StatusRecord>> statusByJob = new ConcurrentHashMap<>();
-    public final Map<UUID, List<LlmCallRecord>> llmCallsByJob = new ConcurrentHashMap<>();
     
     // Hierarchy entities
     public final Map<UUID, Universe> universes = new ConcurrentHashMap<>();
@@ -165,85 +159,8 @@ public class FakeContentPersistencePort implements ContentPersistencePort {
     }
 
     @Override
-    public IngestionJob createJob(IngestionJob job) {
-        if (job.getId() == null) job.setId(UUID.randomUUID());
-        jobs.put(job.getId(), job);
-        return job;
-    }
-
-    @Override
-    public IngestionJob createJobWithChapter(IngestionJob job, UUID chapterId) {
-        job.setChapterId(chapterId);
-        return createJob(job);
-    }
-
-    @Override
-    public Optional<IngestionJob> findJob(UUID id) {
-        return Optional.ofNullable(jobs.get(id));
-    }
-
-    @Override
-    public IngestionJob updateJob(IngestionJob job) {
-        jobs.put(job.getId(), job);
-        return job;
-    }
-
-    @Override
-    public Optional<IngestionJob> findMostRecentJobForChapter(UUID chapterId) {
-        return jobs.values().stream()
-                .filter(j -> Objects.equals(j.getChapterId(), chapterId))
-                .max(Comparator.comparing(IngestionJob::getCreatedAt, Comparator.nullsFirst(LocalDateTime::compareTo)));
-    }
-
-    @Override
-    public boolean hasActiveJobForChapter(UUID chapterId) {
-        return jobs.values().stream().anyMatch(j -> Objects.equals(j.getChapterId(), chapterId));
-    }
-
-    @Override
-    public List<IngestionJob> findJobsByChapterIds(List<UUID> chapterIds) {
-        Set<UUID> set = new HashSet<>(chapterIds);
-        return jobs.values().stream().filter(j -> set.contains(j.getChapterId())).toList();
-    }
-
-    @Override
-    public List<IngestionJob> findAllJobs() {
-        return new ArrayList<>(jobs.values());
-    }
-
-    @Override
-    public StatusRecord addStatusRecord(UUID jobId, StatusRecord record) {
-        statusByJob.computeIfAbsent(jobId, k -> new ArrayList<>()).add(record);
-        return record;
-    }
-
-    @Override
-    public List<StatusRecord> findStatusHistoryForJob(UUID jobId) {
-        return statusByJob.getOrDefault(jobId, List.of());
-    }
-
-    @Override
     public List<Chapter> findChaptersByUniverse(String universe) {
         return chapters.values().stream().filter(c -> Objects.equals(c.getUniverse(), universe)).toList();
-    }
-
-    @Override
-    public LlmCallRecord addLlmCallRecord(LlmCallRecord record) {
-        if (record.getId() == null) record.setId(UUID.randomUUID());
-        llmCallsByJob.computeIfAbsent(record.getJobId(), k -> new ArrayList<>()).add(record);
-        return record;
-    }
-
-    @Override
-    public List<LlmCallRecord> findLlmCallsByJob(UUID jobId) {
-        return llmCallsByJob.getOrDefault(jobId, List.of());
-    }
-
-    @Override
-    public List<LlmCallRecord> findLlmCallsByJobAndStep(UUID jobId, String step) {
-        return llmCallsByJob.getOrDefault(jobId, List.of()).stream()
-                .filter(record -> Objects.equals(record.getStep(), step))
-                .collect(Collectors.toList());
     }
 
     // Publication Hierarchy - Universes

@@ -7,6 +7,8 @@ import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.ingestion.StatusRecord;
 import com.lorevault.api.dto.ingestion.JobListResponse;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.StatusRecordGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Consolidated service for managing ingestion jobs.
@@ -34,6 +37,8 @@ import java.util.UUID;
 public class IngestionJobService {
 
     private final ContentPersistencePort contentPersistencePort;
+    private final IngestionJobGraphRepository jobRepo;
+    private final StatusRecordGraphRepository statusRepo;
 
     // ================================
     // JOB LIFECYCLE OPERATIONS
@@ -49,10 +54,12 @@ public class IngestionJobService {
         job.setChapterId(chapterId);
         job.setCreatedAt(LocalDateTime.now());
 
-        IngestionJob persistedJob = contentPersistencePort.createJobWithChapter(job, chapterId);
+        IngestionJob persistedJob = jobRepo.save(job);
 
         StatusRecord initialStatus = createInitialStatusRecord(persistedJob.getId(), chapterId);
-        contentPersistencePort.addStatusRecord(persistedJob.getId(), initialStatus);
+
+        statusRepo.save(initialStatus);
+        jobRepo.swapCurrentStatus(persistedJob.getId(), initialStatus.getId());
         
         persistedJob.setCurrentStatus(initialStatus);
         return persistedJob;
@@ -75,8 +82,8 @@ public class IngestionJobService {
                 Map.of(
                     "version", "0.2.0",
                     "pipeline", "content_segmentation",
-                    "chunkCount", chunkCount,
-                    "chapterLength", chapterLength,
+                    "chunkCount", String.valueOf(chunkCount),
+                    "chapterLength", String.valueOf(chapterLength),
                     "completedAt", LocalDateTime.now().toString()
                 )
         );
@@ -145,11 +152,12 @@ public class IngestionJobService {
             status,
             description,
             status.getProgressPercentage(),
-            properties
+            stringifyProperties(properties)
         );
         
         try {
-            contentPersistencePort.addStatusRecord(jobId, statusRecord);
+            statusRepo.save(statusRecord);
+            jobRepo.swapCurrentStatus(jobId, statusRecord.getId());
             log.debug("Created status record for job {}: {} - {}", jobId, status, description);
         } catch (Exception e) {
             log.debug("Failed to add status record to graph: {}", e.getMessage());
@@ -165,7 +173,7 @@ public class IngestionJobService {
      */
     public Optional<JobStatusResponse> getJobStatus(UUID jobId) {
         try {
-            Optional<IngestionJob> jobOpt = contentPersistencePort.findJob(jobId);
+            Optional<IngestionJob> jobOpt = jobRepo.findByIdWithCurrentStatus(jobId);
             if (jobOpt.isEmpty()) {
                 return Optional.empty();
             }
@@ -214,9 +222,23 @@ public class IngestionJobService {
         );
     }
 
+    private Map<String, String> stringifyProperties(Map<String, Object> properties) {
+        if (properties == null || properties.isEmpty()) {
+            return Map.of();
+        }
+
+        return properties.entrySet().stream()
+                .filter(e -> e.getKey() != null)
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> e.getValue() == null ? "" : e.getValue().toString()
+                ));
+    }
+
     private void saveStatusRecord(StatusRecord statusRecord) {
         try {
-            contentPersistencePort.addStatusRecord(statusRecord.getJobId(), statusRecord);
+            statusRepo.save(statusRecord);
+            jobRepo.swapCurrentStatus(statusRecord.getJobId(), statusRecord.getId());
             log.debug("Created status record for job {}: {} - {}", 
                     statusRecord.getJobId(), statusRecord.getStatus(), statusRecord.getStepDescription());
         } catch (Exception e) {
@@ -226,9 +248,9 @@ public class IngestionJobService {
 
     private void updateJobCompletedAt(UUID jobId, LocalDateTime completedAt) {
         try {
-            contentPersistencePort.findJob(jobId).ifPresent(job -> {
+            jobRepo.findByIdWithCurrentStatus(jobId).ifPresent(job -> {
                 job.setCompletedAt(completedAt);
-                contentPersistencePort.updateJob(job);
+                jobRepo.save(job);
             });
         } catch (Exception e) {
             log.debug("Graph completion update failed for job {}: {}", jobId, e.getMessage());
@@ -258,7 +280,7 @@ public class IngestionJobService {
 
     private List<JobStatusResponse.StatusUpdateDto> loadRecentStatusUpdates(UUID jobId) {
         try {
-            var recentNodes = contentPersistencePort.findStatusHistoryForJob(jobId);
+            var recentNodes = statusRepo.findStatusHistoryForJob(jobId);
             return recentNodes.stream()
                     .map(node -> new JobStatusResponse.StatusUpdateDto(
                             node.getStatus(), 
@@ -276,9 +298,9 @@ public class IngestionJobService {
         if (filterContext.hasUniverseFilter()) {
             List<Chapter> chapters = contentPersistencePort.findChaptersByUniverse(filterContext.getUniverse());
             List<UUID> chapterIds = chapters.stream().map(Chapter::getId).toList();
-            return contentPersistencePort.findJobsByChapterIds(chapterIds);
+            return jobRepo.findByChapterIds(chapterIds);
         } else {
-            return contentPersistencePort.findAllJobs();
+            return jobRepo.findAllWithCurrentStatus();
         }
     }
 
