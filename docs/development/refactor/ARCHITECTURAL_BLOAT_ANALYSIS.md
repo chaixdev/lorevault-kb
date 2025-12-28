@@ -1,8 +1,11 @@
 # Architectural Bloat Analysis
 
 **Date:** December 27, 2025
-**Status:** Draft
+**Status:** Superseded
 **Goal:** Identify architectural bottlenecks hindering feature velocity and propose simplifications aligned with the project vision.
+
+> **Note (Dec 28, 2025):** This document is kept for historical context (the original diagnosis), but the actionable direction is now captured in the approved plan:
+> - [docs/development/refactor/PRAGMATIC_MODULITH_PLAN.md](docs/development/refactor/PRAGMATIC_MODULITH_PLAN.md)
 
 ## Executive Summary
 
@@ -19,11 +22,7 @@ This interface has become a massive collection of unrelated methods. It violates
     *   Any change to the data model (e.g., adding a field to `Scene`) forces a recompilation of this massive interface and its implementation.
     *   It makes testing difficult because mocking `ContentPersistencePort` requires dealing with dozens of irrelevant methods.
 
-**Recommendation:** Split this port into focused, role-based interfaces:
-*   `IngestionPersistencePort`: For Jobs, Status, LLM Calls.
-*   `LibraryPersistencePort`: For Universe, Series, Book, Chapter hierarchy.
-*   `ContentPersistencePort`: For Scene, Chunk, and text content.
-*   `SearchPersistencePort`: For vector/semantic search operations.
+**Recommendation (updated):** Dismantle the "God Port" by moving stable Knowledge Graph persistence to direct repository usage (module-scoped), while retaining ports only for truly volatile infrastructure (LLM, embeddings, semantic/vector search). See the approved plan for execution details.
 
 ## 2. Adapter Complexity & Coupling
 
@@ -36,9 +35,7 @@ Because of the "God Port," this adapter is a monolith.
     *   It mixes transactional boundaries for disparate domains (e.g., updating a Job status vs. creating a Universe).
     *   It is 400+ lines of code that is purely "pass-through" logic, delegating to Spring Data repositories.
 
-**Recommendation:**
-*   Once the ports are split, create smaller adapters (e.g., `Neo4jIngestionAdapter`, `Neo4jLibraryAdapter`).
-*   Consider allowing Domain Services to use Spring Data Repositories directly for simple CRUD operations if the "Port" abstraction isn't adding value (pragmatic relaxation of Clean Architecture).
+**Recommendation (updated):** Prefer direct repository usage for stable core graph persistence. Where an adapter remains, it should exist only to encapsulate genuine infrastructure volatility or complex query mechanics (e.g., vector search via `Neo4jClient`).
 
 ## 3. Mapping Overhead
 
@@ -77,9 +74,15 @@ The move to `ChunkingHandler` and `SceneDetectionHandler` is good. However, ther
 
 ## Summary of Proposed Actions
 
-1.  **Split `ContentPersistencePort`** into 3-4 smaller interfaces.
-2.  **Eliminate `Neo4jMapper`** by annotating Domain entities with Spring Data Neo4j annotations directly (Pragmatic Architecture).
-3.  **Delete `InMemorySemanticSearchAdapter`** if confirmed unused.
-4.  **Refactor `Neo4jContentPersistenceAdapter`** into smaller, focused adapters (or remove adapters entirely if using Repositories directly).
+This document’s recommendations are now represented (and expanded with guardrails and definitions-of-done) in:
+
+- [docs/development/refactor/PRAGMATIC_MODULITH_PLAN.md](docs/development/refactor/PRAGMATIC_MODULITH_PLAN.md)
+
+If you need a short “why we changed direction” summary:
+
+1. **Eliminate `Neo4jMapper`** by annotating domain entities with SDN (`@Node`).
+2. **Dismantle the "God Port"** by using module-scoped repositories for the stable core graph, retaining ports for volatile infrastructure.
+3. **Remove dead code** (e.g., `InMemorySemanticSearchAdapter`) once confirmed unsupported.
+4. **Keep adapters only where they add leverage** (complex queries, backend volatility), otherwise prefer repositories directly.
 
 These changes will significantly reduce the "lines of code per feature" metric and make the codebase easier to navigate.
