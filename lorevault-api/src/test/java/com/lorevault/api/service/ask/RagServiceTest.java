@@ -91,13 +91,14 @@ class RagServiceTest {
             when(contentPersistencePort.findChunkById(chunkId))
                 .thenReturn(Optional.of(mockChunk));
 
-            // Mock chapter with full coordinates
             com.lorevault.api.domain.content.Chapter chapter = new com.lorevault.api.domain.content.Chapter();
             chapter.setId(chapterId);
-            com.lorevault.api.dto.shared.PublicationCoordinates coords = new com.lorevault.api.dto.shared.PublicationCoordinates(
-                "Cosmere", "Stormlight Archive", "The Way of Kings", "Kaladin", 1, 1
-            );
-            chapter.setCoordinates(coords);
+            chapter.setUniverse("Cosmere");
+            chapter.setSeries("Stormlight Archive");
+            chapter.setBookTitle("The Way of Kings");
+            chapter.setChapterTitle("Kaladin");
+            chapter.setBookNumber(1);
+            chapter.setChapterNumber(1);
             when(contentPersistencePort.findChapterById(chapterId))
                 .thenReturn(Optional.of(chapter));
 

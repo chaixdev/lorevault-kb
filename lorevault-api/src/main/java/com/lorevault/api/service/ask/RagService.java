@@ -260,22 +260,12 @@ public class RagService {
         if (chapterOpt.isPresent()) {
             Chapter chapter = chapterOpt.get();
             com.lorevault.api.dto.shared.PublicationCoordinates coords = new com.lorevault.api.dto.shared.PublicationCoordinates();
-            if (chapter.getCoordinates() != null) {
-                coords.setUniverse(chapter.getCoordinates().getUniverse());
-                coords.setSeries(chapter.getCoordinates().getSeries());
-                coords.setBookTitle(chapter.getCoordinates().getBookTitle());
-                // Prefer Chapter.coordinates.chapterTitle if present; otherwise fallback to Chapter.chapterTitle
-                coords.setChapterTitle(
-                    chapter.getCoordinates().getChapterTitle() != null ? chapter.getCoordinates().getChapterTitle() : chapter.getChapterTitle()
-                );
-                coords.setBookNumber(chapter.getCoordinates().getBookNumber());
-                coords.setChapterNumber(chapter.getCoordinates().getChapterNumber());
-            } else {
-                // Fallback: build minimal coords from chapter fields if available
-                coords.setUniverse(chapter.getUniverse());
-                coords.setSeries(chapter.getSeries());
-                coords.setChapterTitle(chapter.getChapterTitle());
-            }
+            coords.setUniverse(chapter.getUniverse());
+            coords.setSeries(chapter.getSeries());
+            coords.setBookTitle(chapter.getBookTitle());
+            coords.setBookNumber(chapter.getBookNumber());
+            coords.setChapterNumber(chapter.getChapterNumber());
+            coords.setChapterTitle(chapter.getChapterTitle());
 
             // Warn if any critical fields are missing
             if (coords.getUniverse() == null || coords.getBookTitle() == null ||
@@ -292,9 +282,7 @@ public class RagService {
                 coords
             );
         } else {
-            // Fallback to basic citation if chapter not found - create minimal coordinates
             com.lorevault.api.dto.shared.PublicationCoordinates fallbackCoords = new com.lorevault.api.dto.shared.PublicationCoordinates();
-            // Only set what we know from the search result
             fallbackCoords.setBookNumber(searchResult.getBookNumber());
             fallbackCoords.setChapterNumber(searchResult.getChapterNumber());
             
