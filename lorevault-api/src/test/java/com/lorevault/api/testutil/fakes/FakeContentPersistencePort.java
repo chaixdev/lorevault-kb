@@ -360,6 +360,7 @@ public class FakeContentPersistencePort {
         @Override public long countMeetsBetween(UUID fromId, UUID toId) { return 0; }
         @Override public void createMeetsBetween(UUID fromId, UUID toId) { }
         @Override public void linkChunkToScene(UUID sceneId, UUID chunkId) { }
+        @Override public void linkSceneToChapter(UUID chapterId, UUID sceneId) { }
 
         @Override
         public <S extends Scene> S save(S scene) {

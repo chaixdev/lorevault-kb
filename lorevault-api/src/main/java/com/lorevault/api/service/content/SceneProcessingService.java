@@ -130,7 +130,6 @@ public class SceneProcessingService {
             return scene;
         }).collect(Collectors.toList());
 
-        Chapter chapter = chapterRepo.findById(chapterId).orElseThrow();
         List<Scene> toSave = scenes.stream()
                 .peek(s -> {
                     if (s.getId() == null) {
@@ -139,25 +138,14 @@ public class SceneProcessingService {
                     if (s.getChapterId() == null) {
                         s.setChapterId(chapterId);
                     }
-                    s.setChapter(chapter);
                 })
                 .collect(Collectors.toList());
         List<Scene> savedScenes = sceneRepo.saveAll(toSave);
-        List<Scene> chapterScenes = chapter.getScenes();
-        if (chapterScenes == null) {
-            chapterScenes = new java.util.ArrayList<>();
-            chapter.setScenes(chapterScenes);
-        }
-        java.util.Set<UUID> existingSceneIds = chapterScenes.stream()
-                .map(Scene::getId)
-                .collect(Collectors.toSet());
         for (Scene savedScene : savedScenes) {
-            UUID sceneId = savedScene.getId();
-            if (sceneId == null || existingSceneIds.add(sceneId)) {
-                chapterScenes.add(savedScene);
+            if (savedScene.getId() != null) {
+                sceneRepo.linkSceneToChapter(chapterId, savedScene.getId());
             }
         }
-        chapterRepo.save(chapter);
         return savedScenes;
     }
 
