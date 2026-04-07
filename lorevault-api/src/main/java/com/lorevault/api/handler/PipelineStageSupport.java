@@ -57,6 +57,7 @@ public class PipelineStageSupport {
         try {
             return work.get();
         } catch (Exception e) {
+            log.error("Stage {} failed for job={} chapter={}", stage, jobId, chapterId, e);
             boolean retryable = false;
             try {
                 retryable = isRetryable != null && Boolean.TRUE.equals(isRetryable.apply(e));
