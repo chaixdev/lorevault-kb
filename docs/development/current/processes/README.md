@@ -27,7 +27,7 @@ Each process maintains clear boundaries and error handling for robustness.
 
 ### Folder Boundaries
 - **Root level**: Business process specifications and workflow documentation
-- **Do not add**: Data schemas (go to `../data-model/schemas/`), API specs (go to `../api/specifications/`)
+- **Do not add**: Data schemas (go to `../data-model/schemas/`), API specs (go to `../../../api/specifications/`)
 
 ### When Adding Process Documentation
 - **New workflows**: Create new specification files with clear naming
@@ -36,8 +36,8 @@ Each process maintains clear boundaries and error handling for robustness.
 
 ### Cross-Reference Requirements
 - **Link to data models**: Use `../data-model/` paths for entity references
-- **Reference APIs**: Use `../api/specifications/` paths for endpoint interactions
-- **Architecture context**: Use `../architecture/` paths for system context
+- **Reference APIs**: Use `../../../api/specifications/` paths for endpoint interactions
+- **Architecture context**: Use `../../../architecture/` paths for system context
 
 ### Naming Conventions
 - Process specs: `[process-name]-specification.md`

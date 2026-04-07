@@ -89,8 +89,8 @@ These guides focus on **consistency principles** for adding new endpoints rather
 - **~~collections/~~**: Removed (replaced by auto-generated OpenAPI)
 
 ### Cross-Reference Requirements
-- **Data models**: Reference `../data-model/` for entity specifications
-- **Processes**: Reference `../processes/` for workflow documentation  
+- **Data models**: Reference `../development/current/data-model/` for entity specifications
+- **Processes**: Reference `../development/current/processes/` for workflow documentation  
 - **Architecture**: Reference `../architecture/` for system design
 
 This approach ensures API documentation remains accurate, accessible, and maintainable while reducing manual overhead.

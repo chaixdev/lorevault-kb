@@ -34,7 +34,7 @@ Details the runtime functional elements, their responsibilities, and interaction
 **Stakeholders:** Data architects, developers, database administrators  
 **Concerns:** Data structure, storage strategy, information lifecycle
 
-Describes the data architecture, including Neo4j schema design, vector storage, and information processing flow. References detailed data model specifications in `../data-model/`.
+Describes the data architecture, including Neo4j schema design, vector storage, and information processing flow. References detailed data model specifications in `../development/current/data-model/`.
 
 ### [4. Concurrency Viewpoint](./04-concurrency-viewpoint.md)
 **Stakeholders:** Performance engineers, developers, system administrators  
@@ -68,8 +68,8 @@ Details the deployment strategy, containerization approach, and infrastructure r
 
 - [Project Summary](../project_summary.md) - High-level project goals and scope
 - [API Specifications](../api/) - REST API documentation and collections
-- [Data Model](../data-model/) - Neo4j schema and entity relationships
-- [Process Specifications](../processes/) - Business workflow documentation
+- [Data Model](../development/current/data-model/) - Neo4j schema and entity relationships
+- [Process Specifications](../development/current/processes/) - Business workflow documentation
 
 ## 🔧 Update Instructions
 
@@ -77,7 +77,7 @@ Details the deployment strategy, containerization approach, and infrastructure r
 
 ### Folder Boundaries
 - **Root level**: Architectural viewpoints following ISO/IEC/IEEE 42010 standard
-- **Do not add**: API documentation (go to `../api/`), detailed data schemas (go to `../data-model/schemas/`)
+- **Do not add**: API documentation (go to `../api/`), detailed data schemas (go to `../development/current/data-model/schemas/`)
 
 ### When Updating Architecture Documentation
 - **Viewpoint changes**: Update relevant viewpoint files, maintain cross-references
@@ -85,7 +85,7 @@ Details the deployment strategy, containerization approach, and infrastructure r
 - **Architectural decisions**: Document rationale and trade-offs clearly
 
 ### Cross-Reference Requirements
-- **Link to specifications**: Use `../api/specifications/`, `../data-model/`, `../processes/` paths
+- **Link to specifications**: Use `../api/specifications/`, `../development/current/data-model/`, `../development/current/processes/` paths
 - **Maintain viewpoint consistency**: Ensure changes cascade to related viewpoints
 - **Update navigation**: Keep Quick Navigation section current
 

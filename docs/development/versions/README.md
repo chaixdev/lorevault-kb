@@ -1,20 +1,14 @@
-# Versioned Development
+# Versioned Development (Transitional)
 
-This area contains milestone-specific documentation organized by version.
+This directory now contains only the versioned material that has not yet been fully migrated into the archive.
 
-## Structure
+## Status
 
-- **[v0.9.0/](v0.9.0/)** — Active milestone: Scene→Event (Timeline)
-  - research/ — Requirements exploration and model design
-  - planning/ — Implementation roadmap and delivery steps
-  - implementation/ — Implementation notes and lessons learned
-- **[v0.8.0/](v0.8.0/)** — Historical foundation development
-  - research/ — Foundational research and explorations
-  - planning/ — Roadmaps, proposals, and analysis
-  - implementation/ — Historical implementation reference
+- `v0.10.0/` has been archived under `docs/archive/versions/v0.10.0/`
+- `v0.8.0/` and `v0.9.0/` remain here temporarily during the documentation refactor
 
 ## Guidance
 
-- Start new milestones by creating `vX.Y.Z/` with research/planning/implementation
-- Keep previous versions intact for historical context
-- Cross-link to `../current/` when referring to the system’s current state
+- Prefer `docs/development/current/` for the current system
+- Prefer `docs/archive/versions/` for superseded milestone archaeology
+- Do not add new milestone folders here unless explicitly needed

@@ -1,98 +1,74 @@
 # LoreVault Documentation
 
-## � Start Here
+## Start Here
 
-New to LoreVault? Begin with these essential documents:
+Read these first:
 
-- **[Project Summary](project_summary.md)** — Vision, features, and roadmap overview
-- **[Release Notes](development/current/RELEASE_NOTES.md)** — Latest changes and version history
-- **[Architecture Overview](architecture/README.md)** — System design and technical foundations
+- **[Project Status](PROJECT-STATUS.md)** — current state, next steps, and active decisions
+- **[Architecture Overview](architecture/README.md)** — system architecture and viewpoints
+- **[Pattern Library](patterns/README.md)** — durable implementation patterns
+- **[Architecture Decisions](adr/README.md)** — current architectural decisions
+- **[Refactor Roadmap](development/current/refactor-roadmap.md)** — current structural roadmap and next refactor steps
 
-## �📁 Documentation Structure
+## Structure
 
-### Core Documentation
+### Canonical Documentation
 
-- **[Project Summary](project_summary.md)** - Vision, roadmap, and feature overview
+- **`architecture/`** — system architecture viewpoints
+- **`adr/`** — active architectural decisions
+- **`patterns/`** — stable implementation patterns
+- **`development/current/`** — living system documentation
+- **`development/research/`** — current deep-dive research worth keeping active
 
-### Architecture & Design
+### Historical Documentation
 
-- **[Architecture](architecture/)** - System architecture viewpoints following ISO/IEC/IEEE 42010
+- **`archive/`** — historical, superseded, completed, or exploratory documents
 
 ### API Documentation
 
-- **[API](api/)** - REST API specifications and Postman collections
-  - `specifications/` - OpenAPI specs and endpoint documentation
-  - `collections/` - Postman collections for testing
+- **`api/`** — REST API specifications and collections
 
-### Development Resources
+## Migration Status
 
-- **[Development](development/)** - Version-organized development documentation
-  - **[Current](development/current/)** - Active system documentation
-    - `data-model/` - Current database schemas and entity models
-  - `processes/` - Current business process specifications
-    - `testing/` - Active testing strategies and patterns
-    - `configuration/` - System configuration and setup guides
-  - **[Versions](development/versions/)** - Historical milestone development
-    - `v0.9.0/` - Scene→Event (Timeline) milestone
-      - `research/` - Requirements and model exploration
-      - `planning/` - Implementation roadmap and design
-      - `implementation/` - Implementation notes and patterns
-    - `v0.8.0/` - Foundation development history
-      - `research/` - Foundational research and explorations  
-      - `planning/` - Roadmaps, proposals, and analysis
+LoreVault is currently moving away from a version-heavy documentation structure toward:
 
-## 🔄 Migration Notes
+- small canonical docs
+- explicit architectural decisions
+- reusable pattern docs
+- a clear archive for history
 
-This structure has evolved to improve navigation and separate concerns:
+Some historical material still remains under `development/refactor/` and `development/versions/` while the migration is in progress.
 
-- **v0.7.1**: API-related content consolidated under `api/`; data model specifications separated from API specs; research and planning content organized under `development/`
-- **v0.8.1**: Development documentation restructured with versioned organization (v0.8.0/, v0.9.0/)  
-- **Latest**: Further refinement with `current/` and `versions/` separation; active documentation in `current/`, historical milestones in `versions/`
+## Navigation
 
-## 📖 Navigation
+- **Current system understanding**: `development/current/`
+- **Refactor continuity**: `development/current/refactor-roadmap.md`
+- **Data model**: `development/current/data-model/`
+- **Current processes**: `development/current/processes/`
+- **Configuration**: `development/current/configuration/`
+- **Historical archaeology**: `archive/` and remaining version/refactor docs during migration
 
-For specific documentation needs:
+## Documentation Rules
 
-- **API Development**: Start with `api/specifications/rest-api-specification.md`
-- **System Understanding**: Begin with `architecture/README.md`
-- **Data Integration**: See `development/current/data-model/neo4j-content-data-model.md`
-- **Current Processes**: Reference `development/current/processes/`
-- **Testing**: See `development/current/testing/testing-strategy-v2-concise.md`
-- **Configuration**: See `development/current/configuration/multi-provider-llm-configuration.md`
-- **v0.9.0 Planning**: Browse `development/versions/v0.9.0/planning/`
-- **Historical Research**: See `development/versions/v0.8.0/research/`
+### Put material in `docs/` only if it is:
 
-## 🔧 Update Instructions
+- currently true
+- useful to future readers
+- not tied to one abandoned ticket or obsolete milestone
+- descriptive rather than speculative
 
-**For LLM Assistants and Contributors:**
+### Use the archive for:
 
-### Documentation Boundaries
+- completed refactor plans
+- superseded milestone docs
+- historical tickets
+- abandoned or deferred proposals that still have archaeology value
 
-- **Never move files between top-level folders** without explicit user request
-- **Maintain folder structure consistency** - each folder has a specific purpose
-- **Update cross-references** when moving or renaming files
-- **Follow naming conventions**: kebab-case for files, consistent README patterns
+### Use `.agent-notes/` for:
 
-### When Adding New Documentation
+- exploratory analysis
+- ticket-specific investigation
+- code review notes
+- temporary working memory
 
-- **API changes**: Add to `api/specifications/`
-- **Data model changes**: Add to `development/current/data-model/` with schemas in `schemas/`
-- **Process changes**: Add to `development/current/processes/`
-- **Configuration changes**: Add to `development/current/configuration/`
-- **Testing updates**: Add to `development/current/testing/`
-- **Research/experiments**: Add to `development/versions/{current_version}/research/`
-- **Planning documents**: Add to `development/versions/{current_version}/planning/`
-
-### Cross-Reference Updates
-
-- **Always update references** when moving files
-- **Check architecture documents** for specification links
-- **Update import paths** in code if documentation paths change
-- **Verify Postman collections** still reference correct spec files
-
-### Consistency Rules
-
-- All folders must have a README.md explaining their purpose
-- Use relative paths for internal documentation links
-- Maintain the "Update Instructions" section in all READMEs
-- Follow the established folder hierarchy pattern
+`.agent-notes/` is not canonical documentation.
