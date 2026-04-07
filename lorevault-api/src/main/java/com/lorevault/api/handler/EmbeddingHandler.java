@@ -4,8 +4,10 @@ import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChunksCreatedEvent;
 import com.lorevault.api.event.ingestion.IngestionCompletedEvent;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChunkGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
 import com.lorevault.api.service.content.EmbeddingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +33,9 @@ import java.util.UUID;
 @Slf4j
 public class EmbeddingHandler {
 
-    private final Neo4jContentPersistenceAdapter contentPersistencePort;
+    private final ChapterGraphRepository chapterRepo;
+    private final ChunkGraphRepository chunkRepo;
+    private final SceneGraphRepository sceneRepo;
     private final EmbeddingService embeddingService;
                 private final IngestionJobService ingestionJobService;
         private final IngestionJobGraphRepository jobRepo;
@@ -39,13 +43,17 @@ public class EmbeddingHandler {
         private final PipelineStageSupport stageSupport;
 
         public EmbeddingHandler(
-                        Neo4jContentPersistenceAdapter contentPersistencePort,
+                        ChapterGraphRepository chapterRepo,
+                        ChunkGraphRepository chunkRepo,
+                        SceneGraphRepository sceneRepo,
                         EmbeddingService embeddingService,
                         IngestionJobService ingestionJobService,
                         IngestionJobGraphRepository jobRepo,
                         ApplicationEventPublisher eventPublisher
         ) {
-                this.contentPersistencePort = contentPersistencePort;
+                this.chapterRepo = chapterRepo;
+                this.chunkRepo = chunkRepo;
+                this.sceneRepo = sceneRepo;
                 this.embeddingService = embeddingService;
                 this.ingestionJobService = ingestionJobService;
         this.jobRepo = jobRepo;
@@ -94,11 +102,12 @@ public class EmbeddingHandler {
         
         try {
             // Gather statistics
-            int sceneCount = contentPersistencePort.findScenesByChapterId(chapterId).size();
-            int chunkCount = contentPersistencePort.countChunksByChapterId(chapterId);
+            int sceneCount = sceneRepo.findByChapterId(chapterId).size();
+            int via = chunkRepo.countByChapterIdViaScenes(chapterId);
+            int chunkCount = via > 0 ? via : chunkRepo.countByChapterId(chapterId);
             
             // Get chapter length for job completion
-            Chapter chapter = contentPersistencePort.findChapterById(chapterId)
+            Chapter chapter = chapterRepo.findById(chapterId)
                     .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
             int chapterLength = chapter.getRawText() != null ? chapter.getRawText().length() : 0;
             

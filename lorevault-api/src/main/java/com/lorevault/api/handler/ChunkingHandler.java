@@ -6,7 +6,9 @@ import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChunksCreatedEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChunkGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
 import com.lorevault.api.service.content.TextChunkingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import lombok.extern.slf4j.Slf4j;
@@ -36,18 +38,24 @@ import static com.lorevault.api.util.HashUtils.generateSha256Hash;
 @Slf4j
 public class ChunkingHandler {
 
-    private final Neo4jContentPersistenceAdapter contentPersistencePort;
+    private final ChapterGraphRepository chapterRepo;
+    private final ChunkGraphRepository chunkRepo;
+    private final SceneGraphRepository sceneRepo;
     private final TextChunkingService textChunkingService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
 
     public ChunkingHandler(
-            Neo4jContentPersistenceAdapter contentPersistencePort,
+            ChapterGraphRepository chapterRepo,
+            ChunkGraphRepository chunkRepo,
+            SceneGraphRepository sceneRepo,
             TextChunkingService textChunkingService,
             IngestionJobService ingestionJobService,
             ApplicationEventPublisher eventPublisher
     ) {
-        this.contentPersistencePort = contentPersistencePort;
+        this.chapterRepo = chapterRepo;
+        this.chunkRepo = chunkRepo;
+        this.sceneRepo = sceneRepo;
         this.textChunkingService = textChunkingService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
@@ -73,8 +81,10 @@ public class ChunkingHandler {
                     "Breaking down scenes into embeddable text chunks");
 
             // Check for existing chunks (idempotency)
-            if (contentPersistencePort.chunksExistForChapter(chapterId)) {
-                int existingCount = contentPersistencePort.countChunksByChapterId(chapterId);
+            boolean chunksExist = chunkRepo.existsForChapterViaScenes(chapterId) || chunkRepo.existsForChapter(chapterId);
+            if (chunksExist) {
+                int via = chunkRepo.countByChapterIdViaScenes(chapterId);
+                int existingCount = via > 0 ? via : chunkRepo.countByChapterId(chapterId);
                 log.info("[CHUNKING] Found {} existing chunks for chapter {}, skipping", 
                         existingCount, chapterId);
                 emitChunksCreated(jobId, chapterId, bookId, existingCount);
@@ -82,7 +92,7 @@ public class ChunkingHandler {
             }
 
             // Get chapter text for chunk extraction
-            Chapter chapter = contentPersistencePort.findChapterById(chapterId)
+            Chapter chapter = chapterRepo.findById(chapterId)
                     .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
             
             String chapterText = chapter.getRawText();
@@ -93,7 +103,7 @@ public class ChunkingHandler {
             }
 
             // Get scenes and create chunks
-            List<Scene> scenes = contentPersistencePort.findScenesByChapterId(chapterId);
+            List<Scene> scenes = sceneRepo.findByChapterId(chapterId);
             int totalChunks = createChunksFromScenes(chapterText, scenes);
             
                 stageSupport.updateJobStatus(jobId, IngestionStatus.EMBEDDING_CHUNKS,
@@ -128,7 +138,14 @@ public class ChunkingHandler {
         List<Chunk> chunks = buildChunks(scene, rawChunks);
         
         if (!chunks.isEmpty()) {
-            contentPersistencePort.addChunksToScene(scene.getId(), chunks);
+            // Inline addChunksToScene logic: save each chunk and link to scene
+            for (Chunk chunk : chunks) {
+                if (chunk.getId() == null) {
+                    chunk.setId(java.util.UUID.randomUUID());
+                }
+                Chunk saved = chunkRepo.save(chunk);
+                sceneRepo.linkChunkToScene(scene.getId(), saved.getId());
+            }
             return chunks.size();
         }
         

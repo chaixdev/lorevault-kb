@@ -5,7 +5,8 @@ import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ChapterIngestionEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
 import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.SceneProcessingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
@@ -37,7 +38,8 @@ import java.util.UUID;
 @Slf4j
 public class SceneDetectionHandler {
 
-    private final Neo4jContentPersistenceAdapter contentPersistencePort;
+    private final ChapterGraphRepository chapterRepo;
+    private final SceneGraphRepository sceneRepo;
     private final SceneDetectionService sceneDetectionService;
     private final SceneProcessingService sceneProcessingService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
@@ -45,14 +47,16 @@ public class SceneDetectionHandler {
     private final PipelineStageSupport stageSupport;
 
     public SceneDetectionHandler(
-            Neo4jContentPersistenceAdapter contentPersistencePort,
+            ChapterGraphRepository chapterRepo,
+            SceneGraphRepository sceneRepo,
             SceneDetectionService sceneDetectionService,
             SceneProcessingService sceneProcessingService,
             IngestionJobService ingestionJobService,
             DefaultTemporalEdgeService defaultTemporalEdgeService,
             ApplicationEventPublisher eventPublisher
     ) {
-        this.contentPersistencePort = contentPersistencePort;
+        this.chapterRepo = chapterRepo;
+        this.sceneRepo = sceneRepo;
         this.sceneDetectionService = sceneDetectionService;
         this.sceneProcessingService = sceneProcessingService;
         this.defaultTemporalEdgeService = defaultTemporalEdgeService;
@@ -75,7 +79,7 @@ public class SceneDetectionHandler {
             chapterId,
             () -> {
             // Look up the chapter to get the bookId
-            Chapter chapter = contentPersistencePort.findChapterById(chapterId)
+            Chapter chapter = chapterRepo.findById(chapterId)
                     .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
             
             UUID bookId = chapter.getBookId();
@@ -84,7 +88,7 @@ public class SceneDetectionHandler {
                     "Analyzing chapter text with AI to identify semantic scene boundaries");
 
             // Check for existing scenes (idempotency)
-            List<Scene> existingScenes = contentPersistencePort.findScenesByChapterId(chapterId);
+            List<Scene> existingScenes = sceneRepo.findByChapterId(chapterId);
             if (!existingScenes.isEmpty()) {
                 log.info("[SCENE_DETECTION] Found {} existing scenes for chapter {}, skipping detection", 
                         existingScenes.size(), chapterId);
@@ -117,7 +121,7 @@ public class SceneDetectionHandler {
     private List<Scene> detectAndPersistScenes(UUID jobId, UUID chapterId) {
         log.info("[SCENE_DETECTION] Detecting scenes for chapter {}", chapterId);
 
-        Chapter chapter = contentPersistencePort.findChapterById(chapterId)
+        Chapter chapter = chapterRepo.findById(chapterId)
                 .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
 
         String chapterText = chapter.getRawText();
