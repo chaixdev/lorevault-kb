@@ -1,6 +1,6 @@
 package com.lorevault.api.integration.persistence;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
@@ -44,7 +44,7 @@ class SceneEventDualWriteIntegrationTest {
     }
 
     @Autowired
-    private ContentPersistencePort contentPersistencePort;
+    private Neo4jContentPersistenceAdapter contentPersistencePort;
 
     @Autowired
     private Neo4jClient neo4jClient;

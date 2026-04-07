@@ -2,7 +2,7 @@ package com.lorevault.api.integration.events;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.LoreVaultApiApplication;
-import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
 import com.lorevault.api.event.ChapterIngestionEvent;
@@ -80,7 +80,7 @@ class EventPublishingIntegrationTest {
     private ObjectMapper objectMapper;
     
     @Autowired
-    private ContentPersistencePort contentPersistencePort;
+    private Neo4jContentPersistenceAdapter contentPersistencePort;
     
     @Autowired
     private ApplicationEventPublisher eventPublisher;

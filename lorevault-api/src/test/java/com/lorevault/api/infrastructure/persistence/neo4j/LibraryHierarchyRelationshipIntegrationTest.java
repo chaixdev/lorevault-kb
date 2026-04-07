@@ -1,6 +1,6 @@
 package com.lorevault.api.infrastructure.persistence.neo4j;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Universe;
@@ -50,7 +50,7 @@ class LibraryHierarchyRelationshipIntegrationTest {
     }
 
     @Autowired
-    private ContentPersistencePort contentPersistencePort;
+    private Neo4jContentPersistenceAdapter contentPersistencePort;
     
     @Autowired
     @SuppressWarnings("unused")

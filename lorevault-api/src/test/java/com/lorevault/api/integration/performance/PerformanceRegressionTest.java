@@ -2,7 +2,7 @@ package com.lorevault.api.integration.performance;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.LoreVaultApiApplication;
-import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
@@ -81,7 +81,7 @@ class PerformanceRegressionTest {
     private ObjectMapper objectMapper;
     
     @Autowired
-    private ContentPersistencePort contentPersistencePort;
+    private Neo4jContentPersistenceAdapter contentPersistencePort;
 
     @MockitoBean
     @Qualifier("nlpSmall")

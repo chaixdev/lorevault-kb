@@ -2,7 +2,7 @@ package com.lorevault.api.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.LoreVaultApiApplication;
-import com.lorevault.api.application.port.ContentPersistencePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.domain.content.*;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
@@ -92,7 +92,7 @@ class SystemIntegrationTest {
     private RagService ragService;
     
     @Autowired
-    private ContentPersistencePort contentPersistencePort;
+    private Neo4jContentPersistenceAdapter contentPersistencePort;
 
     @MockitoBean
     @Qualifier("nlpSmall")

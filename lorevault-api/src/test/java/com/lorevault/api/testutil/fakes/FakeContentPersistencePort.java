@@ -1,6 +1,5 @@
 package com.lorevault.api.testutil.fakes;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
@@ -15,9 +14,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * In-memory fake implementation of ContentPersistencePort for unit/service tests.
+ * In-memory fake of Neo4jContentPersistenceAdapter for unit/service tests.
+ * Extends the adapter so tests can use it anywhere the adapter is expected.
  */
-public class FakeContentPersistencePort extends Neo4jContentPersistenceAdapter implements ContentPersistencePort {
+public class FakeContentPersistencePort extends Neo4jContentPersistenceAdapter {
 
     public final Map<UUID, Chapter> chapters = new ConcurrentHashMap<>();
     public final Map<UUID, List<Scene>> scenesByChapter = new ConcurrentHashMap<>();
@@ -81,7 +81,6 @@ public class FakeContentPersistencePort extends Neo4jContentPersistenceAdapter i
 
     @Override
     public List<UUID> findChapterIdsUpTo(UUID bookId, int uptoChapterNumber) {
-        // Return chapter IDs for this book up to the specified chapter number, ordered
         return chapters.values().stream()
                 .filter(c -> Objects.equals(c.getBookId(), bookId))
                 .filter(c -> c.getChapterNumber() != null && c.getChapterNumber() <= uptoChapterNumber)
@@ -92,7 +91,6 @@ public class FakeContentPersistencePort extends Neo4jContentPersistenceAdapter i
 
     @Override
     public List<AbstractMap.SimpleEntry<UUID, UUID>> findChapterTemporalEdges(UUID chapterId) {
-        // Return empty list - temporal edges not tracked in fake
         return List.of();
     }
 
@@ -104,7 +102,6 @@ public class FakeContentPersistencePort extends Neo4jContentPersistenceAdapter i
 
     @Override
     public Chunk addChunkToScene(UUID sceneId, Chunk chunk) {
-        // Not necessary for current tests
         return chunk;
     }
 
@@ -136,7 +133,6 @@ public class FakeContentPersistencePort extends Neo4jContentPersistenceAdapter i
 
     @Override
     public Chunk updateChunk(Chunk chunk) {
-        // No-op: tests mutate the same object references that are stored
         return chunk;
     }
 
