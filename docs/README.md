@@ -30,14 +30,14 @@ Read these first:
 
 ## Migration Status
 
-LoreVault is currently moving away from a version-heavy documentation structure toward:
+Documentation migration is complete. The repository uses:
 
-- small canonical docs
-- explicit architectural decisions
-- reusable pattern docs
-- a clear archive for history
+- small canonical docs in `development/current/`
+- explicit architectural decisions in `adr/`
+- reusable pattern docs in `patterns/`
+- a clear archive for history in `archive/`
 
-Some historical material still remains under `development/refactor/` and `development/versions/` while the migration is in progress.
+Version directories under `development/versions/` and `development/refactor/` retain only README redirect stubs pointing to `archive/`.
 
 ## Navigation
 

@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
 **Last Updated:** April 2026  
-**Status:** Active, salvageable, mid-refactor  
+**Status:** Active, post-refactor baseline established  
 **Primary Direction:** Simplify architecture, preserve mechanical sympathy, reduce indirection
 
 ## What LoreVault Is
@@ -20,15 +20,14 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Service consolidation plan (Plan A) completed and merged
 - Event-driven ingestion refactor (Plan B) completed and merged
 - Pragmatic modulith M1 merged locally on `main` (push to remote pending)
-- Documentation audit completed across refactor, architecture, current, and versioned docs
+- Documentation migration completed: canonical docs promoted, historical material archived to `docs/archive/`, ADRs and pattern library established
 
 ## What Is Next
 
-1. Continue documentation refactor: promote canonical docs, archive historical material
-2. Reconcile docs and rollout plan against the merged pragmatic modulith M1 baseline
-3. Upgrade Spring AI from 1.0.0 to 1.1.4
-4. Continue modulith work with M2/M3
-5. Migrate structured output from XML to JSON when provider support is confirmed
+1. Push merged M1 baseline to remote
+2. Upgrade Spring AI from 1.0.0 to 1.1.4
+3. Continue modulith work with M2/M3
+4. Migrate structured output from XML to JSON when provider support is confirmed
 
 ## Active Architectural Direction
 
@@ -56,4 +55,4 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 
 ## Historical / Transitional Notes
 
-The repository is currently moving from a version-heavy documentation model to a smaller canonical docs set plus archive. During this transition, some historical material still lives under `docs/development/refactor/` and `docs/development/versions/`.
+Documentation migration is complete. All historical material (refactor plans, version-scoped tickets, research) has been moved to `docs/archive/`. Version directories under `docs/development/versions/` retain only README redirect stubs.
