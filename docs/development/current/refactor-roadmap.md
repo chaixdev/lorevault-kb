@@ -174,14 +174,24 @@ This establishes M1 as the current local planning baseline. Remote push and roll
 
 ## Open Decisions
 
-1. **M2 start boundary?** Define the first M2 slice now that M1 is merged locally (content entities, remaining mapper reduction, and service cleanup).
-2. **Package layout implementation?** Transition from layered to 12 flat feature packages. Determine if a hybrid approach (flat features within a single root) is preferable.
-3. **Migration sequence?** Determine if the Spring AI upgrade should precede M2 (content entities) migration.
-4. **Provider stabilization?** XML→JSON migration depends on final provider choice. Confirm Gemma 4 availability before committing to structured output changes.
+Resolved:
+
+1. **M2 start boundary** — Content entities → @Node first (same pattern as M1). Port/adapter elimination follows in M3. Spring AI upgrade deferred to M4.
+2. **Package layout** — Flatten to 12 feature packages in M4, after all ports/adapters are gone. Not mixed with structural work.
+3. **Migration sequence** — M2 (content @Node) → M3 (kill all ports) → M4 (Spring AI upgrade + package flatten).
+4. **Provider stabilization** — XML→JSON structured output in M4.3; prerequisite is confirming provider JSON Schema support before coding.
+
+Remaining open (tracked in implementation plan):
+
+- Relationship field placement on domain entities (M2 prerequisite)
+- InMemorySemanticSearchAdapter fate in tests (M3.4)
+- Provider JSON Schema support confirmation (M4.3)
+- Neo4jVectorStore/Neo4j 5.26 HNSW compatibility (M4.2)
 
 ---
 ## Related Documents
 
+- `m2-m4-implementation-plan.md` — full slice-by-slice implementation plan for M2 through M4
 - `../../archive/refactor/PRAGMATIC_MODULITH_PLAN.md` — original plan (historical)
 - `../../archive/refactor/REFACTOR-SESSION-LOG.md` — phases 1-4 execution log (historical)
 - `../../archive/refactor/ARCHITECTURAL_BLOAT_ANALYSIS.md` — original bloat diagnosis (historical but still useful)
