@@ -6,6 +6,7 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.OpenAiEmbeddingModel;
+import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -113,7 +114,9 @@ public class SpringAiConfig {
             .baseUrl(cfg.baseUrl())
             .apiKey(cfg.apiKey())
             .build();
-        // Use simple constructor - options can be passed at call time
-        return new OpenAiEmbeddingModel(openAiApi);
+        OpenAiEmbeddingOptions options = OpenAiEmbeddingOptions.builder()
+                .model(cfg.model())
+                .build();
+        return new OpenAiEmbeddingModel(openAiApi, org.springframework.ai.document.MetadataMode.EMBED, options);
     }
 }
