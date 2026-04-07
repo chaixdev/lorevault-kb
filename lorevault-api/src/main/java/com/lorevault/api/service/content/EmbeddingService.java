@@ -2,7 +2,8 @@ package com.lorevault.api.service.content;
 
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChunkGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,7 +30,8 @@ import java.lang.reflect.Method;
 @Slf4j
 public class EmbeddingService {
 
-    private final Neo4jContentPersistenceAdapter contentPersistencePort;
+    private final ChapterGraphRepository chapterRepo;
+    private final ChunkGraphRepository chunkRepo;
     private final EmbeddingModel embeddingModel;
 
     @Value("${lorevault.embedding.dim:1536}")
@@ -118,7 +120,8 @@ public class EmbeddingService {
     }
 
     private List<Chunk> loadChunks(EmbeddingContext context) {
-        List<Chunk> chunks = contentPersistencePort.findChunksByChapterId(context.chapterId);
+        List<Chunk> viaScenes = chunkRepo.findByChapterIdViaScenes(context.chapterId);
+        List<Chunk> chunks = !viaScenes.isEmpty() ? viaScenes : chunkRepo.findByChapterId(context.chapterId);
         long elapsed = context.elapsedMs();
         log.debug("[Embeddings] Loaded {} chunks ({} ms) chapter={}", chunks.size(), elapsed, context.chapterId);
         return chunks;
@@ -185,7 +188,7 @@ public class EmbeddingService {
 
     private String loadChapterRawText(UUID chapterId) {
         try {
-            return contentPersistencePort.findChapterById(chapterId)
+            return chapterRepo.findById(chapterId)
                     .map(Chapter::getRawText)
                     .orElse(null);
         } catch (Exception e) {
@@ -266,7 +269,7 @@ public class EmbeddingService {
             }
         }
         
-        contentPersistencePort.updateChunks(targets);
+        chunkRepo.saveAll(targets);
         
         long persistMs = Duration.between(persistStart, Instant.now()).toMillis();
         long totalMs = context.elapsedMs();

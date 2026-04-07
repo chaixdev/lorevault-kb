@@ -1,7 +1,9 @@
 package com.lorevault.api.service.timeline;
 
 import com.lorevault.api.domain.content.Scene;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterReadRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.TemporalReadRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -12,13 +14,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EventOrderingService {
 
-    private final Neo4jContentPersistenceAdapter contentPort;
+    private final SceneGraphRepository sceneRepo;
+    private final ChapterReadRepository chapterReadRepo;
+    private final TemporalReadRepository temporalReadRepo;
 
     /**
      * Order events within a chapter using precedence edges first, then sceneIndex and UUID as stable tie-breakers.
      */
     public List<Scene> orderChapterEvents(UUID chapterId) {
-        List<Scene> scenes = new ArrayList<>(contentPort.findScenesByChapterId(chapterId));
+        List<Scene> scenes = new ArrayList<>(sceneRepo.findByChapterId(chapterId));
         if (scenes.isEmpty()) return List.of();
 
         Map<UUID, Scene> byId = scenes.stream().collect(Collectors.toMap(Scene::getId, s -> s));
@@ -26,7 +30,9 @@ public class EventOrderingService {
         Map<UUID, Integer> indeg = new HashMap<>();
         byId.keySet().forEach(id -> { adj.put(id, new ArrayList<>()); indeg.put(id, 0); });
 
-        for (var e : contentPort.findChapterTemporalEdges(chapterId)) {
+        for (var e : temporalReadRepo.findChapterEventEdges(chapterId).stream()
+                .map(p -> new AbstractMap.SimpleEntry<>(p.getFromId(), p.getToId()))
+                .collect(Collectors.toList())) {
             UUID from = e.getKey();
             UUID to = e.getValue();
             if (byId.containsKey(from) && byId.containsKey(to)) {
@@ -69,7 +75,7 @@ public class EventOrderingService {
      * Order events across chapters up to N by concatenating per-chapter orders by chapterNumber sequence.
      */
     public List<Scene> orderBookEventsUpToChapter(UUID bookId, int uptoChapterNumber) {
-        List<UUID> chapterIds = contentPort.findChapterIdsUpTo(bookId, uptoChapterNumber);
+        List<UUID> chapterIds = chapterReadRepo.findChapterIdsUpTo(bookId, uptoChapterNumber);
         List<Scene> all = new ArrayList<>();
         for (UUID chapterId : chapterIds) {
             all.addAll(orderChapterEvents(chapterId));

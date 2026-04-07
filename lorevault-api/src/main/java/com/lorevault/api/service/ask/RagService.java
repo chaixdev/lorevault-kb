@@ -11,7 +11,8 @@ import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchRequest;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchResponse;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SearchResultDto;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchFilters;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChunkGraphRepository;
 import com.lorevault.api.service.search.SemanticSearchService;
 import com.lorevault.api.infrastructure.prompt.PromptRepositoryAdapter;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +37,8 @@ public class RagService {
 
     private final SemanticSearchService semanticSearchService;
     private final PromptRepositoryAdapter promptRepository;
-    private final Neo4jContentPersistenceAdapter contentPersistencePort;
+    private final ChunkGraphRepository chunkRepo;
+    private final ChapterGraphRepository chapterRepo;
     
     @Qualifier("nlpBig")
     private final ChatClient chatClient;
@@ -221,7 +223,7 @@ public class RagService {
                 SearchResultDto result = evidence.get(i);
                 
                 // Fetch full chunk content instead of using snippet
-                Optional<Chunk> chunkOpt = contentPersistencePort.findChunkById(result.getChunkId());
+                Optional<Chunk> chunkOpt = chunkRepo.findById(result.getChunkId());
                 String chunkText = chunkOpt.map(Chunk::getText).orElse(result.getSnippet());
                 
                 context.append(String.format("[%d] %s", i + 1, chunkText));
@@ -255,7 +257,7 @@ public class RagService {
 
     private CitationDto buildCitation(SearchResultDto searchResult) {
         // Fetch chapter to get full publication coordinates
-        Optional<Chapter> chapterOpt = contentPersistencePort.findChapterById(searchResult.getChapterId());
+        Optional<Chapter> chapterOpt = chapterRepo.findById(searchResult.getChapterId());
         
         if (chapterOpt.isPresent()) {
             Chapter chapter = chapterOpt.get();

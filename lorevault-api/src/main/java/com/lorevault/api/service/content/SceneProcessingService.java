@@ -1,9 +1,11 @@
 package com.lorevault.api.service.content;
 
 import com.lorevault.api.domain.content.Scene;
+import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.dto.content.SceneDetectionResult;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -40,7 +42,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class SceneProcessingService {
 
-    private final Neo4jContentPersistenceAdapter contentPersistencePort;
+    private final ChapterGraphRepository chapterRepo;
+    private final SceneGraphRepository sceneRepo;
 
     // =============================================================================
     // HIGH-LEVEL WORKFLOW METHODS
@@ -53,7 +56,7 @@ public class SceneProcessingService {
      * @return List of scenes for the chapter
      */
     public List<Scene> getScenesByChapterId(UUID chapterId) {
-        return contentPersistencePort.findScenesByChapterId(chapterId);
+        return sceneRepo.findByChapterId(chapterId);
     }
 
     /**
@@ -64,7 +67,7 @@ public class SceneProcessingService {
     @Transactional
     public void deleteScenesByChapterId(UUID chapterId) {
         log.debug("Deleting all scenes for chapter {}", chapterId);
-        contentPersistencePort.deleteScenesByChapterId(chapterId);
+        sceneRepo.deleteByChapterId(chapterId);
     }
 
     // =============================================================================
@@ -88,13 +91,13 @@ public class SceneProcessingService {
         }
 
         // Avoid duplicate persistence if scenes already exist
-        if (!contentPersistencePort.findScenesByChapterId(chapterId).isEmpty()) {
+        if (!sceneRepo.findByChapterId(chapterId).isEmpty()) {
             log.info("Chapter {} already has scenes; returning existing", chapterId);
-            return contentPersistencePort.findScenesByChapterId(chapterId);
+        return sceneRepo.findByChapterId(chapterId);
         }
 
         // Fetch chapter text to extract scene content
-        String chapterText = contentPersistencePort.findChapterById(chapterId)
+        String chapterText = chapterRepo.findById(chapterId)
                 .map(c -> c.getRawText())
                 .orElse(null);
 
@@ -127,7 +130,35 @@ public class SceneProcessingService {
             return scene;
         }).collect(Collectors.toList());
 
-        return contentPersistencePort.addScenesToChapter(chapterId, scenes);
+        Chapter chapter = chapterRepo.findById(chapterId).orElseThrow();
+        List<Scene> toSave = scenes.stream()
+                .peek(s -> {
+                    if (s.getId() == null) {
+                        s.setId(UUID.randomUUID());
+                    }
+                    if (s.getChapterId() == null) {
+                        s.setChapterId(chapterId);
+                    }
+                    s.setChapter(chapter);
+                })
+                .collect(Collectors.toList());
+        List<Scene> savedScenes = sceneRepo.saveAll(toSave);
+        List<Scene> chapterScenes = chapter.getScenes();
+        if (chapterScenes == null) {
+            chapterScenes = new java.util.ArrayList<>();
+            chapter.setScenes(chapterScenes);
+        }
+        java.util.Set<UUID> existingSceneIds = chapterScenes.stream()
+                .map(Scene::getId)
+                .collect(Collectors.toSet());
+        for (Scene savedScene : savedScenes) {
+            UUID sceneId = savedScene.getId();
+            if (sceneId == null || existingSceneIds.add(sceneId)) {
+                chapterScenes.add(savedScene);
+            }
+        }
+        chapterRepo.save(chapter);
+        return savedScenes;
     }
 
     /**

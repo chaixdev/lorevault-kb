@@ -2,7 +2,8 @@ package com.lorevault.api.service.content;
 
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterReadRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,8 @@ public class TriadBuilderService {
 
     public record SceneTriad(Scene previous, Scene current, Scene next) {}
 
-    private final Neo4jContentPersistenceAdapter contentPort;
+    private final SceneGraphRepository sceneRepo;
+    private final ChapterReadRepository chapterReadRepo;
 
     /**
      * Build scene triads for the provided chapter.
@@ -44,7 +46,7 @@ public class TriadBuilderService {
             scenes.addAll(chapter.getScenes());
             log.debug("TriadBuilder: using {} in-memory scenes for chapter {}", scenes.size(), chapterId);
         } else {
-            scenes.addAll(contentPort.findScenesByChapterId(chapterId));
+            scenes.addAll(sceneRepo.findByChapterId(chapterId));
             log.debug("TriadBuilder: loaded {} scenes from graph for chapter {}", scenes.size(), chapterId);
         }
         scenes.sort(Comparator.comparingInt(Scene::getSceneIndex));
@@ -72,7 +74,7 @@ public class TriadBuilderService {
             int currentNumber = chapter.getChapterNumber();
             if (currentNumber <= 1) return null;
 
-            List<UUID> chapterIds = contentPort.findChapterIdsUpTo(chapter.getBookId(), currentNumber);
+            List<UUID> chapterIds = chapterReadRepo.findChapterIdsUpTo(chapter.getBookId(), currentNumber);
             if (chapterIds == null || chapterIds.isEmpty()) return null;
 
             int idx = chapterIds.indexOf(chapter.getId());
@@ -94,7 +96,7 @@ public class TriadBuilderService {
     }
 
     private Optional<Scene> findLastScene(UUID chapterId) {
-        List<Scene> scenes = new ArrayList<>(contentPort.findScenesByChapterId(chapterId));
+        List<Scene> scenes = new ArrayList<>(sceneRepo.findByChapterId(chapterId));
         if (scenes.isEmpty()) return Optional.empty();
         return scenes.stream().max(Comparator.comparingInt(Scene::getSceneIndex));
     }
