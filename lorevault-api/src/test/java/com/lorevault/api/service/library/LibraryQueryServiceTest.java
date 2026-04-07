@@ -1,9 +1,9 @@
 package com.lorevault.api.service.library;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Universe;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,7 +22,7 @@ import static org.mockito.Mockito.when;
 class LibraryQueryServiceTest {
 
     @Mock
-    private ContentPersistencePort contentPersistencePort;
+    private Neo4jContentPersistenceAdapter contentPersistencePort;
 
     @Mock
     private ChapterGraphRepository chapterGraphRepository;

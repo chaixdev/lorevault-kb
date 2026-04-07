@@ -1,6 +1,6 @@
 package com.lorevault.api.service.timeline;
 
-import com.lorevault.api.application.port.TemporalEdgePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.TemporalEdgeWriteRepository;
 import com.lorevault.api.service.content.TriadOrchestrationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +13,7 @@ import java.util.List;
 @Slf4j
 public class TriadEdgePersistenceService {
 
-    private final TemporalEdgePort temporalEdgePort;
+    private final TemporalEdgeWriteRepository temporalEdgeWriteRepository;
 
     public void applyTriadAnalyses(List<TriadOrchestrationService.TriadAnalysis> analyses) {
         if (analyses == null || analyses.isEmpty()) return;
@@ -32,7 +32,7 @@ public class TriadEdgePersistenceService {
     private void upsert(java.util.UUID from, java.util.UUID to, String type, String certainty, String evidence) {
         try {
         Double weight = mapCertaintyToWeight(certainty);
-        temporalEdgePort.upsertTemporalEdge(
+        temporalEdgeWriteRepository.upsertTemporalEdge(
             from, to, type, certainty, weight, "ai-pass2-triad", evidence, null, null, null
         );
         } catch (Exception e) {

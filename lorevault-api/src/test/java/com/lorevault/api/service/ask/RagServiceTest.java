@@ -1,11 +1,11 @@
 package com.lorevault.api.service.ask;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.dto.ask.AskDtos;
 import com.lorevault.api.dto.search.SemanticSearchDtos;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.prompt.PromptRepositoryAdapter;
 import com.lorevault.api.service.search.SemanticSearchService;
-import com.lorevault.api.application.port.PromptRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -36,8 +36,8 @@ class RagServiceTest {
     private SemanticSearchService semanticSearchService;
 
     @Mock
-    private PromptRepositoryPort mockPromptRepository;    @Mock
-    private ContentPersistencePort contentPersistencePort;
+    private PromptRepositoryAdapter mockPromptRepository;    @Mock
+    private Neo4jContentPersistenceAdapter contentPersistencePort;
 
     @Mock
     private ChatClient chatClient;

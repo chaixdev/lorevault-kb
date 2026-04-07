@@ -1,6 +1,5 @@
 package com.lorevault.api.handler;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
@@ -8,6 +7,7 @@ import com.lorevault.api.dto.content.SceneWithCoordinates;
 import com.lorevault.api.event.ChapterIngestionEvent;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.SceneProcessingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
@@ -37,7 +37,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("SceneDetectionHandler Tests")
 class SceneDetectionHandlerTest {
 
-    @Mock private ContentPersistencePort contentPersistencePort;
+    @Mock private Neo4jContentPersistenceAdapter contentPersistencePort;
     @Mock private SceneDetectionService sceneDetectionService;
     @Mock private SceneProcessingService sceneProcessingService;
     @Mock private IngestionJobService ingestionJobService;

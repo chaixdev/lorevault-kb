@@ -1,12 +1,12 @@
 package com.lorevault.api.service.content;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
-import com.lorevault.api.application.port.EmbeddingPort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import io.micrometer.core.instrument.Metrics;
@@ -22,20 +22,24 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.lang.reflect.Method;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class EmbeddingService {
 
-    private final ContentPersistencePort contentPersistencePort; // for chunk retrieval & persistence
-    private final EmbeddingPort embeddingPort; // generation port
+    private final Neo4jContentPersistenceAdapter contentPersistencePort;
+    private final EmbeddingModel embeddingModel;
 
     @Value("${lorevault.embedding.dim:1536}")
     private int embeddingDim = 1536; // default for non-Spring unit tests
 
     @Value("${lorevault.embedding.batch-size:32}")
     private int batchSize = 32; // default for non-Spring unit tests
+
+    @Value("${lorevault.ai.models.embedding.model:}")
+    private String configuredEmbeddingModelId = "";
 
     public void setBatchSize(int batchSize) { this.batchSize = batchSize; }
     public void setEmbeddingDim(int embeddingDim) { this.embeddingDim = embeddingDim; }
@@ -136,7 +140,7 @@ public class EmbeddingService {
 
     private List<Chunk> selectTargetsNeedingEmbedding(List<Chunk> chunks, EmbeddingContext context) {
         Instant selectionStart = Instant.now();
-        String modelId = embeddingPort.getModelId();
+        String modelId = resolveModelId();
         List<Chunk> targets = new ArrayList<>();
         
         for (Chunk chunk : chunks) {
@@ -250,7 +254,7 @@ public class EmbeddingService {
 
     private int updateChunksWithEmbeddings(List<Chunk> targets, List<double[]> vectors, EmbeddingContext context) {
         Instant persistStart = Instant.now();
-        String modelId = embeddingPort.getModelId();
+        String modelId = resolveModelId();
         int updated = 0;
         
         for (int i = 0; i < targets.size(); i++) {
@@ -325,7 +329,10 @@ public class EmbeddingService {
             int end = Math.min(i + effectiveBatchSize, texts.size());
             List<String> batch = texts.subList(i, end);
             Instant batchStart = Instant.now();
-            List<double[]> embedded = embeddingPort.embedBatch(batch);
+            List<float[]> embeddedFloat = embeddingModel.embed(batch);
+            List<double[]> embedded = embeddedFloat.stream()
+                    .map(this::toDoubleArray)
+                    .toList();
             long batchMs = Duration.between(batchStart, Instant.now()).toMillis();
             all.addAll(embedded);
             if (log.isDebugEnabled()) {
@@ -347,6 +354,47 @@ public class EmbeddingService {
         if (vec.length > show) sb.append("…");
         sb.append(']');
         return sb.toString();
+    }
+
+    private double[] toDoubleArray(float[] vector) {
+        if (vector == null) {
+            return new double[0];
+        }
+        double[] out = new double[vector.length];
+        for (int i = 0; i < vector.length; i++) {
+            out[i] = vector[i];
+        }
+        return out;
+    }
+
+    private String resolveModelId() {
+        if (configuredEmbeddingModelId != null && !configuredEmbeddingModelId.isBlank()) {
+            return configuredEmbeddingModelId;
+        }
+
+        String reflectiveModelId = tryResolveModelIdReflectively();
+        if (reflectiveModelId != null && !reflectiveModelId.isBlank()) {
+            return reflectiveModelId;
+        }
+
+        String className = embeddingModel.getClass().getName();
+        String marker = "OpenAiEmbeddingModel";
+        if (className.contains(marker)) {
+            return "openai-compatible-embedding";
+        }
+        return className;
+    }
+
+    private String tryResolveModelIdReflectively() {
+        try {
+            Method getModelId = embeddingModel.getClass().getMethod("getModelId");
+            Object result = getModelId.invoke(embeddingModel);
+            if (result instanceof String modelId) {
+                return modelId;
+            }
+        } catch (ReflectiveOperationException ignored) {
+        }
+        return null;
     }
 
     // =====================================

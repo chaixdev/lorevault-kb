@@ -1,8 +1,8 @@
 package com.lorevault.api.service.content;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,7 @@ public class TriadBuilderService {
 
     public record SceneTriad(Scene previous, Scene current, Scene next) {}
 
-    private final ContentPersistencePort contentPort;
+    private final Neo4jContentPersistenceAdapter contentPort;
 
     /**
      * Build scene triads for the provided chapter.

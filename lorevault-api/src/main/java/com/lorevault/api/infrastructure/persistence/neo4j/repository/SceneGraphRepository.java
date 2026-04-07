@@ -1,16 +1,16 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.repository;
 
-import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
+import com.lorevault.api.domain.content.Scene;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 
 import java.util.List;
 import java.util.UUID;
 
-public interface SceneGraphRepository extends Neo4jRepository<SceneNode, UUID> {
+public interface SceneGraphRepository extends Neo4jRepository<Scene, UUID> {
 
     @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene) RETURN s ORDER BY s.sceneIndex")
-    List<SceneNode> findByChapterId(UUID chapterId);
+    List<Scene> findByChapterId(UUID chapterId);
 
     @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene) DETACH DELETE s")
     void deleteByChapterId(UUID chapterId);

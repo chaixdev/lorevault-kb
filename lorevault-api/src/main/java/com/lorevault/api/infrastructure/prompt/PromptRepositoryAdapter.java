@@ -1,6 +1,4 @@
 package com.lorevault.api.infrastructure.prompt;
-
-import com.lorevault.api.application.port.PromptRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -15,13 +13,12 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class PromptRepositoryAdapter implements PromptRepositoryPort {
+public class PromptRepositoryAdapter {
 
     private final PromptLocationResolver locationResolver;
     private final PromptCache cache;
     private final ResourceLoader resourceLoader;
 
-    @Override
     public PromptTemplate get(String name) {
         try {
             return cache.getOrLoad(name, () -> {
@@ -48,13 +45,11 @@ public class PromptRepositoryAdapter implements PromptRepositoryPort {
         }
     }
 
-    @Override
     public void clearCache() {
         log.info("Clearing prompt cache");
         cache.clear();
     }
 
-    @Override
     public int getCacheSize() {
         return cache.size();
     }

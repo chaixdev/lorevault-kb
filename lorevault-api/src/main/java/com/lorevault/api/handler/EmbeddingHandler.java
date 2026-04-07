@@ -1,10 +1,10 @@
 package com.lorevault.api.handler;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChunksCreatedEvent;
 import com.lorevault.api.event.ingestion.IngestionCompletedEvent;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
 import com.lorevault.api.service.content.EmbeddingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
@@ -34,7 +34,7 @@ import java.util.UUID;
 @Slf4j
 public class EmbeddingHandler {
 
-    private final ContentPersistencePort contentPersistencePort;
+    private final Neo4jContentPersistenceAdapter contentPersistencePort;
     private final EmbeddingService embeddingService;
                 private final IngestionJobService ingestionJobService;
         private final IngestionJobGraphRepository jobRepo;
@@ -42,7 +42,7 @@ public class EmbeddingHandler {
         private final PipelineStageSupport stageSupport;
 
         public EmbeddingHandler(
-                        ContentPersistencePort contentPersistencePort,
+                        Neo4jContentPersistenceAdapter contentPersistencePort,
                         EmbeddingService embeddingService,
                         IngestionJobService ingestionJobService,
                         IngestionJobGraphRepository jobRepo,

@@ -1,6 +1,6 @@
 package com.lorevault.api.service.timeline;
 
-import com.lorevault.api.application.port.TemporalEdgePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.TemporalEdgeWriteRepository;
 import com.lorevault.api.service.content.TriadOrchestrationService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -16,10 +16,10 @@ class TriadEdgePersistenceServiceTest {
 
     @Test
     void applies_edges_for_prev_and_next_when_present() {
-    TemporalEdgePort port = mock(TemporalEdgePort.class);
-    when(port.upsertTemporalEdge(any(), any(), anyString(), anyString(), any(), anyString(), anyString(), any(), any(), any())).thenReturn(1L);
+    TemporalEdgeWriteRepository repository = mock(TemporalEdgeWriteRepository.class);
+    when(repository.upsertTemporalEdge(any(), any(), anyString(), anyString(), any(), anyString(), anyString(), any(), any(), any())).thenReturn(1L);
 
-    TriadEdgePersistenceService svc = new TriadEdgePersistenceService(port);
+    TriadEdgePersistenceService svc = new TriadEdgePersistenceService(repository);
 
         UUID prev = UUID.randomUUID();
         UUID curr = UUID.randomUUID();
@@ -36,7 +36,7 @@ class TriadEdgePersistenceServiceTest {
         svc.applyTriadAnalyses(List.of(analysis));
 
         ArgumentCaptor<String> typeCaptor = ArgumentCaptor.forClass(String.class);
-    verify(port, times(2)).upsertTemporalEdge(any(), any(), typeCaptor.capture(), anyString(), any(), anyString(), anyString(), any(), any(), any());
+    verify(repository, times(2)).upsertTemporalEdge(any(), any(), typeCaptor.capture(), anyString(), any(), anyString(), anyString(), any(), any(), any());
 
         assertThat(typeCaptor.getAllValues()).containsExactlyInAnyOrder("R:temporal.before", "R:temporal.meets");
     }

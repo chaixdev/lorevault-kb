@@ -1,8 +1,8 @@
 package com.lorevault.api.service.timeline;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -18,7 +18,7 @@ import static org.mockito.Mockito.when;
 @DisplayName("EventOrderingService")
 class EventOrderingServiceTest {
 
-    private final ContentPersistencePort contentPort = Mockito.mock(ContentPersistencePort.class);
+    private final Neo4jContentPersistenceAdapter contentPort = Mockito.mock(Neo4jContentPersistenceAdapter.class);
     private final EventOrderingService service = new EventOrderingService(contentPort);
 
     private Scene scene(UUID id, int sceneIndex) {

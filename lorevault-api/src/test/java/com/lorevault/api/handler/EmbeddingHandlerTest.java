@@ -1,12 +1,12 @@
 package com.lorevault.api.handler;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChunksCreatedEvent;
 import com.lorevault.api.event.ingestion.IngestionCompletedEvent;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
 import com.lorevault.api.service.content.EmbeddingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
@@ -33,7 +33,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("EmbeddingHandler Tests")
 class EmbeddingHandlerTest {
 
-    @Mock private ContentPersistencePort contentPersistencePort;
+    @Mock private Neo4jContentPersistenceAdapter contentPersistencePort;
     @Mock private EmbeddingService embeddingService;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private IngestionJobGraphRepository jobRepo;

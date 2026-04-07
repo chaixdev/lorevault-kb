@@ -1,7 +1,7 @@
 package com.lorevault.api.service.timeline;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Scene;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EventOrderingService {
 
-    private final ContentPersistencePort contentPort;
+    private final Neo4jContentPersistenceAdapter contentPort;
 
     /**
      * Order events within a chapter using precedence edges first, then sceneIndex and UUID as stable tie-breakers.

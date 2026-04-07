@@ -1,10 +1,9 @@
 package com.lorevault.api.infrastructure.search;
 
-import com.lorevault.api.application.port.SemanticSearchPort;
-import com.lorevault.api.application.port.SemanticSearchPort.SearchFilters;
-import com.lorevault.api.application.port.SemanticSearchPort.SearchResult;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
+import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChunkGraphRepository;
+import com.lorevault.api.infrastructure.search.Neo4jSemanticSearchAdapter.SearchFilters;
+import com.lorevault.api.infrastructure.search.Neo4jSemanticSearchAdapter.SearchResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -47,7 +46,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
     }
 
     @Autowired
-    private SemanticSearchPort semanticSearchPort;
+    private Neo4jSemanticSearchAdapter semanticSearchPort;
 
     @Autowired
     private ChunkGraphRepository chunkRepository;
@@ -118,7 +117,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
     @Test
     void search_withChunksWithoutEmbeddings_returnsEmptyResults() {
         // Given: Chunk without embedding
-        ChunkNode chunk = new ChunkNode();
+        Chunk chunk = new Chunk();
         chunk.setId(UUID.randomUUID());
         chunk.setText("Text without embedding");
         chunk.setContentHash("hash123");
@@ -167,7 +166,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
     }
 
     private void createChunkWithEmbedding(UUID chunkId, String text, double[] embedding) {
-        ChunkNode chunk = new ChunkNode();
+        Chunk chunk = new Chunk();
         chunk.setId(chunkId);
         chunk.setText(text);
         chunk.setContentHash("hash_" + text.hashCode());

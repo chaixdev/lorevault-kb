@@ -1,8 +1,8 @@
 package com.lorevault.api.service.search;
 
-import com.lorevault.api.application.port.SemanticSearchPort;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchFilters;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchRequest;
+import com.lorevault.api.infrastructure.search.Neo4jSemanticSearchAdapter;
 import com.lorevault.api.testutil.fakes.FakeEmbeddingPort;
 import com.lorevault.api.testutil.fakes.FakeSemanticSearchPort;
 import org.junit.jupiter.api.DisplayName;
@@ -32,8 +32,12 @@ class SemanticSearchServiceTest {
         filters.setUniverse("Cosmere");
         req.setFilters(filters);
 
-        double[] q = embedding.embed(req.getQuery());
-        SemanticSearchPort.SearchFilters f = new SemanticSearchPort.SearchFilters("Cosmere", null, null, null);
+        float[] qRaw = embedding.embed(req.getQuery());
+        double[] q = new double[qRaw.length];
+        for (int i = 0; i < qRaw.length; i++) {
+            q[i] = qRaw[i];
+        }
+        Neo4jSemanticSearchAdapter.SearchFilters f = new Neo4jSemanticSearchAdapter.SearchFilters("Cosmere", null, null, null);
         UUID c1 = UUID.randomUUID();
         UUID c2 = UUID.randomUUID();
         UUID c3 = UUID.randomUUID();

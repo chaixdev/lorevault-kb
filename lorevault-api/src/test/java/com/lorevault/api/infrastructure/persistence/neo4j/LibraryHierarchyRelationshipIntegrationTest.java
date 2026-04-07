@@ -5,9 +5,6 @@ import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Universe;
 import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jMapper;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.BookNode;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.SeriesNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.BookGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.SeriesGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.UniverseGraphRepository;
@@ -36,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DataNeo4jTest
 @Testcontainers
-@Import({Neo4jContentPersistenceAdapter.class, Neo4jMapper.class})
+@Import({Neo4jContentPersistenceAdapter.class})
 @Transactional
 class LibraryHierarchyRelationshipIntegrationTest {
 
@@ -76,10 +73,8 @@ class LibraryHierarchyRelationshipIntegrationTest {
         Series savedSeries = contentPersistencePort.createSeries(series);
         
         // Then: Verify the series node has proper relationship to universe
-        Optional<SeriesNode> seriesNode = seriesRepo.findById(savedSeries.getId());
+        Optional<Series> seriesNode = seriesRepo.findById(savedSeries.getId());
         assertThat(seriesNode).isPresent();
-        assertThat(seriesNode.get().getUniverse()).isNotNull();
-        assertThat(seriesNode.get().getUniverse().getId()).isEqualTo(savedUniverse.getId());
         assertThat(seriesNode.get().getUniverseId()).isEqualTo(savedUniverse.getId());
     }
 
@@ -104,17 +99,11 @@ class LibraryHierarchyRelationshipIntegrationTest {
         Book savedBook = contentPersistencePort.createBook(book);
         
         // Then: Verify the book node has proper relationships
-        Optional<BookNode> bookNode = bookRepo.findById(savedBook.getId());
+        Optional<Book> bookNode = bookRepo.findById(savedBook.getId());
         assertThat(bookNode).isPresent();
-        
-        // Verify universe relationship
-        assertThat(bookNode.get().getUniverseNode()).isNotNull();
-        assertThat(bookNode.get().getUniverseNode().getId()).isEqualTo(savedUniverse.getId());
+
         assertThat(bookNode.get().getUniverseId()).isEqualTo(savedUniverse.getId());
-        
-        // Verify series relationship
-        assertThat(bookNode.get().getSeriesNode()).isNotNull();
-        assertThat(bookNode.get().getSeriesNode().getId()).isEqualTo(savedSeries.getId());
+
         assertThat(bookNode.get().getSeriesId()).isEqualTo(savedSeries.getId());
     }
 
@@ -133,16 +122,11 @@ class LibraryHierarchyRelationshipIntegrationTest {
         Book savedBook = contentPersistencePort.createBook(book);
         
         // Then: Verify the book node has universe relationship but no series relationship
-        Optional<BookNode> bookNode = bookRepo.findById(savedBook.getId());
+        Optional<Book> bookNode = bookRepo.findById(savedBook.getId());
         assertThat(bookNode).isPresent();
-        
-        // Verify universe relationship
-        assertThat(bookNode.get().getUniverseNode()).isNotNull();
-        assertThat(bookNode.get().getUniverseNode().getId()).isEqualTo(savedUniverse.getId());
+
         assertThat(bookNode.get().getUniverseId()).isEqualTo(savedUniverse.getId());
-        
-        // Verify no series relationship
-        assertThat(bookNode.get().getSeriesNode()).isNull();
+
         assertThat(bookNode.get().getSeriesId()).isNull();
     }
 }

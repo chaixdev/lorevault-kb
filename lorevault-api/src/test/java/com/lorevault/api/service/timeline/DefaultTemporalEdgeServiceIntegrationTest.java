@@ -1,7 +1,6 @@
 package com.lorevault.api.service.timeline;
 
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.TemporalGraphRepository;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jTemporalEdgeAdapter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
  */
 @DataNeo4jTest
 @Testcontainers
-@Import({DefaultTemporalEdgeService.class, Neo4jTemporalEdgeAdapter.class})
+@Import({DefaultTemporalEdgeService.class})
 @DisplayName("DefaultTemporalEdgeService Integration Tests")
 public class DefaultTemporalEdgeServiceIntegrationTest {
 

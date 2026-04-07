@@ -1,9 +1,8 @@
 package com.lorevault.api.service.search;
 
-import com.lorevault.api.application.port.EmbeddingPort;
-import com.lorevault.api.application.port.SemanticSearchPort;
-import com.lorevault.api.application.port.SemanticSearchPort.SearchFilters;
-import com.lorevault.api.application.port.SemanticSearchPort.SearchResult;
+import com.lorevault.api.infrastructure.search.Neo4jSemanticSearchAdapter;
+import com.lorevault.api.infrastructure.search.Neo4jSemanticSearchAdapter.SearchFilters;
+import com.lorevault.api.infrastructure.search.Neo4jSemanticSearchAdapter.SearchResult;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchRequest;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchResponse;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SearchResultDto;
@@ -11,6 +10,7 @@ import com.lorevault.api.dto.search.SemanticSearchDtos.SearchMetadata;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchFilters;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -24,8 +24,8 @@ import java.util.List;
 @Slf4j
 public class SemanticSearchService {
 
-    private final EmbeddingPort embeddingPort;
-    private final SemanticSearchPort semanticSearchPort;
+    private final EmbeddingModel embeddingModel;
+    private final Neo4jSemanticSearchAdapter semanticSearchPort;
 
     /**
      * Perform semantic search for the given query.
@@ -40,7 +40,8 @@ public class SemanticSearchService {
         long startTime = System.currentTimeMillis();
 
         // Generate query embedding
-        double[] queryEmbedding = embeddingPort.embed(request.getQuery());
+        float[] queryEmbeddingRaw = embeddingModel.embed(request.getQuery());
+        double[] queryEmbedding = toDoubleArray(queryEmbeddingRaw);
         log.debug("Generated embedding vector of dimension: {}", queryEmbedding.length);
 
         // Convert filters
@@ -104,5 +105,16 @@ public class SemanticSearchService {
             result.bookNumber(),
             result.chapterNumber()
         );
+    }
+
+    private double[] toDoubleArray(float[] vector) {
+        if (vector == null) {
+            return new double[0];
+        }
+        double[] out = new double[vector.length];
+        for (int i = 0; i < vector.length; i++) {
+            out[i] = vector[i];
+        }
+        return out;
     }
 }

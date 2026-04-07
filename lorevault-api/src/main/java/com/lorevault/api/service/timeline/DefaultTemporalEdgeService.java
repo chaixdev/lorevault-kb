@@ -1,6 +1,6 @@
 package com.lorevault.api.service.timeline;
 
-import com.lorevault.api.application.port.TemporalEdgePort;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.TemporalEdgeWriteRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,7 +19,7 @@ import java.util.UUID;
 @Slf4j
 public class DefaultTemporalEdgeService {
     
-    private final TemporalEdgePort temporalEdgePort;
+    private final TemporalEdgeWriteRepository temporalEdgeWriteRepository;
     
     /**
      * Create all default temporal edges for a book (both in-chapter and cross-chapter).
@@ -32,8 +32,8 @@ public class DefaultTemporalEdgeService {
         log.info("Creating default temporal edges for book {}", bookId);
         // Pre-flight: log potential cycle candidates for observability
         try {
-            int inChapterCycleCandidates = temporalEdgePort.countInChapterCycleCandidates(bookId);
-            int crossChapterCycleCandidates = temporalEdgePort.countCrossChapterCycleCandidates(bookId);
+            int inChapterCycleCandidates = temporalEdgeWriteRepository.countInChapterCycleCandidates(bookId);
+            int crossChapterCycleCandidates = temporalEdgeWriteRepository.countCrossChapterCycleCandidates(bookId);
             if (inChapterCycleCandidates > 0 || crossChapterCycleCandidates > 0) {
                 log.warn("Detected potential cycle-inducing candidates before creation (book {}): in-chapter={}, cross-chapter={}",
                         bookId, inChapterCycleCandidates, crossChapterCycleCandidates);
@@ -65,7 +65,7 @@ public class DefaultTemporalEdgeService {
         log.debug("Creating default in-chapter temporal edges for book {}", bookId);
         
         try {
-            int edgeCount = temporalEdgePort.createInChapterDefaults(bookId);
+            int edgeCount = temporalEdgeWriteRepository.mergeInChapterDefaultEdges(bookId);
             log.debug("Created {} default temporal edges within chapters of book {}", edgeCount, bookId);
             return edgeCount;
         } catch (Exception e) {
@@ -88,7 +88,7 @@ public class DefaultTemporalEdgeService {
         log.debug("Creating default cross-chapter temporal edges for book {}", bookId);
         
         try {
-            int edgeCount = temporalEdgePort.createCrossChapterDefault(bookId);
+            int edgeCount = temporalEdgeWriteRepository.mergeCrossChapterDefaultEdge(bookId);
             log.debug("Created {} cross-chapter temporal edges for book {}", edgeCount, bookId);
             return edgeCount;
         } catch (Exception e) {
@@ -105,6 +105,6 @@ public class DefaultTemporalEdgeService {
      * @return number of temporal edges originating from scenes in this chapter
      */
     public int countTemporalEdgesFromChapter(UUID chapterId) {
-        return temporalEdgePort.countTemporalEdgesFromChapter(chapterId);
+        return temporalEdgeWriteRepository.countTemporalEdgesFromChapter(chapterId);
     }
 }

@@ -1,16 +1,16 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.repository;
 
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChunkNode;
+import com.lorevault.api.domain.content.Chunk;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 
 import java.util.List;
 import java.util.UUID;
 
-public interface ChunkGraphRepository extends Neo4jRepository<ChunkNode, UUID> {
+public interface ChunkGraphRepository extends Neo4jRepository<Chunk, UUID> {
 
     @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_CHUNK]->(ch:Chunk) RETURN ch ORDER BY ch.chunkNumberInChapter")
-    List<ChunkNode> findByChapterId(UUID chapterId);
+    List<Chunk> findByChapterId(UUID chapterId);
 
     @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_CHUNK]->(ch:Chunk) RETURN count(ch) > 0")
     boolean existsForChapter(UUID chapterId);
@@ -26,7 +26,7 @@ public interface ChunkGraphRepository extends Neo4jRepository<ChunkNode, UUID> {
                         MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene)-[r:HAS_CHUNK]->(ch:Chunk)
                         RETURN ch ORDER BY s.sceneIndex, r.chunkIndex
                         """)
-    List<ChunkNode> findByChapterIdViaScenes(UUID chapterId);
+    List<Chunk> findByChapterIdViaScenes(UUID chapterId);
 
     @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(ch:Chunk) RETURN count(ch) > 0")
     boolean existsForChapterViaScenes(UUID chapterId);
@@ -43,14 +43,14 @@ public interface ChunkGraphRepository extends Neo4jRepository<ChunkNode, UUID> {
             WHERE ch.embedding IS NULL OR ch.embeddingHash IS NULL
             RETURN ch ORDER BY s.sceneIndex, r.chunkIndex
             """)
-    List<ChunkNode> findUnembeddedByChapterId(UUID chapterId);
+    List<Chunk> findUnembeddedByChapterId(UUID chapterId);
 
     @Query("""
             MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene)-[r:HAS_CHUNK]->(ch:Chunk)
             WHERE ch.embeddingHash <> $expectedHash
             RETURN ch ORDER BY s.sceneIndex, r.chunkIndex
             """)
-    List<ChunkNode> findStaleEmbeddingsByChapterId(UUID chapterId, String expectedHash);
+    List<Chunk> findStaleEmbeddingsByChapterId(UUID chapterId, String expectedHash);
 
     // Global embedding queries for semantic search
     @Query("""
@@ -58,5 +58,5 @@ public interface ChunkGraphRepository extends Neo4jRepository<ChunkNode, UUID> {
             WHERE ch.embedding IS NOT NULL AND ch.embeddingHash IS NOT NULL
             RETURN ch
             """)
-    List<ChunkNode> findAllWithEmbeddings();
+    List<Chunk> findAllWithEmbeddings();
 }

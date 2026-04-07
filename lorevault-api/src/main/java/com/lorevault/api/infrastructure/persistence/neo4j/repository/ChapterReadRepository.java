@@ -1,6 +1,6 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.repository;
 
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
+import com.lorevault.api.domain.content.Chapter;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.data.repository.Repository;
 
@@ -10,7 +10,7 @@ import java.util.UUID;
 /**
  * Minimal read repository for chapter ID sequences.
  */
-public interface ChapterReadRepository extends Repository<ChapterNode, UUID> {
+public interface ChapterReadRepository extends Repository<Chapter, UUID> {
 
     @Query(
         """

@@ -1,5 +1,6 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.model;
 
+import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.timeline.CertaintyLevel;
 import com.lorevault.api.domain.timeline.TemporalRelation;
 import org.junit.jupiter.api.Tag;
@@ -35,7 +36,7 @@ class TemporalEdgeTest {
 
     @Test
     void temporal_edge_can_be_constructed_with_all_fields() {
-        var sceneNode = new SceneNode();
+        var sceneNode = new Scene();
         var evidenceChunkId = UUID.randomUUID();
         
         var edge = new TemporalEdge();
@@ -211,8 +212,8 @@ class TemporalEdgeTest {
     @Test
     void temporal_edge_later_node_relationship() {
         var edge = new TemporalEdge();
-        var sceneNode1 = new SceneNode();
-        var sceneNode2 = new SceneNode();
+        var sceneNode1 = new Scene();
+        var sceneNode2 = new Scene();
         
         // Initially null
         assertNull(edge.getLater());

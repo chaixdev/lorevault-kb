@@ -1,12 +1,12 @@
 package com.lorevault.api.handler;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChunksCreatedEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.service.content.TextChunkingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import lombok.extern.slf4j.Slf4j;
@@ -39,13 +39,13 @@ import static com.lorevault.api.util.HashUtils.generateSha256Hash;
 @Slf4j
 public class ChunkingHandler {
 
-    private final ContentPersistencePort contentPersistencePort;
+    private final Neo4jContentPersistenceAdapter contentPersistencePort;
     private final TextChunkingService textChunkingService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
 
     public ChunkingHandler(
-            ContentPersistencePort contentPersistencePort,
+            Neo4jContentPersistenceAdapter contentPersistencePort,
             TextChunkingService textChunkingService,
             IngestionJobService ingestionJobService,
             ApplicationEventPublisher eventPublisher

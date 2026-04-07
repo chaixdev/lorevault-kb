@@ -1,6 +1,5 @@
 package com.lorevault.api.service.system;
 
-import com.lorevault.api.application.port.EmbeddingPort;
 import com.lorevault.api.configuration.properties.LoreVaultModelsProperties;
 import com.lorevault.api.service.system.metrics.HealthMetricsCollector;
 import com.lorevault.api.service.system.retry.RetryableHealthChecker;
@@ -8,6 +7,7 @@ import com.lorevault.api.service.system.validator.ModelHealthValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -37,7 +37,8 @@ public class SystemHealthService {
     private final RetryableHealthChecker retryableHealthChecker;
     private final ModelHealthValidator modelHealthValidator;
     private final HealthMetricsCollector healthMetricsCollector;
-    private final EmbeddingPort embeddingPort;
+    @Qualifier("embeddingModel")
+    private final EmbeddingModel embeddingModel;
     
     @Qualifier("nlpSmall")
     private final ChatClient nlpSmallChatClient;
@@ -138,10 +139,10 @@ public class SystemHealthService {
         
         Instant start = Instant.now();
         try {
-            double[] vec = embeddingPort.embed(embeddingTestText);
+            float[] vec = embeddingModel.embed(embeddingTestText);
             long ms = Duration.between(start, Instant.now()).toMillis();
             int dim = vec == null ? 0 : vec.length;
-            int expected = embeddingExpectedDim != null ? embeddingExpectedDim : embeddingPort.getDimension();
+            int expected = embeddingExpectedDim != null ? embeddingExpectedDim : embeddingModel.dimensions();
             
             if (dim == 0) {
                 lastEmbeddingStatus = new EmbeddingHealthStatus(false, "Empty vector returned", ms, dim);

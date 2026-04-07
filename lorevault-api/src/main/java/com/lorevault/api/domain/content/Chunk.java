@@ -3,6 +3,12 @@ package com.lorevault.api.domain.content;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.PersistenceCreator;
+import org.springframework.data.neo4j.core.schema.Id;
+import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Relationship;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -10,9 +16,15 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Node("Chunk")
 public class Chunk {
+    @Id
     private UUID id;
+
+    @Relationship(type = "HAS_CHUNK", direction = org.springframework.data.neo4j.core.schema.Relationship.Direction.INCOMING)
     private Chapter chapter;
+
+    @Relationship(type = "HAS_CHUNK", direction = org.springframework.data.neo4j.core.schema.Relationship.Direction.INCOMING)
     private Scene scene;
     private Integer chunkNumberInChapter;
     private Integer startCharInChapter;
@@ -29,7 +41,39 @@ public class Chunk {
     private double[] embedding;
     private String embeddingHash;
     private LocalDateTime embeddedAt;
+    @CreatedDate
     private LocalDateTime createdAt;
+    @LastModifiedDate
     private LocalDateTime updatedAt;
+
+    @PersistenceCreator
+    public Chunk(UUID id,
+                 Integer chunkNumberInChapter,
+                 Integer startCharInChapter,
+                 Integer endCharInChapter,
+                 String contentHash,
+                 String text,
+                 double[] embedding,
+                 String embeddingHash,
+                 LocalDateTime embeddedAt,
+                 LocalDateTime createdAt,
+                 LocalDateTime updatedAt,
+                 Chapter chapter,
+                 Scene scene) {
+        this.id = id;
+        this.chunkNumberInChapter = chunkNumberInChapter;
+        this.startCharInChapter = startCharInChapter;
+        this.endCharInChapter = endCharInChapter;
+        this.contentHash = contentHash;
+        this.text = text;
+        this.embedding = embedding;
+        this.embeddingHash = embeddingHash;
+        this.embeddedAt = embeddedAt;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.chapter = chapter;
+        this.scene = scene;
+    }
+
     public int getLength() { return endCharInChapter - startCharInChapter; }
 }

@@ -1,5 +1,6 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.model;
 
+import com.lorevault.api.domain.content.Chunk;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.neo4j.core.schema.GeneratedValue;
@@ -21,5 +22,5 @@ public class SceneHasChunk {
     private Integer chunkIndex; // sequential index within the scene
 
     @TargetNode
-    private ChunkNode chunk;
+    private Chunk chunk;
 }

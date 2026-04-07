@@ -4,6 +4,12 @@ import com.lorevault.api.dto.shared.PublicationCoordinates;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.neo4j.core.schema.Id;
+import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Property;
+import org.springframework.data.neo4j.core.schema.Relationship;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,7 +26,9 @@ import java.util.stream.Collectors;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Node("Chapter")
 public class Chapter {
+    @Id
     private UUID id;
 
     /**
@@ -29,6 +37,12 @@ public class Chapter {
     private UUID bookId;
     private UUID universeId;  // denormalized for fast filtering
     private UUID seriesId;    // denormalized for fast filtering, nullable for standalone books
+
+    private String universe;
+    private String series;
+    private String bookTitle;
+    private Integer bookNumber;
+    private Integer chapterNumber;
 
     /**
      * Embedded coordinates object defining the chapter's position in the published text corpus.
@@ -44,6 +58,7 @@ public class Chapter {
     /**
      * The full, unmodified chapter text
      */
+    @Property("rawText")
     private String rawText;
 
     /**
@@ -51,17 +66,24 @@ public class Chapter {
      */
     private String contentHash;
 
+    @CreatedDate
     private LocalDateTime createdAt;
+    @LastModifiedDate
     private LocalDateTime updatedAt;
+
+    @Relationship(type = "IN_BOOK", direction = Relationship.Direction.OUTGOING)
+    private Book book;
 
     /**
      * Scenes within this chapter, ordered by scene index
      */
+    @Relationship(type = "HAS_SCENE")
     private List<Scene> scenes = new ArrayList<>();
 
     /**
      * All chunks within this chapter
      */
+    @Relationship(type = "HAS_CHUNK")
     private List<Chunk> chunks = new ArrayList<>();
 
     // =====================================
@@ -224,6 +246,7 @@ public class Chapter {
      * Get the universe name from coordinates
      */
     public String getUniverse() {
+        if (universe != null) return universe;
         return coordinates != null ? coordinates.getUniverse() : null;
     }
 
@@ -231,6 +254,7 @@ public class Chapter {
      * Get the series name from coordinates
      */
     public String getSeries() {
+        if (series != null) return series;
         return coordinates != null ? coordinates.getSeries() : null;
     }
 
@@ -238,6 +262,7 @@ public class Chapter {
      * Get the book number from coordinates
      */
     public Integer getBookNumber() {
+        if (bookNumber != null) return bookNumber;
         return coordinates != null ? coordinates.getBookNumber() : null;
     }
 
@@ -245,6 +270,7 @@ public class Chapter {
      * Get the chapter number from coordinates
      */
     public Integer getChapterNumber() {
+        if (chapterNumber != null) return chapterNumber;
         return coordinates != null ? coordinates.getChapterNumber() : null;
     }
 
@@ -265,6 +291,13 @@ public class Chapter {
         chapter.setUniverseId(universeId);
         chapter.setSeriesId(seriesId);
         chapter.setCoordinates(coordinates);
+        if (coordinates != null) {
+            chapter.setUniverse(coordinates.getUniverse());
+            chapter.setSeries(coordinates.getSeries());
+            chapter.setBookTitle(coordinates.getBookTitle());
+            chapter.setBookNumber(coordinates.getBookNumber());
+            chapter.setChapterNumber(coordinates.getChapterNumber());
+        }
         chapter.setChapterTitle(chapterTitle);
         chapter.setRawText(rawText);
         chapter.setContentHash(contentHash);

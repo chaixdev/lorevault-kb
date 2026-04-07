@@ -1,6 +1,5 @@
 package com.lorevault.api.service.ingestion;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.ingestion.IngestionJob;
@@ -11,6 +10,7 @@ import com.lorevault.api.dto.ingestion.JobStatusResponse;
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import com.lorevault.api.dto.ingestion.SubmitChapterResponse;
 import com.lorevault.api.event.ChapterIngestionEvent;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -43,7 +43,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("IngestionService Tests")
 class IngestionServiceTest {
 
-    @Mock private ContentPersistencePort contentPersistencePort;
+    @Mock private Neo4jContentPersistenceAdapter contentPersistencePort;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private IngestionJobGraphRepository jobRepo;
     @Mock private ApplicationEventPublisher eventPublisher;

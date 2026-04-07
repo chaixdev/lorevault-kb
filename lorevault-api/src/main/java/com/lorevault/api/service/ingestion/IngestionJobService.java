@@ -1,12 +1,12 @@
 package com.lorevault.api.service.ingestion;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.ingestion.StatusRecord;
 import com.lorevault.api.dto.ingestion.JobListResponse;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.StatusRecordGraphRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class IngestionJobService {
 
-    private final ContentPersistencePort contentPersistencePort;
+    private final Neo4jContentPersistenceAdapter contentPersistencePort;
     private final IngestionJobGraphRepository jobRepo;
     private final StatusRecordGraphRepository statusRepo;
 

@@ -1,6 +1,6 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.repository;
 
-import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
+import com.lorevault.api.domain.content.Scene;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 
@@ -10,11 +10,11 @@ import java.util.UUID;
 /**
  * Read-only repository methods for event-modality queries over Scene nodes.
  */
-public interface EventGraphRepository extends Neo4jRepository<SceneNode, UUID> {
+public interface EventGraphRepository extends Neo4jRepository<Scene, UUID> {
 
     @Query("MATCH (s:Scene:Event) RETURN s ORDER BY s.sceneIndex")
-    List<SceneNode> findAllSceneEvents();
+    List<Scene> findAllSceneEvents();
 
     @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene:Event) RETURN s ORDER BY s.sceneIndex")
-    List<SceneNode> findSceneEventsByChapter(UUID chapterId);
+    List<Scene> findSceneEventsByChapter(UUID chapterId);
 }

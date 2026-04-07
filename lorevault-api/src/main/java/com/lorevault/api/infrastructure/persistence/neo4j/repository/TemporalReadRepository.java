@@ -1,6 +1,6 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.repository;
 
-import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
+import com.lorevault.api.domain.content.Scene;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.data.repository.Repository;
 
@@ -11,7 +11,7 @@ import java.util.UUID;
  * Read-only repository for retrieving precedence edges between events.
  * We treat [:MEETS] and [:TEMPORAL] as precedence constraints (earlier -> later).
  */
-public interface TemporalReadRepository extends Repository<SceneNode, UUID> {
+public interface TemporalReadRepository extends Repository<Scene, UUID> {
 
     /**
      * Return (fromId, toId) pairs for precedence edges within a chapter.

@@ -7,6 +7,7 @@ import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.content.Universe;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Book;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
 /**
  * In-memory fake implementation of ContentPersistencePort for unit/service tests.
  */
-public class FakeContentPersistencePort implements ContentPersistencePort {
+public class FakeContentPersistencePort extends Neo4jContentPersistenceAdapter implements ContentPersistencePort {
 
     public final Map<UUID, Chapter> chapters = new ConcurrentHashMap<>();
     public final Map<UUID, List<Scene>> scenesByChapter = new ConcurrentHashMap<>();

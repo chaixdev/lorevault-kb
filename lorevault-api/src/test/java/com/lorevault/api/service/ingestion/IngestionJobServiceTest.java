@@ -1,12 +1,12 @@
 package com.lorevault.api.service.ingestion;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.ingestion.IngestionJob;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.ingestion.StatusRecord;
 import com.lorevault.api.dto.ingestion.JobListResponse;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.StatusRecordGraphRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +38,7 @@ import static org.mockito.Mockito.*;
 class IngestionJobServiceTest {
 
     @Mock
-    private ContentPersistencePort contentPersistencePort;
+    private Neo4jContentPersistenceAdapter contentPersistencePort;
 
     @Mock
     private IngestionJobGraphRepository jobRepo;

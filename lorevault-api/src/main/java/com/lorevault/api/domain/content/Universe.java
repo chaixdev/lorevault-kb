@@ -5,6 +5,8 @@ import static com.lorevault.api.util.StringSanitizer.toSnakeCase;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.neo4j.core.schema.Id;
+import org.springframework.data.neo4j.core.schema.Node;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -16,7 +18,9 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Node("Universe")
 public class Universe {
+	@Id
 	private UUID id;
 	private String name;
 	private String slug; // normalized, URL/path-safe identifier
@@ -36,4 +40,3 @@ public class Universe {
 		return u;
 	}
 }
-

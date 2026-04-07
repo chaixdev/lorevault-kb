@@ -3,6 +3,14 @@ package com.lorevault.api.domain.content;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.PersistenceCreator;
+import org.springframework.data.neo4j.core.schema.DynamicLabels;
+import org.springframework.data.neo4j.core.schema.Id;
+import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Property;
+import org.springframework.data.neo4j.core.schema.Relationship;
 
 import com.lorevault.api.domain.timeline.Event;
 import java.time.LocalDateTime;
@@ -21,13 +29,17 @@ import java.util.ArrayList;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Node("Scene")
 public class Scene implements Event {
+    @Id
     private UUID id;
 
     /**
      * Foreign key referencing the parent Chapter (aggregate root)
      */
     private Chapter chapter;
+
+    private UUID chapterId;
 
     /**
      * The sequential index of the scene within the chapter (0-based, matching AI output)
@@ -42,11 +54,13 @@ public class Scene implements Event {
     /**
      * Zero-indexed character position where this scene starts in the chapter text
      */
+    @Property("startOffset")
     private Long startCharacterOffset;
 
     /**
      * Zero-indexed character position where this scene ends in the chapter text
      */
+    @Property("endOffset")
     private Long endCharacterOffset;
 
     /**
@@ -56,14 +70,47 @@ public class Scene implements Event {
      */
     private String text;
 
+    @CreatedDate
     private LocalDateTime createdAt;
 
+    @LastModifiedDate
     private LocalDateTime updatedAt;
+
+    @DynamicLabels
+    private List<String> labels;
 
     /**
      * Chunks that belong to this scene (v0.3.0+)
      */
+    @Relationship(type = "HAS_CHUNK")
     private List<Chunk> chunks;
+
+    @PersistenceCreator
+    public Scene(UUID id,
+                 Integer sceneIndex,
+                 Long startCharacterOffset,
+                 Long endCharacterOffset,
+                 String contextSummary,
+                 String text,
+                 UUID chapterId,
+                 List<String> labels,
+                 LocalDateTime createdAt,
+                 LocalDateTime updatedAt,
+                 List<Chunk> chunks,
+                 Chapter chapter) {
+        this.id = id;
+        this.sceneIndex = sceneIndex;
+        this.startCharacterOffset = startCharacterOffset;
+        this.endCharacterOffset = endCharacterOffset;
+        this.contextSummary = contextSummary;
+        this.text = text;
+        this.chapterId = chapterId;
+        this.labels = labels;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.chunks = chunks;
+        this.chapter = chapter;
+    }
 
     // =====================================
     // Business Methods

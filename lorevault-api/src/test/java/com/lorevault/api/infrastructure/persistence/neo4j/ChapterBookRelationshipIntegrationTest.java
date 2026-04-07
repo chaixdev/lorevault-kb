@@ -5,9 +5,6 @@ import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Universe;
 import com.lorevault.api.dto.shared.PublicationCoordinates;
 import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jMapper;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.BookNode;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.BookGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
 import org.junit.jupiter.api.Test;
@@ -27,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataNeo4jTest
 @Testcontainers
-@Import({Neo4jContentPersistenceAdapter.class, Neo4jMapper.class})
+@Import({Neo4jContentPersistenceAdapter.class})
 class ChapterBookRelationshipIntegrationTest {
 
     @Container
@@ -73,8 +70,8 @@ class ChapterBookRelationshipIntegrationTest {
         Chapter persisted = adapter.createChapter(chapter);
 
         // Then: Chapter node should have an outgoing IN_BOOK to the Book node
-        Optional<ChapterNode> chapterNode = chapterRepo.findById(persisted.getId());
-        Optional<BookNode> bookNode = bookRepo.findById(savedBook.getId());
+        Optional<Chapter> chapterNode = chapterRepo.findById(persisted.getId());
+        Optional<Book> bookNode = bookRepo.findById(savedBook.getId());
 
         assertThat(chapterNode).isPresent();
         assertThat(bookNode).isPresent();

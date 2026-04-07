@@ -1,6 +1,5 @@
 package com.lorevault.api.handler;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.domain.content.Scene;
@@ -8,6 +7,7 @@ import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChunksCreatedEvent;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.service.content.TextChunkingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +34,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("ChunkingHandler Tests")
 class ChunkingHandlerTest {
 
-    @Mock private ContentPersistencePort contentPersistencePort;
+    @Mock private Neo4jContentPersistenceAdapter contentPersistencePort;
     @Mock private TextChunkingService textChunkingService;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private ApplicationEventPublisher eventPublisher;

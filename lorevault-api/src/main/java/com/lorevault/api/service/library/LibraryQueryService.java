@@ -1,10 +1,10 @@
 package com.lorevault.api.service.library;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Book;
+import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Universe;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.ChapterNode;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +22,7 @@ import java.util.UUID;
 @Slf4j
 public class LibraryQueryService {
 
-    private final ContentPersistencePort contentPersistencePort;
+    private final Neo4jContentPersistenceAdapter contentPersistencePort;
     private final ChapterGraphRepository chapterGraphRepository;
 
     public List<UniverseSummary> listUniverses() {
@@ -123,7 +123,7 @@ public class LibraryQueryService {
 
     public List<ChapterSummary> listChaptersForBook(UUID bookId) {
         log.info("[QUERY] Fetching chapters for bookId={}", bookId);
-        List<ChapterNode> chapters = chapterGraphRepository.findByBookId(bookId);
+        List<Chapter> chapters = chapterGraphRepository.findByBookId(bookId);
         log.info("[QUERY] Repository returned {} chapters for bookId={}", chapters.size(), bookId);
         
         List<ChapterSummary> summaries = chapters.stream()

@@ -4,7 +4,7 @@ import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.timeline.TriadRelationInverter;
-import com.lorevault.api.application.port.PromptRepositoryPort;
+import com.lorevault.api.infrastructure.prompt.PromptRepositoryAdapter;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +25,10 @@ import java.util.UUID;
 @Slf4j
 public class TriadOrchestrationService {
 
+    public record TriadRelation(String temporalType, String certainty, String evidence) {}
+
+    public record TriadStructuredResult(String timelineMarker, TriadRelation previousToCurrent, TriadRelation currentToNext) {}
+
     public record TriadAnalysis(
             UUID previousSceneId,
             UUID currentSceneId,
@@ -41,8 +45,7 @@ public class TriadOrchestrationService {
 
     private final TriadBuilderService triadBuilder;
     private final SceneDetectionClient sceneDetectionClient;
-    private final TriadXmlParser triadXmlParser;
-    private final PromptRepositoryPort promptRepository;
+    private final PromptRepositoryAdapter promptRepository;
     private final IngestionJobService ingestionJobService;
 
     /**
@@ -77,23 +80,27 @@ public class TriadOrchestrationService {
                 statusProps
             );
 
-            String xml = sceneDetectionClient.detectScenesPass2Triad(jobId, systemPrompt, vars);
-            log.debug("TriadOrchestrator: received triad XML for triadIndex={}", statusProps.get("triadIndex"));
-            TriadXmlParser.TriadResult parsed = triadXmlParser.parse(xml);
-            String inv = parsed.prevToCurr() != null ?
-                    TriadRelationInverter.invertPrevToCurr(parsed.prevToCurr().temporalType()) : null;
+            TriadStructuredResult parsed = sceneDetectionClient.detectScenesPass2Triad(
+                    jobId,
+                    systemPrompt,
+                    vars,
+                    TriadStructuredResult.class
+            );
+            String inv = parsed.previousToCurrent() != null
+                    ? TriadRelationInverter.invertPrevToCurr(parsed.previousToCurrent().temporalType())
+                    : null;
 
         out.add(new TriadAnalysis(
             t.previous() != null ? t.previous().getId() : null,
             t.current().getId(),
             t.next() != null ? t.next().getId() : null,
                     parsed.timelineMarker(),
-                    parsed.prevToCurr() != null ? parsed.prevToCurr().temporalType() : null,
-                    parsed.prevToCurr() != null ? parsed.prevToCurr().certainty() : null,
-                    parsed.prevToCurr() != null ? parsed.prevToCurr().evidence() : null,
-                    parsed.currToNext() != null ? parsed.currToNext().temporalType() : null,
-                    parsed.currToNext() != null ? parsed.currToNext().certainty() : null,
-                    parsed.currToNext() != null ? parsed.currToNext().evidence() : null,
+                    parsed.previousToCurrent() != null ? parsed.previousToCurrent().temporalType() : null,
+                    parsed.previousToCurrent() != null ? parsed.previousToCurrent().certainty() : null,
+                    parsed.previousToCurrent() != null ? parsed.previousToCurrent().evidence() : null,
+                    parsed.currentToNext() != null ? parsed.currentToNext().temporalType() : null,
+                    parsed.currentToNext() != null ? parsed.currentToNext().certainty() : null,
+                    parsed.currentToNext() != null ? parsed.currentToNext().evidence() : null,
                     inv
             ));
         }

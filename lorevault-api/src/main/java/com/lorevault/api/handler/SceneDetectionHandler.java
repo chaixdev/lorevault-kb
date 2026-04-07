@@ -1,11 +1,11 @@
 package com.lorevault.api.handler;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ChapterIngestionEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.SceneProcessingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
@@ -39,7 +39,7 @@ import java.util.UUID;
 @Slf4j
 public class SceneDetectionHandler {
 
-    private final ContentPersistencePort contentPersistencePort;
+    private final Neo4jContentPersistenceAdapter contentPersistencePort;
     private final SceneDetectionService sceneDetectionService;
     private final SceneProcessingService sceneProcessingService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
@@ -47,7 +47,7 @@ public class SceneDetectionHandler {
     private final PipelineStageSupport stageSupport;
 
     public SceneDetectionHandler(
-            ContentPersistencePort contentPersistencePort,
+            Neo4jContentPersistenceAdapter contentPersistencePort,
             SceneDetectionService sceneDetectionService,
             SceneProcessingService sceneProcessingService,
             IngestionJobService ingestionJobService,

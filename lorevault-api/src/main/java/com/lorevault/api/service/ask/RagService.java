@@ -1,6 +1,5 @@
 package com.lorevault.api.service.ask;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.dto.ask.AskDtos.AskRequest;
@@ -12,8 +11,9 @@ import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchRequest;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchResponse;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SearchResultDto;
 import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchFilters;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.service.search.SemanticSearchService;
-import com.lorevault.api.application.port.PromptRepositoryPort;
+import com.lorevault.api.infrastructure.prompt.PromptRepositoryAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -35,8 +35,8 @@ import java.util.stream.IntStream;
 public class RagService {
 
     private final SemanticSearchService semanticSearchService;
-    private final PromptRepositoryPort promptRepository;
-    private final ContentPersistencePort contentPersistencePort;
+    private final PromptRepositoryAdapter promptRepository;
+    private final Neo4jContentPersistenceAdapter contentPersistencePort;
     
     @Qualifier("nlpBig")
     private final ChatClient chatClient;

@@ -1,7 +1,7 @@
 package com.lorevault.api.service.content;
 
 import com.lorevault.api.configuration.properties.LoreVaultPromptProperties;
-import com.lorevault.api.application.port.PromptRepositoryPort;
+import com.lorevault.api.infrastructure.prompt.PromptRepositoryAdapter;
 import com.lorevault.api.service.ingestion.LlmCallLoggingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -26,22 +26,22 @@ public class SceneDetectionClient {
     
     private final ChatClient nlpSmallChatClient;
     private final ChatClient nlpBigChatClient;
-    private final PromptRepositoryPort promptRepository;
+    private final PromptRepositoryAdapter promptRepository;
     private final LoreVaultPromptProperties promptProperties;
     private final LlmCallLoggingService llmLog;
     
     @Qualifier("llmRetryTemplate")
     private final RetryTemplate retryTemplate;
 
-    @Value("${lorevault.ai.models.nlp-small.model:llama-3.1-8b-instant}")
+    @Value("${lorevault.ai.models.nlp-small.model:openai/gpt-oss-120b}")
     private String nlpSmallModelId;
-    @Value("${lorevault.ai.models.nlp-big.model:llama-3.3-70b-versatile}")
+    @Value("${lorevault.ai.models.nlp-big.model:openai/gpt-oss-120b}")
     private String nlpBigModelId;
 
     public SceneDetectionClient(
             @Qualifier("nlpSmall") ChatClient nlpSmallChatClient,
             @Qualifier("nlpBig") ChatClient nlpBigChatClient,
-            PromptRepositoryPort promptRepository,
+            PromptRepositoryAdapter promptRepository,
             LoreVaultPromptProperties promptProperties,
             @Qualifier("llmRetryTemplate") RetryTemplate retryTemplate,
             LlmCallLoggingService llmLog) {
@@ -119,9 +119,9 @@ public class SceneDetectionClient {
      * @param jobId Job context
      * @param systemPrompt The triad system prompt content
      * @param userVariables Variables for the user template
-     * @return Raw XML triad response
+     * @return Structured triad response mapped to {@code responseType}
      */
-    public String detectScenesPass2Triad(UUID jobId, String systemPrompt, Map<String, Object> userVariables) {
+    public <T> T detectScenesPass2Triad(UUID jobId, String systemPrompt, Map<String, Object> userVariables, Class<T> responseType) {
         PromptTemplate userTemplate = promptRepository.get("scene-detection-pass2-user");
         String userInput = userTemplate.render(userVariables);
 
@@ -129,7 +129,7 @@ public class SceneDetectionClient {
         ChatClient chatClient = getChatClientForModel(modelId);
         String actualModelId = getModelIdForPass("pass2");
 
-        return executeSceneDetectionCall(jobId, "scene-detection-pass2", systemPrompt, userInput, chatClient, actualModelId);
+        return executeSceneDetectionStructuredCall(jobId, "scene-detection-pass2", systemPrompt, userInput, chatClient, actualModelId, responseType);
     }
 
     /**
@@ -256,6 +256,67 @@ public class SceneDetectionClient {
             
         } catch (Exception e) {
             log.error("[LLM] Unexpected error during {} scene detection: {}", step, e.getMessage(), e);
+            throw new RuntimeException(step + " scene detection failed: " + e.getMessage(), e);
+        }
+    }
+
+    private <T> T executeSceneDetectionStructuredCall(UUID jobId, String step, String systemPrompt, String userInput,
+                                                      ChatClient chatClient, String modelId, Class<T> responseType) {
+        log.debug("[LLM] {} request: inputLength={} chars, model={}",
+                step, userInput == null ? 0 : userInput.length(), modelId);
+
+        OpenAiChatOptions options = OpenAiChatOptions.builder()
+                .temperature(0.1)
+                .topP(0.9)
+                .maxTokens(6000)
+                .build();
+
+        final String safeInput = userInput == null ? "" : userInput;
+
+        try {
+            long start = System.nanoTime();
+            return retryTemplate.execute(retryContext -> {
+                int retryCount = retryContext.getRetryCount();
+                String attemptMsg = retryCount > 0 ? " (retry=" + retryCount + ")" : "";
+                log.debug("[LLM] Calling model={} for {}{}", modelId, step, attemptMsg);
+
+                T response = chatClient.prompt()
+                        .system(systemPrompt)
+                        .user(safeInput)
+                        .options(options)
+                        .call()
+                        .entity(responseType);
+
+                long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
+                if (response == null) {
+                    throw new RuntimeException("Empty structured response from " + modelId + " during " + step);
+                }
+
+                llmLog.logCall(
+                        jobId,
+                        step,
+                        "openai-compatible",
+                        modelId,
+                        options.getTemperature(),
+                        options.getTopP(),
+                        options.getMaxTokens(),
+                        step.equals("scene-detection-pass1") ? promptProperties.getSceneDetectionPass1Path() : promptProperties.getSceneDetectionPass2Path(),
+                        systemPrompt,
+                        safeInput.length() <= 1000 ? safeInput : safeInput.substring(0, 1000),
+                        "[structured-response:" + responseType.getSimpleName() + "]",
+                        elapsedMs,
+                        estimateTokens(safeInput),
+                        0
+                );
+
+                return response;
+            }, recoveryContext -> {
+                Throwable lastError = recoveryContext.getLastThrowable();
+                String errorMsg = lastError != null ? lastError.getMessage() : "Unknown error";
+                throw new RuntimeException(step + " scene detection failed permanently after multiple attempts: " + errorMsg,
+                        recoveryContext.getLastThrowable());
+            });
+        } catch (Exception e) {
             throw new RuntimeException(step + " scene detection failed: " + e.getMessage(), e);
         }
     }

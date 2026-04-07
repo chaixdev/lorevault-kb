@@ -1,6 +1,5 @@
 package com.lorevault.api.service.system;
 
-import com.lorevault.api.application.port.EmbeddingPort;
 import com.lorevault.api.configuration.properties.LoreVaultModelsProperties;
 import com.lorevault.api.service.system.metrics.HealthMetricsCollector;
 import com.lorevault.api.service.system.retry.RetryableHealthChecker;
@@ -14,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -42,7 +42,7 @@ class SystemHealthServiceTest {
     private HealthMetricsCollector healthMetricsCollector;
 
     @Mock
-    private EmbeddingPort embeddingPort;
+    private EmbeddingModel embeddingModel;
 
     @Mock
     @Qualifier("nlpSmall")
@@ -119,9 +119,9 @@ class SystemHealthServiceTest {
     @DisplayName("should check embedding health successfully")
     void shouldCheckEmbeddingHealthSuccessfully() {
         // Given
-        double[] testVector = new double[384];
-        when(embeddingPort.embed("health_check")).thenReturn(testVector);
-        when(embeddingPort.getDimension()).thenReturn(384);
+        float[] testVector = new float[384];
+        when(embeddingModel.embed("health_check")).thenReturn(testVector);
+        when(embeddingModel.dimensions()).thenReturn(384);
 
         // When
         var result = service.checkEmbeddingHealth();
@@ -136,7 +136,7 @@ class SystemHealthServiceTest {
     @DisplayName("should check embedding health failure")
     void shouldCheckEmbeddingHealthFailure() {
         // Given
-        when(embeddingPort.embed("health_check")).thenThrow(new RuntimeException("Connection failed"));
+        when(embeddingModel.embed("health_check")).thenThrow(new RuntimeException("Connection failed"));
 
         // When
         var result = service.checkEmbeddingHealth();
@@ -223,7 +223,7 @@ class SystemHealthServiceTest {
         service.performStartupHealthCheck();
 
         // Then - basic verification that method completed
-        verify(embeddingPort).embed(anyString());
+        verify(embeddingModel).embed(anyString());
     }
 
     // Simplified helper methods that avoid complex generic mocking
@@ -281,9 +281,9 @@ class SystemHealthServiceTest {
     }
 
     private void mockHealthyEmbedding() {
-        double[] testVector = new double[384];
-        lenient().when(embeddingPort.embed(anyString())).thenReturn(testVector);
-        lenient().when(embeddingPort.getDimension()).thenReturn(384);
+        float[] testVector = new float[384];
+        lenient().when(embeddingModel.embed(anyString())).thenReturn(testVector);
+        lenient().when(embeddingModel.dimensions()).thenReturn(384);
     }
 
     private void setLastEmbeddingStatusToUnhealthy() {

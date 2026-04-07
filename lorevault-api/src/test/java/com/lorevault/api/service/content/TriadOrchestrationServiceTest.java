@@ -1,9 +1,9 @@
 package com.lorevault.api.service.content;
 
-import com.lorevault.api.application.port.PromptRepositoryPort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
+import com.lorevault.api.infrastructure.prompt.PromptRepositoryAdapter;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,12 +24,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-/**
- * Test suite for TriadOrchestrationService focusing on:
- * - Status record creation before each triad LLM call
- * - Proper triad metadata inclusion in status properties
- * - Integration with SceneDetectionClient and triad analysis
- */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TriadOrchestrationService")
 class TriadOrchestrationServiceTest {
@@ -39,12 +33,9 @@ class TriadOrchestrationServiceTest {
     
     @Mock
     private SceneDetectionClient sceneDetectionClient;
-    
+
     @Mock
-    private TriadXmlParser triadXmlParser;
-    
-    @Mock
-    private PromptRepositoryPort promptRepository;
+    private PromptRepositoryAdapter promptRepository;
     
     @Mock
     private IngestionJobService ingestionJobService;
@@ -74,7 +65,6 @@ class TriadOrchestrationServiceTest {
         triadOrchestrationService = new TriadOrchestrationService(
             triadBuilderService,
             sceneDetectionClient,
-            triadXmlParser,
             promptRepository,
             ingestionJobService
         );
@@ -92,17 +82,15 @@ class TriadOrchestrationServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
-        when(sceneDetectionClient.detectScenesPass2Triad(any(), any(), any())).thenReturn("<triad></triad>");
-        
-        TriadXmlParser.TriadResult mockResult = createMockTriadResult();
-        when(triadXmlParser.parse(any())).thenReturn(mockResult);
+        when(sceneDetectionClient.detectScenesPass2Triad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+                .thenReturn(createMockTriadResult());
 
         // Act
         List<TriadOrchestrationService.TriadAnalysis> result = 
             triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
 
         // Assert
-        assertThat(result).hasSize(2); // Two triads
+        assertThat(result).hasSize(2);
 
         // Verify status updates were called for each triad
         verify(ingestionJobService, times(2)).updateJobStatus(
@@ -124,7 +112,7 @@ class TriadOrchestrationServiceTest {
         
         Map<String, Object> firstTriadProps = capturedProperties.get(0);
         assertThat(firstTriadProps).containsEntry("triadIndex", 0);
-        assertThat(firstTriadProps).containsEntry("prevSceneId", null); // First triad has no previous
+        assertThat(firstTriadProps).containsEntry("prevSceneId", null);
         assertThat(firstTriadProps).containsEntry("currentSceneId", scene1Id);
         assertThat(firstTriadProps).containsEntry("nextSceneId", scene2Id);
 
@@ -154,7 +142,7 @@ class TriadOrchestrationServiceTest {
         // Assert
         assertThat(result).isEmpty();
         verify(ingestionJobService, never()).updateJobStatus(any(), any(), any(), any());
-        verify(sceneDetectionClient, never()).detectScenesPass2Triad(any(), any(), any());
+        verify(sceneDetectionClient, never()).detectScenesPass2Triad(any(), any(), any(), any());
     }
 
     @Test
@@ -169,10 +157,8 @@ class TriadOrchestrationServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
-        when(sceneDetectionClient.detectScenesPass2Triad(any(), any(), any())).thenReturn("<triad></triad>");
-        
-        TriadXmlParser.TriadResult mockResult = createMockTriadResult();
-        when(triadXmlParser.parse(any())).thenReturn(mockResult);
+        when(sceneDetectionClient.detectScenesPass2Triad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+                .thenReturn(createMockTriadResult());
 
         // Act
         triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
@@ -180,7 +166,12 @@ class TriadOrchestrationServiceTest {
         // Assert - verify order: status update first, then LLM call
         var inOrder = inOrder(ingestionJobService, sceneDetectionClient);
         inOrder.verify(ingestionJobService).updateJobStatus(any(), any(), any(), any());
-        inOrder.verify(sceneDetectionClient).detectScenesPass2Triad(eq(testJobId), eq("mock system prompt"), any());
+        inOrder.verify(sceneDetectionClient).detectScenesPass2Triad(
+                eq(testJobId),
+                eq("mock system prompt"),
+                any(),
+                eq(TriadOrchestrationService.TriadStructuredResult.class)
+        );
     }
 
     @Test
@@ -195,10 +186,8 @@ class TriadOrchestrationServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
-        when(sceneDetectionClient.detectScenesPass2Triad(any(), any(), any())).thenReturn("<triad></triad>");
-        
-        TriadXmlParser.TriadResult mockResult = createMockTriadResult();
-        when(triadXmlParser.parse(any())).thenReturn(mockResult);
+        when(sceneDetectionClient.detectScenesPass2Triad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+                .thenReturn(createMockTriadResult());
 
         // Capture the user variables passed to the LLM client
         @SuppressWarnings("unchecked")
@@ -208,7 +197,12 @@ class TriadOrchestrationServiceTest {
         triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
 
         // Assert
-        verify(sceneDetectionClient).detectScenesPass2Triad(eq(testJobId), eq("mock system prompt"), userVarsCaptor.capture());
+        verify(sceneDetectionClient).detectScenesPass2Triad(
+                eq(testJobId),
+                eq("mock system prompt"),
+                userVarsCaptor.capture(),
+                eq(TriadOrchestrationService.TriadStructuredResult.class)
+        );
         
         Map<String, Object> userVars = userVarsCaptor.getValue();
         assertThat(userVars).containsKeys(
@@ -217,8 +211,6 @@ class TriadOrchestrationServiceTest {
             "next_context_summary", "next_time_indicators", "next_break_reason", "next_text"
         );
     }
-
-    // Helper methods for test data creation
 
     private Chapter createTestChapter() {
         Chapter chapter = new Chapter();
@@ -240,8 +232,8 @@ class TriadOrchestrationServiceTest {
         Scene scene3 = createScene(scene3Id, 2, 41L, 60L);
 
         return List.of(
-            new TriadBuilderService.SceneTriad(null, scene1, scene2),     // First triad: [null, scene1, scene2]
-            new TriadBuilderService.SceneTriad(scene1, scene2, scene3)    // Second triad: [scene1, scene2, scene3]
+            new TriadBuilderService.SceneTriad(null, scene1, scene2),
+            new TriadBuilderService.SceneTriad(scene1, scene2, scene3)
         );
     }
 
@@ -261,15 +253,15 @@ class TriadOrchestrationServiceTest {
         return scene;
     }
 
-    private TriadXmlParser.TriadResult createMockTriadResult() {
-        TriadXmlParser.Relation mockPrevToCurr = new TriadXmlParser.Relation(
+    private TriadOrchestrationService.TriadStructuredResult createMockTriadResult() {
+        TriadOrchestrationService.TriadRelation mockPrevToCurr = new TriadOrchestrationService.TriadRelation(
             "IMMEDIATE_SUCCESSION", "HIGH", "Scene transition analysis"
         );
-        TriadXmlParser.Relation mockCurrToNext = new TriadXmlParser.Relation(
+        TriadOrchestrationService.TriadRelation mockCurrToNext = new TriadOrchestrationService.TriadRelation(
             "CONCURRENT", "MEDIUM", "Overlapping events"
         );
         
-        return new TriadXmlParser.TriadResult(
+        return new TriadOrchestrationService.TriadStructuredResult(
             "Timeline marker: Chapter 1",
             mockPrevToCurr,
             mockCurrToNext

@@ -1,6 +1,5 @@
 package com.lorevault.api.infrastructure.search;
 
-import com.lorevault.api.application.port.SemanticSearchPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -19,7 +18,35 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 @ConditionalOnProperty(name = "lorevault.search.provider", havingValue = "neo4j", matchIfMissing = true)
-public class Neo4jSemanticSearchAdapter implements SemanticSearchPort {
+public class Neo4jSemanticSearchAdapter {
+
+    protected Neo4jSemanticSearchAdapter() {
+        this.neo4jClient = null;
+    }
+
+    public record SearchResult(
+            UUID chunkId,
+            double score,
+            String snippet,
+            UUID chapterId,
+            Integer bookNumber,
+            Integer chapterNumber
+    ) {}
+
+    public record SearchFilters(
+            String universe,
+            String series,
+            Integer bookNumber,
+            Integer chapterNumber
+    ) {
+        public static SearchFilters empty() {
+            return new SearchFilters(null, null, null, null);
+        }
+
+        public boolean hasFilters() {
+            return universe != null || series != null || bookNumber != null || chapterNumber != null;
+        }
+    }
 
     private final Neo4jClient neo4jClient;
     @org.springframework.beans.factory.annotation.Value("${lorevault.search.snippet.max-length:600}")
@@ -28,7 +55,6 @@ public class Neo4jSemanticSearchAdapter implements SemanticSearchPort {
     // Configuration - could be externalized to properties later
     private static final String VECTOR_INDEX_NAME = "chunk_embedding_idx";
     
-    @Override
     public List<SearchResult> search(double[] queryEmbedding, int topK, SearchFilters filters) {
         log.debug("Performing Neo4j vector search with topK: {} and filters: {}", topK, filters);
         
@@ -101,7 +127,6 @@ public class Neo4jSemanticSearchAdapter implements SemanticSearchPort {
         }
     }
     
-    @Override
     public boolean isAvailable() {
         try {
             // Check if vector index exists and has data

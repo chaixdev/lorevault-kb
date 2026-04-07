@@ -1,5 +1,6 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.model;
 
+import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.timeline.CertaintyLevel;
 import com.lorevault.api.domain.timeline.TemporalRelation;
 import lombok.Data;
@@ -28,5 +29,5 @@ public class TemporalEdge {
     private UUID evidenceChunkId;
 
     @TargetNode
-    private SceneNode later;
+    private Scene later;
 }

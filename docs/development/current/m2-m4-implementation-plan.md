@@ -379,9 +379,53 @@ Validation: `mvn compile && mvn test`.
 - No commit leaves the build broken
 - Co-author: `Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>`
 
-## Open Decisions (must resolve before starting)
+## Resolved Decisions
 
-1. **Relationship field placement (M2):** When domain entities get `@Node`, relationship fields (`@Relationship`) currently live on the mirror Node classes. Confirm the domain entity is the right home for these, or introduce a thin mapping record. Check `ChapterNode`, `SceneNode`, `ChunkNode` specifically — they carry `@Relationship` fields.
-2. **InMemorySemanticSearchAdapter fate (M3.4):** Is it needed in tests post-M3, or can it be replaced by a Testcontainers Neo4j with vector enabled?
-3. **Provider JSON Schema support (M4.3):** Confirm OpenRouter or Nebius supports `response_format: json_schema` before coding slice 4.3.
-4. **Neo4jVectorStore compatibility (M4.2):** Verify `Neo4jVectorStore` in Spring AI 1.1.4 is compatible with the current Neo4j 5.26 + HNSW setup.
+### Decision 1 — Relationship fields on domain entities ✅
+**Verdict: Annotate all 6 domain entities directly. No mapping records.**
+
+Field-by-field audit:
+- **Universe**: 1:1 scalar match with `UniverseNode` — add `@Node("Universe")`, `@Id`, done.
+- **Series**: scalars match; `SeriesNode`'s `@Relationship UniverseNode universe` is navigation sugar on top of the `universeId` UUID already present on the domain entity — not needed.
+- **Book**: same as Series — `universeNode` and `seriesNode` relationship objects are navigation sugar on top of UUIDs already on the domain.
+- **Chunk**: scalar fields align exactly; associations are modeled via `SceneHasChunk` externally on the Node — verify whether `SceneHasChunk` carries relationship properties; if bare, replace with direct `@Relationship`.
+- **Chapter**: shape differs — `ChapterNode` carries denormalized flat display fields (`universe`, `series`, `bookTitle`, `bookNumber`, `chapterNumber`), `@Relationship BookNode book`, `@CreatedDate`/`@LastModifiedDate`, `@Property("rawText")`, `@PersistenceCreator`. Resolution: absorb the denormalized fields into domain `Chapter` (they are genuine facts about the chapter, not infrastructure). `PublicationCoordinates` can remain as a domain value object; SDN flattens its fields automatically via `@TargetNode` or inline properties. No mapping record.
+- **Scene**: field names differ (`startCharacterOffset` vs `startOffset`/`endOffset`) — rename in domain. `SceneNode` has `@DynamicLabels List<String> labels` and `chapterId` UUID for query efficiency — add both to domain `Scene`. Annotate directly, no mapping record.
+
+SDN annotations to move from Node classes to domain entities: `@Node`, `@Id`, `@Relationship`, `@Property`, `@CreatedDate`, `@LastModifiedDate`, `@DynamicLabels`, `@PersistenceCreator`.
+
+Reference pattern: `IngestionJob.java` — domain class with `@Node`, `@Id`, `@Relationship`, `@CreatedDate`.
+
+---
+
+### Decision 2 — InMemorySemanticSearchAdapter fate ✅
+**Verdict: Delete in M3.4. Replace its TCK test with `FakeSemanticSearchPort`.**
+
+- `@ConditionalOnProperty(name="lorevault.search.provider", havingValue="memory", matchIfMissing=false)` — never Spring-activated by default.
+- No test sets `lorevault.search.provider=memory` via Spring property sources — it is never managed by Spring in the test suite.
+- Only consumer: `InMemorySemanticSearchAdapterTckTest` constructs it directly as a plain object.
+- Its `matchesFilters()` is a stub (always returns `true`); results return `null` for `chapterId`/`bookNumber`/`chapterNumber` — functionally inferior to `Neo4jSemanticSearchAdapter`.
+- `FakeSemanticSearchPort` already exists in `SemanticSearchServiceTest` — use that pattern for the TCK replacement.
+- 164 LOC with no production or meaningful test value → delete.
+
+---
+
+### Decision 3 — Provider JSON Schema support for `.entity()` ✅
+**Verdict: No blocker. Use default prompt-injection mode unconditionally.**
+
+Spring AI 1.1.x `.entity(Record.class)` has two modes:
+- **Default (prompt injection)**: `BeanOutputConverter.getFormat()` appends the JSON schema as text in the user message. No `response_format` field sent. Works with any LLM including Groq and Google. **Use this.**
+- **Native (opt-in)**: Requires `AdvisorParams.ENABLE_NATIVE_STRUCTURED_OUTPUT` in the advisor chain. Sends `response_format: { type: "json_schema", strict: true }`. Groq supports this only for `openai/gpt-oss-20b` and `openai/gpt-oss-120b` in strict mode. **Do not enable.**
+
+M4.3 can proceed unconditionally with default mode. No provider check needed.
+
+---
+
+### Decision 4 — Neo4jVectorStore / Neo4j 5.26 HNSW compatibility ✅
+**Verdict: Fully supported. No blocker.**
+
+- Spring AI `Neo4jVectorStore` minimum requirement: Neo4j 5.15.
+- Spring AI's own CI tests run against Neo4j 5.24.
+- Neo4j 5.26 is above both — fully compatible.
+- Only relevant 1.1.x change: a filter expression key validation bug fix in `Neo4jVectorFilterExpressionConverter` — not breaking, no API change.
+- HNSW index creation Cypher stable since Neo4j 5.11.

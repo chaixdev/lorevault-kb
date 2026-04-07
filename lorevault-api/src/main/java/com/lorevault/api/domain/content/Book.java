@@ -3,6 +3,8 @@ package com.lorevault.api.domain.content;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.neo4j.core.schema.Id;
+import org.springframework.data.neo4j.core.schema.Node;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -14,7 +16,9 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Node("Book")
 public class Book {
+    @Id
     private UUID id;
 
     /**

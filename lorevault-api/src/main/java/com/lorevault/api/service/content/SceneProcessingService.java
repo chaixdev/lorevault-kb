@@ -1,9 +1,9 @@
 package com.lorevault.api.service.content;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.dto.content.SceneDetectionResult;
 import com.lorevault.api.dto.content.SceneWithCoordinates;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class SceneProcessingService {
 
-    private final ContentPersistencePort contentPersistencePort;
+    private final Neo4jContentPersistenceAdapter contentPersistencePort;
 
     // =============================================================================
     // HIGH-LEVEL WORKFLOW METHODS

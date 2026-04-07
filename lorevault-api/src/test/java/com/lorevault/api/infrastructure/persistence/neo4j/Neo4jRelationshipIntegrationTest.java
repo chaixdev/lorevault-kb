@@ -4,9 +4,6 @@ import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Universe;
 import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jMapper;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.BookNode;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.SeriesNode;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.BookGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.SeriesGraphRepository;
 // no direct use of UniverseGraphRepository in this test
@@ -32,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DataNeo4jTest
 @Testcontainers
-@Import({Neo4jContentPersistenceAdapter.class, Neo4jMapper.class})
+@Import({Neo4jContentPersistenceAdapter.class})
 public class Neo4jRelationshipIntegrationTest {
 
     @Container
@@ -71,10 +68,9 @@ public class Neo4jRelationshipIntegrationTest {
         Series savedSeries = adapter.createSeries(series);
 
         // Then
-        Optional<SeriesNode> seriesNode = seriesRepository.findById(savedSeries.getId());
+        Optional<Series> seriesNode = seriesRepository.findById(savedSeries.getId());
         assertThat(seriesNode).isPresent();
-        assertThat(seriesNode.get().getUniverse()).isNotNull();
-        assertThat(seriesNode.get().getUniverse().getId()).isEqualTo(savedUniverse.getId());
+        assertThat(seriesNode.get().getUniverseId()).isEqualTo(savedUniverse.getId());
     // Sanity
     assertThat(savedUniverse.getId()).isNotNull();
     }
@@ -92,16 +88,12 @@ public class Neo4jRelationshipIntegrationTest {
         Book savedBook = adapter.createBook(book);
 
         // Then
-        Optional<BookNode> bookNode = bookRepository.findById(savedBook.getId());
+        Optional<Book> bookNode = bookRepository.findById(savedBook.getId());
         assertThat(bookNode).isPresent();
         
         // Verify book -> series relationship
-        assertThat(bookNode.get().getSeriesNode()).isNotNull();
-        assertThat(bookNode.get().getSeriesNode().getId()).isEqualTo(savedSeries.getId());
-        
-        // Verify book -> universe relationship (through series)
-        assertThat(bookNode.get().getSeriesNode().getUniverse()).isNotNull();
-        assertThat(bookNode.get().getSeriesNode().getUniverse().getId()).isEqualTo(savedUniverse.getId());
+        assertThat(bookNode.get().getSeriesId()).isEqualTo(savedSeries.getId());
+        assertThat(bookNode.get().getUniverseId()).isEqualTo(savedUniverse.getId());
     }
 
     @Test
@@ -115,8 +107,8 @@ public class Neo4jRelationshipIntegrationTest {
         Book savedBook = adapter.createBook(book);
 
         // Then
-        Optional<BookNode> bookNode = bookRepository.findById(savedBook.getId());
+        Optional<Book> bookNode = bookRepository.findById(savedBook.getId());
         assertThat(bookNode).isPresent();
-        assertThat(bookNode.get().getSeriesNode()).isNull();
+        assertThat(bookNode.get().getSeriesId()).isNull();
     }
 }

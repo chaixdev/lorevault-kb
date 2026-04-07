@@ -6,8 +6,6 @@ import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.content.Universe;
 import com.lorevault.api.dto.shared.PublicationCoordinates;
 import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jMapper;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jTemporalEdgeAdapter;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataNeo4jTest
 @Testcontainers
-@Import({Neo4jContentPersistenceAdapter.class, Neo4jMapper.class, DefaultTemporalEdgeService.class, Neo4jTemporalEdgeAdapter.class})
+@Import({Neo4jContentPersistenceAdapter.class, DefaultTemporalEdgeService.class})
 @DisplayName("Cycle guard prevents MEETS edges that would introduce cycles")
 class TemporalEdgeCycleGuardIntegrationTest {
 
@@ -67,8 +65,25 @@ class TemporalEdgeCycleGuardIntegrationTest {
         pc.setChapterNumber(1);
         Chapter c1 = contentAdapter.createChapter(Chapter.createStandalone(b.getId(), u.getId(), pc, "C1", "abc", "h1"));
 
-        Scene s1 = new Scene(UUID.randomUUID(), c1, 0, "s1", 0L, 3L, "abc", null, null, List.of());
-        Scene s2 = new Scene(UUID.randomUUID(), c1, 1, "s2", 3L, 6L, "def", null, null, List.of());
+        Scene s1 = new Scene();
+        s1.setId(UUID.randomUUID());
+        s1.setChapter(c1);
+        s1.setChapterId(c1.getId());
+        s1.setSceneIndex(0);
+        s1.setContextSummary("s1");
+        s1.setStartCharacterOffset(0L);
+        s1.setEndCharacterOffset(3L);
+        s1.setText("abc");
+
+        Scene s2 = new Scene();
+        s2.setId(UUID.randomUUID());
+        s2.setChapter(c1);
+        s2.setChapterId(c1.getId());
+        s2.setSceneIndex(1);
+        s2.setContextSummary("s2");
+        s2.setStartCharacterOffset(3L);
+        s2.setEndCharacterOffset(6L);
+        s2.setText("def");
         contentAdapter.addScenesToChapter(c1.getId(), List.of(s1, s2));
 
         // Pre-create reverse edge s2->s1 to simulate cycle risk
@@ -90,14 +105,39 @@ class TemporalEdgeCycleGuardIntegrationTest {
         PublicationCoordinates pc1 = new PublicationCoordinates();
         pc1.setUniverse(u.getName()); pc1.setBookTitle(b.getTitle()); pc1.setBookNumber(1); pc1.setChapterTitle("C1"); pc1.setChapterNumber(1);
         Chapter c1 = contentAdapter.createChapter(Chapter.createStandalone(b.getId(), u.getId(), pc1, "C1", "abc", "h1"));
-        Scene s1 = new Scene(UUID.randomUUID(), c1, 0, "s1", 0L, 3L, "abc", null, null, List.of());
-        Scene s2 = new Scene(UUID.randomUUID(), c1, 1, "s2", 3L, 6L, "def", null, null, List.of());
+        Scene s1 = new Scene();
+        s1.setId(UUID.randomUUID());
+        s1.setChapter(c1);
+        s1.setChapterId(c1.getId());
+        s1.setSceneIndex(0);
+        s1.setContextSummary("s1");
+        s1.setStartCharacterOffset(0L);
+        s1.setEndCharacterOffset(3L);
+        s1.setText("abc");
+
+        Scene s2 = new Scene();
+        s2.setId(UUID.randomUUID());
+        s2.setChapter(c1);
+        s2.setChapterId(c1.getId());
+        s2.setSceneIndex(1);
+        s2.setContextSummary("s2");
+        s2.setStartCharacterOffset(3L);
+        s2.setEndCharacterOffset(6L);
+        s2.setText("def");
         contentAdapter.addScenesToChapter(c1.getId(), List.of(s1, s2));
 
         PublicationCoordinates pc2 = new PublicationCoordinates();
         pc2.setUniverse(u.getName()); pc2.setBookTitle(b.getTitle()); pc2.setBookNumber(1); pc2.setChapterTitle("C2"); pc2.setChapterNumber(2);
         Chapter c2 = contentAdapter.createChapter(Chapter.createStandalone(b.getId(), u.getId(), pc2, "C2", "ghi", "h2"));
-        Scene s3 = new Scene(UUID.randomUUID(), c2, 0, "s3", 0L, 4L, "ghi", null, null, List.of());
+        Scene s3 = new Scene();
+        s3.setId(UUID.randomUUID());
+        s3.setChapter(c2);
+        s3.setChapterId(c2.getId());
+        s3.setSceneIndex(0);
+        s3.setContextSummary("s3");
+        s3.setStartCharacterOffset(0L);
+        s3.setEndCharacterOffset(4L);
+        s3.setText("ghi");
         contentAdapter.addScenesToChapter(c2.getId(), List.of(s3));
 
         // Pre-create reverse edge first(c2)->last(c1) i.e., s3->s2

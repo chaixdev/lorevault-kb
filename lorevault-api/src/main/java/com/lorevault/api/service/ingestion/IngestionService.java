@@ -1,6 +1,5 @@
 package com.lorevault.api.service.ingestion;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import com.lorevault.api.dto.ingestion.SubmitChapterResponse;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
@@ -10,6 +9,7 @@ import com.lorevault.api.event.ChapterIngestionEvent;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.ingestion.IngestionJob;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +46,7 @@ import static com.lorevault.api.util.HashUtils.generateSha256Hash;
 @Slf4j
 public class IngestionService {
 
-    private final ContentPersistencePort contentPersistencePort;
+    private final Neo4jContentPersistenceAdapter contentPersistencePort;
     private final IngestionJobService ingestionJobService;
     private final IngestionJobGraphRepository jobRepo;
     private final ApplicationEventPublisher eventPublisher;

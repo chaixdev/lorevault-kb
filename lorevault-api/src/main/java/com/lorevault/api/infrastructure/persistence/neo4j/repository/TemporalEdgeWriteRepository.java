@@ -1,6 +1,6 @@
 package com.lorevault.api.infrastructure.persistence.neo4j.repository;
 
-import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
+import com.lorevault.api.domain.content.Scene;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.neo4j.repository.query.Query;
@@ -11,7 +11,7 @@ import java.util.UUID;
  * Repository for creating default temporal edges between scene events.
  * Uses MERGE operations to ensure idempotency and exact property values.
  */
-public interface TemporalEdgeWriteRepository extends Neo4jRepository<SceneNode, UUID> {
+public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID> {
 
     /**
      * Create default MEETS edges between consecutive scenes within each chapter of a book.

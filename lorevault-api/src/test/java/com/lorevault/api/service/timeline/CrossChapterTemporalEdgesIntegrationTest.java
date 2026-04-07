@@ -6,9 +6,6 @@ import com.lorevault.api.domain.content.Scene;
 import com.lorevault.api.domain.content.Universe;
 import com.lorevault.api.dto.shared.PublicationCoordinates;
 import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jMapper;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jTemporalEdgeAdapter;
-import com.lorevault.api.infrastructure.persistence.neo4j.model.SceneNode;
 // import com.lorevault.api.infrastructure.persistence.neo4j.repository.BookGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.TemporalEdgeWriteRepository;
@@ -32,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataNeo4jTest
 @Testcontainers
-@Import({Neo4jContentPersistenceAdapter.class, Neo4jMapper.class, DefaultTemporalEdgeService.class, Neo4jTemporalEdgeAdapter.class})
+@Import({Neo4jContentPersistenceAdapter.class, DefaultTemporalEdgeService.class})
 @DisplayName("Cross-chapter default MEETS edges")
 class CrossChapterTemporalEdgesIntegrationTest {
 
@@ -79,8 +76,25 @@ class CrossChapterTemporalEdgesIntegrationTest {
         Chapter ch1 = Chapter.createStandalone(savedBook.getId(), savedUniverse.getId(), pc1, "C1", "abcdef", "hash-c1");
         ch1 = contentAdapter.createChapter(ch1);
 
-        Scene s1 = new Scene(UUID.randomUUID(), ch1, 0, "s1", 0L, 3L, "abc", null, null, List.of());
-        Scene s2 = new Scene(UUID.randomUUID(), ch1, 1, "s2", 3L, 6L, "def", null, null, List.of());
+        Scene s1 = new Scene();
+        s1.setId(UUID.randomUUID());
+        s1.setChapter(ch1);
+        s1.setChapterId(ch1.getId());
+        s1.setSceneIndex(0);
+        s1.setContextSummary("s1");
+        s1.setStartCharacterOffset(0L);
+        s1.setEndCharacterOffset(3L);
+        s1.setText("abc");
+
+        Scene s2 = new Scene();
+        s2.setId(UUID.randomUUID());
+        s2.setChapter(ch1);
+        s2.setChapterId(ch1.getId());
+        s2.setSceneIndex(1);
+        s2.setContextSummary("s2");
+        s2.setStartCharacterOffset(3L);
+        s2.setEndCharacterOffset(6L);
+        s2.setText("def");
         contentAdapter.addScenesToChapter(ch1.getId(), List.of(s1, s2));
 
         // Chapter 2 with one scene
@@ -93,7 +107,15 @@ class CrossChapterTemporalEdgesIntegrationTest {
         Chapter ch2 = Chapter.createStandalone(savedBook.getId(), savedUniverse.getId(), pc2, "C2", "ghij", "hash-c2");
         ch2 = contentAdapter.createChapter(ch2);
 
-        Scene s3 = new Scene(UUID.randomUUID(), ch2, 0, "s3", 0L, 4L, "ghij", null, null, List.of());
+        Scene s3 = new Scene();
+        s3.setId(UUID.randomUUID());
+        s3.setChapter(ch2);
+        s3.setChapterId(ch2.getId());
+        s3.setSceneIndex(0);
+        s3.setContextSummary("s3");
+        s3.setStartCharacterOffset(0L);
+        s3.setEndCharacterOffset(4L);
+        s3.setText("ghij");
         contentAdapter.addScenesToChapter(ch2.getId(), List.of(s3));
 
         // Sanity: scenes persisted
@@ -125,10 +147,10 @@ class CrossChapterTemporalEdgesIntegrationTest {
         assertThat(ch2EdgesAfter).isEqualTo(ch2Edges);
 
         // Verify actual edge endpoints: s2 -> s3 exists
-        List<SceneNode> ch1Scenes = sceneRepo.findByChapterId(ch1.getId());
-        List<SceneNode> ch2Scenes = sceneRepo.findByChapterId(ch2.getId());
-        Optional<SceneNode> lastOfCh1 = ch1Scenes.stream().max(java.util.Comparator.comparing(SceneNode::getSceneIndex));
-        Optional<SceneNode> firstOfCh2 = ch2Scenes.stream().min(java.util.Comparator.comparing(SceneNode::getSceneIndex));
+        List<Scene> ch1Scenes = sceneRepo.findByChapterId(ch1.getId());
+        List<Scene> ch2Scenes = sceneRepo.findByChapterId(ch2.getId());
+        Optional<Scene> lastOfCh1 = ch1Scenes.stream().max(java.util.Comparator.comparing(Scene::getSceneIndex));
+        Optional<Scene> firstOfCh2 = ch2Scenes.stream().min(java.util.Comparator.comparing(Scene::getSceneIndex));
         assertThat(lastOfCh1).isPresent();
         assertThat(firstOfCh2).isPresent();
 

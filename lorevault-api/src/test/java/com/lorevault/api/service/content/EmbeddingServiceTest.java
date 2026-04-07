@@ -1,6 +1,5 @@
 package com.lorevault.api.service.content;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.testutil.fakes.FakeContentPersistencePort;
@@ -25,7 +24,7 @@ class EmbeddingServiceTest {
     @Test
     @DisplayName("should return 0 when chapter has no chunks")
     void shouldReturnZeroWhenNoChunks() {
-        ContentPersistencePort repo = new FakeContentPersistencePort();
+        FakeContentPersistencePort repo = new FakeContentPersistencePort();
         var embed = new FakeEmbeddingPort("fake-model", 8);
         var svc = new EmbeddingService(repo, embed);
         svc.setEmbeddingDim(8);
@@ -36,7 +35,7 @@ class EmbeddingServiceTest {
     Chapter chapter = new Chapter();
         chapter.setId(chapterId);
         chapter.setRawText("Some text");
-        ((FakeContentPersistencePort) repo).createChapter(chapter);
+        repo.createChapter(chapter);
 
         int updated = svc.generateEmbeddingsForChapter(chapterId);
         assertThat(updated).isEqualTo(0);
@@ -91,7 +90,7 @@ class EmbeddingServiceTest {
         chunks.add(c3);
 
         // Register chunks under chapter in fake repo
-        ((FakeContentPersistencePort) repo).chunksByChapter.put(chapterId, chunks);
+        repo.chunksByChapter.put(chapterId, chunks);
 
         int updated = svc.generateEmbeddingsForChapter(chapterId);
         // c1 and c3 should be updated; c2 skipped

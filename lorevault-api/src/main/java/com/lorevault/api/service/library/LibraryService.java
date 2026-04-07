@@ -1,10 +1,10 @@
 package com.lorevault.api.service.library;
 
-import com.lorevault.api.application.port.ContentPersistencePort;
 import com.lorevault.api.domain.content.Universe;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.dto.library.*;
+import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,7 +20,7 @@ import java.util.Optional;
 @Slf4j
 public class LibraryService {
 
-    private final ContentPersistencePort contentPersistencePort;
+    private final Neo4jContentPersistenceAdapter contentPersistencePort;
 
     /**
      * Create a universe, returning the existing one if it already exists
