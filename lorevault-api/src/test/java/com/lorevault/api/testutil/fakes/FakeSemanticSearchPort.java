@@ -19,7 +19,7 @@ public class FakeSemanticSearchPort extends Neo4jSemanticSearchAdapter {
 	private volatile boolean available = true;
 
 	public FakeSemanticSearchPort() {
-		super();
+		super(null);
 	}
 
 	public List<SearchResult> search(double[] queryEmbedding, int topK, SearchFilters filters) {

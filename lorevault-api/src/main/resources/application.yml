@@ -55,8 +55,8 @@ management:
 lorevault:
   # Schema initialization - disabled by default (enabled in dev profile)
   schema:
-    enabled: false
-    mode: none
+    enabled: true
+    mode: ensure
     backend: neo4j
     fail-on-error: false
   
