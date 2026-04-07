@@ -201,15 +201,7 @@ public class FakeContentPersistencePort {
         @Override public <S extends Chapter> long count(Example<S> example) { throw new UnsupportedOperationException(); }
         @Override public <S extends Chapter> boolean exists(Example<S> example) { throw new UnsupportedOperationException(); }
         @Override public <S extends Chapter, R> R findBy(Example<S> example, Function<FluentQuery.FetchableFluentQuery<S>, R> queryFunction) { throw new UnsupportedOperationException(); }
-        @Override public <S extends Chapter> S saveAndFlush(S entity) { return save(entity); }
-        @Override public <S extends Chapter> List<S> saveAllAndFlush(Iterable<S> entities) { return saveAll(entities); }
-        @Override public void deleteAllInBatch(Iterable<Chapter> entities) { deleteAll(entities); }
-        @Override public void deleteAllByIdInBatch(Iterable<UUID> ids) { deleteAllById(ids); }
-        @Override public void deleteAllInBatch() { deleteAll(); }
-        @Override public Chapter getOne(UUID id) { return findById(id).orElseThrow(); }
-        @Override public Chapter getById(UUID id) { return findById(id).orElseThrow(); }
-        @Override public Chapter getReferenceById(UUID id) { return findById(id).orElseThrow(); }
-        @Override public void flush() { }
+
     }
 
     // =========================================================================
@@ -345,15 +337,7 @@ public class FakeContentPersistencePort {
         @Override public <S extends Chunk> long count(Example<S> example) { throw new UnsupportedOperationException(); }
         @Override public <S extends Chunk> boolean exists(Example<S> example) { throw new UnsupportedOperationException(); }
         @Override public <S extends Chunk, R> R findBy(Example<S> example, Function<FluentQuery.FetchableFluentQuery<S>, R> queryFunction) { throw new UnsupportedOperationException(); }
-        @Override public <S extends Chunk> S saveAndFlush(S entity) { return save(entity); }
-        @Override public <S extends Chunk> List<S> saveAllAndFlush(Iterable<S> entities) { return saveAll(entities); }
-        @Override public void deleteAllInBatch(Iterable<Chunk> entities) { deleteAll(entities); }
-        @Override public void deleteAllByIdInBatch(Iterable<UUID> ids) { deleteAllById(ids); }
-        @Override public void deleteAllInBatch() { deleteAll(); }
-        @Override public Chunk getOne(UUID id) { return findById(id).orElseThrow(); }
-        @Override public Chunk getById(UUID id) { return findById(id).orElseThrow(); }
-        @Override public Chunk getReferenceById(UUID id) { return findById(id).orElseThrow(); }
-        @Override public void flush() { }
+
     }
 
     // =========================================================================
@@ -430,15 +414,7 @@ public class FakeContentPersistencePort {
         @Override public <S extends Scene> long count(Example<S> example) { throw new UnsupportedOperationException(); }
         @Override public <S extends Scene> boolean exists(Example<S> example) { throw new UnsupportedOperationException(); }
         @Override public <S extends Scene, R> R findBy(Example<S> example, Function<FluentQuery.FetchableFluentQuery<S>, R> queryFunction) { throw new UnsupportedOperationException(); }
-        @Override public <S extends Scene> S saveAndFlush(S entity) { return save(entity); }
-        @Override public <S extends Scene> List<S> saveAllAndFlush(Iterable<S> entities) { return saveAll(entities); }
-        @Override public void deleteAllInBatch(Iterable<Scene> entities) { deleteAll(entities); }
-        @Override public void deleteAllByIdInBatch(Iterable<UUID> ids) { deleteAllById(ids); }
-        @Override public void deleteAllInBatch() { deleteAll(); }
-        @Override public Scene getOne(UUID id) { return findById(id).orElseThrow(); }
-        @Override public Scene getById(UUID id) { return findById(id).orElseThrow(); }
-        @Override public Scene getReferenceById(UUID id) { return findById(id).orElseThrow(); }
-        @Override public void flush() { }
+
     }
 
     // =========================================================================
@@ -495,15 +471,7 @@ public class FakeContentPersistencePort {
         @Override public <S extends Universe> long count(Example<S> example) { throw new UnsupportedOperationException(); }
         @Override public <S extends Universe> boolean exists(Example<S> example) { throw new UnsupportedOperationException(); }
         @Override public <S extends Universe, R> R findBy(Example<S> example, Function<FluentQuery.FetchableFluentQuery<S>, R> queryFunction) { throw new UnsupportedOperationException(); }
-        @Override public <S extends Universe> S saveAndFlush(S entity) { return save(entity); }
-        @Override public <S extends Universe> List<S> saveAllAndFlush(Iterable<S> entities) { return saveAll(entities); }
-        @Override public void deleteAllInBatch(Iterable<Universe> entities) { deleteAll(entities); }
-        @Override public void deleteAllByIdInBatch(Iterable<UUID> ids) { deleteAllById(ids); }
-        @Override public void deleteAllInBatch() { deleteAll(); }
-        @Override public Universe getOne(UUID id) { return findById(id).orElseThrow(); }
-        @Override public Universe getById(UUID id) { return findById(id).orElseThrow(); }
-        @Override public Universe getReferenceById(UUID id) { return findById(id).orElseThrow(); }
-        @Override public void flush() { }
+
     }
 
     // =========================================================================
@@ -567,15 +535,7 @@ public class FakeContentPersistencePort {
         @Override public <S extends Series> long count(Example<S> example) { throw new UnsupportedOperationException(); }
         @Override public <S extends Series> boolean exists(Example<S> example) { throw new UnsupportedOperationException(); }
         @Override public <S extends Series, R> R findBy(Example<S> example, Function<FluentQuery.FetchableFluentQuery<S>, R> queryFunction) { throw new UnsupportedOperationException(); }
-        @Override public <S extends Series> S saveAndFlush(S entity) { return save(entity); }
-        @Override public <S extends Series> List<S> saveAllAndFlush(Iterable<S> entities) { return saveAll(entities); }
-        @Override public void deleteAllInBatch(Iterable<Series> entities) { deleteAll(entities); }
-        @Override public void deleteAllByIdInBatch(Iterable<UUID> ids) { deleteAllById(ids); }
-        @Override public void deleteAllInBatch() { deleteAll(); }
-        @Override public Series getOne(UUID id) { return findById(id).orElseThrow(); }
-        @Override public Series getById(UUID id) { return findById(id).orElseThrow(); }
-        @Override public Series getReferenceById(UUID id) { return findById(id).orElseThrow(); }
-        @Override public void flush() { }
+
     }
 
     // =========================================================================
@@ -655,14 +615,6 @@ public class FakeContentPersistencePort {
         @Override public <S extends Book> long count(Example<S> example) { throw new UnsupportedOperationException(); }
         @Override public <S extends Book> boolean exists(Example<S> example) { throw new UnsupportedOperationException(); }
         @Override public <S extends Book, R> R findBy(Example<S> example, Function<FluentQuery.FetchableFluentQuery<S>, R> queryFunction) { throw new UnsupportedOperationException(); }
-        @Override public <S extends Book> S saveAndFlush(S entity) { return save(entity); }
-        @Override public <S extends Book> List<S> saveAllAndFlush(Iterable<S> entities) { return saveAll(entities); }
-        @Override public void deleteAllInBatch(Iterable<Book> entities) { deleteAll(entities); }
-        @Override public void deleteAllByIdInBatch(Iterable<UUID> ids) { deleteAllById(ids); }
-        @Override public void deleteAllInBatch() { deleteAll(); }
-        @Override public Book getOne(UUID id) { return findById(id).orElseThrow(); }
-        @Override public Book getById(UUID id) { return findById(id).orElseThrow(); }
-        @Override public Book getReferenceById(UUID id) { return findById(id).orElseThrow(); }
-        @Override public void flush() { }
+
     }
 }

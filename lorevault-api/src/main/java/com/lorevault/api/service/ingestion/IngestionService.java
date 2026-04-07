@@ -248,7 +248,6 @@ public class IngestionService {
     }
 
     private Chapter buildChapter(SubmitChapterRequest request, String contentHash) {
-        // Lookup book and derive hierarchy info
         Book book = bookRepo.findById(request.getBookId())
                 .orElseThrow(() -> new IllegalArgumentException("Book not found: " + request.getBookId()));
 
@@ -260,16 +259,8 @@ public class IngestionService {
         coords.setBookNumber(book.getBookNumber() != null ? book.getBookNumber() : 0);
         coords.setChapterNumber(request.getChapterNumber());
 
-        // Build Chapter with stable references
-        Chapter chapter = new Chapter();
-        chapter.setId(UUID.randomUUID());
-        chapter.setBookId(book.getId());
-        chapter.setUniverseId(book.getUniverseId());
-        chapter.setSeriesId(book.getSeriesId());
-        chapter.setCoordinates(coords);
-        chapter.setChapterTitle(request.getChapterTitle());
-        chapter.setRawText(request.getChapterText());
-        chapter.setContentHash(contentHash);
-        return chapter;
+        return Chapter.createWithReferences(
+                book.getId(), book.getUniverseId(), book.getSeriesId(),
+                coords, request.getChapterTitle(), request.getChapterText(), contentHash);
     }
 }
