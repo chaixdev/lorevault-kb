@@ -14,6 +14,7 @@ import com.lorevault.api.infrastructure.persistence.neo4j.repository.SeriesGraph
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.TemporalReadRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.UniverseGraphRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +29,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 @Component
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Transactional
 @SuppressWarnings("null")
 public class Neo4jContentPersistenceAdapter {
@@ -206,16 +207,13 @@ public class Neo4jContentPersistenceAdapter {
     }
 
     public Chunk addChunkToScene(UUID sceneId, Chunk chunk) {
-        Scene scene = sceneRepo.findById(sceneId).orElseThrow();
         Objects.requireNonNull(chunk, "chunk must not be null");
         if (chunk.getId() == null) {
             chunk.setId(UUID.randomUUID());
         }
-        chunk.setScene(scene);
-        if (chunk.getChapter() == null && scene.getChapter() != null) {
-            chunk.setChapter(scene.getChapter());
-        }
-        return chunkRepo.save(chunk);
+        Chunk saved = chunkRepo.save(chunk);
+        sceneRepo.linkChunkToScene(sceneId, saved.getId());
+        return saved;
     }
 
     public List<Chunk> addChunksToScene(UUID sceneId, List<Chunk> chunks) {

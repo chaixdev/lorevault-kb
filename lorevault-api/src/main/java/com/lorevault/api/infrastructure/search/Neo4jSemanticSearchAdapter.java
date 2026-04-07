@@ -20,10 +20,6 @@ import java.util.UUID;
 @ConditionalOnProperty(name = "lorevault.search.provider", havingValue = "neo4j", matchIfMissing = true)
 public class Neo4jSemanticSearchAdapter {
 
-    protected Neo4jSemanticSearchAdapter() {
-        this.neo4jClient = null;
-    }
-
     public record SearchResult(
             UUID chunkId,
             double score,
