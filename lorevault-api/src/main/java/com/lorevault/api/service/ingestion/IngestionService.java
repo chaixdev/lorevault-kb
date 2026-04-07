@@ -9,7 +9,8 @@ import com.lorevault.api.event.ChapterIngestionEvent;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.ingestion.IngestionJob;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.BookGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +47,8 @@ import static com.lorevault.api.util.HashUtils.generateSha256Hash;
 @Slf4j
 public class IngestionService {
 
-    private final Neo4jContentPersistenceAdapter contentPersistencePort;
+    private final ChapterGraphRepository chapterRepo;
+    private final BookGraphRepository bookRepo;
     private final IngestionJobService ingestionJobService;
     private final IngestionJobGraphRepository jobRepo;
     private final ApplicationEventPublisher eventPublisher;
@@ -218,7 +220,7 @@ public class IngestionService {
     private Optional<Chapter> findExistingChapterByHash(String contentHash) {
         return bestEffortLookup(
             "findChapterByContentHash hash=" + contentHash,
-            () -> contentPersistencePort.findChapterByContentHash(contentHash),
+            () -> chapterRepo.findByContentHash(contentHash),
             Optional.empty()
         );
     }
@@ -226,7 +228,13 @@ public class IngestionService {
     private UUID createNewChapter(SubmitChapterRequest request, String contentHash) {
         try {
             Chapter chapter = buildChapter(request, contentHash);
-            Chapter persisted = contentPersistencePort.createChapter(chapter);
+            if (chapter.getId() == null) {
+                chapter.setId(UUID.randomUUID());
+            }
+            if (chapter.getBook() == null && chapter.getBookId() != null) {
+                bookRepo.findById(chapter.getBookId()).ifPresent(chapter::setBook);
+            }
+            Chapter persisted = chapterRepo.save(chapter);
             
             // Handle mock scenarios where createChapter might return null
             UUID chapterId = (persisted != null) ? persisted.getId() : chapter.getId();
@@ -241,7 +249,7 @@ public class IngestionService {
 
     private Chapter buildChapter(SubmitChapterRequest request, String contentHash) {
         // Lookup book and derive hierarchy info
-        Book book = contentPersistencePort.findBookById(request.getBookId())
+        Book book = bookRepo.findById(request.getBookId())
                 .orElseThrow(() -> new IllegalArgumentException("Book not found: " + request.getBookId()));
 
         PublicationCoordinates coords = new PublicationCoordinates();

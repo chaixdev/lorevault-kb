@@ -4,8 +4,10 @@ import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Universe;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.BookGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SeriesGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.UniverseGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,11 +24,13 @@ import java.util.UUID;
 @Slf4j
 public class LibraryQueryService {
 
-    private final Neo4jContentPersistenceAdapter contentPersistencePort;
+    private final UniverseGraphRepository universeRepo;
+    private final SeriesGraphRepository seriesRepo;
+    private final BookGraphRepository bookRepo;
     private final ChapterGraphRepository chapterGraphRepository;
 
     public List<UniverseSummary> listUniverses() {
-        List<UniverseSummary> universes = contentPersistencePort.findAllUniverses().stream()
+        List<UniverseSummary> universes = universeRepo.findAll().stream()
                 .sorted(Comparator.comparing(Universe::getName, String.CASE_INSENSITIVE_ORDER))
                 .map(universe -> new UniverseSummary(universe.getId(), universe.getName()))
                 .toList();
@@ -38,7 +42,7 @@ public class LibraryQueryService {
         if (universeId == null) {
             return List.of();
         }
-        List<SeriesSummary> series = contentPersistencePort.findSeriesByUniverseId(universeId).stream()
+        List<SeriesSummary> series = seriesRepo.findByUniverseId(universeId).stream()
                 .sorted(Comparator.comparing(Series::getName, String.CASE_INSENSITIVE_ORDER))
                 .map(item -> new SeriesSummary(item.getId(), item.getUniverseId(), item.getName()))
                 .toList();
@@ -50,7 +54,7 @@ public class LibraryQueryService {
         if (universeId == null) {
             return List.of();
         }
-        List<BookSummary> books = contentPersistencePort.findBooksByUniverseId(universeId).stream()
+        List<BookSummary> books = bookRepo.findByUniverseId(universeId).stream()
                 .sorted(bookComparator())
                 .map(BookSummary::from)
                 .toList();
@@ -62,7 +66,7 @@ public class LibraryQueryService {
         if (seriesId == null) {
             return List.of();
         }
-        List<BookSummary> books = contentPersistencePort.findBooksBySeriesId(seriesId).stream()
+        List<BookSummary> books = bookRepo.findBySeriesId(seriesId).stream()
                 .sorted(bookComparator())
                 .map(BookSummary::from)
                 .toList();

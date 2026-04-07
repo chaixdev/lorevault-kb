@@ -6,8 +6,10 @@ import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.ingestion.StatusRecord;
 import com.lorevault.api.dto.ingestion.JobListResponse;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChunkGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.StatusRecordGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +38,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class IngestionJobService {
 
-    private final Neo4jContentPersistenceAdapter contentPersistencePort;
+    private final ChunkGraphRepository chunkRepo;
+    private final SceneGraphRepository sceneRepo;
+    private final ChapterGraphRepository chapterRepo;
     private final IngestionJobGraphRepository jobRepo;
     private final StatusRecordGraphRepository statusRepo;
 
@@ -70,7 +74,8 @@ public class IngestionJobService {
      */
     @Transactional
     public void completeJob(IngestionJob job, UUID chapterId, int chapterLength) {
-        int chunkCount = contentPersistencePort.countChunksByChapterId(chapterId);
+        int via = chunkRepo.countByChapterIdViaScenes(chapterId);
+        int chunkCount = via > 0 ? via : chunkRepo.countByChapterId(chapterId);
         
         StatusRecord completionStatus = new StatusRecord(
                 UUID.randomUUID(),
@@ -131,10 +136,23 @@ public class IngestionJobService {
         UUID chapterId = job.getChapterId();
         
         // Clean up partially processed data
-        int deletedChunks = contentPersistencePort.deleteChunksByChapterId(chapterId);
+        int viaCount = chunkRepo.countByChapterIdViaScenes(chapterId);
+        int deletedChunks;
+        if (viaCount > 0) {
+            chunkRepo.deleteByChapterIdViaScenes(chapterId);
+            deletedChunks = viaCount;
+        } else {
+            int legacyCount = chunkRepo.countByChapterId(chapterId);
+            if (legacyCount > 0) {
+                chunkRepo.deleteByChapterId(chapterId);
+            }
+            deletedChunks = legacyCount;
+        }
         log.info("Cleaned up {} chunks for failed chapter {} (graph)", deletedChunks, chapterId);
         
-        int deletedScenes = contentPersistencePort.deleteScenesByChapterId(chapterId);
+        List<com.lorevault.api.domain.content.Scene> existingScenes = sceneRepo.findByChapterId(chapterId);
+        sceneRepo.deleteByChapterId(chapterId);
+        int deletedScenes = existingScenes.size();
         log.info("Cleaned up {} scenes for failed chapter {} (graph)", deletedScenes, chapterId);
         
         failJob(job, errorMessage + " (data cleaned up for retry)");
@@ -296,7 +314,9 @@ public class IngestionJobService {
 
     private List<IngestionJob> loadJobsWithUniverseFilter(JobFilterContext filterContext) {
         if (filterContext.hasUniverseFilter()) {
-            List<Chapter> chapters = contentPersistencePort.findChaptersByUniverse(filterContext.getUniverse());
+            List<Chapter> chapters = chapterRepo.findAll().stream()
+                    .filter(c -> filterContext.getUniverse().equals(c.getUniverse()))
+                    .toList();
             List<UUID> chapterIds = chapters.stream().map(Chapter::getId).toList();
             return jobRepo.findByChapterIds(chapterIds);
         } else {
@@ -378,7 +398,7 @@ public class IngestionJobService {
 
     private void enrichSummaryWithChapterInfo(JobListResponse.JobSummary summary, UUID chapterId) {
         try {
-            contentPersistencePort.findChapterById(chapterId).ifPresent(chapter -> {
+            chapterRepo.findById(chapterId).ifPresent(chapter -> {
                 summary.setChapterTitle(chapter.getChapterTitle());
                 summary.setUniverse(chapter.getUniverse());
                 summary.setSeries(chapter.getSeries());

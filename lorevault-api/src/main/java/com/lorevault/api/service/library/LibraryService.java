@@ -4,7 +4,9 @@ import com.lorevault.api.domain.content.Universe;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.dto.library.*;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.BookGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SeriesGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.UniverseGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,7 +22,9 @@ import java.util.Optional;
 @Slf4j
 public class LibraryService {
 
-    private final Neo4jContentPersistenceAdapter contentPersistencePort;
+    private final UniverseGraphRepository universeRepo;
+    private final SeriesGraphRepository seriesRepo;
+    private final BookGraphRepository bookRepo;
 
     /**
      * Create a universe, returning the existing one if it already exists
@@ -31,7 +35,7 @@ public class LibraryService {
         log.info("Creating universe: {}", request.getName());
         
         // Check if universe already exists
-        Optional<Universe> existingUniverse = contentPersistencePort.findUniverseByName(request.getName());
+        Optional<Universe> existingUniverse = universeRepo.findByName(request.getName());
         if (existingUniverse.isPresent()) {
             log.info("Universe already exists: {}", request.getName());
             Universe universe = existingUniverse.get();
@@ -46,7 +50,7 @@ public class LibraryService {
 
         // Create new universe
         Universe newUniverse = Universe.ofName(request.getName());
-        Universe savedUniverse = contentPersistencePort.createUniverse(newUniverse);
+        Universe savedUniverse = universeRepo.save(newUniverse);
         
         log.info("Created universe: {} with id: {}", savedUniverse.getName(), savedUniverse.getId());
         
@@ -68,11 +72,11 @@ public class LibraryService {
         log.info("Creating series: {} in universe: {}", request.getName(), request.getUniverseId());
         
         // Validate universe exists
-        Universe universe = contentPersistencePort.findUniverseById(request.getUniverseId())
+        Universe universe = universeRepo.findById(request.getUniverseId())
                 .orElseThrow(() -> new IllegalArgumentException("Universe not found: " + request.getUniverseId()));
 
         // Check if series already exists in this universe
-        Optional<Series> existingSeries = contentPersistencePort.findSeriesByNameAndUniverseId(
+        Optional<Series> existingSeries = seriesRepo.findByNameAndUniverseId(
                 request.getName(), request.getUniverseId());
         if (existingSeries.isPresent()) {
             log.info("Series already exists: {} in universe: {}", request.getName(), request.getUniverseId());
@@ -89,7 +93,7 @@ public class LibraryService {
 
         // Create new series
         Series newSeries = Series.create(request.getUniverseId(), universe.getName(), request.getName());
-        Series savedSeries = contentPersistencePort.createSeries(newSeries);
+        Series savedSeries = seriesRepo.save(newSeries);
         
         log.info("Created series: {} with id: {} in universe: {}", 
                 savedSeries.getName(), savedSeries.getId(), savedSeries.getUniverseId());
@@ -115,13 +119,13 @@ public class LibraryService {
                 request.getTitle(), request.getUniverseId(), request.getSeriesId());
         
         // Validate universe exists
-        Universe universe = contentPersistencePort.findUniverseById(request.getUniverseId())
+        Universe universe = universeRepo.findById(request.getUniverseId())
                 .orElseThrow(() -> new IllegalArgumentException("Universe not found: " + request.getUniverseId()));
 
         Series series = null;
         if (request.getSeriesId() != null) {
             // Validate series exists and belongs to universe
-            series = contentPersistencePort.findSeriesById(request.getSeriesId())
+            series = seriesRepo.findById(request.getSeriesId())
                     .orElseThrow(() -> new IllegalArgumentException("Series not found: " + request.getSeriesId()));
             
             if (!series.getUniverseId().equals(request.getUniverseId())) {
@@ -150,7 +154,7 @@ public class LibraryService {
 
         // Create new book
         Book newBook = createNewBook(request, universe, series);
-        Book savedBook = contentPersistencePort.createBook(newBook);
+        Book savedBook = bookRepo.save(newBook);
         
         log.info("Created book: {} with id: {} in universe: {}, series: {}", 
                 savedBook.getTitle(), savedBook.getId(), savedBook.getUniverseId(), savedBook.getSeriesId());
@@ -171,10 +175,10 @@ public class LibraryService {
     private Optional<Book> findExistingBook(CreateBookRequest request) {
         if (request.getSeriesId() != null) {
             // Book in series
-            return contentPersistencePort.findBookByTitleAndSeriesId(request.getTitle(), request.getSeriesId());
+            return bookRepo.findByTitleAndSeriesId(request.getTitle(), request.getSeriesId());
         } else {
             // Standalone book
-            return contentPersistencePort.findStandaloneBookByTitleAndUniverseId(
+            return bookRepo.findStandaloneByTitleAndUniverseId(
                     request.getTitle(), request.getUniverseId());
         }
     }
