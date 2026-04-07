@@ -1,57 +1,46 @@
-# Data## References
+# Data Model
 
-- [Neo4j Graph Database](https://neo4j.com/) - Primary graph storage technology
-- [Content Hierarchy Integration](content-hierarchy-integration.md) - Publication coordinate materialization
-- [Spring Data Neo4j](https://spring.io/projects/spring-data-neo4j) - OGM framework used
+This directory contains the current canonical data-model docs for LoreVault.
 
-## 🔧 Update Instructions
+## Start Here
 
-**For LLM Assistants and Contributors:**
+- **[Neo4j Content Data Model](neo4j-content-data-model.md)** — graph schema, node structure, relationships, and constraints
+- **[Content Hierarchy Integration](content-hierarchy-integration.md)** — publication-coordinate materialization and hierarchy coordination
+- **[Ingestion Job and Status](ingestion-job-and-status.md)** — ingestion-job and status-record lifecycle model
+- **[LLM Call Records](llm-call-records.md)** — observability and traceability model for LLM calls
 
-### Folder Boundaries
-- **Root level**: High-level data model documentation and entity relationships
-- **schemas/**: JSON schemas, Cypher scripts, and formal data definitions
-- **Do not add**: API specs (go to `../api/`), processing logic (go to `../processes/`)
+## Schemas
 
-### When Adding Data Model Documentation
-- **Entity changes**: Update `neo4j-content-data-model.md`
-- **New schemas**: Add to `schemas/` folder with clear naming
-- **Hierarchy changes**: Update `content-hierarchy-integration.md`
-- **Migration scripts**: Add to `schemas/` with version prefix
+- **[Claims Schema](schemas/claims.schema.json)** — structured claims schema placeholder for future extraction work
+- **[Claims Examples](schemas/claims.examples.json)** — example claim payloads
 
-### Cross-Reference Requirements
-- **Link to API specs**: Use `../api/specifications/` paths
-- **Reference processes**: Use `../processes/` paths
-- **Architecture context**: Use `../architecture/` paths
+## Current Model Shape
 
-### Schema Management
-- Use semantic versioning for schema files (v1.0.0, v1.1.0)
-- Document breaking changes in migration scripts
-- Keep examples current with actual implementation
-- Validate JSON schemas against actual dataModel Documentation
-
-## Core Data Specifications
-
-### Database Design
-- **[Neo4j Content Data Model](neo4j-content-data-model.md)** - Graph database schema and relationships
-- **[Content Hierarchy Integration](content-hierarchy-integration.md)** - Publication coordinates and hierarchy
-- **[LLM Call Records](llm-call-records.md)** - Concise reference for LLM request/response logging nodes
-
-### Schema Definitions
-
-- **[Claims Schema](schemas/claims.schema.json)** - JSON schema for knowledge claims (future feature)
-- **[Claims Examples](schemas/claims.examples.json)** - Example claim structures
-
-## Data Architecture
-
-The LoreVault data model centers around a hierarchical content structure:
+LoreVault centers its content graph on a publication hierarchy:
 
 - **Universe** → **Series** → **Book** → **Chapter** → **Scene** → **Chunk**
 
-Each level maintains publication coordinates for spoiler-aware retrieval and supports vector embeddings for semantic search.
+This hierarchy supports:
 
-## Integration Points
+- spoiler-aware retrieval through publication coordinates
+- chunk-level embeddings for semantic search
+- traceable ingestion and LLM-call observability
 
-- **Ingestion**: Content flows from file upload through chunking to graph storage
-- **Retrieval**: Semantic search operates on chunk embeddings with hierarchy context
-- **QA**: RAG system retrieves relevant chunks and synthesizes answers with source attribution
+## Boundaries
+
+- Keep data structures, schemas, and persistence rules here
+- Put workflow/process behavior under `../processes/`
+- Put architecture-wide viewpoints under `../../../architecture/`
+- Put API-facing contracts under `../../../api/specifications/`
+
+## Maintenance Guidance
+
+- Update `neo4j-content-data-model.md` when entity shape or constraints change
+- Update `content-hierarchy-integration.md` when coordinate materialization or hierarchy rules change
+- Add formal schemas under `schemas/` with clear names and current examples
+- Keep this directory aligned with implemented behavior, not speculative future designs
+
+## References
+
+- [Neo4j Graph Database](https://neo4j.com/)
+- [Spring Data Neo4j](https://spring.io/projects/spring-data-neo4j)

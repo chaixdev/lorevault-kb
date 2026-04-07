@@ -1,224 +1,124 @@
-# Testing Strategy v2.0 - LLM Development Instructions
+# Testing Strategy
 
-**Purpose**: Scalable testing strategy for LLM-assisted development in ports & adapters architecture.
+**Purpose:** Describe the current testing shape of LoreVault after the architecture simplification work.  
+**Status:** Active, updated during the documentation refactor.
 
-**Scope**: Testing patterns, organization, and quality gates for the LoreVault GraphRAG system.
+## Core Principles
 
-**Status**: ✅ **IMPLEMENTED** - Strategy fully realized with 35 test files, 81 tests, quality gates enforced
+- Prefer behavior-focused tests over abstraction-driven test structure
+- Keep the fast loop small and cheap
+- Use integration tests for real persistence and Spring wiring
+- Run architecture tests deliberately while the codebase is still being simplified
+- Avoid creating indirection just to make tests fit a pattern
 
-## Core Philosophy
+## Current Test Shape
 
-### Architectural Testing Discipline
-- **Domain-First**: ✅ Test business logic in isolation with mocked ports
-- **Port TCKs**: ✅ Every port has reusable contract tests (EmbeddingPort, SemanticSearchPort, SceneDetectionPort)
-- **Fake-First**: ✅ Use in-memory fakes for rapid iteration, real adapters for validation
-- **Architecture Enforcement**: ✅ ArchUnit prevents hexagonal boundary violations (8 violations documented for post-refactor cleanup)
+LoreVault currently mixes:
 
-### LLM Agent Guidelines
-- Generate tests alongside implementation code
-- Focus on service-level behavioral tests over granular units  
-- Use realistic test data scenarios (TestDataBuilder patterns)
-- Mock expensive external calls (LLMs, APIs, databases in unit tests)
-- **AVOID extracting services just for testing** - prefer comprehensive service tests over service explosion
-- **Only create new services for distinct business capabilities** - not for internal validation or utility functions
+- domain tests
+- service tests
+- persistence and integration tests
+- targeted infrastructure tests
+- on-demand architecture tests
 
-## Test Architecture
+The suite is no longer accurately described as a pure ports-and-adapters testing model. The codebase still contains some historical artifacts from that phase, but the active direction is simpler: test business behavior directly, then validate real wiring where it matters.
 
-### Testing Pyramid (Ports & Adapters)
+## Test Categories
 
-e2e out of scope.
+- `@Tag("integration")` — real infrastructure or Spring wiring
+- `@Tag("architecture")` — ArchUnit tests, excluded by default
+- untagged/default tests — the normal fast loop
 
-```
-  Integration Tests (20%) - Port contracts + DB
- ───────────────────────────────────────────────
-Service + Domain Tests (75%) - Business logic
-```
+There is evidence of broader tag use in the test tree, but the Maven defaults mainly distinguish integration and architecture concerns.
 
-### Test Categories with JUnit 5 Tags
-- `@Tag("unit")` - Service logic with mocked ports (run on save)
-- `@Tag("integration")` - Real DB + Spring context (run on commit)  
-- `@Tag("system")` - Full application (run in CI)
+## Commands That Match the Repo
 
-## Test Organization Patterns
+### Fast loop
 
-### Class Structure
-```java
-@DisplayName("Service Name - Feature Description")
-@ExtendWith(MockitoExtension.class)
-@Tag("unit")
-class ServiceNameTest {
-    
-    @DisplayName("Feature Group")
-    @Nested
-    class FeatureGroup {
-        
-        @DisplayName("Should behave correctly when condition")
-        @Test
-        void condition_ShouldBehaveCorrectly() {
-            // Test implementation
-        }
-    }
-}
-```
-
-### Package Organization
-```
-src/test/java/
-├── service/           # Business logic tests (@Tag("unit"))
-├── controller/        # API integration tests (@Tag("integration")) 
-├── adapter/          # Port implementation tests
-├── tck/              # Port contract definitions (reusable)
-├── domain/           # Domain model tests
-└── testutil/         # Test builders and utilities
-```
-
-### Naming Conventions
-- **Service Tests**: `ServiceNameTest.java`
-- **Integration**: `ComponentNameIT.java` 
-- **Port TCKs**: `PortNameTCK.java`
-- **TCK Implementations**: `AdapterNameTCKTest.java`
-
-## Implementation Patterns
-
-### Service Layer Testing (Primary)
-- Mock all ports using `@Mock` annotations
-- Focus on business behavior, not implementation
-- Use `TestDataBuilder` for realistic scenarios
-- Verify port interactions for integration flows
-
-### Port Technology Compatibility Kits (TCKs)
-- Create abstract test classes for every port interface
-- Run same contract tests against all implementations (fake, JPA, etc.)
-- Eliminates duplication and ensures adapter conformity
-
-### Integration Testing Guidelines  
-- Use Spring test slices: `@DataJpaTest`, `@WebMvcTest`
-- Apply Testcontainers selectively for real infrastructure needs
-- Enable container reuse: `testcontainers.reuse.enable=true`
-- Focus on critical workflows, not exhaustive coverage
-
-**When to Use Testcontainers**:
-- ✅ Database persistence logic, complex queries, transaction behavior
-- ❌ Service layer business logic, simple request/response validation
-
-**Container Optimization**:
-```java
-@Testcontainers
-public abstract class IntegrationTestBase {
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg16")
-            .withReuse(true); // Share containers across test classes
-}
-
-### Property-Based Testing
-- Use jqwik `@Property` tests for domain invariants
-- Test value object creation rules and constraints
-- Validate parsing and transformation logic
-
-## Test Data Strategy
-
-### Centralized Builders
-- **Deterministic**: Fixed clocks (`Clock.fixed()`) and ID generators
-- **Realistic**: Domain-specific scenarios (Matrix examples, etc.)
-- **Reusable**: `TestDataBuilder` utility class
-- **Focused**: Specific builders per test category
-
-### Key Patterns
-- Use `SampleChapterLoader` for complex domain objects
-- Inject `Clock` and `IdGenerator` to avoid non-deterministic tests
-- Create scenario-based test data (not random)
-
-### Assertion Best Practices
-- **Descriptive**: `assertThat(response.getJobId()).isNotNull()`
-- **Business Rules**: `assertThat(firstResponse.getChapterId()).isEqualTo(secondResponse.getChapterId())` // Same content = same chapter
-- **Complete Workflows**: Verify end-to-end scenarios, not just individual method calls
-
-## LLM-Specific Testing
-
-### GraphRAG Component Testing
-- **Mock LLM calls** to focus on retrieval logic testing
-- **Pre-load test graphs** with known data for deterministic results
-- **Test context quality** (retrieved entities/relationships), not LLM output
-- **Verify prompt construction** using ArgumentCaptor patterns
-
-### AI Component Reliability
-- Test timeout handling with `@Timeout` annotations
-- Verify retry/circuit breaker logic with mock failures
-- Test authentication and API key validation
-
-## Quality Gates
-
-### ✅ IMPLEMENTED Thresholds
-- **Unit Test Coverage**: ✅ 85%+ instruction coverage, 80%+ branch coverage (JaCoCo enforced)
-- **Mutation Testing**: ✅ 80%+ PIT mutation score on critical packages (service, domain, application)
-- **Architecture Violations**: ✅ ArchUnit rules active (8 violations documented for post-refactor cleanup)
-- **Test Execution**: ✅ Fast builds with proper test categorization (@Tag annotations)
-
-### ✅ IMPLEMENTED Development Workflow
-1. **Service Test First**: ✅ Write service-level tests to define business behavior
-2. **Implementation**: ✅ Implement business logic to satisfy service tests  
-3. **Integration Validation**: ✅ Add integration tests for database interactions with Testcontainers
-4. **Edge Case Coverage**: ✅ Add contract tests for complex edge cases using Port TCKs
-
-### Current Test Suite Status
-- **35 test files** with **81 total tests**
-- **Test Categories**: Domain (15), Service (20), Web Controllers (24), Infrastructure TCKs (13), Architecture (1)
-- **Quality Gates**: All enforced in Maven build lifecycle
-- **Coverage**: Meeting all threshold requirements
-
-### Build Pipeline Integration
 ```bash
-# Developer workflow
-mvn test -Dgroups=unit
-
-# Pre-commit  
-mvn verify -Dgroups="unit,integration"
-
-# CI pipeline
-mvn verify -Dgroups="unit,integration,system" -Dpitest.mutationThreshold=80
+mvn test
 ```
 
-## Advanced Patterns
+Runs the default Surefire suite.
 
-### Architecture Testing (ArchUnit)
-- Enforce hexagonal boundaries (domain independent of infrastructure)
-- Validate port interfaces and adapter dependencies  
-- Ensure test naming conventions and package structure
+Default behavior:
+- excludes file-pattern integration tests like `*IT.java` and `*IntegrationTest.java`
+- excludes JUnit groups `integration,architecture`
+- generates JaCoCo reports
+- does **not** enforce the JaCoCo gate by default
 
-### Contract Testing
-- Use Pact for external API integration contracts
-- Validate adapter behavior against port expectations
-- Test failure scenarios and resilience patterns
+### Integration verification
 
-### Performance Testing
-- Add `@Tag("performance")` for regression tests
-- Use `@Timeout` annotations for SLA validation
-- Test scalability with parameterized result counts
+```bash
+mvn verify -P integration-tests
+```
 
-### Test Maintenance Guidelines
+Uses:
+- Surefire with `groups=integration`
+- Failsafe for `*IT.java`, `*IntegrationTest.java`, etc.
 
-**When to Update Tests**:
-- **Service Tests**: When business rules change
-- **Integration Tests**: When API contracts or database schema change  
-- **Contract Tests**: When data models or validation rules change
+Use this before pushing meaningful backend changes.
 
-**Refactoring Support**: Tests should focus on behavior, not implementation details - this supports refactoring without breaking tests unnecessarily
+### Architecture tests
 
-## LLM Agent Checklist
+```bash
+mvn test -P architecture-tests
+```
 
-When generating/modifying tests:
-- [ ] Apply appropriate `@Tag` annotation
-- [ ] Use `@DisplayName` for specification-like documentation  
-- [ ] Organize related tests with `@Nested` classes
-- [ ] Mock ports in service tests, use fakes when possible
-- [ ] Create realistic test scenarios with `TestDataBuilder`
-- [ ] For GraphRAG: mock LLM calls, test retrieval logic
-- [ ] Add `@Timeout` for operations with SLA requirements
-- [ ] Follow naming conventions and package structure
-- [ ] Generate Port TCK when creating new port interfaces
-- [ ] Ensure deterministic test data (no random values)
-- [ ] Write descriptive assertions that validate business rules
-- [ ] Focus tests on behavior, not implementation details
-- [ ] Use container reuse for integration tests to optimize build times
+Runs only the architecture tests under the dedicated architecture test path.
 
-This strategy emphasizes architectural discipline while maintaining developer velocity through fast feedback loops and comprehensive automation.
+These are not part of the default fast loop because the codebase is still in transition.
+
+### Coverage gate
+
+```bash
+mvn verify -P coverage-gate
+```
+
+JaCoCo is always reported, but the strict gate is opt-in.
+
+Configured thresholds:
+- bundle: 85% instruction, 80% branch
+- packages `service`, `domain`, `application`: 90% instruction
+
+### Mutation testing
+
+```bash
+mvn test -P mutation-testing
+```
+
+Use this for focused quality work, not for the normal iteration loop.
+
+## Tooling Notes
+
+- Testcontainers reuse is enabled in `src/test/resources/testcontainers.properties`
+- JUnit 5 class-level parallelism is enabled in `junit-platform.properties`
+- Surefire runs with `forkCount=1C` and `reuseForks=true`
+
+## Current Guidance
+
+### When writing new tests
+
+- test the business behavior first
+- use integration tests for Neo4j persistence, Spring wiring, and event publication flows
+- keep LLM-dependent logic mocked unless the purpose is explicit integration verification
+- prefer deterministic fixtures over random data
+- keep assertions aligned with user-visible or domain-visible behavior
+
+### When refactoring
+
+- preserve behavior first
+- update architecture tests only when the structural intent is stable
+- delete stale test abstractions when they no longer buy clarity
+
+## Known Transitional Reality
+
+Some current docs and some test packages still reflect older hexagonal/port-heavy assumptions. Treat those as historical residue, not the target model.
+
+The target model is:
+
+- simpler code
+- direct tests for direct code
+- integration tests where the system boundary is real
+
+This strategy emphasizes behavior-first verification, a cheap default feedback loop, and deliberate use of integration coverage where the boundary is real.

@@ -1,15 +1,14 @@
 # CI Test Profiles and Commands
 
-This document outlines the test execution profiles and commands available for local development and CI environments.
+This document describes the Maven test profiles and commands that actually exist in the current repo.
 
 ## Test Categories
 
-### Unit Tests (Default)
-- **Tag**: `@Tag("unit")`
-- **Scope**: Fast, isolated tests for domain logic and services
+### Default test run
+- **Scope**: Fast local verification for the normal development loop
 - **Duration**: < 30 seconds
 - **Command**: `mvn test`
-- **Excludes**: Integration tests, architecture tests
+- **Excludes**: `*IT.java`, `*IntegrationTest.java`, `integration`, `architecture`
 
 ### Integration Tests
 - **Tag**: `@Tag("integration")`
@@ -18,12 +17,12 @@ This document outlines the test execution profiles and commands available for lo
 - **Command**: `mvn verify -P integration-tests`
 - **Includes**: Database interactions, external API calls, full Spring context
 
-### Architecture Tests (Post-Refactor)
-- **Tag**: `@Tag("architecture")` (currently excluded)
-- **Scope**: ArchUnit rules enforcing ports & adapters boundaries
+### Architecture Tests
+- **Tag**: `@Tag("architecture")` (currently excluded by default)
+- **Scope**: ArchUnit rules enforcing intended package boundaries
 - **Duration**: < 10 seconds
 - **Command**: `mvn test -P architecture-tests`
-- **Status**: ⚠️ Currently disabled - 8 violations need post-refactor cleanup
+- **Status**: on-demand while the codebase remains in transition
 
 ## Maven Profiles
 
@@ -35,7 +34,7 @@ mvn test
 
 ### Integration Tests Profile
 ```bash
-# Run all tests including integration tests
+# Run broader verification including integration coverage
 mvn verify -P integration-tests
 ```
 
@@ -96,17 +95,17 @@ mvn test -P mutation-testing
 # 3b. Coverage gate (enforce thresholds in CI or locally as needed)
 mvn verify -P coverage-gate
 
-# 4. Post-refactor architecture validation
+# 4. Architecture validation
 mvn test -P architecture-tests
 ```
 
 ## Troubleshooting
 
 ### Test Failures
-- **Unit tests fail**: Check service mocking and domain logic
+- **Default test run fails**: Check service/domain behavior and non-integration wiring
 - **Integration tests fail**: Verify Docker/Testcontainers setup
 - **Coverage fails**: Add tests for uncovered branches
-- **Architecture tests fail**: Address in post-refactor phase
+- **Architecture tests fail**: Reconcile rule intent with current package reality
 
 ### Performance Issues
 - **Slow tests**: Enable Testcontainers reuse

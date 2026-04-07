@@ -1,26 +1,22 @@
 # Development and Testing Workflow
 
-This guide explains how to develop and test in LoreVault going forward: philosophy, test layers, and which Maven commands to run at each stage.
+This guide explains how to develop and test LoreVault in its current transitional architecture.
 
 ## Philosophy
-- Hexagonal (ports & adapters): domain at the center; application/services depend on domain and ports; adapters implement ports.
-- Tests drive boundaries:
-  - Unit tests are the fast default loop.
-  - Integration tests validate wiring with containers.
-  - Architecture tests codify boundaries (ArchUnit) and are runnable on demand until post-refactor.
-- Quality gates are pragmatic:
-  - JaCoCo coverage reports always generate; strict thresholds are opt-in when you want to enforce them.
-  - Mutation testing (PIT) is opt-in for scheduled or focused quality work.
+- Keep the default loop fast: run `mvn test` often.
+- Use broader verification before pushing structural changes.
+- Prefer tests that reflect real behavior over tests that merely preserve old abstractions.
+- Treat architecture tests as a deliberate guardrail, not as the default loop while the codebase is still being simplified.
 
 ## Test categories and tags
-- Unit: `@Tag("unit")` (default, fast)
+- Default tests: fast local loop
 - Integration: `@Tag("integration")` (containers, heavier)
 - Architecture: `@Tag("architecture")` (ArchUnit rules; excluded from default runs for now)
 
 ## Profiles and when to use them
 - Day-to-day (fast loop):
   - Command: `mvn test`
-  - What runs: unit tests only; JaCoCo report generated; ArchUnit excluded by path.
+  - What runs: default Surefire tests; integration-tagged and architecture tests excluded; JaCoCo report generated.
 - Pre-commit (broader check):
   - Command: `mvn verify -P integration-tests`
   - What runs: unit + integration tests (via Failsafe in verify), with reports.
