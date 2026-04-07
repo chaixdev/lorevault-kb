@@ -3,8 +3,10 @@ package com.lorevault.api.service.library;
 import com.lorevault.api.domain.content.Book;
 import com.lorevault.api.domain.content.Series;
 import com.lorevault.api.domain.content.Universe;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.BookGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SeriesGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.UniverseGraphRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,7 +24,13 @@ import static org.mockito.Mockito.when;
 class LibraryQueryServiceTest {
 
     @Mock
-    private Neo4jContentPersistenceAdapter contentPersistencePort;
+    private UniverseGraphRepository universeRepo;
+
+    @Mock
+    private SeriesGraphRepository seriesRepo;
+
+    @Mock
+    private BookGraphRepository bookRepo;
 
     @Mock
     private ChapterGraphRepository chapterGraphRepository;
@@ -31,7 +39,7 @@ class LibraryQueryServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new LibraryQueryService(contentPersistencePort, chapterGraphRepository);
+        service = new LibraryQueryService(universeRepo, seriesRepo, bookRepo, chapterGraphRepository);
     }
 
     @Test
@@ -40,7 +48,7 @@ class LibraryQueryServiceTest {
         Universe aether = new Universe(UUID.randomUUID(), "aether", "aether", LocalDateTime.now(), LocalDateTime.now());
         Universe zeta = new Universe(UUID.randomUUID(), "Zeta", "zeta", LocalDateTime.now(), LocalDateTime.now());
 
-        when(contentPersistencePort.findAllUniverses()).thenReturn(List.of(zeta, cosmos, aether));
+        when(universeRepo.findAll()).thenReturn(List.of(zeta, cosmos, aether));
 
     List<LibraryQueryService.UniverseSummary> universes = service.listUniverses();
 
@@ -57,7 +65,7 @@ class LibraryQueryServiceTest {
         Book seriesFirst = new Book(UUID.randomUUID(), universeId, seriesSecond.getSeriesId(), "Cosmos", "Chronicles", 1, "Awakening", LocalDateTime.now(), LocalDateTime.now());
         Book anotherSeries = new Book(UUID.randomUUID(), universeId, UUID.randomUUID(), "Cosmos", "Aetherbound", 1, "Arrival", LocalDateTime.now(), LocalDateTime.now());
 
-        when(contentPersistencePort.findBooksByUniverseId(universeId)).thenReturn(List.of(seriesSecond, standalone, seriesFirst, anotherSeries));
+        when(bookRepo.findByUniverseId(universeId)).thenReturn(List.of(seriesSecond, standalone, seriesFirst, anotherSeries));
 
     List<LibraryQueryService.BookSummary> books = service.listBooksForUniverse(universeId);
 
@@ -77,7 +85,7 @@ class LibraryQueryServiceTest {
         Series alpha = new Series(UUID.randomUUID(), universeId, "Cosmos", "Alpha", LocalDateTime.now(), LocalDateTime.now());
         Series omega = new Series(UUID.randomUUID(), universeId, "Cosmos", "omega", LocalDateTime.now(), LocalDateTime.now());
 
-        when(contentPersistencePort.findSeriesByUniverseId(universeId)).thenReturn(List.of(omega, alpha));
+        when(seriesRepo.findByUniverseId(universeId)).thenReturn(List.of(omega, alpha));
 
     List<LibraryQueryService.SeriesSummary> series = service.listSeries(universeId);
 

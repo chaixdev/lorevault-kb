@@ -6,8 +6,10 @@ import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChunksCreatedEvent;
 import com.lorevault.api.event.ingestion.IngestionCompletedEvent;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChunkGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
 import com.lorevault.api.service.content.EmbeddingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +35,9 @@ import static org.mockito.Mockito.*;
 @DisplayName("EmbeddingHandler Tests")
 class EmbeddingHandlerTest {
 
-    @Mock private Neo4jContentPersistenceAdapter contentPersistencePort;
+    @Mock private ChapterGraphRepository chapterRepo;
+    @Mock private ChunkGraphRepository chunkRepo;
+    @Mock private SceneGraphRepository sceneRepo;
     @Mock private EmbeddingService embeddingService;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private IngestionJobGraphRepository jobRepo;
@@ -72,17 +76,14 @@ class EmbeddingHandlerTest {
         @Test
         @DisplayName("Should generate embeddings and emit IngestionCompletedEvent")
         void handleChunksCreated_generatesEmbeddingsSuccessfully() {
-            // Given
             when(embeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(10);
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(List.of());
-            when(contentPersistencePort.countChunksByChapterId(chapterId)).thenReturn(10);
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(List.of());
+            when(chunkRepo.countByChapterIdViaScenes(chapterId)).thenReturn(10);
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
             when(jobRepo.findByIdWithCurrentStatus(jobId)).thenReturn(Optional.of(testJob));
 
-            // When
             handler.handleChunksCreated(testEvent);
 
-            // Then
             verify(embeddingService).generateEmbeddingsForChapter(chapterId);
             verify(ingestionJobService).completeJob(testJob, chapterId, testChapter.getRawText().length());
 
@@ -98,13 +99,10 @@ class EmbeddingHandlerTest {
         @Test
         @DisplayName("Should update job status during processing")
         void handleChunksCreated_updatesJobStatus() {
-            // Given
             when(embeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(5);
 
-            // When
             handler.handleChunksCreated(testEvent);
 
-            // Then
             verify(ingestionJobService, atLeastOnce()).updateJobStatus(
                     eq(jobId), eq(IngestionStatus.EMBEDDING_CHUNKS), anyString(), any());
         }
@@ -112,18 +110,16 @@ class EmbeddingHandlerTest {
         @Test
         @DisplayName("Should handle zero chunks gracefully")
         void handleChunksCreated_zeroChunks_emitsEvent() {
-            // Given
             ChunksCreatedEvent zeroChunksEvent = new ChunksCreatedEvent(this, jobId, chapterId, bookId, 0);
             when(embeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(0);
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(List.of());
-            when(contentPersistencePort.countChunksByChapterId(chapterId)).thenReturn(0);
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(List.of());
+            when(chunkRepo.countByChapterIdViaScenes(chapterId)).thenReturn(0);
+            when(chunkRepo.countByChapterId(chapterId)).thenReturn(0);
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
             when(jobRepo.findByIdWithCurrentStatus(jobId)).thenReturn(Optional.of(testJob));
 
-            // When
             handler.handleChunksCreated(zeroChunksEvent);
 
-            // Then
             ArgumentCaptor<IngestionCompletedEvent> eventCaptor = ArgumentCaptor.forClass(IngestionCompletedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
             assertThat(eventCaptor.getValue().getTotalEmbeddings()).isEqualTo(0);
@@ -137,14 +133,11 @@ class EmbeddingHandlerTest {
         @Test
         @DisplayName("Should emit IngestionFailedEvent on embedding API error")
         void handleChunksCreated_apiError_emitsFailure() {
-            // Given
             when(embeddingService.generateEmbeddingsForChapter(chapterId))
                     .thenThrow(new RuntimeException("Embedding API timeout"));
 
-            // When
             handler.handleChunksCreated(testEvent);
 
-            // Then
             ArgumentCaptor<IngestionFailedEvent> eventCaptor = ArgumentCaptor.forClass(IngestionFailedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
             
@@ -152,20 +145,17 @@ class EmbeddingHandlerTest {
             assertThat(failedEvent.getJobId()).isEqualTo(jobId);
             assertThat(failedEvent.getFailedStage()).isEqualTo("EMBEDDING");
             assertThat(failedEvent.getErrorMessage()).contains("Embedding API timeout");
-            assertThat(failedEvent.isRetryable()).isTrue(); // API errors are retryable
+            assertThat(failedEvent.isRetryable()).isTrue();
         }
 
         @Test
         @DisplayName("Should emit retryable failure for rate limit errors")
         void handleChunksCreated_rateLimitError_emitsRetryableFailure() {
-            // Given
             when(embeddingService.generateEmbeddingsForChapter(chapterId))
                     .thenThrow(new RuntimeException("rate limit exceeded"));
 
-            // When
             handler.handleChunksCreated(testEvent);
 
-            // Then
             ArgumentCaptor<IngestionFailedEvent> eventCaptor = ArgumentCaptor.forClass(IngestionFailedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
             assertThat(eventCaptor.getValue().isRetryable()).isTrue();
@@ -174,14 +164,11 @@ class EmbeddingHandlerTest {
         @Test
         @DisplayName("Should update job status to FAILED on error")
         void handleChunksCreated_error_updatesJobToFailed() {
-            // Given
             when(embeddingService.generateEmbeddingsForChapter(chapterId))
                     .thenThrow(new RuntimeException("Database error"));
 
-            // When
             handler.handleChunksCreated(testEvent);
 
-            // Then
             verify(ingestionJobService).updateJobStatus(
                     eq(jobId), eq(IngestionStatus.FAILED), contains("EMBEDDING failed"), any());
         }

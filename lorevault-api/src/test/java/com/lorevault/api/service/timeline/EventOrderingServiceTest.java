@@ -2,14 +2,16 @@ package com.lorevault.api.service.timeline;
 
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterReadRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.TemporalReadRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.TemporalReadRepository.TemporalEdgePair;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.util.*;
-import java.util.AbstractMap.SimpleEntry;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -18,8 +20,10 @@ import static org.mockito.Mockito.when;
 @DisplayName("EventOrderingService")
 class EventOrderingServiceTest {
 
-    private final Neo4jContentPersistenceAdapter contentPort = Mockito.mock(Neo4jContentPersistenceAdapter.class);
-    private final EventOrderingService service = new EventOrderingService(contentPort);
+    private final SceneGraphRepository sceneRepo = Mockito.mock(SceneGraphRepository.class);
+    private final ChapterReadRepository chapterReadRepo = Mockito.mock(ChapterReadRepository.class);
+    private final TemporalReadRepository temporalReadRepo = Mockito.mock(TemporalReadRepository.class);
+    private final EventOrderingService service = new EventOrderingService(sceneRepo, chapterReadRepo, temporalReadRepo);
 
     private Scene scene(UUID id, int sceneIndex) {
         Scene s = new Scene();
@@ -27,6 +31,13 @@ class EventOrderingServiceTest {
         s.setSceneIndex(sceneIndex);
         s.setChapter(new Chapter());
         return s;
+    }
+
+    private static TemporalEdgePair edge(UUID from, UUID to) {
+        return new TemporalEdgePair() {
+            @Override public UUID getFromId() { return from; }
+            @Override public UUID getToId()   { return to; }
+        };
     }
 
     @Test
@@ -37,10 +48,10 @@ class EventOrderingServiceTest {
         Scene s1 = scene(UUID.randomUUID(), 1);
         Scene s2 = scene(UUID.randomUUID(), 2);
 
-        when(contentPort.findScenesByChapterId(chapterId)).thenReturn(List.of(s0, s1, s2));
-        when(contentPort.findChapterTemporalEdges(chapterId)).thenReturn(List.of(
-                new SimpleEntry<>(s0.getId(), s1.getId()),
-                new SimpleEntry<>(s1.getId(), s2.getId())
+        when(sceneRepo.findByChapterId(chapterId)).thenReturn(List.of(s0, s1, s2));
+        when(temporalReadRepo.findChapterEventEdges(chapterId)).thenReturn(List.of(
+                edge(s0.getId(), s1.getId()),
+                edge(s1.getId(), s2.getId())
         ));
 
         List<Scene> out = service.orderChapterEvents(chapterId);
@@ -55,11 +66,11 @@ class EventOrderingServiceTest {
         Scene b = scene(UUID.randomUUID(), 1);
         Scene c = scene(UUID.randomUUID(), 2);
 
-        when(contentPort.findScenesByChapterId(chapterId)).thenReturn(List.of(a, b, c));
+        when(sceneRepo.findByChapterId(chapterId)).thenReturn(List.of(a, b, c));
         // c before a, a before b → c, a, b
-        when(contentPort.findChapterTemporalEdges(chapterId)).thenReturn(List.of(
-                new SimpleEntry<>(c.getId(), a.getId()),
-                new SimpleEntry<>(a.getId(), b.getId())
+        when(temporalReadRepo.findChapterEventEdges(chapterId)).thenReturn(List.of(
+                edge(c.getId(), a.getId()),
+                edge(a.getId(), b.getId())
         ));
 
         List<Scene> out = service.orderChapterEvents(chapterId);
@@ -75,8 +86,8 @@ class EventOrderingServiceTest {
         Scene b = scene(UUID.fromString("00000000-0000-0000-0000-000000000000"), 2);
         Scene c = scene(UUID.fromString("00000000-0000-0000-0000-000000000010"), 1);
 
-        when(contentPort.findScenesByChapterId(chapterId)).thenReturn(List.of(a, b, c));
-        when(contentPort.findChapterTemporalEdges(chapterId)).thenReturn(List.of());
+        when(sceneRepo.findByChapterId(chapterId)).thenReturn(List.of(a, b, c));
+        when(temporalReadRepo.findChapterEventEdges(chapterId)).thenReturn(List.of());
 
         List<Scene> out = service.orderChapterEvents(chapterId);
         assertThat(out).containsExactly(c, b, a);
@@ -89,19 +100,19 @@ class EventOrderingServiceTest {
         UUID c1 = UUID.randomUUID();
         UUID c2 = UUID.randomUUID();
 
-        when(contentPort.findChapterIdsUpTo(bookId, 2)).thenReturn(List.of(c1, c2));
+        when(chapterReadRepo.findChapterIdsUpTo(bookId, 2)).thenReturn(List.of(c1, c2));
 
         Scene c1s0 = scene(UUID.randomUUID(), 0);
         Scene c1s1 = scene(UUID.randomUUID(), 1);
         Scene c2s0 = scene(UUID.randomUUID(), 0);
 
-        when(contentPort.findScenesByChapterId(c1)).thenReturn(List.of(c1s0, c1s1));
-        when(contentPort.findChapterTemporalEdges(c1)).thenReturn(List.of(
-                new SimpleEntry<>(c1s0.getId(), c1s1.getId())
+        when(sceneRepo.findByChapterId(c1)).thenReturn(List.of(c1s0, c1s1));
+        when(temporalReadRepo.findChapterEventEdges(c1)).thenReturn(List.of(
+                edge(c1s0.getId(), c1s1.getId())
         ));
 
-        when(contentPort.findScenesByChapterId(c2)).thenReturn(List.of(c2s0));
-        when(contentPort.findChapterTemporalEdges(c2)).thenReturn(List.of());
+        when(sceneRepo.findByChapterId(c2)).thenReturn(List.of(c2s0));
+        when(temporalReadRepo.findChapterEventEdges(c2)).thenReturn(List.of());
 
         List<Scene> out = service.orderBookEventsUpToChapter(bookId, 2);
         assertThat(out).containsExactly(c1s0, c1s1, c2s0);

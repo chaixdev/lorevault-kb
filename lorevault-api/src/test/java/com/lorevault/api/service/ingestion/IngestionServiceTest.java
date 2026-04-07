@@ -10,7 +10,8 @@ import com.lorevault.api.dto.ingestion.JobStatusResponse;
 import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
 import com.lorevault.api.dto.ingestion.SubmitChapterResponse;
 import com.lorevault.api.event.ChapterIngestionEvent;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.BookGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -43,7 +44,8 @@ import static org.mockito.Mockito.*;
 @DisplayName("IngestionService Tests")
 class IngestionServiceTest {
 
-    @Mock private Neo4jContentPersistenceAdapter contentPersistencePort;
+    @Mock private ChapterGraphRepository chapterRepo;
+    @Mock private BookGraphRepository bookRepo;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private IngestionJobGraphRepository jobRepo;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -78,21 +80,18 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should create new chapter and job for fresh content")
         void submitChapter_newContent_createsChapterAndJob() {
-            // Given
-            when(contentPersistencePort.findChapterByContentHash(anyString())).thenReturn(Optional.empty());
-            when(contentPersistencePort.findBookById(bookId)).thenReturn(Optional.of(testBook));
-            when(contentPersistencePort.createChapter(any(Chapter.class))).thenReturn(testChapter);
+            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.empty());
+            when(bookRepo.findById(bookId)).thenReturn(Optional.of(testBook));
+            when(chapterRepo.save(any(Chapter.class))).thenReturn(testChapter);
             when(ingestionJobService.createIngestionJob(chapterId)).thenReturn(testJob);
 
-            // When
             SubmitChapterResponse response = ingestionService.submitChapter(testRequest);
 
-            // Then
             assertThat(response.getJobId()).isEqualTo(jobId);
             assertThat(response.getChapterId()).isEqualTo(chapterId);
             assertThat(response.getMessage()).isNotNull();
 
-            verify(contentPersistencePort).createChapter(any(Chapter.class));
+            verify(chapterRepo).save(any(Chapter.class));
             verify(ingestionJobService).createIngestionJob(chapterId);
             verify(eventPublisher).publishEvent(any(ChapterIngestionEvent.class));
         }
@@ -100,40 +99,34 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should return existing job for duplicate content with active job")
         void submitChapter_duplicateContentWithActiveJob_returnsExistingJob() {
-            // Given
-            when(contentPersistencePort.findChapterByContentHash(anyString())).thenReturn(Optional.of(testChapter));
+            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
             when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(true);
             when(jobRepo.findLatestForChapter(chapterId)).thenReturn(Optional.of(testJob));
 
-            // When
             SubmitChapterResponse response = ingestionService.submitChapter(testRequest);
 
-            // Then
             assertThat(response.getJobId()).isEqualTo(jobId);
             assertThat(response.getChapterId()).isEqualTo(chapterId);
             assertThat(response.getMessage()).isNotNull();
 
-            verify(contentPersistencePort, never()).createChapter(any());
+            verify(chapterRepo, never()).save(any());
             verify(ingestionJobService, never()).createIngestionJob(any());
         }
 
         @Test
         @DisplayName("Should create new job for duplicate content without active job")
         void submitChapter_duplicateContentNoActiveJob_createsNewJob() {
-            // Given
-            when(contentPersistencePort.findChapterByContentHash(anyString())).thenReturn(Optional.of(testChapter));
+            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
             when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(false);
             when(ingestionJobService.createIngestionJob(chapterId)).thenReturn(testJob);
 
-            // When
             SubmitChapterResponse response = ingestionService.submitChapter(testRequest);
 
-            // Then
             assertThat(response.getJobId()).isEqualTo(jobId);
             assertThat(response.getChapterId()).isEqualTo(chapterId);
             assertThat(response.getMessage()).isNotNull();
 
-            verify(contentPersistencePort, never()).createChapter(any());
+            verify(chapterRepo, never()).save(any());
             verify(ingestionJobService).createIngestionJob(chapterId);
             verify(eventPublisher).publishEvent(any(ChapterIngestionEvent.class));
         }
@@ -141,11 +134,9 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should throw exception when book not found")
         void submitChapter_bookNotFound_throwsException() {
-            // Given
-            when(contentPersistencePort.findChapterByContentHash(anyString())).thenReturn(Optional.empty());
-            when(contentPersistencePort.findBookById(bookId)).thenReturn(Optional.empty());
+            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.empty());
+            when(bookRepo.findById(bookId)).thenReturn(Optional.empty());
 
-            // When & Then
             assertThatThrownBy(() -> ingestionService.submitChapter(testRequest))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Book not found");
@@ -154,13 +145,11 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should handle chapter creation failure gracefully")
         void submitChapter_chapterCreationFails_throwsException() {
-            // Given
-            when(contentPersistencePort.findChapterByContentHash(anyString())).thenReturn(Optional.empty());
-            when(contentPersistencePort.findBookById(bookId)).thenReturn(Optional.of(testBook));
-            when(contentPersistencePort.createChapter(any(Chapter.class)))
+            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.empty());
+            when(bookRepo.findById(bookId)).thenReturn(Optional.of(testBook));
+            when(chapterRepo.save(any(Chapter.class)))
                     .thenThrow(new RuntimeException("Database error"));
 
-            // When & Then
             assertThatThrownBy(() -> ingestionService.submitChapter(testRequest))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Failed to create chapter in graph");
@@ -174,14 +163,11 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should delegate job status to IngestionJobService")
         void getJobStatus_delegatesToJobService() {
-            // Given
             JobStatusResponse expectedResponse = new JobStatusResponse();
             when(ingestionJobService.getJobStatus(jobId)).thenReturn(Optional.of(expectedResponse));
 
-            // When
             Optional<JobStatusResponse> result = ingestionService.getJobStatus(jobId);
 
-            // Then
             assertThat(result).isPresent().contains(expectedResponse);
             verify(ingestionJobService).getJobStatus(jobId);
         }
@@ -189,14 +175,11 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should delegate job listing to IngestionJobService")
         void listJobs_delegatesToJobService() {
-            // Given
             JobListResponse expectedResponse = new JobListResponse();
             when(ingestionJobService.listJobs("universe", "COMPLETED", 10, 0)).thenReturn(expectedResponse);
 
-            // When
             JobListResponse result = ingestionService.listJobs("universe", "COMPLETED", 10, 0);
 
-            // Then
             assertThat(result).isEqualTo(expectedResponse);
             verify(ingestionJobService).listJobs("universe", "COMPLETED", 10, 0);
         }
@@ -209,16 +192,13 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should handle missing active job gracefully")
         void submitChapter_missingActiveJob_createsNewJob() {
-            // Given
-            when(contentPersistencePort.findChapterByContentHash(anyString())).thenReturn(Optional.of(testChapter));
+            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
             when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(true);
             when(jobRepo.findLatestForChapter(chapterId)).thenReturn(Optional.empty());
             when(ingestionJobService.createIngestionJob(chapterId)).thenReturn(testJob);
 
-            // When
             SubmitChapterResponse response = ingestionService.submitChapter(testRequest);
 
-            // Then
             assertThat(response.getJobId()).isEqualTo(jobId);
             assertThat(response.getMessage()).isNotNull();
             verify(ingestionJobService).createIngestionJob(chapterId);
@@ -227,23 +207,19 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should handle persistence port exceptions gracefully")
         void submitChapter_persistenceError_handlesGracefully() {
-            // Given
-            when(contentPersistencePort.findChapterByContentHash(anyString())).thenReturn(Optional.of(testChapter));
+            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
             when(jobRepo.existsActiveForChapter(chapterId))
                     .thenThrow(new RuntimeException("Connection failed"));
             when(ingestionJobService.createIngestionJob(chapterId)).thenReturn(testJob);
 
-            // When
             SubmitChapterResponse response = ingestionService.submitChapter(testRequest);
 
-            // Then
             assertThat(response.getJobId()).isEqualTo(jobId);
             assertThat(response.getMessage()).isNotNull();
             verify(ingestionJobService).createIngestionJob(chapterId);
         }
     }
 
-    // Test data creation helper methods
     private Book createTestBook() {
         Book book = new Book();
         book.setId(bookId);

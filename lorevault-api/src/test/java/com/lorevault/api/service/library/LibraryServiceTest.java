@@ -24,8 +24,8 @@ class LibraryServiceTest {
 
     @BeforeEach
     void setUp() {
-    contentPersistencePort = new FakeContentPersistencePort();
-    catalogService = new LibraryService(contentPersistencePort);
+        contentPersistencePort = new FakeContentPersistencePort();
+        catalogService = new LibraryService(contentPersistencePort.asUniverseRepo(), contentPersistencePort.asSeriesRepo(), contentPersistencePort.asBookRepo());
     }
 
     @DisplayName("Universe Creation")

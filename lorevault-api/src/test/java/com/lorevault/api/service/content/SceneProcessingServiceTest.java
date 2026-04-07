@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Tag("unit")
 @DisplayName("SceneProcessingService")
@@ -32,7 +33,7 @@ class SceneProcessingServiceTest {
     @BeforeEach
     void setUp() {
         contentPersistencePort = new FakeContentPersistencePort();
-        sceneProcessingService = new SceneProcessingService(contentPersistencePort);
+        sceneProcessingService = new SceneProcessingService(contentPersistencePort.asChapterRepo(), contentPersistencePort.asSceneRepo());
 
         chapterId = TestIds.CHAPTER_ID;
         chapterNode = createTestChapter();
@@ -232,9 +233,10 @@ class SceneProcessingServiceTest {
                 new SceneWithCoordinates(0, 0, 50, "Test scene")
             );
 
-            // When & Then - This will work but return empty list for non-existent chapters
-            List<Scene> result = sceneProcessingService.persistDetectedScenes(nonExistentChapterId, validScenes);
-            assertThat(result).hasSize(1); // Still creates the scene entities even if chapter doesn't exist
+            // When & Then - chapter not found → service throws NoSuchElementException
+            assertThatThrownBy(() ->
+                sceneProcessingService.persistDetectedScenes(nonExistentChapterId, validScenes))
+                .isInstanceOf(java.util.NoSuchElementException.class);
         }
 
         @Test
@@ -306,6 +308,7 @@ class SceneProcessingServiceTest {
 
     private Scene createTestScene(int sceneIndex, String contextSummary) {
         Scene scene = new Scene();
+        scene.setId(UUID.randomUUID());
         scene.setSceneIndex(sceneIndex);
         scene.setContextSummary(contextSummary);
         scene.setStartCharacterOffset(sceneIndex * 25L);

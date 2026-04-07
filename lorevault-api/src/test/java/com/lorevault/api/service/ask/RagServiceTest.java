@@ -3,7 +3,8 @@ package com.lorevault.api.service.ask;
 import com.lorevault.api.domain.content.Chunk;
 import com.lorevault.api.dto.ask.AskDtos;
 import com.lorevault.api.dto.search.SemanticSearchDtos;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChunkGraphRepository;
 import com.lorevault.api.infrastructure.prompt.PromptRepositoryAdapter;
 import com.lorevault.api.service.search.SemanticSearchService;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,8 +37,13 @@ class RagServiceTest {
     private SemanticSearchService semanticSearchService;
 
     @Mock
-    private PromptRepositoryAdapter mockPromptRepository;    @Mock
-    private Neo4jContentPersistenceAdapter contentPersistencePort;
+    private PromptRepositoryAdapter mockPromptRepository;
+
+    @Mock
+    private ChunkGraphRepository chunkRepo;
+
+    @Mock
+    private ChapterGraphRepository chapterRepo;
 
     @Mock
     private ChatClient chatClient;
@@ -55,7 +61,7 @@ class RagServiceTest {
 
     @BeforeEach
     void setUp() {
-        ragService = new RagService(semanticSearchService, mockPromptRepository, contentPersistencePort, chatClient);
+        ragService = new RagService(semanticSearchService, mockPromptRepository, chunkRepo, chapterRepo, chatClient);
         
         ReflectionTestUtils.setField(ragService, "modelId", "test-model");
     }
@@ -88,7 +94,7 @@ class RagServiceTest {
             Chunk mockChunk = new Chunk();
             mockChunk.setId(chunkId);
             mockChunk.setText("Kaladin is a spearman.");
-            when(contentPersistencePort.findChunkById(chunkId))
+            when(chunkRepo.findById(chunkId))
                 .thenReturn(Optional.of(mockChunk));
 
             com.lorevault.api.domain.content.Chapter chapter = new com.lorevault.api.domain.content.Chapter();
@@ -99,7 +105,7 @@ class RagServiceTest {
             chapter.setChapterTitle("Kaladin");
             chapter.setBookNumber(1);
             chapter.setChapterNumber(1);
-            when(contentPersistencePort.findChapterById(chapterId))
+            when(chapterRepo.findById(chapterId))
                 .thenReturn(Optional.of(chapter));
 
             when(semanticSearchService.search(any(SemanticSearchDtos.SemanticSearchRequest.class)))
@@ -155,11 +161,11 @@ class RagServiceTest {
             Chunk mockChunk = new Chunk();
             mockChunk.setId(chunkId);
             mockChunk.setText("The meaning of life is 42.");
-            when(contentPersistencePort.findChunkById(chunkId))
+            when(chunkRepo.findById(chunkId))
                 .thenReturn(Optional.of(mockChunk));
 
             // Mock chapter for citation building (return empty for simplicity)
-            when(contentPersistencePort.findChapterById(chapterId))
+            when(chapterRepo.findById(chapterId))
                 .thenReturn(Optional.empty());
 
             when(semanticSearchService.search(any(SemanticSearchDtos.SemanticSearchRequest.class)))
@@ -191,8 +197,8 @@ class RagServiceTest {
             assertThat(response.getMetadata().getModelId()).isEqualTo("test-model");
 
             verify(semanticSearchService).search(any(SemanticSearchDtos.SemanticSearchRequest.class));
-            verify(contentPersistencePort).findChunkById(chunkId);
-            verify(contentPersistencePort).findChapterById(chapterId);
+            verify(chunkRepo).findById(chunkId);
+            verify(chapterRepo).findById(chapterId);
             verify(callSpec).content();
         }
 
@@ -258,11 +264,11 @@ class RagServiceTest {
             Chunk mockChunk1 = new Chunk();
             mockChunk1.setId(chunkId1);
             mockChunk1.setText("AI is artificial intelligence.");
-            when(contentPersistencePort.findChunkById(chunkId1))
+            when(chunkRepo.findById(chunkId1))
                 .thenReturn(Optional.of(mockChunk1));
 
             // Mock chapter for citation building (return empty for simplicity)
-            when(contentPersistencePort.findChapterById(chapterId))
+            when(chapterRepo.findById(chapterId))
                 .thenReturn(Optional.empty());
 
             when(semanticSearchService.search(any(SemanticSearchDtos.SemanticSearchRequest.class)))
@@ -286,8 +292,8 @@ class RagServiceTest {
             assertThat(response.getMetadata().getChunksUsed()).isEqualTo(1);
 
             verify(semanticSearchService).search(any(SemanticSearchDtos.SemanticSearchRequest.class));
-            verify(contentPersistencePort).findChunkById(chunkId1);
-            verify(contentPersistencePort).findChapterById(chapterId);
+            verify(chunkRepo).findById(chunkId1);
+            verify(chapterRepo).findById(chapterId);
             verify(callSpec).content();
         }
     }

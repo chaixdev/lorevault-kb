@@ -7,7 +7,9 @@ import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.ChunksCreatedEvent;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChunkGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
 import com.lorevault.api.service.content.TextChunkingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +36,9 @@ import static org.mockito.Mockito.*;
 @DisplayName("ChunkingHandler Tests")
 class ChunkingHandlerTest {
 
-    @Mock private Neo4jContentPersistenceAdapter contentPersistencePort;
+    @Mock private ChapterGraphRepository chapterRepo;
+    @Mock private ChunkGraphRepository chunkRepo;
+    @Mock private SceneGraphRepository sceneRepo;
     @Mock private TextChunkingService textChunkingService;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -79,9 +83,11 @@ class ChunkingHandlerTest {
             List<Scene> scenes = List.of(scene1, scene2);
             List<Chunk> chunks = createChunks(2);
 
-            when(contentPersistencePort.chunksExistForChapter(chapterId)).thenReturn(false);
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(scenes);
+            when(chunkRepo.existsForChapterViaScenes(chapterId)).thenReturn(false);
+            when(chunkRepo.existsForChapter(chapterId)).thenReturn(false);
+            when(chunkRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(scenes);
             when(textChunkingService.extractChunks(anyString())).thenReturn(chunks);
 
             // When
@@ -89,7 +95,7 @@ class ChunkingHandlerTest {
 
             // Then
             verify(textChunkingService, times(2)).extractChunks(anyString());
-            verify(contentPersistencePort, times(2)).addChunksToScene(any(), any());
+            verify(chunkRepo, times(4)).save(any());
 
             ArgumentCaptor<ChunksCreatedEvent> eventCaptor = ArgumentCaptor.forClass(ChunksCreatedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
@@ -105,15 +111,14 @@ class ChunkingHandlerTest {
         @DisplayName("Should skip chunking when chunks already exist (idempotency)")
         void handleScenesDetected_existingChunks_skipChunking() {
             // Given
-            when(contentPersistencePort.chunksExistForChapter(chapterId)).thenReturn(true);
-            when(contentPersistencePort.countChunksByChapterId(chapterId)).thenReturn(5);
+            when(chunkRepo.existsForChapterViaScenes(chapterId)).thenReturn(true);
+            when(chunkRepo.countByChapterIdViaScenes(chapterId)).thenReturn(5);
 
             // When
             handler.handleScenesDetected(testEvent);
 
             // Then
             verify(textChunkingService, never()).extractChunks(anyString());
-            verify(contentPersistencePort, never()).addChunksToScene(any(), any());
             
             ArgumentCaptor<ChunksCreatedEvent> eventCaptor = ArgumentCaptor.forClass(ChunksCreatedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
@@ -124,9 +129,10 @@ class ChunkingHandlerTest {
         @DisplayName("Should update job status during processing")
         void handleScenesDetected_updatesJobStatus() {
             // Given
-            when(contentPersistencePort.chunksExistForChapter(chapterId)).thenReturn(false);
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            when(chunkRepo.existsForChapterViaScenes(chapterId)).thenReturn(false);
+            when(chunkRepo.existsForChapter(chapterId)).thenReturn(false);
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
 
             // When
             handler.handleScenesDetected(testEvent);
@@ -146,9 +152,10 @@ class ChunkingHandlerTest {
         void handleScenesDetected_chunkingError_emitsFailure() {
             // Given
             Scene scene = createScene(sceneId1, 0, 0L, 32L);
-            when(contentPersistencePort.chunksExistForChapter(chapterId)).thenReturn(false);
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(List.of(scene));
+            when(chunkRepo.existsForChapterViaScenes(chapterId)).thenReturn(false);
+            when(chunkRepo.existsForChapter(chapterId)).thenReturn(false);
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(List.of(scene));
             when(textChunkingService.extractChunks(anyString()))
                     .thenThrow(new RuntimeException("Chunking algorithm failed"));
 
@@ -169,8 +176,9 @@ class ChunkingHandlerTest {
         @DisplayName("Should handle chapter not found error")
         void handleScenesDetected_chapterNotFound_emitsFailure() {
             // Given
-            when(contentPersistencePort.chunksExistForChapter(chapterId)).thenReturn(false);
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.empty());
+            when(chunkRepo.existsForChapterViaScenes(chapterId)).thenReturn(false);
+            when(chunkRepo.existsForChapter(chapterId)).thenReturn(false);
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.empty());
 
             // When
             handler.handleScenesDetected(testEvent);
@@ -191,8 +199,9 @@ class ChunkingHandlerTest {
         void handleScenesDetected_emptyText_emitsZeroChunks() {
             // Given
             testChapter.setRawText("");
-            when(contentPersistencePort.chunksExistForChapter(chapterId)).thenReturn(false);
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(chunkRepo.existsForChapterViaScenes(chapterId)).thenReturn(false);
+            when(chunkRepo.existsForChapter(chapterId)).thenReturn(false);
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
 
             // When
             handler.handleScenesDetected(testEvent);
@@ -208,8 +217,9 @@ class ChunkingHandlerTest {
         void handleScenesDetected_nullText_emitsZeroChunks() {
             // Given
             testChapter.setRawText(null);
-            when(contentPersistencePort.chunksExistForChapter(chapterId)).thenReturn(false);
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(chunkRepo.existsForChapterViaScenes(chapterId)).thenReturn(false);
+            when(chunkRepo.existsForChapter(chapterId)).thenReturn(false);
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
 
             // When
             handler.handleScenesDetected(testEvent);
@@ -224,9 +234,10 @@ class ChunkingHandlerTest {
         @DisplayName("Should handle no scenes")
         void handleScenesDetected_noScenes_emitsZeroChunks() {
             // Given
-            when(contentPersistencePort.chunksExistForChapter(chapterId)).thenReturn(false);
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            when(chunkRepo.existsForChapterViaScenes(chapterId)).thenReturn(false);
+            when(chunkRepo.existsForChapter(chapterId)).thenReturn(false);
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
 
             // When
             handler.handleScenesDetected(testEvent);

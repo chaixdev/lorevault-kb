@@ -7,7 +7,8 @@ import com.lorevault.api.dto.content.SceneWithCoordinates;
 import com.lorevault.api.event.ChapterIngestionEvent;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
 import com.lorevault.api.event.ingestion.ScenesDetectedEvent;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
 import com.lorevault.api.service.content.SceneDetectionService;
 import com.lorevault.api.service.content.SceneProcessingService;
 import com.lorevault.api.service.ingestion.IngestionJobService;
@@ -37,7 +38,8 @@ import static org.mockito.Mockito.*;
 @DisplayName("SceneDetectionHandler Tests")
 class SceneDetectionHandlerTest {
 
-    @Mock private Neo4jContentPersistenceAdapter contentPersistencePort;
+    @Mock private ChapterGraphRepository chapterRepo;
+    @Mock private SceneGraphRepository sceneRepo;
     @Mock private SceneDetectionService sceneDetectionService;
     @Mock private SceneProcessingService sceneProcessingService;
     @Mock private IngestionJobService ingestionJobService;
@@ -83,8 +85,8 @@ class SceneDetectionHandlerTest {
             Scene scene2 = createScene(1);
             List<Scene> persistedScenes = List.of(scene1, scene2);
 
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
             when(sceneDetectionService.detectScenesInText(jobId, chapterId, testChapter.getRawText())).thenReturn(sceneCoords);
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
 
@@ -111,8 +113,8 @@ class SceneDetectionHandlerTest {
         void handleChapterPersisted_existingScenes_skipDetection() {
             // Given
             List<Scene> existingScenes = List.of(createScene(0), createScene(1));
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(existingScenes);
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(existingScenes);
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
 
             // When
             handler.handleChapterIngestion(testEvent);
@@ -135,8 +137,8 @@ class SceneDetectionHandlerTest {
         @DisplayName("Should emit IngestionFailedEvent on LLM error")
         void handleChapterPersisted_llmError_emitsFailure() {
             // Given
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
             when(sceneDetectionService.detectScenesInText(any(), any(), anyString()))
                     .thenThrow(new RuntimeException("LLM API timeout"));
 
@@ -159,7 +161,7 @@ class SceneDetectionHandlerTest {
         @DisplayName("Should handle chapter not found error")
         void handleChapterPersisted_chapterNotFound_emitsFailure() {
             // Given
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.empty());
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.empty());
 
             // When
             handler.handleChapterIngestion(testEvent);
@@ -175,8 +177,8 @@ class SceneDetectionHandlerTest {
         @DisplayName("Should emit failure on database error")
         void handleChapterPersisted_databaseError_emitsFailure() {
             // Given
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(contentPersistencePort.findScenesByChapterId(chapterId))
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneRepo.findByChapterId(chapterId))
                     .thenThrow(new RuntimeException("Database error"));
 
             // When
@@ -198,8 +200,8 @@ class SceneDetectionHandlerTest {
         void handleChapterPersisted_emptyText_emitsEventWithZeroScenes() {
             // Given
             testChapter.setRawText("");
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
 
             // When
             handler.handleChapterIngestion(testEvent);
@@ -217,8 +219,8 @@ class SceneDetectionHandlerTest {
         void handleChapterPersisted_nullText_emitsEventWithZeroScenes() {
             // Given
             testChapter.setRawText(null);
-            when(contentPersistencePort.findScenesByChapterId(chapterId)).thenReturn(Collections.emptyList());
-            when(contentPersistencePort.findChapterById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
 
             // When
             handler.handleChapterIngestion(testEvent);

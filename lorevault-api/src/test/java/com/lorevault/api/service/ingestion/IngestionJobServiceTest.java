@@ -6,8 +6,10 @@ import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.ingestion.StatusRecord;
 import com.lorevault.api.dto.ingestion.JobListResponse;
 import com.lorevault.api.dto.ingestion.JobStatusResponse;
-import com.lorevault.api.infrastructure.persistence.neo4j.adapter.Neo4jContentPersistenceAdapter;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChunkGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.IngestionJobGraphRepository;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.SceneGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.StatusRecordGraphRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,21 +32,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-/**
- * Comprehensive test suite for IngestionJobService covering both lifecycle and query operations.
- */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("IngestionJobService")
 class IngestionJobServiceTest {
 
-    @Mock
-    private Neo4jContentPersistenceAdapter contentPersistencePort;
-
-    @Mock
-    private IngestionJobGraphRepository jobRepo;
-
-    @Mock
-    private StatusRecordGraphRepository statusRepo;
+    @Mock private ChunkGraphRepository chunkRepo;
+    @Mock private SceneGraphRepository sceneRepo;
+    @Mock private ChapterGraphRepository chapterRepo;
+    @Mock private IngestionJobGraphRepository jobRepo;
+    @Mock private StatusRecordGraphRepository statusRepo;
 
     @Captor
     private ArgumentCaptor<IngestionJob> jobCaptor;
@@ -60,7 +56,7 @@ class IngestionJobServiceTest {
 
     @BeforeEach
     void setUp() {
-        ingestionJobService = new IngestionJobService(contentPersistencePort, jobRepo, statusRepo);
+        ingestionJobService = new IngestionJobService(chunkRepo, sceneRepo, chapterRepo, jobRepo, statusRepo);
     }
 
     @Nested
@@ -70,7 +66,6 @@ class IngestionJobServiceTest {
         @Test
         @DisplayName("Should create ingestion job with initial status record")
         void shouldCreateIngestionJobWithInitialStatus() {
-            // Arrange
             IngestionJob mockPersistedJob = new IngestionJob();
             mockPersistedJob.setId(testJobId);
             mockPersistedJob.setChapterId(testChapterId);
@@ -78,23 +73,19 @@ class IngestionJobServiceTest {
 
             when(jobRepo.save(any(IngestionJob.class))).thenReturn(mockPersistedJob);
 
-            // Act
             IngestionJob result = ingestionJobService.createIngestionJob(testChapterId);
 
-            // Assert
             assertThat(result).isNotNull();
             assertThat(result.getId()).isEqualTo(testJobId);
             assertThat(result.getChapterId()).isEqualTo(testChapterId);
             assertThat(result.getCurrentStatus()).isNotNull();
             assertThat(result.getCurrentStatus().getStatus()).isEqualTo(IngestionStatus.QUEUED);
 
-            // Verify job creation
             verify(jobRepo).save(jobCaptor.capture());
             IngestionJob capturedJob = jobCaptor.getValue();
             assertThat(capturedJob.getId()).isNotNull();
             assertThat(capturedJob.getChapterId()).isEqualTo(testChapterId);
 
-            // Verify status record creation
             verify(statusRepo).save(statusRecordCaptor.capture());
             StatusRecord capturedStatus = statusRecordCaptor.getValue();
             assertThat(capturedStatus.getJobId()).isEqualTo(testJobId);
@@ -105,24 +96,20 @@ class IngestionJobServiceTest {
         @Test
         @DisplayName("Should complete job with success status and metadata")
         void shouldCompleteJobWithSuccessStatus() {
-            // Arrange
             IngestionJob job = createTestJob();
             int chapterLength = 5000;
             int chunkCount = 25;
 
-            when(contentPersistencePort.countChunksByChapterId(testChapterId)).thenReturn(chunkCount);
+            when(chunkRepo.countByChapterIdViaScenes(testChapterId)).thenReturn(chunkCount);
             when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.of(job));
             when(jobRepo.save(any(IngestionJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            // Act
             ingestionJobService.completeJob(job, testChapterId, chapterLength);
 
-            // Assert
             assertThat(job.getCurrentStatus().getStatus()).isEqualTo(IngestionStatus.COMPLETE);
             assertThat(job.getCurrentStatus().getProgressPercent()).isEqualTo(100);
             assertThat(job.getCompletedAt()).isNotNull();
 
-            // Verify status record saved
             verify(statusRepo).save(statusRecordCaptor.capture());
             StatusRecord completionStatus = statusRecordCaptor.getValue();
             assertThat(completionStatus.getStatus()).isEqualTo(IngestionStatus.COMPLETE);
@@ -134,66 +121,60 @@ class IngestionJobServiceTest {
         @Test
         @DisplayName("Should fail job with error message")
         void shouldFailJobWithErrorMessage() {
-            // Arrange
             IngestionJob job = createTestJob();
             String errorMessage = "Processing failed due to invalid content format";
             when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.of(job));
             when(jobRepo.save(any(IngestionJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            // Act
             ingestionJobService.failJob(job, errorMessage);
 
-            // Assert
             assertThat(job.getCurrentStatus().getStatus()).isEqualTo(IngestionStatus.FAILED);
             assertThat(job.getCurrentStatus().getStepDescription()).isEqualTo(errorMessage);
             assertThat(job.getCurrentStatus().getProgressPercent()).isEqualTo(0);
             assertThat(job.getCompletedAt()).isNotNull();
 
-            // Verify status record saved
             verify(statusRepo).save(any(StatusRecord.class));
         }
 
         @Test
         @DisplayName("Should fail job with cleanup and remove partial data")
         void shouldFailJobWithCleanup() {
-            // Arrange
             IngestionJob job = createTestJob();
             String errorMessage = "Critical processing error";
             int deletedChunks = 5;
-            int deletedScenes = 3;
 
-            when(contentPersistencePort.deleteChunksByChapterId(testChapterId)).thenReturn(deletedChunks);
-            when(contentPersistencePort.deleteScenesByChapterId(testChapterId)).thenReturn(deletedScenes);
+            when(chunkRepo.countByChapterIdViaScenes(testChapterId)).thenReturn(deletedChunks);
+            doNothing().when(chunkRepo).deleteByChapterIdViaScenes(testChapterId);
+            when(sceneRepo.findByChapterId(testChapterId)).thenReturn(List.of(
+                    new com.lorevault.api.domain.content.Scene(),
+                    new com.lorevault.api.domain.content.Scene(),
+                    new com.lorevault.api.domain.content.Scene()
+            ));
+            doNothing().when(sceneRepo).deleteByChapterId(testChapterId);
             when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.of(job));
             when(jobRepo.save(any(IngestionJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            // Act
             ingestionJobService.failJobWithCleanup(job, errorMessage);
 
-            // Assert
             assertThat(job.getCurrentStatus().getStatus()).isEqualTo(IngestionStatus.FAILED);
             assertThat(job.getCurrentStatus().getStepDescription()).contains(errorMessage);
             assertThat(job.getCurrentStatus().getStepDescription()).contains("data cleaned up for retry");
 
-            // Verify cleanup operations
-            verify(contentPersistencePort).deleteChunksByChapterId(testChapterId);
-            verify(contentPersistencePort).deleteScenesByChapterId(testChapterId);
+            verify(chunkRepo).deleteByChapterIdViaScenes(testChapterId);
+            verify(sceneRepo).deleteByChapterId(testChapterId);
         }
 
         @Test
         @DisplayName("Should update job status with custom properties")
         void shouldUpdateJobStatusWithCustomProperties() {
-            // Arrange
             Map<String, Object> properties = Map.of(
                     "step", "scene_detection",
                     "progress", 75
             );
 
-            // Act
             ingestionJobService.updateJobStatus(testJobId, IngestionStatus.SCENE_SEGMENTATION, 
                     "Scene segmentation in progress", properties);
 
-            // Assert
             verify(statusRepo).save(statusRecordCaptor.capture());
             StatusRecord statusRecord = statusRecordCaptor.getValue();
             assertThat(statusRecord.getStatus()).isEqualTo(IngestionStatus.SCENE_SEGMENTATION);
@@ -211,17 +192,14 @@ class IngestionJobServiceTest {
         @Test
         @DisplayName("Should retrieve job status with recent updates")
         void shouldRetrieveJobStatusWithRecentUpdates() {
-            // Arrange
             IngestionJob job = createTestJobWithStatus();
             List<StatusRecord> statusHistory = createStatusHistory();
 
             when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.of(job));
             when(statusRepo.findStatusHistoryForJob(testJobId)).thenReturn(statusHistory);
 
-            // Act
             Optional<JobStatusResponse> response = ingestionJobService.getJobStatus(testJobId);
 
-            // Assert
             assertThat(response).isPresent();
             JobStatusResponse jobStatus = response.get();
             assertThat(jobStatus.getJobId()).isEqualTo(testJobId);
@@ -234,20 +212,16 @@ class IngestionJobServiceTest {
         @Test
         @DisplayName("Should return empty when job not found")
         void shouldReturnEmptyWhenJobNotFound() {
-            // Arrange
             when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.empty());
 
-            // Act
             Optional<JobStatusResponse> response = ingestionJobService.getJobStatus(testJobId);
 
-            // Assert
             assertThat(response).isEmpty();
         }
 
         @Test
         @DisplayName("Should list jobs with universe filter and pagination")
         void shouldListJobsWithUniverseFilterAndPagination() {
-            // Arrange
             String universe = "TestUniverse";
             String status = "SCENE_SEGMENTATION";
             int limit = 10;
@@ -256,14 +230,12 @@ class IngestionJobServiceTest {
             List<Chapter> chapters = List.of(createTestChapter());
             List<IngestionJob> jobs = List.of(createTestJobWithStatus());
 
-            when(contentPersistencePort.findChaptersByUniverse(universe)).thenReturn(chapters);
+            when(chapterRepo.findAll()).thenReturn(chapters);
             when(jobRepo.findByChapterIds(any())).thenReturn(jobs);
-            when(contentPersistencePort.findChapterById(testChapterId)).thenReturn(Optional.of(createTestChapter()));
+            when(chapterRepo.findById(testChapterId)).thenReturn(Optional.of(createTestChapter()));
 
-            // Act
             JobListResponse response = ingestionJobService.listJobs(universe, status, limit, offset);
 
-            // Assert
             assertThat(response).isNotNull();
             assertThat(response.getJobs()).hasSize(1);
             assertThat(response.getPagination().getTotal()).isEqualTo(1);
@@ -279,19 +251,16 @@ class IngestionJobServiceTest {
         @Test
         @DisplayName("Should list all jobs when no filters applied")
         void shouldListAllJobsWhenNoFilters() {
-            // Arrange
             List<IngestionJob> allJobs = List.of(
                     createTestJobWithStatus(),
                     createCompletedJob()
             );
 
-                when(jobRepo.findAllWithCurrentStatus()).thenReturn(allJobs);
-            when(contentPersistencePort.findChapterById(any())).thenReturn(Optional.of(createTestChapter()));
+            when(jobRepo.findAllWithCurrentStatus()).thenReturn(allJobs);
+            when(chapterRepo.findById(any())).thenReturn(Optional.of(createTestChapter()));
 
-            // Act
             JobListResponse response = ingestionJobService.listJobs(null, null, 20, 0);
 
-            // Assert
             assertThat(response.getJobs()).hasSize(2);
             assertThat(response.getPagination().getTotal()).isEqualTo(2);
         }
@@ -299,26 +268,21 @@ class IngestionJobServiceTest {
         @Test
         @DisplayName("Should filter active jobs correctly")
         void shouldFilterActiveJobsCorrectly() {
-            // Arrange
             List<IngestionJob> jobs = List.of(
-                    createTestJobWithStatus(), // PROCESSING (active)
-                    createCompletedJob(),      // COMPLETE (inactive)
-                    createFailedJob()          // FAILED (inactive)
+                    createTestJobWithStatus(),
+                    createCompletedJob(),
+                    createFailedJob()
             );
 
-                when(jobRepo.findAllWithCurrentStatus()).thenReturn(jobs);
-            when(contentPersistencePort.findChapterById(any())).thenReturn(Optional.of(createTestChapter()));
+            when(jobRepo.findAllWithCurrentStatus()).thenReturn(jobs);
+            when(chapterRepo.findById(any())).thenReturn(Optional.of(createTestChapter()));
 
-            // Act
             JobListResponse response = ingestionJobService.listJobs(null, "ACTIVE", 20, 0);
 
-            // Assert
             assertThat(response.getJobs()).hasSize(1);
             assertThat(response.getJobs().get(0).getStatus()).isEqualTo(IngestionStatus.SCENE_SEGMENTATION);
         }
     }
-
-    // Helper methods for test data creation
 
     private IngestionJob createTestJob() {
         IngestionJob job = new IngestionJob();

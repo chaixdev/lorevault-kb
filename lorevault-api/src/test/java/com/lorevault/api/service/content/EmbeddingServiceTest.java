@@ -26,7 +26,7 @@ class EmbeddingServiceTest {
     void shouldReturnZeroWhenNoChunks() {
         FakeContentPersistencePort repo = new FakeContentPersistencePort();
         var embed = new FakeEmbeddingPort("fake-model", 8);
-        var svc = new EmbeddingService(repo, embed);
+        var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);
 
@@ -46,7 +46,7 @@ class EmbeddingServiceTest {
     void shouldEmbedOnlyWhenNeeded() throws Exception {
         FakeContentPersistencePort repo = new FakeContentPersistencePort();
         var embed = new FakeEmbeddingPort("fake-model", 8);
-        var svc = new EmbeddingService(repo, embed);
+        var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);
 
@@ -90,7 +90,7 @@ class EmbeddingServiceTest {
         chunks.add(c3);
 
         // Register chunks under chapter in fake repo
-        repo.chunksByChapter.put(chapterId, chunks);
+        repo.addChunksToChapter(chapterId, chunks);
 
         int updated = svc.generateEmbeddingsForChapter(chapterId);
         // c1 and c3 should be updated; c2 skipped
