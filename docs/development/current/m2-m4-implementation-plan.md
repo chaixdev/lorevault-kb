@@ -1,16 +1,41 @@
 # M2–M4 Implementation Plan
 
 Date: April 2026  
-Status: Planned — not yet started  
-Baseline: M1 merged (`cfb7404`) — ingestion entities (IngestionJob, StatusRecord, LlmCallRecord) annotated `@Node`, mirror classes deleted, ingestion methods removed from ContentPersistencePort and Neo4jContentPersistenceAdapter.
+Status: **M2 complete, M3 complete** — M4 is next  
+Baseline: M1 merged (`cfb7404`) — ingestion entities annotated `@Node`, mirror classes deleted.  
+M2 complete: all 6 content domain entities annotated `@Node`, mirror classes and `Neo4jMapper` deleted.  
+M3 complete: `ContentPersistencePort` deleted, all 5 remaining port interfaces gone, services inject concrete beans directly. 248 tests passing.
 
 See `refactor-roadmap.md` for architectural vision and ADRs.
 
 ---
 
-## What Remains
+## ~~What Remains~~ What Was Done (M2/M3 Summary)
 
-**6 Node mirror classes** still exist under `infrastructure/persistence/neo4j/model/`:
+**M2 — completed.** All 6 content domain entities now carry `@Node` directly:
+- `Universe`, `Series`, `Book`, `Chapter`, `Scene`, `Chunk`
+- Mirror `*Node` classes deleted
+- `Neo4jMapper` deleted
+- Repositories typed to domain entities
+
+**M3 — completed.** All 5 remaining port interfaces deleted:
+- `ContentPersistencePort` (37 methods) — deleted
+- `EmbeddingPort`, `SemanticSearchPort`, `PromptRepositoryPort`, `TemporalEdgePort` — deleted
+- `EmbeddingException`, `ContentPersistencePortTCK` — deleted
+- All 13 production consumers inject concrete beans/adapters directly
+- 7 integration tests migrated from `ContentPersistencePort` to `Neo4jContentPersistenceAdapter`
+
+---
+
+## M4 — Still Pending
+
+The sections below document what remains. Skip to [M4](#m4--spring-ai-upgrade--structured-output--package-flatten) to see the active work.
+
+---
+
+## ~~M2 Mirror Classes~~ (Completed)
+
+~~**6 Node mirror classes** still exist under `infrastructure/persistence/neo4j/model/`:~~
 
 | Mirror class | LOC | Domain entity it mirrors |
 |---|---|---|

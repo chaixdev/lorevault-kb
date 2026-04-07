@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
 **Last Updated:** April 2026  
-**Status:** Active — M1 merged and pushed, M2–M4 plan written, ready to implement  
+**Status:** Active — M1/M2/M3 complete, M4 is next  
 **Primary Direction:** Simplify architecture, preserve mechanical sympathy, reduce indirection
 
 ## What LoreVault Is
@@ -11,25 +11,29 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 ## Current State
 
 - Core pipeline works end to end
-- 153 production Java files, 78 test files
-- 263 tests passing
+- 248 tests passing
 - Stack: Java 21, Spring Boot 3.5.4, Spring AI 1.0, Neo4j 5.26
+- All domain content entities annotated `@Node` directly (no mirror Node classes)
+- All ports and adapters deleted — services inject concrete beans/repositories directly
+- Package structure: still layered (`service/`, `infrastructure/`, `application/`), M4 will flatten
 
 ## What Is Done
 
 - Service consolidation plan (Plan A) completed and merged
 - Event-driven ingestion refactor (Plan B) completed and merged
 - Pragmatic modulith M1 merged and pushed to `origin/main`
-- Documentation migration completed: canonical docs promoted, historical material archived to `docs/archive/`, ADRs and pattern library established
-- M2–M4 implementation plan written to `docs/development/current/m2-m4-implementation-plan.md`
+- Documentation migration completed
+- **M2 complete** — All 6 content domain entities (`Universe`, `Series`, `Book`, `Chapter`, `Scene`, `Chunk`) annotated `@Node`; mirror `*Node` classes deleted; `Neo4jMapper` deleted; repositories typed to domain entities; `Neo4jContentPersistenceAdapter` calls repositories directly
+- **M3 complete** — `ContentPersistencePort` deleted; `EmbeddingException` deleted; `ContentPersistencePortTCK` deleted; all 7 integration tests migrated to `@Autowired Neo4jContentPersistenceAdapter`; `PromptRepositoryPort`, `SemanticSearchPort`, `EmbeddingPort`, `TemporalEdgePort` all gone in earlier commits
 
 ## What Is Next
 
-Ready to implement. Work order:
+**M4** — Spring AI upgrade, structured output, package flatten:
 
-1. **M2** — Annotate 6 content domain entities with `@Node`, migrate repositories, rewrite adapter without mapper, delete mirror Node classes and Neo4jMapper
-2. **M3** — Kill all 5 remaining ports and adapters; services inject repositories directly
-3. **M4** — Spring AI upgrade (1.0 → 1.1.4), replace EmbeddingModelAdapter with `Neo4jVectorStore`, replace TriadXmlParser with structured output, flatten to 12 feature packages
+1. **M4.1** — Spring AI upgrade `1.0 → 1.1.4` (bump BOM, fix any breaking API changes)
+2. **M4.2** — Replace `EmbeddingModelAdapter` raw RestTemplate with Spring AI `EmbeddingModel` bean
+3. **M4.3** — Replace `TriadXmlParser` with Spring AI `.entity(Record.class)` structured output
+4. **M4.4** — Flatten from ~42 packages to 12 feature packages
 
 See `docs/development/current/m2-m4-implementation-plan.md` for full slice-by-slice details.
 
@@ -43,10 +47,7 @@ See `docs/development/current/m2-m4-implementation-plan.md` for full slice-by-sl
 
 ## Open Decisions
 
-- Relationship field placement on domain content entities (must resolve before M2 starts)
-- InMemorySemanticSearchAdapter test replacement strategy (M3)
-- Provider JSON Schema support confirmation before M4.3 (structured output)
-- Neo4jVectorStore / Neo4j 5.26 HNSW compatibility check before M4.2
+All 4 decisions from the original plan are resolved. No open decisions blocking M4.
 
 ## Canonical Entry Points
 
