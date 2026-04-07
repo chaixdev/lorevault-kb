@@ -101,7 +101,7 @@ class IngestionServiceTest {
         void submitChapter_duplicateContentWithActiveJob_returnsExistingJob() {
             when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
             when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(true);
-            when(jobRepo.findLatestForChapter(chapterId)).thenReturn(Optional.of(testJob));
+            when(jobRepo.findFirstByChapterIdOrderByCreatedAtDesc(chapterId)).thenReturn(Optional.of(testJob));
 
             SubmitChapterResponse response = ingestionService.submitChapter(testRequest);
 
@@ -194,7 +194,7 @@ class IngestionServiceTest {
         void submitChapter_missingActiveJob_createsNewJob() {
             when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
             when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(true);
-            when(jobRepo.findLatestForChapter(chapterId)).thenReturn(Optional.empty());
+            when(jobRepo.findFirstByChapterIdOrderByCreatedAtDesc(chapterId)).thenReturn(Optional.empty());
             when(ingestionJobService.createIngestionJob(chapterId)).thenReturn(testJob);
 
             SubmitChapterResponse response = ingestionService.submitChapter(testRequest);

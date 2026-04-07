@@ -83,7 +83,7 @@ public class LlmCallLoggingService {
 
         // Attach to current StatusRecord if available
         try {
-            jobRepo.findByIdWithCurrentStatus(jobId).ifPresent(job -> {
+            jobRepo.findById(jobId).ifPresent(job -> {
                 rec.setJob(job);
                 StatusRecord cur = job.getCurrentStatus();
                 if (cur != null) {

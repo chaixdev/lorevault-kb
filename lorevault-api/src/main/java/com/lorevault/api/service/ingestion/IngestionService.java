@@ -211,7 +211,7 @@ public class IngestionService {
     private Optional<UUID> findMostRecentJobId(UUID chapterId) {
         return bestEffortLookup(
             "findMostRecentJobForChapter chapterId=" + chapterId,
-            () -> jobRepo.findLatestForChapter(chapterId)
+            () -> jobRepo.findFirstByChapterIdOrderByCreatedAtDesc(chapterId)
                 .map(IngestionJob::getId),
             Optional.empty()
         );

@@ -80,7 +80,7 @@ class EmbeddingHandlerTest {
             when(sceneRepo.findByChapterId(chapterId)).thenReturn(List.of());
             when(chunkRepo.countByChapterIdViaScenes(chapterId)).thenReturn(10);
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(jobRepo.findByIdWithCurrentStatus(jobId)).thenReturn(Optional.of(testJob));
+            when(jobRepo.findById(jobId)).thenReturn(Optional.of(testJob));
 
             handler.handleChunksCreated(testEvent);
 
@@ -116,7 +116,7 @@ class EmbeddingHandlerTest {
             when(chunkRepo.countByChapterIdViaScenes(chapterId)).thenReturn(0);
             when(chunkRepo.countByChapterId(chapterId)).thenReturn(0);
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(jobRepo.findByIdWithCurrentStatus(jobId)).thenReturn(Optional.of(testJob));
+            when(jobRepo.findById(jobId)).thenReturn(Optional.of(testJob));
 
             handler.handleChunksCreated(zeroChunksEvent);
 

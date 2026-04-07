@@ -112,7 +112,7 @@ public class EmbeddingHandler {
             int chapterLength = chapter.getRawText() != null ? chapter.getRawText().length() : 0;
             
             // Get the job and mark complete
-            var job = jobRepo.findByIdWithCurrentStatus(jobId)
+            var job = jobRepo.findById(jobId)
                     .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
             
             ingestionJobService.completeJob(job, chapterId, chapterLength);

@@ -101,7 +101,7 @@ class IngestionJobServiceTest {
             int chunkCount = 25;
 
             when(chunkRepo.countByChapterIdViaScenes(testChapterId)).thenReturn(chunkCount);
-            when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.of(job));
+            when(jobRepo.findById(testJobId)).thenReturn(Optional.of(job));
             when(jobRepo.save(any(IngestionJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             ingestionJobService.completeJob(job, testChapterId, chapterLength);
@@ -123,7 +123,7 @@ class IngestionJobServiceTest {
         void shouldFailJobWithErrorMessage() {
             IngestionJob job = createTestJob();
             String errorMessage = "Processing failed due to invalid content format";
-            when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.of(job));
+            when(jobRepo.findById(testJobId)).thenReturn(Optional.of(job));
             when(jobRepo.save(any(IngestionJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             ingestionJobService.failJob(job, errorMessage);
@@ -151,7 +151,7 @@ class IngestionJobServiceTest {
                     new com.lorevault.api.domain.content.Scene()
             ));
             doNothing().when(sceneRepo).deleteByChapterId(testChapterId);
-            when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.of(job));
+            when(jobRepo.findById(testJobId)).thenReturn(Optional.of(job));
             when(jobRepo.save(any(IngestionJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             ingestionJobService.failJobWithCleanup(job, errorMessage);
@@ -195,7 +195,7 @@ class IngestionJobServiceTest {
             IngestionJob job = createTestJobWithStatus();
             List<StatusRecord> statusHistory = createStatusHistory();
 
-            when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.of(job));
+            when(jobRepo.findById(testJobId)).thenReturn(Optional.of(job));
             when(statusRepo.findStatusHistoryForJob(testJobId)).thenReturn(statusHistory);
 
             Optional<JobStatusResponse> response = ingestionJobService.getJobStatus(testJobId);
@@ -212,7 +212,7 @@ class IngestionJobServiceTest {
         @Test
         @DisplayName("Should return empty when job not found")
         void shouldReturnEmptyWhenJobNotFound() {
-            when(jobRepo.findByIdWithCurrentStatus(testJobId)).thenReturn(Optional.empty());
+            when(jobRepo.findById(testJobId)).thenReturn(Optional.empty());
 
             Optional<JobStatusResponse> response = ingestionJobService.getJobStatus(testJobId);
 
@@ -231,7 +231,7 @@ class IngestionJobServiceTest {
             List<IngestionJob> jobs = List.of(createTestJobWithStatus());
 
             when(chapterRepo.findAll()).thenReturn(chapters);
-            when(jobRepo.findByChapterIds(any())).thenReturn(jobs);
+            when(jobRepo.findByChapterIdIn(any())).thenReturn(jobs);
             when(chapterRepo.findById(testChapterId)).thenReturn(Optional.of(createTestChapter()));
 
             JobListResponse response = ingestionJobService.listJobs(universe, status, limit, offset);
@@ -256,7 +256,7 @@ class IngestionJobServiceTest {
                     createCompletedJob()
             );
 
-            when(jobRepo.findAllWithCurrentStatus()).thenReturn(allJobs);
+            when(jobRepo.findAll()).thenReturn(allJobs);
             when(chapterRepo.findById(any())).thenReturn(Optional.of(createTestChapter()));
 
             JobListResponse response = ingestionJobService.listJobs(null, null, 20, 0);
@@ -274,7 +274,7 @@ class IngestionJobServiceTest {
                     createFailedJob()
             );
 
-            when(jobRepo.findAllWithCurrentStatus()).thenReturn(jobs);
+            when(jobRepo.findAll()).thenReturn(jobs);
             when(chapterRepo.findById(any())).thenReturn(Optional.of(createTestChapter()));
 
             JobListResponse response = ingestionJobService.listJobs(null, "ACTIVE", 20, 0);

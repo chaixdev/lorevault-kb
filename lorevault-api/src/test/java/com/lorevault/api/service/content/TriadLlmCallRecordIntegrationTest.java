@@ -107,7 +107,7 @@ class TriadLlmCallRecordIntegrationTest {
         );
 
         // Get the current status record that was just created
-        IngestionJob job = jobRepo.findByIdWithCurrentStatus(testJobId).orElseThrow();
+        IngestionJob job = jobRepo.findById(testJobId).orElseThrow();
         StatusRecord currentStatus = job.getCurrentStatus();
         assertThat(currentStatus).isNotNull();
         assertThat(currentStatus.getStatus()).isEqualTo(IngestionStatus.SCENE_TRIAD_ANALYSIS);
@@ -178,7 +178,7 @@ class TriadLlmCallRecordIntegrationTest {
             Map.of("triadIndex", 0, "prevSceneId", scene1Id, "currentSceneId", scene2Id, "nextSceneId", scene3Id)
         );
 
-        IngestionJob job1 = jobRepo.findByIdWithCurrentStatus(testJobId).orElseThrow();
+        IngestionJob job1 = jobRepo.findById(testJobId).orElseThrow();
         StatusRecord firstTriadStatus = job1.getCurrentStatus();
 
         // Second triad
@@ -195,7 +195,7 @@ class TriadLlmCallRecordIntegrationTest {
             secondTriadProps
         );
 
-        IngestionJob job2 = jobRepo.findByIdWithCurrentStatus(testJobId).orElseThrow();
+        IngestionJob job2 = jobRepo.findById(testJobId).orElseThrow();
         StatusRecord secondTriadStatus = job2.getCurrentStatus();
 
         // Act - Create LLM call records for both triads

@@ -191,7 +191,7 @@ public class IngestionJobService {
      */
     public Optional<JobStatusResponse> getJobStatus(UUID jobId) {
         try {
-            Optional<IngestionJob> jobOpt = jobRepo.findByIdWithCurrentStatus(jobId);
+            Optional<IngestionJob> jobOpt = jobRepo.findById(jobId);
             if (jobOpt.isEmpty()) {
                 return Optional.empty();
             }
@@ -266,7 +266,7 @@ public class IngestionJobService {
 
     private void updateJobCompletedAt(UUID jobId, LocalDateTime completedAt) {
         try {
-            jobRepo.findByIdWithCurrentStatus(jobId).ifPresent(job -> {
+            jobRepo.findById(jobId).ifPresent(job -> {
                 job.setCompletedAt(completedAt);
                 jobRepo.save(job);
             });
@@ -318,9 +318,9 @@ public class IngestionJobService {
                     .filter(c -> filterContext.getUniverse().equals(c.getUniverse()))
                     .toList();
             List<UUID> chapterIds = chapters.stream().map(Chapter::getId).toList();
-            return jobRepo.findByChapterIds(chapterIds);
+            return jobRepo.findByChapterIdIn(chapterIds);
         } else {
-            return jobRepo.findAllWithCurrentStatus();
+            return jobRepo.findAll();
         }
     }
 

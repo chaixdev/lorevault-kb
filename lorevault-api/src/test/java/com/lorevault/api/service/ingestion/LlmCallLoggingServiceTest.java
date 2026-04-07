@@ -59,7 +59,7 @@ class LlmCallLoggingServiceTest {
         status.setId(statusId);
         job.setCurrentStatus(status);
 
-        when(jobRepo.findByIdWithCurrentStatus(jobId)).thenReturn(Optional.of(job));
+        when(jobRepo.findById(jobId)).thenReturn(Optional.of(job));
         when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -167,7 +167,7 @@ class LlmCallLoggingServiceTest {
         service = new LlmCallLoggingService(noBodiesProps, jobRepo, statusRepo, llmCallRepo);
 
         UUID jobId = UUID.randomUUID();
-        when(jobRepo.findByIdWithCurrentStatus(jobId)).thenReturn(Optional.empty());
+        when(jobRepo.findById(jobId)).thenReturn(Optional.empty());
         when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -204,7 +204,7 @@ class LlmCallLoggingServiceTest {
         service = new LlmCallLoggingService(noPromptProps, jobRepo, statusRepo, llmCallRepo);
 
         UUID jobId = UUID.randomUUID();
-        when(jobRepo.findByIdWithCurrentStatus(jobId)).thenReturn(Optional.empty());
+        when(jobRepo.findById(jobId)).thenReturn(Optional.empty());
         when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -239,7 +239,7 @@ class LlmCallLoggingServiceTest {
         service = new LlmCallLoggingService(truncationProps, jobRepo, statusRepo, llmCallRepo);
 
         UUID jobId = UUID.randomUUID();
-        when(jobRepo.findByIdWithCurrentStatus(jobId)).thenReturn(Optional.empty());
+        when(jobRepo.findById(jobId)).thenReturn(Optional.empty());
         when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         String longResponse = "This is a very long response that exceeds 20 characters and should be truncated";
@@ -277,7 +277,7 @@ class LlmCallLoggingServiceTest {
     void logCall_withInputPreviewTruncation_shouldTruncateInputPreview() {
         // Arrange
         UUID jobId = UUID.randomUUID();
-        when(jobRepo.findByIdWithCurrentStatus(jobId)).thenReturn(Optional.empty());
+        when(jobRepo.findById(jobId)).thenReturn(Optional.empty());
         when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Create input longer than 1000 chars (internal preview limit)
@@ -313,7 +313,7 @@ class LlmCallLoggingServiceTest {
     void logCall_withJobNotFound_shouldStillPersistWithoutStatusLink() {
         // Arrange
         UUID jobId = UUID.randomUUID();
-        when(jobRepo.findByIdWithCurrentStatus(jobId)).thenReturn(Optional.empty());
+        when(jobRepo.findById(jobId)).thenReturn(Optional.empty());
         when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -349,7 +349,7 @@ class LlmCallLoggingServiceTest {
         job.setId(jobId);
         job.setCurrentStatus(null); // No current status
 
-        when(jobRepo.findByIdWithCurrentStatus(jobId)).thenReturn(Optional.of(job));
+        when(jobRepo.findById(jobId)).thenReturn(Optional.of(job));
         when(statusRepo.findStatusHistoryForJob(jobId)).thenReturn(List.of());
         when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
