@@ -77,13 +77,13 @@ public class Scene implements Event {
     private LocalDateTime updatedAt;
 
     @DynamicLabels
-    private List<String> labels;
+    private List<String> labels = new ArrayList<>();
 
     /**
      * Chunks that belong to this scene (v0.3.0+)
      */
     @Relationship(type = "HAS_CHUNK")
-    private List<Chunk> chunks;
+    private List<Chunk> chunks = new ArrayList<>();
 
     @PersistenceCreator
     public Scene(UUID id,
@@ -105,10 +105,10 @@ public class Scene implements Event {
         this.contextSummary = contextSummary;
         this.text = text;
         this.chapterId = chapterId;
-        this.labels = labels;
+        this.labels = labels == null ? new ArrayList<>() : labels;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
-        this.chunks = chunks;
+        this.chunks = chunks == null ? new ArrayList<>() : chunks;
         this.chapter = chapter;
     }
 

@@ -47,7 +47,9 @@ public class Chapter {
     /**
      * Embedded coordinates object defining the chapter's position in the published text corpus.
      * Essential for spoiler gating (ordering) and human-readable display.
+     * Transient: individual fields (universe, series, bookTitle, etc.) are persisted instead.
      */
+    @org.springframework.data.annotation.Transient
     private PublicationCoordinates coordinates;
 
     /**
@@ -94,7 +96,15 @@ public class Chapter {
      * Get read-only view of scenes
      */
     public List<Scene> getScenes() {
-        return Collections.unmodifiableList(scenes);
+        if (scenes == null) {
+            scenes = new ArrayList<>();
+        }
+        return scenes;
+    }
+
+    // Neo4j SDN passes null when no HAS_SCENE relationships exist
+    public void setScenes(List<Scene> scenes) {
+        this.scenes = scenes == null ? new ArrayList<>() : scenes;
     }
 
     /**
@@ -155,7 +165,15 @@ public class Chapter {
      * Get read-only view of chunks
      */
     public List<Chunk> getChunks() {
-        return Collections.unmodifiableList(chunks);
+        if (chunks == null) {
+            chunks = new ArrayList<>();
+        }
+        return chunks;
+    }
+
+    // Neo4j SDN passes null when no HAS_CHUNK relationships exist
+    public void setChunks(List<Chunk> chunks) {
+        this.chunks = chunks == null ? new ArrayList<>() : chunks;
     }
 
     /**

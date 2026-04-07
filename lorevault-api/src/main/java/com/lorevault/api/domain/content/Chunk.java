@@ -6,9 +6,9 @@ import lombok.AllArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.PersistenceCreator;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
-import org.springframework.data.neo4j.core.schema.Relationship;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -21,10 +21,10 @@ public class Chunk {
     @Id
     private UUID id;
 
-    @Relationship(type = "HAS_CHUNK", direction = org.springframework.data.neo4j.core.schema.Relationship.Direction.INCOMING)
+    @Transient
     private Chapter chapter;
 
-    @Relationship(type = "HAS_CHUNK", direction = org.springframework.data.neo4j.core.schema.Relationship.Direction.INCOMING)
+    @Transient
     private Scene scene;
     private Integer chunkNumberInChapter;
     private Integer startCharInChapter;
@@ -57,9 +57,7 @@ public class Chunk {
                  String embeddingHash,
                  LocalDateTime embeddedAt,
                  LocalDateTime createdAt,
-                 LocalDateTime updatedAt,
-                 Chapter chapter,
-                 Scene scene) {
+                 LocalDateTime updatedAt) {
         this.id = id;
         this.chunkNumberInChapter = chunkNumberInChapter;
         this.startCharInChapter = startCharInChapter;
@@ -71,8 +69,6 @@ public class Chunk {
         this.embeddedAt = embeddedAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
-        this.chapter = chapter;
-        this.scene = scene;
     }
 
     public int getLength() { return endCharInChapter - startCharInChapter; }
