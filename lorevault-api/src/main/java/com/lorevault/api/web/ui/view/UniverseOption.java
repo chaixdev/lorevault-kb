@@ -1,6 +1,6 @@
 package com.lorevault.api.web.ui.view;
 
-import com.lorevault.api.service.library.LibraryQueryService;
+import com.lorevault.api.library.LibraryQueryService;
 
 import java.util.UUID;
 

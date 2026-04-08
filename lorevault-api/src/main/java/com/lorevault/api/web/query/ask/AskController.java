@@ -1,11 +1,11 @@
 package com.lorevault.api.web.query.ask;
 
-import com.lorevault.api.dto.ask.AskDtos.AskRequest;
-import com.lorevault.api.dto.ask.AskDtos.AskResponse;
-import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchRequest;
-import com.lorevault.api.dto.search.SemanticSearchDtos.SemanticSearchResponse;
-import com.lorevault.api.service.ask.RagService;
-import com.lorevault.api.service.search.SemanticSearchService;
+import com.lorevault.api.search.AskDtos.AskRequest;
+import com.lorevault.api.search.AskDtos.AskResponse;
+import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchRequest;
+import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchResponse;
+import com.lorevault.api.search.RagService;
+import com.lorevault.api.search.SemanticSearchService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

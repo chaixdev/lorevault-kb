@@ -1,9 +1,9 @@
 package com.lorevault.api.web.query.job;
 
-import com.lorevault.api.dto.ingestion.JobStatusResponse;
-import com.lorevault.api.dto.ingestion.JobListResponse;
-import com.lorevault.api.dto.shared.ErrorResponse;
-import com.lorevault.api.service.ingestion.IngestionService;
+import com.lorevault.api.support.JobStatusResponse;
+import com.lorevault.api.support.JobListResponse;
+import com.lorevault.api.support.ErrorResponse;
+import com.lorevault.api.ingestion.IngestionService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

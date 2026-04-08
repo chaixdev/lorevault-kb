@@ -1,7 +1,7 @@
 package com.lorevault.api.web.command.library;
 
-import com.lorevault.api.dto.library.*;
-import com.lorevault.api.service.library.LibraryService;
+import com.lorevault.api.support.*;
+import com.lorevault.api.library.LibraryService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

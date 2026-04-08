@@ -1,9 +1,9 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
-import com.lorevault.api.dto.ingestion.SubmitChapterResponse;
-import com.lorevault.api.service.ingestion.IngestionService;
-import com.lorevault.api.service.library.LibraryQueryService;
+import com.lorevault.api.support.SubmitChapterRequest;
+import com.lorevault.api.support.SubmitChapterResponse;
+import com.lorevault.api.ingestion.IngestionService;
+import com.lorevault.api.library.LibraryQueryService;
 import com.lorevault.api.web.command.ingestion.builder.CoordinatesBuilder;
 import com.lorevault.api.web.command.ingestion.extractor.FileContentExtractor;
 import com.lorevault.api.web.command.ingestion.validation.FileUploadValidator;

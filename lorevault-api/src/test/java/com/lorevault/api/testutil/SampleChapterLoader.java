@@ -1,6 +1,6 @@
 package com.lorevault.api.testutil;
 
-import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
+import com.lorevault.api.support.SubmitChapterRequest;
 import lombok.experimental.UtilityClass;
 import org.springframework.util.ResourceUtils;
 

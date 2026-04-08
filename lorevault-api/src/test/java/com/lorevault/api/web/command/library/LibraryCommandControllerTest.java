@@ -1,8 +1,8 @@
 package com.lorevault.api.web.command.library;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lorevault.api.dto.library.*;
-import com.lorevault.api.service.library.LibraryService;
+import com.lorevault.api.support.*;
+import com.lorevault.api.library.LibraryService;
 import com.lorevault.api.testutil.TestIds;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

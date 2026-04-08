@@ -1,6 +1,6 @@
 package com.lorevault.api.web.command.ingestion.builder;
 
-import com.lorevault.api.dto.ingestion.SubmitChapterRequest;
+import com.lorevault.api.support.SubmitChapterRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;

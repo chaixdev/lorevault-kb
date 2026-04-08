@@ -1,6 +1,6 @@
 package com.lorevault.api.web.query.health;
 
-import com.lorevault.api.service.system.SystemHealthService;
+import com.lorevault.api.health.SystemHealthService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.info.BuildProperties;

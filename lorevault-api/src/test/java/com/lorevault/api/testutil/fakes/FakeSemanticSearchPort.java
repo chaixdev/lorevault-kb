@@ -1,6 +1,6 @@
 package com.lorevault.api.testutil.fakes;
 
-import com.lorevault.api.infrastructure.search.Neo4jSemanticSearchAdapter;
+import com.lorevault.api.search.Neo4jSemanticSearchAdapter;
 
 import java.util.ArrayList;
 import java.util.Comparator;

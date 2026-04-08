@@ -1,9 +1,9 @@
 package com.lorevault.api.web.query.job;
 
-import com.lorevault.api.domain.ingestion.IngestionStatus;
-import com.lorevault.api.dto.ingestion.JobListResponse;
-import com.lorevault.api.dto.ingestion.JobStatusResponse;
-import com.lorevault.api.service.ingestion.IngestionService;
+import com.lorevault.api.ingestion.IngestionStatus;
+import com.lorevault.api.support.JobListResponse;
+import com.lorevault.api.support.JobStatusResponse;
+import com.lorevault.api.ingestion.IngestionService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,6 +65,7 @@ class JobsControllerWebMvcTest {
                 LocalDateTime.now().minusMinutes(1),
                 null,
                 false,
+                null,
                 List.of()
         );
         when(ingestionService.getJobStatus(eq(jobId))).thenReturn(Optional.of(resp));

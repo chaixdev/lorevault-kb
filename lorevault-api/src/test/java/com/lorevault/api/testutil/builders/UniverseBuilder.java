@@ -1,13 +1,13 @@
 package com.lorevault.api.testutil.builders;
 
-import com.lorevault.api.domain.content.Universe;
+import com.lorevault.api.content.Universe;
 import com.lorevault.api.testutil.TestClock;
 import com.lorevault.api.testutil.TestIds;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import static com.lorevault.api.util.StringSanitizer.toSnakeCase;
+import static com.lorevault.api.support.StringSanitizer.toSnakeCase;
 
 /**
  * Test builder for Universe entities with deterministic defaults.

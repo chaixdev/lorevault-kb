@@ -1,6 +1,6 @@
 package com.lorevault.api.config;
 
-import com.lorevault.api.configuration.properties.LoreVaultModelsProperties;
+import com.lorevault.api.config.LoreVaultModelsProperties;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.openai.OpenAiChatModel;

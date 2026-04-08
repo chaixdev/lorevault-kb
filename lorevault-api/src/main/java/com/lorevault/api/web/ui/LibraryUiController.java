@@ -1,13 +1,13 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.dto.library.CreateBookRequest;
-import com.lorevault.api.dto.library.CreateBookResponse;
-import com.lorevault.api.dto.library.CreateSeriesRequest;
-import com.lorevault.api.dto.library.CreateSeriesResponse;
-import com.lorevault.api.dto.library.CreateUniverseRequest;
-import com.lorevault.api.dto.library.CreateUniverseResponse;
-import com.lorevault.api.service.library.LibraryQueryService;
-import com.lorevault.api.service.library.LibraryService;
+import com.lorevault.api.support.CreateBookRequest;
+import com.lorevault.api.support.CreateBookResponse;
+import com.lorevault.api.support.CreateSeriesRequest;
+import com.lorevault.api.support.CreateSeriesResponse;
+import com.lorevault.api.support.CreateUniverseRequest;
+import com.lorevault.api.support.CreateUniverseResponse;
+import com.lorevault.api.library.LibraryQueryService;
+import com.lorevault.api.library.LibraryService;
 import com.lorevault.api.web.ui.form.CreateBookForm;
 import com.lorevault.api.web.ui.form.CreateLibraryForm;
 import com.lorevault.api.web.ui.form.CreateSeriesForm;

@@ -1,7 +1,7 @@
 package com.lorevault.api.web.query.health;
 
-import com.lorevault.api.service.system.SystemHealthService;
-import com.lorevault.api.service.system.metrics.HealthMetricsCollector;
+import com.lorevault.api.health.SystemHealthService;
+import com.lorevault.api.health.HealthMetricsCollector;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

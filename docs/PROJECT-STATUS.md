@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
 **Last Updated:** April 2026  
-**Status:** Active — M1/M2/M3 complete, M4 is next  
+**Status:** Active — M1/M2/M3/M4 complete  
 **Primary Direction:** Simplify architecture, preserve mechanical sympathy, reduce indirection
 
 ## What LoreVault Is
@@ -11,11 +11,11 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 ## Current State
 
 - Core pipeline works end to end
-- 248 tests passing
-- Stack: Java 21, Spring Boot 3.5.4, Spring AI 1.0, Neo4j 5.26
+- 186 tests passing
+- Stack: Java 21, Spring Boot 3.5.4, Spring AI 1.1.4, Neo4j 5.26
 - All domain content entities annotated `@Node` directly (no mirror Node classes)
 - All ports and adapters deleted — services inject concrete beans/repositories directly
-- Package structure: still layered (`service/`, `infrastructure/`, `application/`), M4 will flatten
+- Package structure: 12 feature-oriented packages (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`, `support/`, `timeline/`, `web/`)
 
 ## What Is Done
 
@@ -25,17 +25,17 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Documentation migration completed
 - **M2 complete** — All 6 content domain entities (`Universe`, `Series`, `Book`, `Chapter`, `Scene`, `Chunk`) annotated `@Node`; mirror `*Node` classes deleted; `Neo4jMapper` deleted; repositories typed to domain entities; `Neo4jContentPersistenceAdapter` calls repositories directly
 - **M3 complete** — `ContentPersistencePort` deleted; `EmbeddingException` deleted; `ContentPersistencePortTCK` deleted; all 7 integration tests migrated to `@Autowired Neo4jContentPersistenceAdapter`; `PromptRepositoryPort`, `SemanticSearchPort`, `EmbeddingPort`, `TemporalEdgePort` all gone in earlier commits
+- **M4 complete** — Spring AI upgraded to 1.1.4 (BOM bump); `EmbeddingModelAdapter` replaced with Spring AI `EmbeddingModel` bean; `TriadXmlParser` replaced with `.entity(Record.class)` structured output; package structure flattened from ~44 layered packages to 12 feature packages
 
 ## What Is Next
 
-**M4** — Spring AI upgrade, structured output, package flatten:
+M1–M4 are complete. The architecture is now a flat, feature-oriented modulith with direct Spring AI integration and no port/adapter indirection.
 
-1. **M4.1** — Spring AI upgrade `1.0 → 1.1.4` (bump BOM, fix any breaking API changes)
-2. **M4.2** — Replace `EmbeddingModelAdapter` raw RestTemplate with Spring AI `EmbeddingModel` bean
-3. **M4.3** — Replace `TriadXmlParser` with Spring AI `.entity(Record.class)` structured output
-4. **M4.4** — Flatten from ~42 packages to 12 feature packages
-
-See `docs/development/current/m2-m4-implementation-plan.md` for full slice-by-slice details.
+Next direction candidates:
+- Timeline modeling with Scene-as-Event entities
+- Spoiler-aware search using publication coordinates
+- Entity extraction (Characters, Locations, etc.)
+- Production hardening (observability, rate limiting, error budgets)
 
 ## Active Architectural Direction
 

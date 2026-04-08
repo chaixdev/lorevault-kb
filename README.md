@@ -34,12 +34,12 @@ An Agentic Knowledge Ingestion Service for fictional universes.
 3. **Run the application:**
 
    ```bash
-   mvn -pl lorevault-api spring-boot:run
+   ./scripts/dev-api.sh run
    ```
 
 4. **Verify:**
-   - Health: <http://localhost:8080/actuator/health>
-   - API status: <http://localhost:8080/api/status>
+   - Health: <http://localhost:18080/actuator/health>
+   - API status: <http://localhost:18080/api/status>
 
 ### Running Tests
 
@@ -53,11 +53,34 @@ Tests spin up a Neo4j Testcontainer automatically.
 
 ### Environment Configuration
 
-Copy `.env.example` to `.env` if present (optional):
+Copy `.env.example` to `.env` if present:
 
 ```bash
 cp .env.example .env
 ```
+
+The app reads runtime configuration from environment variables referenced in
+`lorevault-api/src/main/resources/application.yml`. Maven does **not** auto-load
+`.env`, so source it before running the app unless your IDE task already does that.
+
+Preferred local run command:
+
+```bash
+./scripts/dev-api.sh run
+```
+
+Background workflow:
+
+```bash
+./scripts/dev-api.sh start
+./scripts/dev-api.sh logs
+```
+
+Other helper commands:
+
+- `./scripts/dev-api.sh status`
+- `./scripts/dev-api.sh stop`
+- `./scripts/dev-api.sh restart`
 
 ### Neo4j Management
 
@@ -66,6 +89,14 @@ cp .env.example .env
 - Start: `docker-compose up -d neo4j`
 - Stop: `docker-compose down`
 - Reset: `docker-compose down -v && docker-compose up -d neo4j`
+
+Repo-local helpers:
+
+- Start/stop/status/logs for the API: `./scripts/dev-api.sh <run|start|stop|restart|status|logs>`
+- Reset local dev DB only: `./scripts/reset-dev-db.sh`
+- Reset + seed canonical sample data: `./scripts/prepare-dev-environment.sh`
+
+`scripts/prepare-dev-environment.sh` assumes both the app and Neo4j are already running.
 
 Minimal constraint applied automatically on startup:
 
