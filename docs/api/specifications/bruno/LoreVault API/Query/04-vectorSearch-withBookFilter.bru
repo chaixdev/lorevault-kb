@@ -1,0 +1,32 @@
+meta {
+  name: 04-vectorSearch-withBookFilter
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/query/ask/vector
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "query": "Kevin Jenkins",
+    "topK": 5,
+    "threshold": 0.5,
+    "filters": {
+      "universe": "JENKINSVERSE",
+      "series": "Deathworlders",
+      "bookNumber": 0
+    }
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  console.log("Results with book filter (Deathworlders, Book 0):", body.results.length);
+  if (body.results.length > 0) {
+    console.log("✓ Book filter working");
+  }
+}

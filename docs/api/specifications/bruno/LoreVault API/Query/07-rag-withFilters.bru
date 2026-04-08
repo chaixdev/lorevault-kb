@@ -1,0 +1,45 @@
+meta {
+  name: 07-rag-withFilters
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/query/ask/rag
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "question": "Who is Kevin Jenkins?",
+    "topK": 5,
+    "threshold": 0.5,
+    "filters": {
+      "universe": "JENKINSVERSE",
+      "series": "Deathworlders",
+      "bookNumber": 0,
+      "chapterNumber": 1
+    }
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  console.log("RAG with filters - answer length:", body.answer ? body.answer.length : 0);
+  console.log("Citations:", body.citations.length);
+  
+  if (body.citations.length > 0) {
+    const allInChapter1 = body.citations.every(c => 
+      c.publicationCoordinates.chapterNumber === 1
+    );
+    if (allInChapter1) {
+      console.log("✓ All citations in Chapter 1 - filter working!");
+    } else {
+      console.log("✗ Citations span multiple chapters - filter may not be working");
+      body.citations.forEach((c, i) => {
+        console.log(`  Citation ${i+1}: Chapter ${c.publicationCoordinates.chapterNumber}`);
+      });
+    }
+  }
+}

@@ -1,0 +1,32 @@
+meta {
+  name: 03-vectorSearch-withWrongUniverse
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/query/ask/vector
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "query": "Kevin Jenkins",
+    "topK": 5,
+    "threshold": 0.5,
+    "filters": {
+      "universe": "NONEXISTENT_UNIVERSE"
+    }
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  console.log("Results with wrong universe filter:", body.results.length);
+  if (body.results.length === 0) {
+    console.log("✓ Filter working correctly: wrong universe returned 0 results");
+  } else {
+    console.log("✗ BUG: Filter not working - got results despite wrong universe filter");
+  }
+}
