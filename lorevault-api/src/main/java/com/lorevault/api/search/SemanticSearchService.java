@@ -8,6 +8,7 @@ import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchResponse;
 import com.lorevault.api.search.SemanticSearchDtos.SearchResultDto;
 import com.lorevault.api.search.SemanticSearchDtos.SearchMetadata;
 import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchFilters;
+import com.lorevault.api.support.SpoilerVisibility;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -49,9 +50,10 @@ public class SemanticSearchService {
 
         // Perform search
         List<SearchResult> searchResults = semanticSearchPort.search(
-            queryEmbedding, 
-            request.getTopK(), 
-            searchFilters
+            queryEmbedding,
+            request.getTopK(),
+            searchFilters,
+            request.getVisibility()
         );
 
         // Convert results

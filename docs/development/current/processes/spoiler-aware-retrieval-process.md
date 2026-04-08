@@ -1,4 +1,4 @@
-# Spoiler-Aware Retrieval Process Specification
+1 # Spoiler-Aware Retrieval Process Specification
 
 **Purpose**: Define the step-by-step process for filtering and retrieving content based on user reading progress to prevent spoilers in multi-series fictional universes
 

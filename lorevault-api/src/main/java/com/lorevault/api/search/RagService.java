@@ -102,7 +102,8 @@ public class RagService {
         searchRequest.setQuery(request.getQuestion());
         searchRequest.setTopK(request.getTopK());
         searchRequest.setThreshold(null); // Handle threshold filtering in RAG service
-        
+        searchRequest.setVisibility(request.getVisibility());
+
         // Convert and validate filters if present
         if (request.getFilters() != null) {
             SemanticSearchFilters validatedFilters = validateAndConvertFilters(request.getFilters());
@@ -110,7 +111,7 @@ public class RagService {
                 searchRequest.setFilters(validatedFilters);
             }
         }
-        
+
         return searchRequest;
     }
 

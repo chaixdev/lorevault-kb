@@ -1,6 +1,8 @@
 package com.lorevault.api.search;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.lorevault.api.support.SpoilerVisibility;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -35,6 +37,10 @@ public class SemanticSearchDtos {
         
         @JsonInclude(JsonInclude.Include.NON_NULL)
         private SemanticSearchFilters filters;
+
+        @Valid
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        private SpoilerVisibility visibility;
     }
 
     /**

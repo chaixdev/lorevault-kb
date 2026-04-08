@@ -5,6 +5,9 @@ import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
 import com.lorevault.api.search.Neo4jSemanticSearchAdapter.SearchFilters;
 import com.lorevault.api.search.Neo4jSemanticSearchAdapter.SearchResult;
+import com.lorevault.api.support.SeriesProgress;
+import com.lorevault.api.support.SpoilerVisibility;
+import com.lorevault.api.support.UnconfiguredSeriesPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -241,6 +244,177 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
 
         List<SearchResult> results = semanticSearchPort.search(
                 queryEmbedding, 5, SearchFilters.empty());
+
+        assertThat(results).hasSize(2);
+    }
+
+    @Test
+    void search_withSpoilerVisibility_hidesChunksBeyondReadingProgress() {
+        double[] queryEmbedding = {1.0, 0.0, 0.0};
+        UUID chunkBook1 = UUID.randomUUID();
+        UUID chunkBook2 = UUID.randomUUID();
+        UUID chunkBook3 = UUID.randomUUID();
+
+        createChunkLinkedToChapter(chunkBook1, "Safe chunk book 1", new double[]{1.0, 0.0, 0.0},
+                "Cosmere", "Stormlight", 1, 10);
+        createChunkLinkedToChapter(chunkBook2, "Safe chunk book 2", new double[]{0.9, 0.1, 0.0},
+                "Cosmere", "Stormlight", 2, 1);
+        createChunkLinkedToChapter(chunkBook3, "Spoiler chunk book 3", new double[]{0.8, 0.2, 0.0},
+                "Cosmere", "Stormlight", 3, 1);
+
+        SeriesProgress progress = new SeriesProgress();
+        progress.setSeries("Stormlight");
+        progress.setReadThroughBookNumber(2);
+        progress.setReadThroughChapterNumber(null);
+
+        SpoilerVisibility visibility = new SpoilerVisibility();
+        visibility.setUniverse("Cosmere");
+        visibility.setSeriesProgress(List.of(progress));
+
+        List<SearchResult> results = semanticSearchPort.search(
+                queryEmbedding, 5, SearchFilters.empty(), visibility);
+
+        assertThat(results).hasSize(2);
+        assertThat(results).extracting(SearchResult::chunkId)
+                .containsExactlyInAnyOrder(chunkBook1, chunkBook2);
+    }
+
+    @Test
+    void search_withSpoilerVisibility_respectsChapterBoundary() {
+        double[] queryEmbedding = {1.0, 0.0, 0.0};
+        UUID chunkBeforeCutoff = UUID.randomUUID();
+        UUID chunkAtCutoff     = UUID.randomUUID();
+        UUID chunkAfterCutoff  = UUID.randomUUID();
+
+        createChunkLinkedToChapter(chunkBeforeCutoff, "Ch 4 content", new double[]{1.0, 0.0, 0.0},
+                "Cosmere", "Mistborn", 1, 4);
+        createChunkLinkedToChapter(chunkAtCutoff, "Ch 5 content", new double[]{0.9, 0.1, 0.0},
+                "Cosmere", "Mistborn", 1, 5);
+        createChunkLinkedToChapter(chunkAfterCutoff, "Ch 6 content", new double[]{0.8, 0.2, 0.0},
+                "Cosmere", "Mistborn", 1, 6);
+
+        SeriesProgress progress = new SeriesProgress();
+        progress.setSeries("Mistborn");
+        progress.setReadThroughBookNumber(1);
+        progress.setReadThroughChapterNumber(5);
+
+        SpoilerVisibility visibility = new SpoilerVisibility();
+        visibility.setUniverse("Cosmere");
+        visibility.setSeriesProgress(List.of(progress));
+
+        List<SearchResult> results = semanticSearchPort.search(
+                queryEmbedding, 5, SearchFilters.empty(), visibility);
+
+        assertThat(results).hasSize(2);
+        assertThat(results).extracting(SearchResult::chunkId)
+                .containsExactlyInAnyOrder(chunkBeforeCutoff, chunkAtCutoff);
+    }
+
+    @Test
+    void search_withMultipleSeriesProgress_filtersEachSeriesIndependently() {
+        double[] queryEmbedding = {1.0, 0.0, 0.0};
+        UUID stormlight1 = UUID.randomUUID();
+        UUID stormlight5 = UUID.randomUUID();
+        UUID mistborn1   = UUID.randomUUID();
+        UUID mistborn4   = UUID.randomUUID();
+
+        createChunkLinkedToChapter(stormlight1, "SA book 1", new double[]{1.0, 0.0, 0.0},
+                "Cosmere", "Stormlight", 1, 1);
+        createChunkLinkedToChapter(stormlight5, "SA book 5", new double[]{0.9, 0.1, 0.0},
+                "Cosmere", "Stormlight", 5, 1);
+        createChunkLinkedToChapter(mistborn1, "MB book 1", new double[]{0.85, 0.15, 0.0},
+                "Cosmere", "Mistborn", 1, 1);
+        createChunkLinkedToChapter(mistborn4, "MB book 4", new double[]{0.8, 0.2, 0.0},
+                "Cosmere", "Mistborn", 4, 1);
+
+        SeriesProgress saProgress = new SeriesProgress();
+        saProgress.setSeries("Stormlight");
+        saProgress.setReadThroughBookNumber(2);
+
+        SeriesProgress mbProgress = new SeriesProgress();
+        mbProgress.setSeries("Mistborn");
+        mbProgress.setReadThroughBookNumber(3);
+
+        SpoilerVisibility visibility = new SpoilerVisibility();
+        visibility.setUniverse("Cosmere");
+        visibility.setSeriesProgress(List.of(saProgress, mbProgress));
+
+        List<SearchResult> results = semanticSearchPort.search(
+                queryEmbedding, 5, SearchFilters.empty(), visibility);
+
+        assertThat(results).hasSize(2);
+        assertThat(results).extracting(SearchResult::chunkId)
+                .containsExactlyInAnyOrder(stormlight1, mistborn1);
+    }
+
+    @Test
+    void search_withUnconfiguredSeriesPolicyHide_excludesUnregisteredSeries() {
+        double[] queryEmbedding = {1.0, 0.0, 0.0};
+        UUID registeredChunk   = UUID.randomUUID();
+        UUID unregisteredChunk = UUID.randomUUID();
+
+        createChunkLinkedToChapter(registeredChunk, "Known series chunk", new double[]{1.0, 0.0, 0.0},
+                "Cosmere", "Stormlight", 1, 1);
+        createChunkLinkedToChapter(unregisteredChunk, "Unknown series chunk", new double[]{0.9, 0.1, 0.0},
+                "Cosmere", "Elantris", 1, 1);
+
+        SeriesProgress progress = new SeriesProgress();
+        progress.setSeries("Stormlight");
+        progress.setReadThroughBookNumber(5);
+
+        SpoilerVisibility visibility = new SpoilerVisibility();
+        visibility.setUniverse("Cosmere");
+        visibility.setSeriesProgress(List.of(progress));
+        visibility.setUnconfiguredSeriesPolicy(UnconfiguredSeriesPolicy.HIDE);
+
+        List<SearchResult> results = semanticSearchPort.search(
+                queryEmbedding, 5, SearchFilters.empty(), visibility);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).chunkId()).isEqualTo(registeredChunk);
+    }
+
+    @Test
+    void search_withUnconfiguredSeriesPolicyShow_includesUnregisteredSeries() {
+        double[] queryEmbedding = {1.0, 0.0, 0.0};
+        UUID registeredChunk   = UUID.randomUUID();
+        UUID unregisteredChunk = UUID.randomUUID();
+
+        createChunkLinkedToChapter(registeredChunk, "Known series chunk", new double[]{1.0, 0.0, 0.0},
+                "Cosmere", "Stormlight", 1, 1);
+        createChunkLinkedToChapter(unregisteredChunk, "Unknown series chunk", new double[]{0.9, 0.1, 0.0},
+                "Cosmere", "Elantris", 1, 1);
+
+        SeriesProgress progress = new SeriesProgress();
+        progress.setSeries("Stormlight");
+        progress.setReadThroughBookNumber(5);
+
+        SpoilerVisibility visibility = new SpoilerVisibility();
+        visibility.setUniverse("Cosmere");
+        visibility.setSeriesProgress(List.of(progress));
+        visibility.setUnconfiguredSeriesPolicy(UnconfiguredSeriesPolicy.SHOW);
+
+        List<SearchResult> results = semanticSearchPort.search(
+                queryEmbedding, 5, SearchFilters.empty(), visibility);
+
+        assertThat(results).hasSize(2);
+        assertThat(results).extracting(SearchResult::chunkId)
+                .containsExactlyInAnyOrder(registeredChunk, unregisteredChunk);
+    }
+
+    @Test
+    void search_withNullVisibility_returnsAllChunksUnfiltered() {
+        double[] queryEmbedding = {1.0, 0.0, 0.0};
+        UUID chunk1 = UUID.randomUUID();
+        UUID chunk2 = UUID.randomUUID();
+
+        createChunkLinkedToChapter(chunk1, "Series A book 99", new double[]{1.0, 0.0, 0.0},
+                "Cosmere", "Stormlight", 99, 99);
+        createChunkLinkedToChapter(chunk2, "Series B book 99", new double[]{0.9, 0.1, 0.0},
+                "Cosmere", "Mistborn", 99, 99);
+
+        List<SearchResult> results = semanticSearchPort.search(
+                queryEmbedding, 5, SearchFilters.empty(), null);
 
         assertThat(results).hasSize(2);
     }

@@ -1,6 +1,7 @@
 package com.lorevault.api.testutil.fakes;
 
 import com.lorevault.api.search.Neo4jSemanticSearchAdapter;
+import com.lorevault.api.support.SpoilerVisibility;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -23,9 +24,14 @@ public class FakeSemanticSearchPort extends Neo4jSemanticSearchAdapter {
 	}
 
 	public List<SearchResult> search(double[] queryEmbedding, int topK, SearchFilters filters) {
+		return search(queryEmbedding, topK, filters, null);
+	}
+
+	@Override
+	public List<SearchResult> search(double[] queryEmbedding, int topK, SearchFilters filters,
+			SpoilerVisibility visibility) {
 		int key = keyOf(queryEmbedding, filters);
 		List<SearchResult> list = new ArrayList<>(byKey.getOrDefault(key, List.of()));
-		// ensure ordered by score desc
 		list.sort(Comparator.comparingDouble(SearchResult::score).reversed());
 		if (topK > 0 && list.size() > topK) {
 			return new ArrayList<>(list.subList(0, topK));
