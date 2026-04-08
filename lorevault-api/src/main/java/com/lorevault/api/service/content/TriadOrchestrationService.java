@@ -2,6 +2,7 @@ package com.lorevault.api.service.content;
 
 import com.lorevault.api.domain.content.Chapter;
 import com.lorevault.api.domain.content.Scene;
+import com.lorevault.api.domain.ingestion.IngestionFailure;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.domain.timeline.TriadRelationInverter;
 import com.lorevault.api.infrastructure.prompt.PromptRepositoryAdapter;
@@ -86,6 +87,8 @@ public class TriadOrchestrationService {
                     vars,
                     TriadStructuredResult.class
             );
+            validateTriadResult(parsed, t, statusProps);
+
             String inv = parsed.previousToCurrent() != null
                     ? TriadRelationInverter.invertPrevToCurr(parsed.previousToCurrent().temporalType())
                     : null;
@@ -105,6 +108,71 @@ public class TriadOrchestrationService {
             ));
         }
         return out;
+    }
+
+    private void validateTriadResult(TriadStructuredResult parsed,
+                                     TriadBuilderService.SceneTriad triad,
+                                     Map<String, Object> statusProps) {
+        if (parsed == null) {
+            throw triadFailure("TRIAD_RESPONSE_MISSING", "Triad analysis returned no structured result", triad, statusProps, null);
+        }
+
+        if (triad.previous() != null) {
+            validateRelation("previousToCurrent", parsed.previousToCurrent(), triad, statusProps);
+        }
+        if (triad.next() != null) {
+            validateRelation("currentToNext", parsed.currentToNext(), triad, statusProps);
+        }
+    }
+
+    private void validateRelation(String relationName,
+                                  TriadRelation relation,
+                                  TriadBuilderService.SceneTriad triad,
+                                  Map<String, Object> statusProps) {
+        if (relation == null) {
+            throw triadFailure("TRIAD_RELATION_MISSING",
+                    "Triad analysis omitted required relation '" + relationName + "'",
+                    triad,
+                    statusProps,
+                    relationName);
+        }
+
+        if (isBlank(relation.temporalType())) {
+            throw triadFailure("TRIAD_RELATION_TYPE_MISSING",
+                    "Triad analysis returned relation without temporalType",
+                    triad,
+                    statusProps,
+                    relationName);
+        }
+
+        if (isBlank(relation.certainty())) {
+            throw triadFailure("TRIAD_RELATION_CERTAINTY_MISSING",
+                    "Triad analysis returned relation without certainty",
+                    triad,
+                    statusProps,
+                    relationName);
+        }
+    }
+
+    private TriadAnalysisException triadFailure(String code,
+                                                String message,
+                                                TriadBuilderService.SceneTriad triad,
+                                                Map<String, Object> statusProps,
+                                                String relationName) {
+        IngestionFailure.Builder builder = IngestionFailure.builder(code, message)
+                .exceptionType(TriadAnalysisException.class.getSimpleName())
+                .stage(IngestionStatus.SCENE_TRIAD_ANALYSIS.name())
+                .detail("relation", relationName)
+                .detail("triadIndex", statusProps.get("triadIndex"))
+                .detail("previousSceneId", triad.previous() != null ? triad.previous().getId() : null)
+                .detail("currentSceneId", triad.current() != null ? triad.current().getId() : null)
+                .detail("nextSceneId", triad.next() != null ? triad.next().getId() : null);
+
+        return new TriadAnalysisException(builder.build());
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private Map<String, Object> buildUserVars(Chapter chapter, TriadBuilderService.SceneTriad triad) {

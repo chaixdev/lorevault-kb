@@ -1,5 +1,6 @@
 package com.lorevault.api.handler;
 
+import com.lorevault.api.domain.ingestion.IngestionFailure;
 import com.lorevault.api.domain.ingestion.IngestionStatus;
 import com.lorevault.api.event.ingestion.IngestionFailedEvent;
 import com.lorevault.api.service.ingestion.IngestionJobService;
@@ -69,11 +70,13 @@ public class PipelineStageSupport {
             eventPublisher.publishEvent(new IngestionFailedEvent(
                 source != null ? source : this, jobId, chapterId, stage, safeMessage(e), retryable));
 
+            IngestionFailure failure = extractFailure(stage, e);
+
             ingestionJobService.updateJobStatus(
                     jobId,
                     IngestionStatus.FAILED,
                     stage + " failed: " + safeMessage(e),
-                    Collections.emptyMap());
+                    failure.toProperties());
 
             // Preserve prior handler behavior: swallow exceptions after emitting failure + FAILED status.
             return null;
@@ -83,5 +86,13 @@ public class PipelineStageSupport {
     private String safeMessage(Exception e) {
         String message = e.getMessage();
         return message != null ? message : e.getClass().getSimpleName();
+    }
+
+    private IngestionFailure extractFailure(String stage, Exception e) {
+        if (e instanceof com.lorevault.api.service.content.TriadAnalysisException triadAnalysisException
+                && triadAnalysisException.failure() != null) {
+            return triadAnalysisException.failure();
+        }
+        return IngestionFailure.fromException(stage, e);
     }
 }

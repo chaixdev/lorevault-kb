@@ -53,9 +53,26 @@ public class JobStatusResponse {
     private Boolean isComplete;
 
     /**
+     * Optional structured diagnostics for failed jobs.
+     * Kept specific to ingestion monitoring rather than reusing the public HTTP error format.
+     */
+    private FailureDetails failureDetails;
+
+    /**
      * Recent status updates (limited to avoid large responses)
      */
     private List<StatusUpdateDto> recentUpdates;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class FailureDetails {
+        private String code;
+        private String message;
+        private String exceptionType;
+        private String stage;
+        private java.util.Map<String, String> details;
+    }
 
     @Data
     @NoArgsConstructor

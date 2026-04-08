@@ -291,9 +291,46 @@ public class IngestionJobService {
             response.setCurrentStatus(currentStatus.getStatus());
             response.setProgressPercent(currentStatus.getProgressPercent());
             response.setIsComplete(currentStatus.getStatus().isTerminal());
+            response.setFailureDetails(extractFailureDetails(currentStatus));
         }
 
         return response;
+    }
+
+    private JobStatusResponse.FailureDetails extractFailureDetails(StatusRecord statusRecord) {
+        if (statusRecord == null || statusRecord.getStatus() != IngestionStatus.FAILED) {
+            return null;
+        }
+
+        Map<String, String> properties = statusRecord.getProperties();
+        if (properties == null || properties.isEmpty()) {
+            return null;
+        }
+
+        Map<String, String> details = properties.entrySet().stream()
+                .filter(entry -> entry.getKey() != null && entry.getKey().startsWith("failureDetail."))
+                .collect(Collectors.toMap(
+                        entry -> entry.getKey().substring("failureDetail.".length()),
+                        Map.Entry::getValue,
+                        (left, right) -> right,
+                        java.util.LinkedHashMap::new
+                ));
+
+        if (!properties.containsKey("failureCode")
+                && !properties.containsKey("failureMessage")
+                && !properties.containsKey("failureExceptionType")
+                && !properties.containsKey("failureStage")
+                && details.isEmpty()) {
+            return null;
+        }
+
+        return new JobStatusResponse.FailureDetails(
+                properties.get("failureCode"),
+                properties.get("failureMessage"),
+                properties.get("failureExceptionType"),
+                properties.get("failureStage"),
+                details
+        );
     }
 
     private List<JobStatusResponse.StatusUpdateDto> loadRecentStatusUpdates(UUID jobId) {
