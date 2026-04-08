@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -65,8 +66,17 @@ public class Neo4jSemanticSearchAdapter {
             java.util.List<Double> embeddingList = java.util.Arrays.stream(queryEmbedding)
                     .boxed()
                     .collect(java.util.stream.Collectors.toList());
-            
-            // Query Neo4j vector index for semantic similarity
+
+            // Normalise filter values: treat empty string as null so callers
+            // cannot accidentally bypass a filter with an empty string.
+            String universe    = blankToNull(filters != null ? filters.universe()    : null);
+            String series      = blankToNull(filters != null ? filters.series()      : null);
+            Integer bookNumber  = filters != null ? filters.bookNumber()    : null;
+            Integer chapterNumber = filters != null ? filters.chapterNumber() : null;
+
+            // Query Neo4j vector index for semantic similarity.
+            // Filter predicates use ($param IS NULL OR chapter.prop = $param) so the
+            // same static query works whether a filter value is set or not.
             List<SearchResult> results = neo4jClient.query("""
                 CALL db.index.vector.queryNodes($indexName, $limit, $embedding)
                 YIELD node, score
@@ -77,6 +87,10 @@ public class Neo4jSemanticSearchAdapter {
                 OPTIONAL MATCH (chapterViaScene:Chapter)-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(chunk)
                 WITH chunk, score, coalesce(chapterViaScene, chapterDirect) AS chapter
                 WHERE score > 0.0
+                  AND ($universe      IS NULL OR chapter.universe      = $universe)
+                  AND ($series        IS NULL OR chapter.series        = $series)
+                  AND ($bookNumber    IS NULL OR chapter.bookNumber    = $bookNumber)
+                  AND ($chapterNumber IS NULL OR chapter.chapterNumber = $chapterNumber)
                 RETURN
                     chunk.id AS chunkId,
                     score,
@@ -87,12 +101,8 @@ public class Neo4jSemanticSearchAdapter {
                 ORDER BY score DESC
                 LIMIT $topK
                 """)
-                .bindAll(Map.of(
-                    "indexName", VECTOR_INDEX_NAME,
-                    "limit", oversampleLimit,
-                    "embedding", embeddingList,
-                    "topK", topK
-                ))
+                .bindAll(buildParams(VECTOR_INDEX_NAME, oversampleLimit, embeddingList, topK,
+                                    universe, series, bookNumber, chapterNumber))
                 .fetchAs(SearchResult.class)
                 .mappedBy((typeSystem, record) -> {
                     UUID chunkId = UUID.fromString(record.get("chunkId").asString());
@@ -101,10 +111,10 @@ public class Neo4jSemanticSearchAdapter {
                     String snippet = truncateSnippet(text);
 
                     UUID chapterId = record.get("chapterId").isNull() ? null : UUID.fromString(record.get("chapterId").asString());
-                    Integer bookNumber = record.get("bookNumber").isNull() ? null : record.get("bookNumber").asInt();
-                    Integer chapterNumber = record.get("chapterNumber").isNull() ? null : record.get("chapterNumber").asInt();
+                    Integer mappedBookNumber = record.get("bookNumber").isNull() ? null : record.get("bookNumber").asInt();
+                    Integer mappedChapterNumber = record.get("chapterNumber").isNull() ? null : record.get("chapterNumber").asInt();
 
-                    return new SearchResult(chunkId, score, snippet, chapterId, bookNumber, chapterNumber);
+                    return new SearchResult(chunkId, score, snippet, chapterId, mappedBookNumber, mappedChapterNumber);
                 })
                 .all()
                 .stream()
@@ -164,6 +174,30 @@ public class Neo4jSemanticSearchAdapter {
         }
     }
     
+    /**
+     * Build the parameter map for the vector search query.
+     * Uses a HashMap (not Map.of) to allow null values for optional filter parameters.
+     * Null filter values are passed as null so the Cypher "$param IS NULL" predicate evaluates correctly.
+     */
+    private Map<String, Object> buildParams(
+            String indexName, int limit, java.util.List<Double> embedding, int topK,
+            String universe, String series, Integer bookNumber, Integer chapterNumber) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("indexName",     indexName);
+        params.put("limit",         limit);
+        params.put("embedding",     embedding);
+        params.put("topK",          topK);
+        params.put("universe",      universe);
+        params.put("series",        series);
+        params.put("bookNumber",    bookNumber);
+        params.put("chapterNumber", chapterNumber);
+        return params;
+    }
+
+    private static String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
+    }
+
     private String truncateSnippet(String text) {
         if (text == null) {
             return null;

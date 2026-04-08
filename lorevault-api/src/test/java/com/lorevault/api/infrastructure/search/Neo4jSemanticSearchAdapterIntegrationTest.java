@@ -1,6 +1,7 @@
 package com.lorevault.api.infrastructure.search;
 
 import com.lorevault.api.domain.content.Chunk;
+import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChapterGraphRepository;
 import com.lorevault.api.infrastructure.persistence.neo4j.repository.ChunkGraphRepository;
 import com.lorevault.api.infrastructure.search.Neo4jSemanticSearchAdapter.SearchFilters;
 import com.lorevault.api.infrastructure.search.Neo4jSemanticSearchAdapter.SearchResult;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.Neo4jContainer;
@@ -18,6 +20,7 @@ import com.lorevault.api.testing.TestImages;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,10 +54,14 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
     @Autowired
     private ChunkGraphRepository chunkRepository;
 
+    @Autowired
+    private Neo4jClient neo4jClient;
+
     @BeforeEach
     void setUp() {
         // Clear database
         chunkRepository.deleteAll();
+        neo4jClient.query("MATCH (n) DETACH DELETE n").run();
     }
 
     @Test
@@ -163,6 +170,124 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         
         // Then: Results filtered out due to negative similarity
         assertThat(results).isEmpty();
+    }
+
+    // ─── Filter tests ──────────────────────────────────────────────────────────
+
+    @Test
+    void search_withUniverseFilter_returnsOnlyMatchingUniverse() {
+        double[] queryEmbedding = {1.0, 0.0, 0.0};
+        UUID chunkA = UUID.randomUUID();
+        UUID chunkB = UUID.randomUUID();
+
+        createChunkLinkedToChapter(chunkA, "Cosmere chunk", new double[]{1.0, 0.0, 0.0},
+                "Cosmere", null, null, null);
+        createChunkLinkedToChapter(chunkB, "Other universe chunk", new double[]{0.9, 0.1, 0.0},
+                "OtherUniverse", null, null, null);
+
+        List<SearchResult> results = semanticSearchPort.search(
+                queryEmbedding, 5, new SearchFilters("Cosmere", null, null, null));
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).chunkId()).isEqualTo(chunkA);
+    }
+
+    @Test
+    void search_withBookNumberFilter_returnsOnlyMatchingBook() {
+        double[] queryEmbedding = {1.0, 0.0, 0.0};
+        UUID chunkBook1 = UUID.randomUUID();
+        UUID chunkBook2 = UUID.randomUUID();
+
+        createChunkLinkedToChapter(chunkBook1, "Book 1 chunk", new double[]{1.0, 0.0, 0.0},
+                "Cosmere", "Stormlight", 1, null);
+        createChunkLinkedToChapter(chunkBook2, "Book 2 chunk", new double[]{0.9, 0.1, 0.0},
+                "Cosmere", "Stormlight", 2, null);
+
+        List<SearchResult> results = semanticSearchPort.search(
+                queryEmbedding, 5, new SearchFilters("Cosmere", "Stormlight", 1, null));
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).chunkId()).isEqualTo(chunkBook1);
+    }
+
+    @Test
+    void search_withChapterNumberFilter_returnsOnlyMatchingChapter() {
+        double[] queryEmbedding = {1.0, 0.0, 0.0};
+        UUID chunkCh1 = UUID.randomUUID();
+        UUID chunkCh2 = UUID.randomUUID();
+
+        createChunkLinkedToChapter(chunkCh1, "Chapter 1 chunk", new double[]{1.0, 0.0, 0.0},
+                "Cosmere", "Stormlight", 1, 1);
+        createChunkLinkedToChapter(chunkCh2, "Chapter 2 chunk", new double[]{0.9, 0.1, 0.0},
+                "Cosmere", "Stormlight", 1, 2);
+
+        List<SearchResult> results = semanticSearchPort.search(
+                queryEmbedding, 5, new SearchFilters("Cosmere", "Stormlight", 1, 1));
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).chunkId()).isEqualTo(chunkCh1);
+    }
+
+    @Test
+    void search_withEmptyFilters_returnsAllMatchingChunks() {
+        double[] queryEmbedding = {1.0, 0.0, 0.0};
+        UUID chunkA = UUID.randomUUID();
+        UUID chunkB = UUID.randomUUID();
+
+        createChunkLinkedToChapter(chunkA, "Chunk A", new double[]{1.0, 0.0, 0.0},
+                "UniverseA", "SeriesA", 1, 1);
+        createChunkLinkedToChapter(chunkB, "Chunk B", new double[]{0.8, 0.2, 0.0},
+                "UniverseB", "SeriesB", 2, 3);
+
+        List<SearchResult> results = semanticSearchPort.search(
+                queryEmbedding, 5, SearchFilters.empty());
+
+        assertThat(results).hasSize(2);
+    }
+
+    /**
+     * Creates a Chunk with an embedding and links it via a Chapter node using raw Cypher.
+     * This bypasses the SDN entity graph to keep the test setup simple and fast.
+     */
+    private void createChunkLinkedToChapter(UUID chunkId, String text, double[] embedding,
+                                            String universe, String series,
+                                            Integer bookNumber, Integer chapterNumber) {
+        UUID chapterId = UUID.randomUUID();
+        java.util.List<Double> embeddingList = java.util.Arrays.stream(embedding)
+                .boxed()
+                .collect(java.util.stream.Collectors.toList());
+
+        Map<String, Object> params = new java.util.HashMap<>();
+        params.put("chunkId",       chunkId.toString());
+        params.put("text",          text);
+        params.put("hash",          "hash_" + chunkId);
+        params.put("embedding",     embeddingList);
+        params.put("embeddingHash", "emb_" + chunkId);
+        params.put("chapterId",     chapterId.toString());
+        params.put("universe",      universe);
+        params.put("series",        series);
+        params.put("bookNumber",    bookNumber);
+        params.put("chapterNumber", chapterNumber);
+
+        neo4jClient.query("""
+            CREATE (chapter:Chapter {
+                id: $chapterId,
+                universe: $universe,
+                series: $series,
+                bookNumber: $bookNumber,
+                chapterNumber: $chapterNumber
+            })
+            CREATE (chunk:Chunk {
+                id: $chunkId,
+                text: $text,
+                contentHash: $hash,
+                embedding: $embedding,
+                embeddingHash: $embeddingHash
+            })
+            CREATE (chapter)-[:HAS_CHUNK]->(chunk)
+            """)
+                .bindAll(params)
+                .run();
     }
 
     private void createChunkWithEmbedding(UUID chunkId, String text, double[] embedding) {
