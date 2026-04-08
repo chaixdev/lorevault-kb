@@ -22,7 +22,6 @@ docker exec lorevault-neo4j cypher-shell -u neo4j -p neosecret -d neo4j "
 
 if [ $? -eq 0 ]; then
     echo "✅ Neo4j database reset complete!"
-    echo "🚀 You can now start the application with: mvn -pl lorevault-api spring-boot:run"
 else
     echo "❌ Neo4j database reset failed!"
     exit 1

@@ -1,0 +1,25 @@
+meta {
+  name: 07-checkChapter2JobComplete
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/query/jobs/:jobId
+  body: none
+  auth: inherit
+}
+
+params:path {
+  jobId: {{chapter2JobId}}
+}
+
+script:post-response {
+  const body = res.getBody();
+  console.log("Chapter 2 job status:", body.currentStatus, body.progressPercent + "%");
+  if (body.currentStatus !== "COMPLETE") {
+    console.log("Re-run this request until the job reaches COMPLETE.");
+    throw new Error("Chapter 2 ingestion not complete yet");
+  }
+  bru.setVar("chapter2Id", body.chapterId);
+}

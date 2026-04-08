@@ -1,0 +1,26 @@
+meta {
+  name: 01-createJenkinsverseUniverse
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/command/library/create-universe
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "JENKINSVERSE"
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (!body.universeId) {
+    throw new Error("Missing universeId in response");
+  }
+  bru.setVar("universeId", body.universeId);
+  console.log("Universe:", body.name, body.universeId, "created=", body.created);
+}
