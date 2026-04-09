@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class PromptSystemTemplateRenderingTest {
 
-    private PromptRepositoryAdapter repo;
+    private PromptRepository repo;
 
     @BeforeEach
     void setUp() {
@@ -24,7 +24,7 @@ public class PromptSystemTemplateRenderingTest {
         );
         PromptLocationResolver resolver = new PromptLocationResolver(props);
         PromptCache cache = new PromptCache(60);
-        repo = new PromptRepositoryAdapter(resolver, cache, new DefaultResourceLoader());
+        repo = new PromptRepository(resolver, cache, new DefaultResourceLoader());
     }
 
     @Test

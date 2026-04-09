@@ -3,7 +3,6 @@ package com.lorevault.api.ai;
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
 import com.lorevault.api.ingestion.IngestionStatus;
-import com.lorevault.api.ai.PromptRepositoryAdapter;
 import com.lorevault.api.ingestion.IngestionJobService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,7 +34,7 @@ class TriadOrchestrationServiceTest {
     private SceneDetectionClient sceneDetectionClient;
 
     @Mock
-    private PromptRepositoryAdapter promptRepository;
+    private PromptRepository promptRepository;
     
     @Mock
     private IngestionJobService ingestionJobService;

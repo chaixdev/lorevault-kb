@@ -6,14 +6,12 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
 /**
- * Infrastructure adapter that implements PromptRepositoryPort.
- * Uses PromptLocationResolver for path resolution, PromptCache for caching,
- * and ResourceLoader for actual file loading.
+ * Loads and caches prompt templates from configured resources.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class PromptRepositoryAdapter {
+public class PromptRepository {
 
     private final PromptLocationResolver locationResolver;
     private final PromptCache cache;

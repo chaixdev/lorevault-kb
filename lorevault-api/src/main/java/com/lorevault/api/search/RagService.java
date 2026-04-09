@@ -14,7 +14,7 @@ import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchFilters;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
 import com.lorevault.api.search.SemanticSearchService;
-import com.lorevault.api.ai.PromptRepositoryAdapter;
+import com.lorevault.api.ai.PromptRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -36,7 +36,7 @@ import java.util.stream.IntStream;
 public class RagService {
 
     private final SemanticSearchService semanticSearchService;
-    private final PromptRepositoryAdapter promptRepository;
+    private final PromptRepository promptRepository;
     private final ChunkGraphRepository chunkRepo;
     private final ChapterGraphRepository chapterRepo;
     

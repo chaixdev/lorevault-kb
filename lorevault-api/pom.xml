@@ -224,9 +224,13 @@
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
-                                        <include>com.lorevault.api.service.*</include>
-                                        <include>com.lorevault.api.domain.*</include>
-                                        <include>com.lorevault.api.application.*</include>
+                                        <include>com.lorevault.api.ai.*</include>
+                                        <include>com.lorevault.api.content.*</include>
+                                        <include>com.lorevault.api.health.*</include>
+                                        <include>com.lorevault.api.ingestion.*</include>
+                                        <include>com.lorevault.api.library.*</include>
+                                        <include>com.lorevault.api.search.*</include>
+                                        <include>com.lorevault.api.timeline.*</include>
                                     </includes>
                                     <limits>
                                         <limit>
@@ -238,10 +242,9 @@
                                 </rule>
                             </rules>
                             <excludes>
-                                <!-- Exclude infrastructure adapters from unit coverage requirements -->
-                                <exclude>com/lorevault/api/infrastructure/**</exclude>
-                                <!-- Exclude configuration classes -->
-                                <exclude>com/lorevault/api/configuration/**</exclude>
+                                <!-- Exclude wiring and transport layers from unit coverage requirements -->
+                                <exclude>com/lorevault/api/config/**</exclude>
+                                <exclude>com/lorevault/api/web/**</exclude>
                                 <!-- Exclude main application class -->
                                 <exclude>com/lorevault/api/LoreVaultApiApplication.*</exclude>
                             </excludes>

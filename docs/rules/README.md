@@ -27,3 +27,5 @@ Rules should be short, opinionated, and easy to apply repeatedly.
 - [Architecture documentation guidelines](architecture-documentation-guidelines.md)
 - [Developer testing workflow](developer-testing-workflow.md)
 - [CI test profiles](ci-test-profiles.md)
+- [LLM structured output](llm-structured-output.md)
+- [Testing strategy](testing-strategy.md)

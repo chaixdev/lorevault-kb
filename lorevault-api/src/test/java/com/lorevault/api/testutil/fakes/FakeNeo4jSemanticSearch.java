@@ -1,6 +1,6 @@
 package com.lorevault.api.testutil.fakes;
 
-import com.lorevault.api.search.Neo4jSemanticSearchAdapter;
+import com.lorevault.api.search.Neo4jSemanticSearch;
 import com.lorevault.api.support.SpoilerVisibility;
 
 import java.util.ArrayList;
@@ -11,15 +11,15 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Fake SemanticSearchPort for unit/service tests.
+ * Fake Neo4j semantic search for unit/service tests.
  * Allows pre-configuring results per query vector hash and applies topK and simple filter checks.
  */
-public class FakeSemanticSearchPort extends Neo4jSemanticSearchAdapter {
+public class FakeNeo4jSemanticSearch extends Neo4jSemanticSearch {
 
 	private final Map<Integer, List<SearchResult>> byKey = new ConcurrentHashMap<>();
 	private volatile boolean available = true;
 
-	public FakeSemanticSearchPort() {
+	public FakeNeo4jSemanticSearch() {
 		super(null);
 	}
 

@@ -34,8 +34,8 @@ import java.util.stream.Collectors;
  * - SceneDetectionXmlParser (XML response parsing)
  * 
  * This service provides granular operations to support different usage patterns.
- * Note: AI scene detection is handled by SceneDetectionPort implementations
- * and RetryAwareSceneDetectionService to avoid circular dependencies.
+ * Note: AI scene detection is handled by SceneDetectionClient and related
+ * orchestration services to avoid circular dependencies.
  */
 @Service
 @RequiredArgsConstructor

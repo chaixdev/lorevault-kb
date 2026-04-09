@@ -1,7 +1,7 @@
 package com.lorevault.api.config;
 
 /**
- * Port for graph database schema initialization.
+ * Contract for graph database schema initialization.
  * Implementations should be idempotent and lenient (non-fatal on failure).
  */
 public interface GraphSchemaInitializer {

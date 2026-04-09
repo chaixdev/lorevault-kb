@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  *
  * Usage in tests:
  * <pre>
- *   FakeContentPersistencePort fake = new FakeContentPersistencePort();
+ *   FakeContentRepositories fake = new FakeContentRepositories();
  *
  *   // Pass the right typed view to each constructor arg:
  *   new EmbeddingService(fake.asChapterRepo(), fake.asChunkRepo(), embeddingModel)
@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
  *   fake.findScenesByChapterId(chapterId);
  * </pre>
  */
-public class FakeContentPersistencePort {
+public class FakeContentRepositories {
 
     // -------------------------------------------------------------------------
     // Shared backing stores (accessible by all inner delegates)
@@ -77,7 +77,7 @@ public class FakeContentPersistencePort {
     public BookGraphRepository     asBookRepo()     { return bookDelegate; }
 
     // =========================================================================
-    // Test-helper methods (legacy convenience API — same names as old adapter)
+    // Test-helper methods shared across repository views
     // =========================================================================
 
     public Chapter createChapter(Chapter chapter) {

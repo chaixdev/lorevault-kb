@@ -14,8 +14,8 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - 186 tests passing
 - Stack: Java 21, Spring Boot 3.5.4, Spring AI 1.1.4, Neo4j 5.26
 - All domain content entities annotated `@Node` directly (no mirror Node classes)
-- All ports and adapters deleted — services inject concrete beans/repositories directly
-- Package structure: 12 feature-oriented packages (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`, `support/`, `timeline/`, `web/`)
+- Internal port/adapter indirection removed — services inject concrete beans/repositories directly
+- Package structure: 10 top-level feature-oriented packages in `lorevault-api` (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`, `support/`, `timeline/`, `web/`)
 
 ## What Is Done
 
@@ -25,7 +25,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Documentation taxonomy migration in progress
 - **M2 complete** — All 6 content domain entities (`Universe`, `Series`, `Book`, `Chapter`, `Scene`, `Chunk`) annotated `@Node`; mirror `*Node` classes deleted; `Neo4jMapper` deleted; repositories typed to domain entities; `Neo4jContentPersistenceAdapter` calls repositories directly
 - **M3 complete** — `ContentPersistencePort` deleted; `EmbeddingException` deleted; `ContentPersistencePortTCK` deleted; all 7 integration tests migrated to `@Autowired Neo4jContentPersistenceAdapter`; `PromptRepositoryPort`, `SemanticSearchPort`, `EmbeddingPort`, `TemporalEdgePort` all gone in earlier commits
-- **M4 complete** — Spring AI upgraded to 1.1.4 (BOM bump); `EmbeddingModelAdapter` replaced with Spring AI `EmbeddingModel` bean; `TriadXmlParser` replaced with `.entity(Record.class)` structured output; package structure flattened from ~44 layered packages to 12 feature packages
+- **M4 complete** — Spring AI upgraded to 1.1.4 (BOM bump); `EmbeddingModelAdapter` replaced with Spring AI `EmbeddingModel`; `TriadXmlParser` replaced with `.entity(Record.class)` structured output; package structure flattened from layered packages to 10 top-level feature packages in `lorevault-api`
 - **Spoiler-aware search shipped** — Per-request `SpoilerVisibility` DTO accepted on `/api/query/ask/vector` and `/api/query/ask/rag`; `ANY()` Cypher predicate filters chunks beyond the reader's per-series read-through position; `UnconfiguredSeriesPolicy` defaults to `HIDE`; oversample multiplier configurable in `application.yml`; documented in ADR 006
 
 ## What Is Next

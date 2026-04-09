@@ -19,7 +19,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 @ConditionalOnProperty(name = "lorevault.search.provider", havingValue = "neo4j", matchIfMissing = true)
-public class Neo4jSemanticSearchAdapter {
+public class Neo4jSemanticSearch {
 
     public record SearchResult(
             UUID chunkId,

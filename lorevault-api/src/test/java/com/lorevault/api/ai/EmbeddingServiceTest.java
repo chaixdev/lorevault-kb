@@ -2,8 +2,8 @@ package com.lorevault.api.ai;
 
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Chunk;
-import com.lorevault.api.testutil.fakes.FakeContentPersistencePort;
-import com.lorevault.api.testutil.fakes.FakeEmbeddingPort;
+import com.lorevault.api.testutil.fakes.FakeContentRepositories;
+import com.lorevault.api.testutil.fakes.FakeEmbeddingModel;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -24,8 +24,8 @@ class EmbeddingServiceTest {
     @Test
     @DisplayName("should return 0 when chapter has no chunks")
     void shouldReturnZeroWhenNoChunks() {
-        FakeContentPersistencePort repo = new FakeContentPersistencePort();
-        var embed = new FakeEmbeddingPort("fake-model", 8);
+        FakeContentRepositories repo = new FakeContentRepositories();
+        var embed = new FakeEmbeddingModel("fake-model", 8);
         var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);
@@ -44,8 +44,8 @@ class EmbeddingServiceTest {
     @Test
     @DisplayName("should embed only chunks needing embedding and skip up-to-date ones")
     void shouldEmbedOnlyWhenNeeded() throws Exception {
-        FakeContentPersistencePort repo = new FakeContentPersistencePort();
-        var embed = new FakeEmbeddingPort("fake-model", 8);
+        FakeContentRepositories repo = new FakeContentRepositories();
+        var embed = new FakeEmbeddingModel("fake-model", 8);
         var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);

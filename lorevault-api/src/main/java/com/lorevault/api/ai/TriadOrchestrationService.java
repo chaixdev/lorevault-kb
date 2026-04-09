@@ -5,7 +5,6 @@ import com.lorevault.api.content.Scene;
 import com.lorevault.api.ingestion.IngestionFailure;
 import com.lorevault.api.ingestion.IngestionStatus;
 import com.lorevault.api.timeline.TriadRelationInverter;
-import com.lorevault.api.ai.PromptRepositoryAdapter;
 import com.lorevault.api.ingestion.IngestionJobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +45,7 @@ public class TriadOrchestrationService {
 
     private final TriadBuilderService triadBuilder;
     private final SceneDetectionClient sceneDetectionClient;
-    private final PromptRepositoryAdapter promptRepository;
+    private final PromptRepository promptRepository;
     private final IngestionJobService ingestionJobService;
 
     /**

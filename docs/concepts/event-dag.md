@@ -3,9 +3,10 @@
 **Status:** Conceptual  
 **Scope:** Durable temporal model, not a full description of current implementation  
 **Primary sources:**
-- `../archive/versions/v0.9.0/research/Narrative event DAG.md`
-- `../archive/versions/v0.9.0/research/event-model.md`
-- `../adr/004-keep-the-event-driven-ingestion-pipeline.md`
+- [Narrative event DAG.md](Narrative%20event%20DAG.md) — full triad-only, gazetteer-aware specification
+- [event-model.md](event-model.md) — Event/Scene entity subtype definition
+- [core-domain-model-and-graph-process-restructured.md](core-domain-model-and-graph-process-restructured.md) — temporal modeling within the broader domain model
+- [`../adr/004-keep-the-event-driven-ingestion-pipeline.md`](../adr/004-keep-the-event-driven-ingestion-pipeline.md)
 
 ## Why This Exists
 
@@ -26,26 +27,9 @@ Key principles from the research work:
 - confidence and evidence travel with temporal edges
 - retrieval-time reasoning is preferable to graph blow-up
 
-## Conceptual Shape
+For the full specification — including the data model (Scene, Event, Landmark, Arc), the end-to-end triad pipeline, edge semantics, sparsity rules, and retrieval-time reasoning — see [Narrative event DAG.md](Narrative%20event%20DAG.md).
 
-The research model distinguishes between:
-
-- **scenes** — narrative units in reading order
-- **events** — canonical happenings that may be scene-sized or larger/smaller
-- **landmarks** — explicit anchors such as dates or major canon moments
-- **arcs** — larger narrative containers
-
-Temporal edges use Allen-style interval semantics such as:
-
-- `before`
-- `after`
-- `meets`
-- `overlaps`
-- `during`
-- `contains`
-- `equals`
-
-The governing constraint is sparsity: store evidence-backed local relationships and defer longer-range inference to query time.
+For the concrete Event/Scene entity fields, temporal link structure, certainty levels, and weight mappings, see [event-model.md](event-model.md).
 
 ## Why It Matters
 

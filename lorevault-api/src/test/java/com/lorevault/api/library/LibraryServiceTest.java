@@ -4,7 +4,7 @@ import com.lorevault.api.content.Universe;
 import com.lorevault.api.content.Series;
 import com.lorevault.api.content.Book;
 import com.lorevault.api.support.*;
-import com.lorevault.api.testutil.fakes.FakeContentPersistencePort;
+import com.lorevault.api.testutil.fakes.FakeContentRepositories;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -19,13 +19,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("LibraryService")
 class LibraryServiceTest {
 
-    private FakeContentPersistencePort contentPersistencePort;
+    private FakeContentRepositories contentPersistence;
     private LibraryService catalogService;
 
     @BeforeEach
     void setUp() {
-        contentPersistencePort = new FakeContentPersistencePort();
-        catalogService = new LibraryService(contentPersistencePort.asUniverseRepo(), contentPersistencePort.asSeriesRepo(), contentPersistencePort.asBookRepo());
+        contentPersistence = new FakeContentRepositories();
+        catalogService = new LibraryService(contentPersistence.asUniverseRepo(), contentPersistence.asSeriesRepo(), contentPersistence.asBookRepo());
     }
 
     @DisplayName("Universe Creation")
@@ -46,14 +46,14 @@ class LibraryServiceTest {
         assertThat(response.getUpdatedAt()).isNotNull();
         
         // Verify stored in persistence
-        assertThat(contentPersistencePort.findUniverseById(response.getUniverseId())).isPresent();
+        assertThat(contentPersistence.findUniverseById(response.getUniverseId())).isPresent();
     }
 
     @Test
     void shouldReturnExistingUniverseWhenNameAlreadyExists() {
         // Given
         Universe existingUniverse = Universe.ofName("Cosmere");
-        contentPersistencePort.createUniverse(existingUniverse);
+        contentPersistence.createUniverse(existingUniverse);
         
         CreateUniverseRequest request = new CreateUniverseRequest("Cosmere");
 
@@ -96,7 +96,7 @@ class LibraryServiceTest {
     void shouldCreateNewSeriesInUniverse() {
         // Given
         Universe universe = Universe.ofName("Cosmere");
-        contentPersistencePort.createUniverse(universe);
+        contentPersistence.createUniverse(universe);
         
         CreateSeriesRequest request = new CreateSeriesRequest(universe.getId(), "Stormlight Archive");
 
@@ -113,17 +113,17 @@ class LibraryServiceTest {
         assertThat(response.getUpdatedAt()).isNotNull();
         
         // Verify stored in persistence
-        assertThat(contentPersistencePort.findSeriesById(response.getSeriesId())).isPresent();
+        assertThat(contentPersistence.findSeriesById(response.getSeriesId())).isPresent();
     }
 
     @Test
     void shouldReturnExistingSeriesWhenNameAlreadyExistsInUniverse() {
         // Given
         Universe universe = Universe.ofName("Cosmere");
-        contentPersistencePort.createUniverse(universe);
+        contentPersistence.createUniverse(universe);
         
         Series existingSeries = Series.create(universe.getId(), "Cosmere", "Stormlight Archive");
-        contentPersistencePort.createSeries(existingSeries);
+        contentPersistence.createSeries(existingSeries);
         
         CreateSeriesRequest request = new CreateSeriesRequest(universe.getId(), "Stormlight Archive");
 
@@ -142,11 +142,11 @@ class LibraryServiceTest {
         // Given
         Universe cosmere = Universe.ofName("Cosmere");
         Universe marvel = Universe.ofName("Marvel");
-        contentPersistencePort.createUniverse(cosmere);
-        contentPersistencePort.createUniverse(marvel);
+        contentPersistence.createUniverse(cosmere);
+        contentPersistence.createUniverse(marvel);
         
         Series cosmereSeries = Series.create(cosmere.getId(), "Cosmere", "Foundation");
-        contentPersistencePort.createSeries(cosmereSeries);
+        contentPersistence.createSeries(cosmereSeries);
         
         CreateSeriesRequest request = new CreateSeriesRequest(marvel.getId(), "Foundation");
 
@@ -178,7 +178,7 @@ class LibraryServiceTest {
     void shouldCreateStandaloneBookInUniverse() {
         // Given
         Universe universe = Universe.ofName("Cosmere");
-        contentPersistencePort.createUniverse(universe);
+        contentPersistence.createUniverse(universe);
         
         CreateBookRequest request = CreateBookRequest.standalone(universe.getId(), "Warbreaker");
 
@@ -196,7 +196,7 @@ class LibraryServiceTest {
         assertThat(response.isCreated()).isTrue();
         
         // Verify stored in persistence
-        assertThat(contentPersistencePort.findBookById(response.getBookId())).isPresent();
+        assertThat(contentPersistence.findBookById(response.getBookId())).isPresent();
     }
 
     @Test
@@ -204,8 +204,8 @@ class LibraryServiceTest {
         // Given
         Universe universe = Universe.ofName("Cosmere");
         Series series = Series.create(universe.getId(), "Cosmere", "Stormlight Archive");
-        contentPersistencePort.createUniverse(universe);
-        contentPersistencePort.createSeries(series);
+        contentPersistence.createUniverse(universe);
+        contentPersistence.createSeries(series);
         
         CreateBookRequest request = CreateBookRequest.inSeries(universe.getId(), series.getId(), "The Way of Kings", 1);
 
@@ -228,11 +228,11 @@ class LibraryServiceTest {
         // Given
         Universe universe = Universe.ofName("Cosmere");
         Series series = Series.create(universe.getId(), "Cosmere", "Stormlight Archive");
-        contentPersistencePort.createUniverse(universe);
-        contentPersistencePort.createSeries(series);
+        contentPersistence.createUniverse(universe);
+        contentPersistence.createSeries(series);
         
         Book existingBook = Book.createInSeries(universe.getId(), "Cosmere", series.getId(), "Stormlight Archive", 1, "The Way of Kings");
-        contentPersistencePort.createBook(existingBook);
+        contentPersistence.createBook(existingBook);
         
         CreateBookRequest request = CreateBookRequest.inSeries(universe.getId(), series.getId(), "The Way of Kings", 1);
 
@@ -250,12 +250,12 @@ class LibraryServiceTest {
         Universe universe = Universe.ofName("Cosmere");
         Series stormlight = Series.create(universe.getId(), "Cosmere", "Stormlight Archive");
         Series mistborn = Series.create(universe.getId(), "Cosmere", "Mistborn");
-        contentPersistencePort.createUniverse(universe);
-        contentPersistencePort.createSeries(stormlight);
-        contentPersistencePort.createSeries(mistborn);
+        contentPersistence.createUniverse(universe);
+        contentPersistence.createSeries(stormlight);
+        contentPersistence.createSeries(mistborn);
         
         Book stormlightBook = Book.createInSeries(universe.getId(), "Cosmere", stormlight.getId(), "Stormlight Archive", 1, "Foundation");
-        contentPersistencePort.createBook(stormlightBook);
+        contentPersistence.createBook(stormlightBook);
         
         CreateBookRequest request = CreateBookRequest.inSeries(universe.getId(), mistborn.getId(), "Foundation", 1);
 
@@ -285,7 +285,7 @@ class LibraryServiceTest {
     void shouldThrowExceptionWhenSeriesNotFound() {
         // Given
         Universe universe = Universe.ofName("Cosmere");
-        contentPersistencePort.createUniverse(universe);
+        contentPersistence.createUniverse(universe);
         UUID nonExistentSeriesId = UUID.randomUUID();
         
         CreateBookRequest request = CreateBookRequest.inSeries(universe.getId(), nonExistentSeriesId, "Some Book", 1);
@@ -302,11 +302,11 @@ class LibraryServiceTest {
         // Given
         Universe cosmere = Universe.ofName("Cosmere");
         Universe marvel = Universe.ofName("Marvel");
-        contentPersistencePort.createUniverse(cosmere);
-        contentPersistencePort.createUniverse(marvel);
+        contentPersistence.createUniverse(cosmere);
+        contentPersistence.createUniverse(marvel);
         
         Series marvelSeries = Series.create(marvel.getId(), "Marvel", "X-Men");
-        contentPersistencePort.createSeries(marvelSeries);
+        contentPersistence.createSeries(marvelSeries);
         
         CreateBookRequest request = CreateBookRequest.inSeries(cosmere.getId(), marvelSeries.getId(), "Some Book", 1);
 
@@ -321,7 +321,7 @@ class LibraryServiceTest {
     void shouldThrowExceptionWhenSeriesNameIsBlank() {
         // Given
         Universe universe = Universe.ofName("Cosmere");
-        contentPersistencePort.createUniverse(universe);
+        contentPersistence.createUniverse(universe);
         
         CreateSeriesRequest request = new CreateSeriesRequest(universe.getId(), "   ");
 
@@ -335,7 +335,7 @@ class LibraryServiceTest {
     void shouldThrowExceptionWhenBookTitleIsBlank() {
         // Given
         Universe universe = Universe.ofName("Cosmere");
-        contentPersistencePort.createUniverse(universe);
+        contentPersistence.createUniverse(universe);
         
         CreateBookRequest request = CreateBookRequest.standalone(universe.getId(), "   ");
 

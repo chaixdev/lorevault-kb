@@ -25,5 +25,8 @@ When a brainstorm becomes stable enough, either:
 
 ## Current Brainstorms
 
+- [Consolidated advisory — April 2026](consolidated-advisory-april-2026.md) — centralized actionable advice from multi-agent review: staging, kill list, implementation findings, warnings, escalation triggers, and open questions
+- [Conceptual model critique — April 2026](concept-model-critique-april-2026.md) — rigorous review of the pre-implementation concept model (entity types, claims, event DAG, confidence, catalog, CDSL) with kill list, staging recommendation, and implementation gaps
+- [Oracle raw analysis](oracle_raw.md) — unedited Oracle reasoning from the deep architectural review
 - [Pragmatic modulith plan](pragmatic-modulith-plan.md)
 - [Event-driven architecture plan](event-driven-architecture-plan.md)

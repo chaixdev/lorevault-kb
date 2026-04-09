@@ -3,8 +3,8 @@ package com.lorevault.api.search;
 import com.lorevault.api.content.Chunk;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
-import com.lorevault.api.search.Neo4jSemanticSearchAdapter.SearchFilters;
-import com.lorevault.api.search.Neo4jSemanticSearchAdapter.SearchResult;
+import com.lorevault.api.search.Neo4jSemanticSearch.SearchFilters;
+import com.lorevault.api.search.Neo4jSemanticSearch.SearchResult;
 import com.lorevault.api.support.SeriesProgress;
 import com.lorevault.api.support.SpoilerVisibility;
 import com.lorevault.api.support.UnconfiguredSeriesPolicy;
@@ -29,13 +29,13 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Integration test for Neo4jSemanticSearchAdapter.
+ * Integration test for Neo4jSemanticSearch.
  * Tests vector index creation, search ranking, and edge cases.
  */
 @SpringBootTest
 @Testcontainers
 @Tag("integration")
-class Neo4jSemanticSearchAdapterIntegrationTest {
+class Neo4jSemanticSearchIntegrationTest {
 
     @Container
     @SuppressWarnings("resource") // Testcontainers manages lifecycle
@@ -47,12 +47,12 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         registry.add("spring.neo4j.uri", neo4j::getBoltUrl);
         registry.add("spring.neo4j.authentication.username", () -> "neo4j");
         registry.add("spring.neo4j.authentication.password", () -> "testpassword");
-        // Enable Neo4j semantic search adapter
+        // Enable Neo4j-backed semantic search
         registry.add("lorevault.search.provider", () -> "neo4j");
     }
 
     @Autowired
-    private Neo4jSemanticSearchAdapter semanticSearchPort;
+    private Neo4jSemanticSearch semanticSearch;
 
     @Autowired
     private ChunkGraphRepository chunkRepository;
@@ -83,7 +83,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         createChunkWithEmbedding(chunkId3, "Third chunk text", new double[]{0.0, 1.0, 0.0}); // Orthogonal
         
         // When: Performing semantic search
-        List<SearchResult> results = semanticSearchPort.search(queryEmbedding, 3, SearchFilters.empty());
+        List<SearchResult> results = semanticSearch.search(queryEmbedding, 3, SearchFilters.empty());
         
         // Then: Results ranked by similarity score (descending)
         assertThat(results).hasSize(3);
@@ -106,7 +106,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         createChunkWithEmbedding(UUID.randomUUID(), "Chunk 4", new double[]{0.4, 0.6, 0.0});
         
         // When: Requesting only top 2
-        List<SearchResult> results = semanticSearchPort.search(queryEmbedding, 2, SearchFilters.empty());
+        List<SearchResult> results = semanticSearch.search(queryEmbedding, 2, SearchFilters.empty());
         
         // Then: Only 2 results returned
         assertThat(results).hasSize(2);
@@ -118,7 +118,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         double[] queryEmbedding = {1.0, 0.0, 0.0};
         
         // When: Performing search
-        List<SearchResult> results = semanticSearchPort.search(queryEmbedding, 5, SearchFilters.empty());
+        List<SearchResult> results = semanticSearch.search(queryEmbedding, 5, SearchFilters.empty());
         
         // Then: Empty results
         assertThat(results).isEmpty();
@@ -136,7 +136,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         double[] queryEmbedding = {1.0, 0.0, 0.0};
         
         // When: Performing search
-        List<SearchResult> results = semanticSearchPort.search(queryEmbedding, 5, SearchFilters.empty());
+        List<SearchResult> results = semanticSearch.search(queryEmbedding, 5, SearchFilters.empty());
         
         // Then: No results (chunks without embeddings ignored)
         assertThat(results).isEmpty();
@@ -148,7 +148,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         createChunkWithEmbedding(UUID.randomUUID(), "Test chunk", new double[]{1.0, 0.0, 0.0});
         
         // When/Then: Service is available
-        assertThat(semanticSearchPort.isAvailable()).isTrue();
+        assertThat(semanticSearch.isAvailable()).isTrue();
     }
 
     @Test
@@ -156,7 +156,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         // Given: No chunks with embeddings
         
         // When/Then: Service is not available
-        assertThat(semanticSearchPort.isAvailable()).isFalse();
+        assertThat(semanticSearch.isAvailable()).isFalse();
     }
 
     @Test
@@ -169,7 +169,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         createChunkWithEmbedding(chunkId, "Opposite chunk", chunkEmbedding);
         
         // When: Performing search
-        List<SearchResult> results = semanticSearchPort.search(queryEmbedding, 5, SearchFilters.empty());
+        List<SearchResult> results = semanticSearch.search(queryEmbedding, 5, SearchFilters.empty());
         
         // Then: Results filtered out due to negative similarity
         assertThat(results).isEmpty();
@@ -188,7 +188,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         createChunkLinkedToChapter(chunkB, "Other universe chunk", new double[]{0.9, 0.1, 0.0},
                 "OtherUniverse", null, null, null);
 
-        List<SearchResult> results = semanticSearchPort.search(
+        List<SearchResult> results = semanticSearch.search(
                 queryEmbedding, 5, new SearchFilters("Cosmere", null, null, null));
 
         assertThat(results).hasSize(1);
@@ -206,7 +206,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         createChunkLinkedToChapter(chunkBook2, "Book 2 chunk", new double[]{0.9, 0.1, 0.0},
                 "Cosmere", "Stormlight", 2, null);
 
-        List<SearchResult> results = semanticSearchPort.search(
+        List<SearchResult> results = semanticSearch.search(
                 queryEmbedding, 5, new SearchFilters("Cosmere", "Stormlight", 1, null));
 
         assertThat(results).hasSize(1);
@@ -224,7 +224,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         createChunkLinkedToChapter(chunkCh2, "Chapter 2 chunk", new double[]{0.9, 0.1, 0.0},
                 "Cosmere", "Stormlight", 1, 2);
 
-        List<SearchResult> results = semanticSearchPort.search(
+        List<SearchResult> results = semanticSearch.search(
                 queryEmbedding, 5, new SearchFilters("Cosmere", "Stormlight", 1, 1));
 
         assertThat(results).hasSize(1);
@@ -242,7 +242,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         createChunkLinkedToChapter(chunkB, "Chunk B", new double[]{0.8, 0.2, 0.0},
                 "UniverseB", "SeriesB", 2, 3);
 
-        List<SearchResult> results = semanticSearchPort.search(
+        List<SearchResult> results = semanticSearch.search(
                 queryEmbedding, 5, SearchFilters.empty());
 
         assertThat(results).hasSize(2);
@@ -271,7 +271,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         visibility.setUniverse("Cosmere");
         visibility.setSeriesProgress(List.of(progress));
 
-        List<SearchResult> results = semanticSearchPort.search(
+        List<SearchResult> results = semanticSearch.search(
                 queryEmbedding, 5, SearchFilters.empty(), visibility);
 
         assertThat(results).hasSize(2);
@@ -302,7 +302,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         visibility.setUniverse("Cosmere");
         visibility.setSeriesProgress(List.of(progress));
 
-        List<SearchResult> results = semanticSearchPort.search(
+        List<SearchResult> results = semanticSearch.search(
                 queryEmbedding, 5, SearchFilters.empty(), visibility);
 
         assertThat(results).hasSize(2);
@@ -339,7 +339,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         visibility.setUniverse("Cosmere");
         visibility.setSeriesProgress(List.of(saProgress, mbProgress));
 
-        List<SearchResult> results = semanticSearchPort.search(
+        List<SearchResult> results = semanticSearch.search(
                 queryEmbedding, 5, SearchFilters.empty(), visibility);
 
         assertThat(results).hasSize(2);
@@ -367,7 +367,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         visibility.setSeriesProgress(List.of(progress));
         visibility.setUnconfiguredSeriesPolicy(UnconfiguredSeriesPolicy.HIDE);
 
-        List<SearchResult> results = semanticSearchPort.search(
+        List<SearchResult> results = semanticSearch.search(
                 queryEmbedding, 5, SearchFilters.empty(), visibility);
 
         assertThat(results).hasSize(1);
@@ -394,7 +394,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         visibility.setSeriesProgress(List.of(progress));
         visibility.setUnconfiguredSeriesPolicy(UnconfiguredSeriesPolicy.SHOW);
 
-        List<SearchResult> results = semanticSearchPort.search(
+        List<SearchResult> results = semanticSearch.search(
                 queryEmbedding, 5, SearchFilters.empty(), visibility);
 
         assertThat(results).hasSize(2);
@@ -413,7 +413,7 @@ class Neo4jSemanticSearchAdapterIntegrationTest {
         createChunkLinkedToChapter(chunk2, "Series B book 99", new double[]{0.9, 0.1, 0.0},
                 "Cosmere", "Mistborn", 99, 99);
 
-        List<SearchResult> results = semanticSearchPort.search(
+        List<SearchResult> results = semanticSearch.search(
                 queryEmbedding, 5, SearchFilters.empty(), null);
 
         assertThat(results).hasSize(2);

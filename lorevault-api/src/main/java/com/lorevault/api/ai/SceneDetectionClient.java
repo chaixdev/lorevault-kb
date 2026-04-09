@@ -1,7 +1,6 @@
 package com.lorevault.api.ai;
 
 import com.lorevault.api.config.LoreVaultPromptProperties;
-import com.lorevault.api.ai.PromptRepositoryAdapter;
 import com.lorevault.api.ingestion.LlmCallLoggingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -26,7 +25,7 @@ public class SceneDetectionClient {
     
     private final ChatClient nlpSmallChatClient;
     private final ChatClient nlpBigChatClient;
-    private final PromptRepositoryAdapter promptRepository;
+    private final PromptRepository promptRepository;
     private final LoreVaultPromptProperties promptProperties;
     private final LlmCallLoggingService llmLog;
     
@@ -41,7 +40,7 @@ public class SceneDetectionClient {
     public SceneDetectionClient(
             @Qualifier("nlpSmall") ChatClient nlpSmallChatClient,
             @Qualifier("nlpBig") ChatClient nlpBigChatClient,
-            PromptRepositoryAdapter promptRepository,
+            PromptRepository promptRepository,
             LoreVaultPromptProperties promptProperties,
             @Qualifier("llmRetryTemplate") RetryTemplate retryTemplate,
             LlmCallLoggingService llmLog) {

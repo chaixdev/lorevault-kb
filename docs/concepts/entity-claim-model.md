@@ -3,8 +3,10 @@
 **Status:** Conceptual  
 **Scope:** Durable conceptual model, not current implementation truth  
 **Primary sources:**
-- `../archive/versions/v0.8.0/research/Entity-Event-Claim-model.md`
-- `../development/current/data-model/schemas/claims.schema.json`
+- [Entity-Event-Claim-model.md](Entity-Event-Claim-model.md) — four-bin claim model, vocabulary catalogs, confidence formula, projection edges, output schemas, and the Claim DSL (CDSL)
+- [model_and_CDSL.md](model_and_CDSL.md) — consolidated playbook covering the same model and CDSL from a slightly different angle
+- [core-domain-model-and-graph-process-restructured.md](core-domain-model-and-graph-process-restructured.md) — end-to-end domain model including entity taxonomy, ingestion pipeline, claim extraction, confidence aggregation, and spoiler-aware querying
+- [`../development/current/data-model/schemas/claims.schema.json`](../development/current/data-model/schemas/claims.schema.json)
 
 ## Why This Exists
 
@@ -24,34 +26,13 @@ Separate:
 
 This avoids forcing a single truth too early, which matters in narrative text with unreliable viewpoints, gradual revelation, and conflicting testimony.
 
-## Conceptual Shape
-
-### Entities
-
-Canonical nodes representing people, groups, objects, places, concepts, or events.
-
-### Claims
-
-Evidence-bearing assertions attached to source context, confidence, and publication coordinates.
-
-The research model organizes claims into a small number of bins:
-
-- **ascription / attribute** — subject has or is something
-- **relation** — subject relates to another entity via a relation type
-- **comparison** — subject compares to another target on a dimension
-- **ability** — subject can or cannot perform an action
-
-The current JSON schema under `development/current/data-model/schemas/claims.schema.json` currently formalizes three of these claim types:
-
-- `ascription`
-- `relation`
-- `comparison`
+For the full data model — including claim bins, vocabulary catalogs, ingestion pipeline, confidence aggregation, projection edges, output schemas, the CDSL grammar, and worked examples — see the primary source documents listed above.
 
 ## Why It Matters
 
 This concept supports several long-term goals:
 
-- preserving provenance instead of collapsing everything into one “fact”
+- preserving provenance instead of collapsing everything into one "fact"
 - handling uncertainty and contradiction explicitly
 - making spoiler-aware gating possible at the evidence layer
 - allowing offline aggregation before graph projection

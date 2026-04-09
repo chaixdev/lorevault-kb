@@ -9,16 +9,16 @@ import org.springframework.ai.embedding.EmbeddingResponse;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FakeEmbeddingPort implements EmbeddingModel {
+public class FakeEmbeddingModel implements EmbeddingModel {
 
     private final String modelId;
     private final int dimension;
 
-    public FakeEmbeddingPort() {
+    public FakeEmbeddingModel() {
         this("fake-embedding-1", 128);
     }
 
-    public FakeEmbeddingPort(String modelId, int dimension) {
+    public FakeEmbeddingModel(String modelId, int dimension) {
         this.modelId = modelId;
         this.dimension = dimension;
     }

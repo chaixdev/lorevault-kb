@@ -5,7 +5,7 @@ import com.lorevault.api.search.AskDtos;
 import com.lorevault.api.search.SemanticSearchDtos;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
-import com.lorevault.api.ai.PromptRepositoryAdapter;
+import com.lorevault.api.ai.PromptRepository;
 import com.lorevault.api.search.SemanticSearchService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -37,7 +37,7 @@ class RagServiceTest {
     private SemanticSearchService semanticSearchService;
 
     @Mock
-    private PromptRepositoryAdapter mockPromptRepository;
+    private PromptRepository mockPromptRepository;
 
     @Mock
     private ChunkGraphRepository chunkRepo;

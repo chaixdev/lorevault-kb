@@ -1,8 +1,7 @@
 package com.lorevault.api.search;
 
-import com.lorevault.api.search.Neo4jSemanticSearchAdapter;
-import com.lorevault.api.search.Neo4jSemanticSearchAdapter.SearchFilters;
-import com.lorevault.api.search.Neo4jSemanticSearchAdapter.SearchResult;
+import com.lorevault.api.search.Neo4jSemanticSearch.SearchFilters;
+import com.lorevault.api.search.Neo4jSemanticSearch.SearchResult;
 import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchRequest;
 import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchResponse;
 import com.lorevault.api.search.SemanticSearchDtos.SearchResultDto;
@@ -26,7 +25,7 @@ import java.util.List;
 public class SemanticSearchService {
 
     private final EmbeddingModel embeddingModel;
-    private final Neo4jSemanticSearchAdapter semanticSearchPort;
+    private final Neo4jSemanticSearch semanticSearch;
 
     /**
      * Perform semantic search for the given query.
@@ -49,7 +48,7 @@ public class SemanticSearchService {
         SearchFilters searchFilters = convertFilters(request.getFilters());
 
         // Perform search
-        List<SearchResult> searchResults = semanticSearchPort.search(
+        List<SearchResult> searchResults = semanticSearch.search(
             queryEmbedding,
             request.getTopK(),
             searchFilters,
@@ -82,7 +81,7 @@ public class SemanticSearchService {
      * @return true if search can be performed, false otherwise
      */
     public boolean isAvailable() {
-        return semanticSearchPort.isAvailable();
+        return semanticSearch.isAvailable();
     }
 
     private SearchFilters convertFilters(SemanticSearchFilters filters) {
