@@ -4,10 +4,10 @@ This directory holds historical, superseded, completed, or exploratory documenta
 
 ## Rules
 
-- Prefer `docs/PROJECT-STATUS.md`, `docs/adr/`, `docs/patterns/`, `docs/architecture/`, and `docs/development/current/` for current understanding
+- Prefer `docs/PROJECT-STATUS.md`, `docs/adr/`, `docs/patterns/`, `docs/concepts/`, `docs/rules/`, `docs/architecture/`, and `docs/development/current/` for current understanding
 - Preserve historical material here when it still has audit or archaeology value
 - Delete empty or duplicate files instead of archiving them
 
 ## Migration Status
 
-Archive migration is in progress. Some historical material still remains under `docs/development/refactor/` and `docs/development/versions/` until it is moved.
+Archive cleanup is still in progress. Some historical material still remains under `docs/development/refactor/` and `docs/development/versions/` until it is moved or intentionally left as redirect-only scaffolding.

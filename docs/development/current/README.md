@@ -15,3 +15,6 @@ This area contains the living documentation for the current system state.
 - Keep this directory aligned with the implemented system (not plans)
 - Move historical milestone-specific content into `../../archive/` as the documentation refactor progresses
 - Update references in the root `docs/README.md` when paths change
+- Promote durable current mechanisms into `../../patterns/` once their shape is stable and broadly useful
+- Promote foundational but not fully implemented abstractions into `../../concepts/`
+- Promote contributor conventions into `../../rules/`

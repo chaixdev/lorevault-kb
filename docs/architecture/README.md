@@ -70,6 +70,8 @@ Details the deployment strategy, containerization approach, and infrastructure r
 - [API Specifications](../api/) - REST API documentation and collections
 - [Data Model](../development/current/data-model/) - Neo4j schema and entity relationships
 - [Process Specifications](../development/current/processes/) - Business workflow documentation
+- [Concepts](../concepts/README.md) - Durable conceptual models that influence architecture without claiming full implementation parity
+- [Rules](../rules/README.md) - Contributor and documentation guidance
 
 ## 🔧 Update Instructions
 

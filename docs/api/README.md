@@ -92,5 +92,7 @@ These guides focus on **consistency principles** for adding new endpoints rather
 - **Data models**: Reference `../development/current/data-model/` for entity specifications
 - **Processes**: Reference `../development/current/processes/` for workflow documentation  
 - **Architecture**: Reference `../architecture/` for system design
+- **Conceptual models**: Reference `../concepts/` when API behavior depends on preserved domain concepts rather than current implementation details
+- **Contributor guidance**: Reference `../rules/` for durable conventions rather than restating repo-wide rules locally
 
 This approach ensures API documentation remains accurate, accessible, and maintainable while reducing manual overhead.

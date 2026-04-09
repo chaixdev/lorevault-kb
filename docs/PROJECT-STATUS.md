@@ -22,7 +22,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Service consolidation plan (Plan A) completed and merged
 - Event-driven ingestion refactor (Plan B) completed and merged
 - Pragmatic modulith M1 merged and pushed to `origin/main`
-- Documentation migration completed
+- Documentation taxonomy migration in progress
 - **M2 complete** — All 6 content domain entities (`Universe`, `Series`, `Book`, `Chapter`, `Scene`, `Chunk`) annotated `@Node`; mirror `*Node` classes deleted; `Neo4jMapper` deleted; repositories typed to domain entities; `Neo4jContentPersistenceAdapter` calls repositories directly
 - **M3 complete** — `ContentPersistencePort` deleted; `EmbeddingException` deleted; `ContentPersistencePortTCK` deleted; all 7 integration tests migrated to `@Autowired Neo4jContentPersistenceAdapter`; `PromptRepositoryPort`, `SemanticSearchPort`, `EmbeddingPort`, `TemporalEdgePort` all gone in earlier commits
 - **M4 complete** — Spring AI upgraded to 1.1.4 (BOM bump); `EmbeddingModelAdapter` replaced with Spring AI `EmbeddingModel` bean; `TriadXmlParser` replaced with `.entity(Record.class)` structured output; package structure flattened from ~44 layered packages to 12 feature packages
@@ -58,8 +58,10 @@ All 4 decisions from the original plan are resolved. No open decisions blocking 
 - `docs/development/current/m2-m4-implementation-plan.md`
 - `docs/patterns/README.md`
 - `docs/adr/README.md`
+- `docs/concepts/README.md`
+- `docs/rules/README.md`
 - `docs/development/research/spring-ai-keep-vs-drop-analysis.md`
 
 ## Historical / Transitional Notes
 
-Documentation migration is complete. All historical material (refactor plans, version-scoped tickets, research) has been moved to `docs/archive/`. Version directories under `docs/development/versions/` retain only README redirect stubs.
+Documentation taxonomy cleanup is in progress. Historical material largely lives in `docs/archive/`, but canonical guidance is still being promoted into `docs/adr/`, `docs/patterns/`, `docs/concepts/`, and `docs/rules/`.

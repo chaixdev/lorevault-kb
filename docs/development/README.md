@@ -29,4 +29,7 @@ These directories are now thin transition layers. Historical content has largely
 - keep durable research under `research/`
 - avoid creating new version-scoped planning trees unless explicitly needed
 - prefer `docs/adr/` for durable architectural decisions
-- prefer `docs/patterns/` for reusable implementation guidance
+- prefer `docs/patterns/` for reusable present-state mechanism guidance
+- prefer `docs/concepts/` for durable conceptual models that are not honest as current implementation docs
+- prefer `docs/rules/` for contributor guidance and durable conventions
+- prefer `docs/brainstorm/` for future-facing proposals and exploratory sketches

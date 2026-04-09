@@ -1,8 +1,33 @@
 # Architecture Decisions
 
-This directory contains the current architectural decisions that should guide implementation.
+This directory contains accepted architectural decisions.
 
-These are concise, durable decisions.
+ADRs document moments where LoreVault reached a real fork in the road, chose one path, and wants to preserve the reasoning behind that choice.
+
+## ADRs Are For
+
+- recording decisions that were actually made
+- preserving why one option was chosen over viable alternatives
+- documenting lasting architectural constraints and trade-offs
+- helping future contributors understand historical context without re-litigating settled choices
+
+## ADRs Are Not For
+
+- open-ended future guidance
+- implementation walkthroughs
+- speculative design sketches
+- current mechanism explanations that belong in `../patterns/`
+
+## Suggested Shape
+
+Each ADR should be concise and answer:
+
+1. What decision was made?
+2. What options were considered?
+3. Why was this option chosen?
+4. What implications follow from the decision?
+
+If the decision is later replaced, the ADR should remain as history and point to the newer record.
 
 ## Index
 

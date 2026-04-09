@@ -1,15 +1,38 @@
 # LLM Structured Output Pattern
 
-**Status:** Transitional
+**Status:** Established
 
-LoreVault currently uses XML-based structured output for scene-analysis flows, but the intended durable pattern is typed JSON structured output.
+LoreVault prefers typed structured output over ad hoc parsing or schema-light free text.
 
-Current direction:
+## Current Direction
 
 - keep prompts explicit and constrained
 - prefer typed output models over ad hoc parsing
-- remove XML-specific cleanup once JSON schema mode is adopted
+- let the application bind structured responses directly into typed records where practical
+- keep prompts and structured output contracts aligned with observability and retry boundaries
+
+## Why This Pattern Exists
+
+Structured output reduces downstream cleanup, makes retries more predictable, and gives the codebase a clearer contract between prompt design and persistence logic.
+
+## Current Reality
+
+LoreVault has moved away from the older XML-heavy direction in its active architecture work.
+
+The durable pattern is:
+
+- explicit prompts
+- typed response binding
+- fewer bespoke parser layers
+- provider usage that stays compatible with the current Spring AI direction
+
+## Pattern Boundaries
+
+This pattern is about how LoreVault structures LLM responses.
+
+It is not itself the full orchestration story; triad orchestration, status emission, and persistence observability are related but separate mechanisms.
 
 Primary references:
-- `docs/development/research/spring-ai-keep-vs-drop-analysis.md`
-- `docs/adr/005-move-structured-output-from-xml-to-json.md`
+- `../development/research/spring-ai-keep-vs-drop-analysis.md`
+- `../adr/005-move-structured-output-from-xml-to-json.md`
+- `../development/current/processes/triad-orchestration.md`
