@@ -20,6 +20,7 @@ public enum IngestionStatus {
      * The local SLM is actively analyzing the text to identify semantic scene boundaries
      * @deprecated Use SCENE_SEGMENTATION for new code. Kept for backward compatibility.
      */
+    @Deprecated
     DETECTING_SCENES,
     
     /**

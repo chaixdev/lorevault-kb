@@ -68,8 +68,7 @@ class SceneEventLabelAndTemporalPropertiesIntegrationTest {
                 .one()
                 .map(row -> row.get("labels"))
                 .filter(List.class::isInstance)
-                .map(List.class::cast)
-                .map(value -> value.stream().map(String::valueOf).toList())
+                .map(value -> ((List<?>) value).stream().map(String::valueOf).toList())
                 .orElse(List.of());
 
         assertThat(labels).contains("Scene", "Event");

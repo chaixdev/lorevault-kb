@@ -234,15 +234,19 @@ class SystemHealthServiceTest {
             .thenReturn(healthStatus);
         
         // Mock successful retry result (simplified - just ensure it doesn't fail)
-        @SuppressWarnings("rawtypes")
-        var mockRetryResult = mock(RetryableHealthChecker.RetryResult.class);
+        RetryableHealthChecker.RetryResult<ModelHealthValidator.HealthCheckResult> mockRetryResult =
+                typedRetryResultMock();
         when(mockRetryResult.isSuccess()).thenReturn(true);
         when(mockRetryResult.getResult()).thenReturn(ModelHealthValidator.HealthCheckResult.success("OK"));
         when(mockRetryResult.getLastAttemptDurationMs()).thenReturn(100L);
         when(mockRetryResult.getTotalDurationMs()).thenReturn(100L);
         when(mockRetryResult.getAttemptsUsed()).thenReturn(1);
-        
-        when(retryableHealthChecker.executeWithRetry(anyString(), any(), any())).thenReturn(mockRetryResult);
+
+        when(retryableHealthChecker.executeWithRetry(
+                anyString(),
+                any(RetryableHealthChecker.RetryConfig.class),
+                any(java.util.function.Supplier.class)
+        )).thenReturn(mockRetryResult);
     }
 
     private void mockFailedRetryChain(HealthMetricsCollector.ModelHealthStatus healthStatus) {
@@ -251,27 +255,41 @@ class SystemHealthServiceTest {
             .thenReturn(healthStatus);
         
         // Mock failed retry result
-        @SuppressWarnings("rawtypes")
-        var mockRetryResult = mock(RetryableHealthChecker.RetryResult.class);
+        RetryableHealthChecker.RetryResult<ModelHealthValidator.HealthCheckResult> mockRetryResult =
+                typedRetryResultMock();
         when(mockRetryResult.isSuccess()).thenReturn(false);
         when(mockRetryResult.getLastException()).thenReturn(new RuntimeException("Connection failed"));
         when(mockRetryResult.getLastAttemptDurationMs()).thenReturn(100L);
         when(mockRetryResult.getTotalDurationMs()).thenReturn(300L);
         when(mockRetryResult.getAttemptsUsed()).thenReturn(3);
-        
-        when(retryableHealthChecker.executeWithRetry(anyString(), any(), any())).thenReturn(mockRetryResult);
+
+        when(retryableHealthChecker.executeWithRetry(
+                anyString(),
+                any(RetryableHealthChecker.RetryConfig.class),
+                any(java.util.function.Supplier.class)
+        )).thenReturn(mockRetryResult);
     }
 
     private void mockSuccessfulRetryForAllSlots() {
         // Simple mock that works for chat slots health check
-        @SuppressWarnings("rawtypes")
-        var mockRetryResult = mock(RetryableHealthChecker.RetryResult.class);
+        RetryableHealthChecker.RetryResult<ModelHealthValidator.HealthCheckResult> mockRetryResult =
+                typedRetryResultMock();
         when(mockRetryResult.isSuccess()).thenReturn(true);
         when(mockRetryResult.getLastAttemptDurationMs()).thenReturn(100L);
         when(mockRetryResult.getTotalDurationMs()).thenReturn(100L);
         when(mockRetryResult.getAttemptsUsed()).thenReturn(1);
-        
-        when(retryableHealthChecker.executeWithRetry(anyString(), any(), any())).thenReturn(mockRetryResult);
+
+        when(retryableHealthChecker.executeWithRetry(
+                anyString(),
+                any(RetryableHealthChecker.RetryConfig.class),
+                any(java.util.function.Supplier.class)
+        )).thenReturn(mockRetryResult);
+    }
+
+    @SuppressWarnings("unchecked")
+    private RetryableHealthChecker.RetryResult<ModelHealthValidator.HealthCheckResult> typedRetryResultMock() {
+        return (RetryableHealthChecker.RetryResult<ModelHealthValidator.HealthCheckResult>)
+                mock(RetryableHealthChecker.RetryResult.class);
     }
 
     private void mockHealthyLlm() {

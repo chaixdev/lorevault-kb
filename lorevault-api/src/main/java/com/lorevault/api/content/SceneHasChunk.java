@@ -17,7 +17,7 @@ public class SceneHasChunk {
 
     @Id
     @GeneratedValue
-    private Long id;
+    private String id;
 
     private Integer chunkIndex; // sequential index within the scene
 

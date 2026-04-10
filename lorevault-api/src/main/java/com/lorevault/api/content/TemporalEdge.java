@@ -17,7 +17,7 @@ public class TemporalEdge {
 
     @Id
     @GeneratedValue
-    private Long id;
+    private String id;
 
     private TemporalRelation temporalRelation;
     private CertaintyLevel certainty;
