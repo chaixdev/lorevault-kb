@@ -1,13 +1,12 @@
 package com.lorevault.api.ai;
 
-import com.lorevault.api.ai.SceneDetectionResult;
-import com.lorevault.api.ai.SceneWithCoordinates;
-import com.lorevault.api.ai.LlmRetryStrategy;
 import com.lorevault.api.ai.LlmRetryStrategy.LlmRetryConfig;
 import com.lorevault.api.ai.LlmRetryStrategy.LlmRetryResult;
+import com.lorevault.api.content.Chapter;
+import com.lorevault.api.content.Scene;
 import com.lorevault.api.timeline.TriadEdgePersistenceService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -26,15 +25,32 @@ import java.util.ArrayList;
  * - Triad analysis for temporal relationships
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class SceneDetectionService {
+
+    private static final Logger log = LoggerFactory.getLogger(SceneDetectionService.class);
+
+    public record SceneDetectionOutcome(
+            List<SceneWithCoordinates> scenes,
+            List<TriadOrchestrationService.TriadSceneIndividualExtraction> sceneIndividualExtractions
+    ) {}
 
     private final SceneDetectionClient sceneDetectionClient;
     private final SceneProcessingService sceneProcessingService;
     private final LlmRetryStrategy llmRetryStrategy;
     private final TriadOrchestrationService triadOrchestrationService;
     private final TriadEdgePersistenceService triadEdgePersistenceService;
+
+    public SceneDetectionService(SceneDetectionClient sceneDetectionClient,
+                                 SceneProcessingService sceneProcessingService,
+                                 LlmRetryStrategy llmRetryStrategy,
+                                 TriadOrchestrationService triadOrchestrationService,
+                                 TriadEdgePersistenceService triadEdgePersistenceService) {
+        this.sceneDetectionClient = sceneDetectionClient;
+        this.sceneProcessingService = sceneProcessingService;
+        this.llmRetryStrategy = llmRetryStrategy;
+        this.triadOrchestrationService = triadOrchestrationService;
+        this.triadEdgePersistenceService = triadEdgePersistenceService;
+    }
 
     /**
      * Detect semantic scenes within chapter text using AI.
@@ -45,11 +61,11 @@ public class SceneDetectionService {
      * @return List of detected scenes with their coordinates
      * @throws RuntimeException if the detection process fails
      */
-    public List<SceneWithCoordinates> detectScenesInText(UUID jobId, UUID chapterId, String chapterText) {
+    public SceneDetectionOutcome detectScenesInText(UUID jobId, UUID chapterId, String chapterText) {
         // Handle null or empty text gracefully
         if (chapterText == null || chapterText.trim().isEmpty()) {
             log.warn("Chapter {} has no text content for scene detection", chapterId);
-            return Collections.emptyList();
+            return new SceneDetectionOutcome(Collections.emptyList(), List.of());
         }
         
         log.info("Starting scene detection with retry for chapter {} (job {}, length={} chars)", 
@@ -66,7 +82,7 @@ public class SceneDetectionService {
     /**
      * Internal method: Detect scenes with retry logic and job status updates
      */
-    private List<SceneWithCoordinates> detectScenesWithRetry(UUID jobId, UUID chapterId, String chapterText) {
+    private SceneDetectionOutcome detectScenesWithRetry(UUID jobId, UUID chapterId, String chapterText) {
 
         // Configure retry strategy for scene detection
         LlmRetryConfig retryConfig = LlmRetryConfig.defaultConfig();
@@ -75,7 +91,7 @@ public class SceneDetectionService {
                 retryConfig.getMaxAttempts(), jobId);
 
         // Execute scene detection with retry
-        LlmRetryResult<List<SceneWithCoordinates>> retryResult = llmRetryStrategy.executeWithRetry(
+        LlmRetryResult<SceneDetectionOutcome> retryResult = llmRetryStrategy.executeWithRetry(
                 "Scene Detection",
                 retryConfig,
                 () -> performFullSceneDetection(jobId, chapterId, chapterText));
@@ -106,7 +122,7 @@ public class SceneDetectionService {
     /**
      * Perform the complete scene detection pipeline (Pass 1 + triad-based Pass 2 + parsing + localization)
      */
-    private List<SceneWithCoordinates> performFullSceneDetection(UUID jobId, UUID chapterId, String chapterText) {
+    private SceneDetectionOutcome performFullSceneDetection(UUID jobId, UUID chapterId, String chapterText) {
         try {
             // DEADLOCK RISK: do NOT call ingestionJobService.updateJobStatus() inside this method.
             // Outer tx (SceneDetectionHandler) holds a read-lock on IngestionJob; updateJobStatus
@@ -137,34 +153,42 @@ public class SceneDetectionService {
 
             // Triad Pass 2: analyze prev/curr/next scene triads and persist TEMPORAL edges
             // This replaces the old Pass 2 approach that sent full XML to LLM
-            var chapter = com.lorevault.api.content.Chapter.createWithReferences(
-                null, null, null, null, null, chapterText, null
+            Chapter chapter = Chapter.createWithReferences(
+                    null, null, null, null, null, chapterText, null
             );
             chapter.setId(chapterId);
             
             // Convert SceneWithCoordinates to Scene objects temporarily for triad analysis
             // (without persisting - that will happen later in the ingestion pipeline)
             var tempScenes = scenes.stream().map(s -> {
-                var scene = new com.lorevault.api.content.Scene();
-                scene.setId(UUID.randomUUID()); // Temporary ID for triad analysis
-                scene.setSceneIndex(s.sceneIndex());
-                scene.setStartCharacterOffset(s.startCharacterOffset());
-                scene.setEndCharacterOffset(s.endCharacterOffset());
-                scene.setContextSummary(s.contextSummary());
-                
-                // Extract scene text from chapter
+                String sceneText = null;
                 if (chapterText != null) {
                     try {
                         int start = (int) s.startCharacterOffset();
                         int end = (int) s.endCharacterOffset();
                         if (start >= 0 && end <= chapterText.length() && start < end) {
-                            String sceneText = chapterText.substring(start, end);
-                            scene.setText(sceneText);
+                            sceneText = chapterText.substring(start, end);
                         }
                     } catch (Exception e) {
                         log.debug("Failed to extract scene text for triad analysis: {}", e.getMessage());
                     }
                 }
+
+                Scene scene = new Scene(
+                        UUID.randomUUID(),
+                        s.sceneIndex(),
+                        s.startCharacterOffset(),
+                        s.endCharacterOffset(),
+                        s.contextSummary(),
+                        sceneText,
+                        chapterId,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                );
+                scene.setText(sceneText);
                 return scene;
             }).toList();
             
@@ -172,15 +196,15 @@ public class SceneDetectionService {
             for (var scene : tempScenes) {
                 chapter.addExistingScene(scene);
             }
-            
+
             // Run triad orchestration with populated chapter
             log.info("Triad analysis (Pass 2): starting for job {} chapter {}", jobId, chapterId);
-            var triadAnalyses = triadOrchestrationService.analyzeChapterTriads(jobId, chapter);
-            triadEdgePersistenceService.applyTriadAnalyses(triadAnalyses);
+            var triadOutcome = triadOrchestrationService.analyzeChapterTriadsWithIndividuals(jobId, chapter);
+            triadEdgePersistenceService.applyTriadAnalyses(triadOutcome.triadAnalyses());
 
             log.debug("Successfully completed triad-based scene detection pipeline: {} scenes detected, {} triad analyses completed", 
-                     scenes.size(), triadAnalyses.size());
-            return scenes;
+                     scenes.size(), triadOutcome.triadAnalyses().size());
+            return new SceneDetectionOutcome(scenes, triadOutcome.sceneIndividualExtractions());
 
         } catch (Exception e) {
             // Log the specific stage that failed for debugging with full stack trace

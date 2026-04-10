@@ -6,8 +6,8 @@ import com.lorevault.api.ingestion.IngestionFailure;
 import com.lorevault.api.ingestion.IngestionStatus;
 import com.lorevault.api.timeline.TriadRelationInverter;
 import com.lorevault.api.ingestion.IngestionJobService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.stereotype.Service;
 
@@ -21,13 +21,35 @@ import java.util.UUID;
  * Orchestrates Pass 2 triad-based analysis end-to-end, fully in-memory.
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class TriadOrchestrationService {
+
+    private static final Logger log = LoggerFactory.getLogger(TriadOrchestrationService.class);
 
     public record TriadRelation(String temporalType, String certainty, String evidence) {}
 
-    public record TriadStructuredResult(String timelineMarker, TriadRelation previousToCurrent, TriadRelation currentToNext) {}
+    public record TriadIndividualExtraction(
+            List<String> aliases,
+            String physicalProperties,
+            String age,
+            String description
+    ) {}
+
+    public record TriadCurrentSceneEntities(List<TriadIndividualExtraction> individuals) {}
+
+    public record TriadStructuredResult(
+            String timelineMarker,
+            TriadRelation previousToCurrent,
+            TriadRelation currentToNext,
+            TriadCurrentSceneEntities currentSceneEntities
+    ) {
+        public TriadStructuredResult(String timelineMarker,
+                                     TriadRelation previousToCurrent,
+                                     TriadRelation currentToNext) {
+            this(timelineMarker, previousToCurrent, currentToNext, null);
+        }
+    }
+
+    public record TriadSceneIndividualExtraction(int sceneIndex, List<TriadIndividualExtraction> individuals) {}
 
     public record TriadAnalysis(
             UUID previousSceneId,
@@ -43,41 +65,58 @@ public class TriadOrchestrationService {
             String currVsPrevInverted // useful for labeling
     ) {}
 
+    public record TriadOutcome(
+            List<TriadAnalysis> triadAnalyses,
+            List<TriadSceneIndividualExtraction> sceneIndividualExtractions
+    ) {}
+
     private final TriadBuilderService triadBuilder;
     private final SceneDetectionClient sceneDetectionClient;
     private final PromptRepository promptRepository;
     private final IngestionJobService ingestionJobService;
 
+    public TriadOrchestrationService(TriadBuilderService triadBuilder,
+                                     SceneDetectionClient sceneDetectionClient,
+                                     PromptRepository promptRepository,
+                                     IngestionJobService ingestionJobService) {
+        this.triadBuilder = triadBuilder;
+        this.sceneDetectionClient = sceneDetectionClient;
+        this.promptRepository = promptRepository;
+        this.ingestionJobService = ingestionJobService;
+    }
+
     /**
      * Analyze scene triads and return normalized results.
      */
-    public List<TriadAnalysis> analyzeChapterTriads(UUID jobId, Chapter chapter) {
+    public TriadOutcome analyzeChapterTriadsWithIndividuals(UUID jobId, Chapter chapter) {
         List<TriadBuilderService.SceneTriad> triads = triadBuilder.buildTriadsForChapter(chapter);
-        if (triads.isEmpty()) return List.of();
+        if (triads.isEmpty()) {
+            return new TriadOutcome(List.of(), List.of());
+        }
 
-        // System prompt is pass2 system prompt
         PromptTemplate systemTemplate = promptRepository.get("scene-detection-pass2");
         String systemPrompt = systemTemplate.render(Map.of());
 
-        List<TriadAnalysis> out = new ArrayList<>();
+        List<TriadAnalysis> analyses = new ArrayList<>();
+        Map<Integer, List<TriadIndividualExtraction>> extractedIndividualsBySceneIndex = new HashMap<>();
+
         int triadIndex = 0;
         for (TriadBuilderService.SceneTriad t : triads) {
             Map<String, Object> vars = buildUserVars(chapter, t);
 
-            // Create per-triad status record so LLM call links to it
             Map<String, Object> statusProps = new HashMap<>();
             statusProps.put("triadIndex", triadIndex++);
-            statusProps.put("prevSceneId", t.previous() != null ? t.previous().getId() : null);
-            statusProps.put("currentSceneId", t.current().getId());
-            statusProps.put("nextSceneId", t.next() != null ? t.next().getId() : null);
+            statusProps.put("prevSceneId", t.previous() != null ? t.previous().getEventId() : null);
+            statusProps.put("currentSceneId", t.current().getEventId());
+            statusProps.put("nextSceneId", t.next() != null ? t.next().getEventId() : null);
 
             log.debug("TriadOrchestrator: emitting status SCENE_TRIAD_ANALYSIS for triadIndex={} prev={} curr={} next={}",
                     statusProps.get("triadIndex"), statusProps.get("prevSceneId"), statusProps.get("currentSceneId"), statusProps.get("nextSceneId"));
             ingestionJobService.updateJobStatus(
-                jobId,
-                IngestionStatus.SCENE_TRIAD_ANALYSIS,
-                "Triad analysis for scenes [prev, curr, next]",
-                statusProps
+                    jobId,
+                    IngestionStatus.SCENE_TRIAD_ANALYSIS,
+                    "Triad analysis for scenes [prev, curr, next]",
+                    statusProps
             );
 
             TriadStructuredResult parsed = sceneDetectionClient.detectScenesPass2Triad(
@@ -92,10 +131,10 @@ public class TriadOrchestrationService {
                     ? TriadRelationInverter.invertPrevToCurr(parsed.previousToCurrent().temporalType())
                     : null;
 
-        out.add(new TriadAnalysis(
-            t.previous() != null ? t.previous().getId() : null,
-            t.current().getId(),
-            t.next() != null ? t.next().getId() : null,
+            analyses.add(new TriadAnalysis(
+                    t.previous() != null ? t.previous().getEventId() : null,
+                    t.current().getEventId(),
+                    t.next() != null ? t.next().getEventId() : null,
                     parsed.timelineMarker(),
                     parsed.previousToCurrent() != null ? parsed.previousToCurrent().temporalType() : null,
                     parsed.previousToCurrent() != null ? parsed.previousToCurrent().certainty() : null,
@@ -105,8 +144,61 @@ public class TriadOrchestrationService {
                     parsed.currentToNext() != null ? parsed.currentToNext().evidence() : null,
                     inv
             ));
+
+            int sceneIndex = t.current().getSceneIndex() == null ? -1 : t.current().getSceneIndex();
+            if (sceneIndex >= 0) {
+                List<TriadIndividualExtraction> triadIndividuals = normalizeIndividuals(parsed);
+                if (!triadIndividuals.isEmpty()) {
+                    extractedIndividualsBySceneIndex
+                            .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
+                            .addAll(triadIndividuals);
+                }
+            }
         }
-        return out;
+
+        List<TriadSceneIndividualExtraction> sceneExtractions = extractedIndividualsBySceneIndex.entrySet().stream()
+                .map(e -> new TriadSceneIndividualExtraction(e.getKey(), List.copyOf(e.getValue())))
+                .sorted(java.util.Comparator.comparingInt(TriadSceneIndividualExtraction::sceneIndex))
+                .toList();
+
+        return new TriadOutcome(analyses, sceneExtractions);
+    }
+
+    public List<TriadAnalysis> analyzeChapterTriads(UUID jobId, Chapter chapter) {
+        return analyzeChapterTriadsWithIndividuals(jobId, chapter).triadAnalyses();
+    }
+
+    private List<TriadIndividualExtraction> normalizeIndividuals(TriadStructuredResult parsed) {
+        if (parsed == null || parsed.currentSceneEntities() == null || parsed.currentSceneEntities().individuals() == null) {
+            return List.of();
+        }
+        return parsed.currentSceneEntities().individuals().stream()
+                .filter(individual -> individual != null)
+                .map(individual -> new TriadIndividualExtraction(
+                        normalizeAliases(individual.aliases()),
+                        normalizeText(individual.physicalProperties()),
+                        normalizeText(individual.age()),
+                        normalizeText(individual.description())
+                ))
+                .toList();
+    }
+
+    private List<String> normalizeAliases(List<String> aliases) {
+        if (aliases == null) {
+            return List.of();
+        }
+        return aliases.stream()
+                .map(this::normalizeText)
+                .filter(alias -> alias != null)
+                .toList();
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private void validateTriadResult(TriadStructuredResult parsed,
@@ -163,9 +255,9 @@ public class TriadOrchestrationService {
                 .stage(IngestionStatus.SCENE_TRIAD_ANALYSIS.name())
                 .detail("relation", relationName)
                 .detail("triadIndex", statusProps.get("triadIndex"))
-                .detail("previousSceneId", triad.previous() != null ? triad.previous().getId() : null)
-                .detail("currentSceneId", triad.current() != null ? triad.current().getId() : null)
-                .detail("nextSceneId", triad.next() != null ? triad.next().getId() : null);
+                .detail("previousSceneId", triad.previous() != null ? triad.previous().getEventId() : null)
+                .detail("currentSceneId", triad.current() != null ? triad.current().getEventId() : null)
+                .detail("nextSceneId", triad.next() != null ? triad.next().getEventId() : null);
 
         return new TriadAnalysisException(builder.build());
     }
@@ -176,17 +268,17 @@ public class TriadOrchestrationService {
 
     private Map<String, Object> buildUserVars(Chapter chapter, TriadBuilderService.SceneTriad triad) {
         Map<String, Object> v = new HashMap<>();
-        v.put("prev_context_summary", textOrEmpty(triad.previous(), Scene::getContextSummary));
+        v.put("prev_context_summary", textOrEmpty(readContextSummary(triad.previous())));
         v.put("prev_time_indicators", ""); // placeholder until pass1 data is threaded
         v.put("prev_break_reason", "");
         v.put("prev_text", extractSceneText(chapter, triad.previous()));
 
-        v.put("curr_context_summary", textOrEmpty(triad.current(), Scene::getContextSummary));
+        v.put("curr_context_summary", textOrEmpty(readContextSummary(triad.current())));
         v.put("curr_time_indicators", "");
         v.put("curr_break_reason", "");
         v.put("curr_text", extractSceneText(chapter, triad.current()));
 
-        v.put("next_context_summary", textOrEmpty(triad.next(), Scene::getContextSummary));
+        v.put("next_context_summary", textOrEmpty(readContextSummary(triad.next())));
         v.put("next_time_indicators", "");
         v.put("next_break_reason", "");
         v.put("next_text", extractSceneText(chapter, triad.next()));
@@ -194,21 +286,34 @@ public class TriadOrchestrationService {
     }
 
     private String extractSceneText(Chapter chapter, Scene s) {
-        if (chapter == null || chapter.getRawText() == null || s == null) return "";
+        String chapterText = readChapterRawText(chapter);
+        if (chapterText == null || s == null) return "";
         try {
-            int start = s.getStartCharacterOffset().intValue();
-            int end = s.getEndCharacterOffset().intValue();
-            String text = chapter.getRawText();
-            if (start < 0 || end > text.length() || start >= end) return "";
-            return text.substring(start, end);
+            int start = s.getStartOffset().intValue();
+            int end = s.getEndOffset().intValue();
+            if (start < 0 || end > chapterText.length() || start >= end) return "";
+            return chapterText.substring(start, end);
         } catch (Exception e) {
             return "";
         }
     }
 
-    private String textOrEmpty(Scene s, java.util.function.Function<Scene, String> f) {
-        if (s == null) return "";
-        String v = f.apply(s);
+    private String readContextSummary(Scene scene) {
+        if (scene == null) {
+            return "";
+        }
+        String summary = scene.getContextSummary();
+        return summary == null ? "" : summary;
+    }
+
+    private String readChapterRawText(Chapter chapter) {
+        if (chapter == null) {
+            return null;
+        }
+        return chapter.getRawText();
+    }
+
+    private String textOrEmpty(String v) {
         return v == null ? "" : v;
     }
 }

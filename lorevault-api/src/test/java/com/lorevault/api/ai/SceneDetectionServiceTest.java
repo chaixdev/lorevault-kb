@@ -53,15 +53,18 @@ class SceneDetectionServiceTest {
                 .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "", "", "", "")));
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
                 .thenReturn(List.of(new SceneWithCoordinates(0, 0, 10, "ctx")));
-        when(triadOrchestrationService.analyzeChapterTriads(eq(jobId), any())).thenReturn(List.of());
+        when(triadOrchestrationService.analyzeChapterTriadsWithIndividuals(eq(jobId), any()))
+                .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of()));
 
-        List<SceneWithCoordinates> scenes = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
+        SceneDetectionService.SceneDetectionOutcome outcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
+        List<SceneWithCoordinates> scenes = outcome.scenes();
 
         assertThat(scenes).hasSize(2);
         assertThat(scenes.get(0).potentialSplitSceneEnd()).isTrue();
         assertThat(scenes.get(0).potentialSplitSceneStart()).isFalse();
         assertThat(scenes.get(1).potentialSplitSceneStart()).isTrue();
         assertThat(scenes.get(1).potentialSplitSceneEnd()).isFalse();
+        assertThat(outcome.sceneIndividualExtractions()).isEmpty();
 
         verify(sceneDetectionClient, times(2)).detectScenesPass1(eq(jobId), any(String.class));
     }
@@ -83,13 +86,16 @@ class SceneDetectionServiceTest {
                 .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "", "", "", "")));
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
                 .thenReturn(List.of(new SceneWithCoordinates(0, 0, chapterText.length(), "ctx")));
-        when(triadOrchestrationService.analyzeChapterTriads(eq(jobId), any())).thenReturn(List.of());
+        when(triadOrchestrationService.analyzeChapterTriadsWithIndividuals(eq(jobId), any()))
+                .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of()));
 
-        List<SceneWithCoordinates> scenes = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
+        SceneDetectionService.SceneDetectionOutcome outcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
+        List<SceneWithCoordinates> scenes = outcome.scenes();
 
         assertThat(scenes).hasSize(1);
         assertThat(scenes.get(0).potentialSplitSceneStart()).isFalse();
         assertThat(scenes.get(0).potentialSplitSceneEnd()).isFalse();
+        assertThat(outcome.sceneIndividualExtractions()).isEmpty();
         verify(sceneDetectionClient, times(1)).detectScenesPass1(eq(jobId), eq(chapterText));
     }
 }

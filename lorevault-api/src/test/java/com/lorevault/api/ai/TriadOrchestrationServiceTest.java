@@ -12,6 +12,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 
 import java.util.List;
@@ -213,15 +214,17 @@ class TriadOrchestrationServiceTest {
 
     private Chapter createTestChapter() {
         Chapter chapter = new Chapter();
-        chapter.setId(testChapterId);
-        chapter.setRawText("Sample chapter text for testing purposes.");
+        BeanWrapperImpl chapterBean = new BeanWrapperImpl(chapter);
+        chapterBean.setPropertyValue("id", testChapterId);
+        chapterBean.setPropertyValue("rawText", "Sample chapter text for testing purposes.");
         return chapter;
     }
 
     private Chapter createTestChapterWithText() {
         Chapter chapter = new Chapter();
-        chapter.setId(testChapterId);
-        chapter.setRawText("This is scene one text. This is scene two text. This is scene three text.");
+        BeanWrapperImpl chapterBean = new BeanWrapperImpl(chapter);
+        chapterBean.setPropertyValue("id", testChapterId);
+        chapterBean.setPropertyValue("rawText", "This is scene one text. This is scene two text. This is scene three text.");
         return chapter;
     }
 
@@ -243,13 +246,20 @@ class TriadOrchestrationServiceTest {
     }
 
     private Scene createScene(UUID id, int index, Long start, Long end) {
-        Scene scene = new Scene();
-        scene.setId(id);
-        scene.setSceneIndex(index);
-        scene.setStartCharacterOffset(start);
-        scene.setEndCharacterOffset(end);
-        scene.setContextSummary("Context summary for scene " + index);
-        return scene;
+        return new Scene(
+                id,
+                index,
+                start,
+                end,
+                "Context summary for scene " + index,
+                null,
+                testChapterId,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
     }
 
     private TriadOrchestrationService.TriadStructuredResult createMockTriadResult() {

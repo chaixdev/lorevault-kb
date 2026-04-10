@@ -11,7 +11,8 @@ import com.lorevault.api.ai.SceneDetectionService;
 import com.lorevault.api.ai.SceneProcessingService;
 import com.lorevault.api.ingestion.IngestionJobService;
 import com.lorevault.api.timeline.DefaultTemporalEdgeService;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -35,13 +36,15 @@ import java.util.UUID;
  * - Update job status throughout the process
  */
 @Component
-@Slf4j
 public class SceneDetectionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(SceneDetectionHandler.class);
 
     private final ChapterGraphRepository chapterRepo;
     private final SceneGraphRepository sceneRepo;
     private final SceneDetectionService sceneDetectionService;
     private final SceneProcessingService sceneProcessingService;
+    private final IndividualPersistenceService individualPersistenceService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
@@ -51,6 +54,7 @@ public class SceneDetectionHandler {
             SceneGraphRepository sceneRepo,
             SceneDetectionService sceneDetectionService,
             SceneProcessingService sceneProcessingService,
+            IndividualPersistenceService individualPersistenceService,
             IngestionJobService ingestionJobService,
             DefaultTemporalEdgeService defaultTemporalEdgeService,
             ApplicationEventPublisher eventPublisher
@@ -59,6 +63,7 @@ public class SceneDetectionHandler {
         this.sceneRepo = sceneRepo;
         this.sceneDetectionService = sceneDetectionService;
         this.sceneProcessingService = sceneProcessingService;
+        this.individualPersistenceService = individualPersistenceService;
         this.defaultTemporalEdgeService = defaultTemporalEdgeService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
@@ -131,7 +136,8 @@ public class SceneDetectionHandler {
         }
 
         // Use AI to detect scenes (passing jobId for status tracking)
-        var scenesWithCoords = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
+        var detectionOutcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
+        var scenesWithCoords = detectionOutcome.scenes();
 
         if (scenesWithCoords.isEmpty()) {
             log.info("[SCENE_DETECTION] No scenes detected for chapter {}", chapterId);
@@ -139,11 +145,16 @@ public class SceneDetectionHandler {
         }
 
         // Persist detected scenes
-        return sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords);
+        List<Scene> persistedScenes = sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords);
+        individualPersistenceService.persistExtractedIndividuals(
+                persistedScenes,
+                detectionOutcome.sceneIndividualExtractions()
+        );
+        return persistedScenes;
     }
 
     private void emitScenesDetected(UUID jobId, UUID chapterId, UUID bookId, List<Scene> scenes) {
-        List<UUID> sceneIds = scenes.stream().map(Scene::getId).toList();
+        List<UUID> sceneIds = scenes.stream().map(Scene::getEventId).toList();
         
         log.info("[SCENE_DETECTION] Emitting ScenesDetectedEvent: job={}, chapter={}, sceneCount={}", 
                 jobId, chapterId, scenes.size());
