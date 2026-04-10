@@ -72,4 +72,12 @@ public class Chunk {
     }
 
     public int getLength() { return endCharInChapter - startCharInChapter; }
+
+    public Scene getScene() {
+        return scene;
+    }
+
+    public void setScene(Scene scene) {
+        this.scene = scene;
+    }
 }

@@ -88,7 +88,7 @@ lorevault:
         model: openai/gpt-oss-120b
         temperature: 0.3
         top-p: 1.0
-        max-tokens: 2048
+        max-context-tokens: 128000
 
       # Powerful chat model slot (also used as failover if small fails)
       nlp-big:
@@ -99,7 +99,7 @@ lorevault:
         model: openai/gpt-oss-120b
         temperature: 0.2
         top-p: 1.0
-        max-tokens: 4096
+        max-context-tokens: 128000
 
     # Prompt locations (used by PromptLoaderService)
     prompts:

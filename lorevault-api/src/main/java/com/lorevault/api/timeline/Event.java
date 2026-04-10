@@ -8,6 +8,8 @@ import java.util.UUID;
  */
 public interface Event {
     UUID getEventId();
+    UUID getChapterId();
+    Integer getSceneIndex();
     Long getStartOffset();
     Long getEndOffset();
 }

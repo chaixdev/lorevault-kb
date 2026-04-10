@@ -32,8 +32,10 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
             WITH earlier, later
             WHERE NOT EXISTS { MATCH (later)-[:TEMPORAL*1..50]->(earlier) }
             MERGE (earlier)-[t:TEMPORAL]->(later)
-            SET t.type = 'R:temporal.meets',
-                t.confidence = 0.5
+            SET t.temporalRelation = 'R:temporal.meets',
+                t.certainty = 'Heuristic',
+                t.weight = 0.5,
+                t.source = coalesce(t.source, 'default-ordering')
             RETURN count(t)
             """)
     int mergeInChapterDefaultEdges(@Param("bookId") UUID bookId);
@@ -69,7 +71,10 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
             WITH lastScene, firstScene
             WHERE NOT EXISTS { MATCH (firstScene)-[:TEMPORAL*1..500]->(lastScene) }
             MERGE (lastScene)-[t:TEMPORAL]->(firstScene)
-            SET t.type = 'R:temporal.meets', t.confidence = 0.5
+            SET t.temporalRelation = 'R:temporal.meets',
+                t.certainty = 'Heuristic',
+                t.weight = 0.5,
+                t.source = coalesce(t.source, 'default-ordering')
             RETURN count(t)
             """)
     int mergeCrossChapterDefaultEdge(@Param("bookId") UUID bookId);
@@ -138,7 +143,7 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
         MATCH (a:Scene {id: $fromId})
         MATCH (b:Scene {id: $toId})
         MERGE (a)-[t:TEMPORAL]->(b)
-        SET t.type = $type,
+        SET t.temporalRelation = $type,
             t.certainty = $certainty,
             t.weight = coalesce($weight, 0.0),
             t.source = coalesce($source, 'ai-pass2'),

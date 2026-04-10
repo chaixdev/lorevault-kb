@@ -1,6 +1,7 @@
 package com.lorevault.api.ai;
 
 import com.lorevault.api.config.LoreVaultPromptProperties;
+import com.lorevault.api.config.LoreVaultModelsProperties;
 import com.lorevault.api.ingestion.LlmCallLoggingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -27,6 +28,7 @@ public class SceneDetectionClient {
     private final ChatClient nlpBigChatClient;
     private final PromptRepository promptRepository;
     private final LoreVaultPromptProperties promptProperties;
+    private final LoreVaultModelsProperties modelProperties;
     private final LlmCallLoggingService llmLog;
     
     @Qualifier("llmRetryTemplate")
@@ -42,14 +44,42 @@ public class SceneDetectionClient {
             @Qualifier("nlpBig") ChatClient nlpBigChatClient,
             PromptRepository promptRepository,
             LoreVaultPromptProperties promptProperties,
+            LoreVaultModelsProperties modelProperties,
             @Qualifier("llmRetryTemplate") RetryTemplate retryTemplate,
             LlmCallLoggingService llmLog) {
         this.nlpSmallChatClient = nlpSmallChatClient;
         this.nlpBigChatClient = nlpBigChatClient;
         this.promptRepository = promptRepository;
         this.promptProperties = promptProperties;
+        this.modelProperties = modelProperties;
         this.retryTemplate = retryTemplate;
         this.llmLog = llmLog;
+    }
+
+    private static final double PASS1_INPUT_BUDGET_RATIO = 0.70d;
+
+    public Pass1BudgetCheck evaluatePass1Budget(String chapterText) {
+        PromptTemplate template = promptRepository.get("scene-detection-pass1");
+        String systemPrompt = template.render(Map.of());
+
+        String modelSlot = promptProperties.getSceneDetectionPass1Model();
+        LoreVaultModelsProperties.ModelProperties cfg = getModelProperties(modelSlot);
+
+        int estimatedPromptTokens = estimateTokens(systemPrompt);
+        int estimatedInputTokens = estimateTokens(chapterText);
+        int estimatedTotalInput = estimatedPromptTokens + estimatedInputTokens;
+        int maxContextTokens = cfg.maxContextTokens();
+        int usableInputBudget = (int) Math.floor(maxContextTokens * PASS1_INPUT_BUDGET_RATIO);
+
+        return new Pass1BudgetCheck(
+                modelSlot,
+                maxContextTokens,
+                usableInputBudget,
+                estimatedPromptTokens,
+                estimatedInputTokens,
+                estimatedTotalInput,
+                estimatedTotalInput <= usableInputBudget
+        );
     }
 
     /**
@@ -166,6 +196,14 @@ public class SceneDetectionClient {
             case "pass1" -> "nlp-big".equals(promptProperties.getSceneDetectionPass1Model()) ? nlpBigModelId : nlpSmallModelId;
             case "pass2" -> "nlp-big".equals(promptProperties.getSceneDetectionPass2Model()) ? nlpBigModelId : nlpSmallModelId;
             default -> nlpSmallModelId; // Default fallback
+        };
+    }
+
+    private LoreVaultModelsProperties.ModelProperties getModelProperties(String modelSlot) {
+        return switch (modelSlot) {
+            case "nlp-big" -> modelProperties.nlpBig();
+            case "nlp-small" -> modelProperties.nlpSmall();
+            default -> modelProperties.nlpSmall();
         };
     }
 
@@ -322,7 +360,22 @@ public class SceneDetectionClient {
 
     private int estimateTokens(String text) {
         if (text == null || text.isBlank()) return 0;
-        // Simple heuristic: 1 token ~ 4 chars
-        return Math.max(1, text.length() / 4);
+        int charCount = text.length();
+        int wordCount = text.trim().isEmpty() ? 0 : text.trim().split("\\s+").length;
+
+        int charsEstimate = (int) Math.ceil(charCount / 3.0d);
+        int wordsEstimate = (int) Math.ceil(wordCount * 1.35d);
+
+        return Math.max(1, Math.max(charsEstimate, wordsEstimate));
     }
+
+    public record Pass1BudgetCheck(
+            String modelSlot,
+            int maxContextTokens,
+            int usableInputBudget,
+            int estimatedPromptTokens,
+            int estimatedInputTokens,
+            int estimatedTotalInput,
+            boolean isWithinBudget
+    ) {}
 }

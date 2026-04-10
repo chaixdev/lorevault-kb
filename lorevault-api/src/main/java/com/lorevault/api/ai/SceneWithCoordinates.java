@@ -9,10 +9,18 @@ package com.lorevault.api.ai;
  * @param startCharacterOffset Character offset where the scene begins (inclusive)
  * @param endCharacterOffset Character offset where the scene ends (exclusive)
  * @param contextSummary Brief description of what happens in this scene
+ * @param potentialSplitSceneStart Whether this scene may be a split fragment start
+ * @param potentialSplitSceneEnd Whether this scene may be a split fragment end
  */
 public record SceneWithCoordinates(
     int sceneIndex,
     long startCharacterOffset,
     long endCharacterOffset,
-    String contextSummary
-) {}
+    String contextSummary,
+    boolean potentialSplitSceneStart,
+    boolean potentialSplitSceneEnd
+) {
+    public SceneWithCoordinates(int sceneIndex, long startCharacterOffset, long endCharacterOffset, String contextSummary) {
+        this(sceneIndex, startCharacterOffset, endCharacterOffset, contextSummary, false, false);
+    }
+}

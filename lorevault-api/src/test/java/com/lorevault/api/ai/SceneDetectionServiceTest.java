@@ -1,0 +1,95 @@
+package com.lorevault.api.ai;
+
+import com.lorevault.api.timeline.TriadEdgePersistenceService;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("SceneDetectionService context budget tests")
+class SceneDetectionServiceTest {
+
+    @Mock
+    private SceneDetectionClient sceneDetectionClient;
+    @Mock
+    private SceneProcessingService sceneProcessingService;
+    @Spy
+    private LlmRetryStrategy llmRetryStrategy;
+    @Mock
+    private TriadOrchestrationService triadOrchestrationService;
+    @Mock
+    private TriadEdgePersistenceService triadEdgePersistenceService;
+
+    @InjectMocks
+    private SceneDetectionService sceneDetectionService;
+
+    @Test
+    @DisplayName("Should use segmented fallback and tag segment edge scenes")
+    void shouldUseSegmentedFallbackAndTagSegmentEdges() {
+        UUID jobId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+        String chapterText = "Paragraph one sentence one.\n\nParagraph two sentence two.".repeat(40);
+
+        SceneDetectionClient.Pass1BudgetCheck admission = new SceneDetectionClient.Pass1BudgetCheck(
+                "nlp-big", 400, 100, 20, 180, 200, false
+        );
+
+        when(sceneDetectionClient.evaluatePass1Budget(chapterText)).thenReturn(admission);
+        when(sceneDetectionClient.detectScenesPass1(eq(jobId), any(String.class))).thenReturn("<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>");
+        when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt()))
+                .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "", "", "", "")));
+        when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
+                .thenReturn(List.of(new SceneWithCoordinates(0, 0, 10, "ctx")));
+        when(triadOrchestrationService.analyzeChapterTriads(eq(jobId), any())).thenReturn(List.of());
+
+        List<SceneWithCoordinates> scenes = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
+
+        assertThat(scenes).hasSize(2);
+        assertThat(scenes.get(0).potentialSplitSceneEnd()).isTrue();
+        assertThat(scenes.get(0).potentialSplitSceneStart()).isFalse();
+        assertThat(scenes.get(1).potentialSplitSceneStart()).isTrue();
+        assertThat(scenes.get(1).potentialSplitSceneEnd()).isFalse();
+
+        verify(sceneDetectionClient, times(2)).detectScenesPass1(eq(jobId), any(String.class));
+    }
+
+    @Test
+    @DisplayName("Should use single pass flow when within budget")
+    void shouldUseSinglePassWhenWithinBudget() {
+        UUID jobId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+        String chapterText = "Short text.";
+
+        SceneDetectionClient.Pass1BudgetCheck admission = new SceneDetectionClient.Pass1BudgetCheck(
+                "nlp-small", 128000, 89600, 10, 10, 20, true
+        );
+
+        when(sceneDetectionClient.evaluatePass1Budget(chapterText)).thenReturn(admission);
+        when(sceneDetectionClient.detectScenesPass1(eq(jobId), eq(chapterText))).thenReturn("<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>");
+        when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt()))
+                .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "", "", "", "")));
+        when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
+                .thenReturn(List.of(new SceneWithCoordinates(0, 0, chapterText.length(), "ctx")));
+        when(triadOrchestrationService.analyzeChapterTriads(eq(jobId), any())).thenReturn(List.of());
+
+        List<SceneWithCoordinates> scenes = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
+
+        assertThat(scenes).hasSize(1);
+        assertThat(scenes.get(0).potentialSplitSceneStart()).isFalse();
+        assertThat(scenes.get(0).potentialSplitSceneEnd()).isFalse();
+        verify(sceneDetectionClient, times(1)).detectScenesPass1(eq(jobId), eq(chapterText));
+    }
+}

@@ -38,7 +38,7 @@ public record LoreVaultModelsProperties(
         String model,
         Double temperature,
         Double topP,
-        Integer maxTokens
+        Integer maxContextTokens
     ) {
         // Compact constructor with defaults
         public ModelProperties {
@@ -46,7 +46,7 @@ public record LoreVaultModelsProperties(
             if (completionsPath == null) completionsPath = "/chat/completions";
             if (temperature == null) temperature = 0.3;
             if (topP == null) topP = 1.0;
-            if (maxTokens == null) maxTokens = 2048;
+            if (maxContextTokens == null) maxContextTokens = 128000;
         }
 
         public String safeProvider() { 

@@ -1,6 +1,5 @@
 package com.lorevault.api.content;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -28,9 +27,12 @@ import java.util.ArrayList;
  */
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 @Node("Scene")
 public class Scene implements Event {
+    public static final String EVENT_LABEL = "Event";
+    public static final String POTENTIAL_SPLIT_SCENE_START_LABEL = "PotentialSplitSceneStart";
+    public static final String POTENTIAL_SPLIT_SCENE_END_LABEL = "PotentialSplitSceneEnd";
+
     @Id
     private UUID id;
 
@@ -77,7 +79,7 @@ public class Scene implements Event {
     private LocalDateTime updatedAt;
 
     @DynamicLabels
-    private List<String> labels = new ArrayList<>();
+    private List<String> labels = new ArrayList<>(List.of(EVENT_LABEL));
 
     /**
      * Chunks that belong to this scene (v0.3.0+)
@@ -105,7 +107,7 @@ public class Scene implements Event {
         this.contextSummary = contextSummary;
         this.text = text;
         this.chapterId = chapterId;
-        this.labels = labels == null ? new ArrayList<>() : labels;
+        this.labels = labels == null ? new ArrayList<>(List.of(EVENT_LABEL)) : labels;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.chunks = chunks == null ? new ArrayList<>() : chunks;
@@ -156,6 +158,16 @@ public class Scene implements Event {
     @Override
     public java.util.UUID getEventId() {
         return id;
+    }
+
+    @Override
+    public UUID getChapterId() {
+        return chapterId;
+    }
+
+    @Override
+    public Integer getSceneIndex() {
+        return sceneIndex;
     }
 
     @Override

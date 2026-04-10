@@ -41,7 +41,6 @@ public class SpringAiConfig {
             .model(cfg.model())
             .temperature(cfg.temperature())
             .topP(cfg.topP())
-            .maxTokens(cfg.maxTokens())
             .build();
         OpenAiChatModel model = OpenAiChatModel.builder()
             .openAiApi(openAiApi)
@@ -67,7 +66,6 @@ public class SpringAiConfig {
             .model(cfg.model())
             .temperature(cfg.temperature())
             .topP(cfg.topP())
-            .maxTokens(cfg.maxTokens())
             .build();
         OpenAiChatModel model = OpenAiChatModel.builder()
             .openAiApi(openAiApi)
@@ -93,7 +91,6 @@ public class SpringAiConfig {
             .model(cfg.model())
             .temperature(cfg.temperature())
             .topP(cfg.topP())
-            .maxTokens(cfg.maxTokens())
             .build();
         OpenAiChatModel model = OpenAiChatModel.builder()
             .openAiApi(openAiApi)

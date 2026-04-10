@@ -134,6 +134,25 @@ Migration: Define Java records, use `.entity()`, and delete `TriadXmlParser` and
 - Future: OpenRouter or Nebius, targeting Gemma 4 models.
 - Integration: All via OpenAI-compatible API; Spring AI handles transparency.
 
+## Immediate Next Work
+
+Before the next feature-stage task, implement scene-detection context budgeting and deterministic segmented fallback.
+
+Priority order:
+
+1. **Scene detection context budget + deterministic segmentation fallback**
+   - Add `maxContextTokens` per model
+   - Use a hardcoded 70% input threshold for pass 1 admission
+   - Apply conservative token estimation before sending full chapter text
+   - If over budget, split deterministically on paragraph / line / sentence / whitespace boundaries
+   - Tag segment-edge scenes with `PotentialSplitSceneStart` / `PotentialSplitSceneEnd`
+   - Defer merge-back logic to a later background task
+   - See `../../brainstorm/scene-detection-context-budget-and-segmentation-spec-april-2026.md`
+
+2. **Entity extraction (Individuals, Locations, Collectives)**
+   - Capture entity data already requested by the pass2 prompt
+   - Preserve the current simple architecture: extract first, map later
+
 ## M1 Baseline (Merged Locally)
 
 The branch `origin/refactor/phase5-pragmatic-modulith` has been merged locally into `main` at:

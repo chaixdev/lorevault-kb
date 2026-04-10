@@ -19,6 +19,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -108,6 +109,16 @@ public class SceneProcessingService {
             scene.setStartCharacterOffset(s.startCharacterOffset());
             scene.setEndCharacterOffset(s.endCharacterOffset());
             scene.setContextSummary(s.contextSummary());
+
+            LinkedHashSet<String> labels = new LinkedHashSet<>();
+            labels.add(Scene.EVENT_LABEL);
+            if (s.potentialSplitSceneStart()) {
+                labels.add(Scene.POTENTIAL_SPLIT_SCENE_START_LABEL);
+            }
+            if (s.potentialSplitSceneEnd()) {
+                labels.add(Scene.POTENTIAL_SPLIT_SCENE_END_LABEL);
+            }
+            scene.setLabels(new ArrayList<>(labels));
 
             // Extract and set the scene text
             if (finalChapterText != null) {
