@@ -95,6 +95,25 @@ public class SystemHealthService {
         var llmHealth = checkLlmHealth();
         var embeddingHealth = checkEmbeddingHealth();
         var chatSlotsHealth = checkChatSlotsHealth();
+
+        chatSlotsHealth.forEach((slot, status) -> {
+            if (status.isHealthy()) {
+                log.info("✅ Startup chat slot '{}' healthy: model='{}', lastAttempt={} ms, total={} ms, attempts={}",
+                    slot,
+                    status.getModelName(),
+                    status.getLastAttemptDurationMs(),
+                    status.getTotalDurationMs(),
+                    status.getAttemptsUsed());
+            } else {
+                log.info("❌ Startup chat slot '{}' unhealthy: model='{}', error='{}', lastAttempt={} ms, total={} ms, attempts={}",
+                    slot,
+                    status.getModelName(),
+                    status.getErrorMessage(),
+                    status.getLastAttemptDurationMs(),
+                    status.getTotalDurationMs(),
+                    status.getAttemptsUsed());
+            }
+        });
         
         long totalMs = Duration.between(overallStart, Instant.now()).toMillis();
         
