@@ -1,9 +1,10 @@
 package com.lorevault.api.ai;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.config.LoreVaultPromptProperties;
 import com.lorevault.api.config.LoreVaultModelsProperties;
 import com.lorevault.api.ingestion.LlmCallLoggingService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -15,14 +16,17 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Client responsible for making AI calls for scene detection.
  * Supports both single-pass (legacy) and two-pass scene detection workflows.
  * Encapsulates the AI model configuration, prompt loading, and retry logic.
  */
 @Component
-@Slf4j
 public class SceneDetectionClient {
+    private static final Logger log = LoggerFactory.getLogger(SceneDetectionClient.class);
     
     private final ChatClient nlpSmallChatClient;
     private final ChatClient nlpBigChatClient;
@@ -30,6 +34,7 @@ public class SceneDetectionClient {
     private final LoreVaultPromptProperties promptProperties;
     private final LoreVaultModelsProperties modelProperties;
     private final LlmCallLoggingService llmLog;
+    private final ObjectMapper objectMapper;
     
     @Qualifier("llmRetryTemplate")
     private final RetryTemplate retryTemplate;
@@ -46,7 +51,8 @@ public class SceneDetectionClient {
             LoreVaultPromptProperties promptProperties,
             LoreVaultModelsProperties modelProperties,
             @Qualifier("llmRetryTemplate") RetryTemplate retryTemplate,
-            LlmCallLoggingService llmLog) {
+            LlmCallLoggingService llmLog,
+            ObjectMapper objectMapper) {
         this.nlpSmallChatClient = nlpSmallChatClient;
         this.nlpBigChatClient = nlpBigChatClient;
         this.promptRepository = promptRepository;
@@ -54,6 +60,7 @@ public class SceneDetectionClient {
         this.modelProperties = modelProperties;
         this.retryTemplate = retryTemplate;
         this.llmLog = llmLog;
+        this.objectMapper = objectMapper;
     }
 
     private static final double PASS1_INPUT_BUDGET_RATIO = 0.70d;
@@ -329,6 +336,8 @@ public class SceneDetectionClient {
                     throw new RuntimeException("Empty structured response from " + modelId + " during " + step);
                 }
 
+                String responseBody = serializeStructuredResponse(response);
+
                 llmLog.logCall(
                         jobId,
                         step,
@@ -340,10 +349,10 @@ public class SceneDetectionClient {
                         step.equals("scene-detection-pass1") ? promptProperties.getSceneDetectionPass1Path() : promptProperties.getSceneDetectionPass2Path(),
                         systemPrompt,
                         safeInput.length() <= 1000 ? safeInput : safeInput.substring(0, 1000),
-                        "[structured-response:" + responseType.getSimpleName() + "]",
+                        responseBody,
                         elapsedMs,
                         estimateTokens(safeInput),
-                        0
+                        estimateTokens(responseBody)
                 );
 
                 return response;
@@ -367,6 +376,15 @@ public class SceneDetectionClient {
         int wordsEstimate = (int) Math.ceil(wordCount * 1.35d);
 
         return Math.max(1, Math.max(charsEstimate, wordsEstimate));
+    }
+
+    private String serializeStructuredResponse(Object response) {
+        try {
+            return objectMapper.writeValueAsString(response);
+        } catch (JsonProcessingException | RuntimeException e) {
+            log.debug("[LLM] Structured response serialization failed, falling back to String.valueOf(): {}", e.getMessage());
+            return String.valueOf(response);
+        }
     }
 
     public record Pass1BudgetCheck(
