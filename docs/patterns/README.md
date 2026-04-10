@@ -22,6 +22,7 @@ Patterns explain important areas of the current system that are implemented acro
 - [Ingestion Pipeline](ingestion-pipeline.md) — async stage-based chapter processing from upload to embedding
 - [Ingestion Observability](ingestion-job-observability.md) — append-only StatusRecord chain and LLM call logging
 - [Triad Analysis](triad-analysis.md) — three-scene sliding window for relationship extraction
+- [Scene Detection Budgeted Segmentation](scene-detection-budgeted-segmentation.md) — pass-1 context budget guard with deterministic split fallback and split-risk labels
 - [Spoiler-Aware Retrieval](spoiler-aware-retrieval.md) — publication-coordinate filtering on vector search
 - [RAG Retrieval Chain](rag-retrieval-chain.md) — retrieve-then-generate pipeline with citations
 - [CQRS Command-Query Separation](cqrs-command-query-separation.md) — structural split of write and read API paths
