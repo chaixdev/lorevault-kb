@@ -1,8 +1,8 @@
 package com.lorevault.api.ingestion;
 
 import com.lorevault.api.ai.TriadOrchestrationService;
-import com.lorevault.api.content.Individual;
-import com.lorevault.api.content.IndividualGraphRepository;
+import com.lorevault.api.content.IndividualMention;
+import com.lorevault.api.content.IndividualMentionGraphRepository;
 import com.lorevault.api.content.Scene;
 import java.util.List;
 import java.util.Map;
@@ -14,10 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class IndividualPersistenceService {
 
-    private final IndividualGraphRepository individualRepository;
+    private static final String SOURCE = "ai-pass2";
+    private static final String UNRESOLVED = "unresolved";
 
-    public IndividualPersistenceService(IndividualGraphRepository individualRepository) {
-        this.individualRepository = individualRepository;
+    private final IndividualMentionGraphRepository individualMentionRepository;
+
+    public IndividualPersistenceService(IndividualMentionGraphRepository individualMentionRepository) {
+        this.individualMentionRepository = individualMentionRepository;
     }
 
     @Transactional
@@ -39,25 +42,33 @@ public class IndividualPersistenceService {
                 continue;
             }
 
-            for (TriadOrchestrationService.TriadIndividualExtraction extracted : sceneExtraction.individuals()) {
+            for (int extractionIndex = 0; extractionIndex < sceneExtraction.individuals().size(); extractionIndex++) {
+                TriadOrchestrationService.TriadIndividualExtraction extracted = sceneExtraction.individuals().get(extractionIndex);
                 String displayName = firstNonBlankAlias(extracted.aliases());
                 if (displayName == null) {
                     continue;
                 }
 
-                Individual saved = individualRepository.save(new Individual(
+                UUID chapterId = scene.getChapterId();
+                UUID sceneId = scene.getEventId();
+                IndividualMention saved = individualMentionRepository.save(new IndividualMention(
                         UUID.randomUUID(),
-                        true,
-                        "ai-pass2",
+                        SOURCE,
                         displayName,
+                        normalizeName(displayName),
                         extracted.aliases(),
                         extracted.description(),
                         extracted.age(),
                         extracted.physicalProperties(),
+                        sceneId,
+                        chapterId,
+                        null,
+                        UNRESOLVED,
+                        extractionIndex,
                         null,
                         null
                 ));
-                individualRepository.linkMentionedIndividual(scene.getEventId(), saved.id());
+                individualMentionRepository.linkMentionToScene(sceneId, saved.id());
             }
         }
     }
@@ -72,5 +83,9 @@ public class IndividualPersistenceService {
             }
         }
         return null;
+    }
+
+    private String normalizeName(String displayName) {
+        return displayName == null ? null : displayName.trim().replaceAll("\\s+", " ").toLowerCase();
     }
 }

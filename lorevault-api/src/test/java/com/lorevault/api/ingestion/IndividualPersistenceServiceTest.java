@@ -1,9 +1,11 @@
 package com.lorevault.api.ingestion;
 
 import com.lorevault.api.ai.TriadOrchestrationService;
-import com.lorevault.api.content.Individual;
-import com.lorevault.api.content.IndividualGraphRepository;
+import com.lorevault.api.content.Chapter;
+import com.lorevault.api.content.IndividualMention;
+import com.lorevault.api.content.IndividualMentionGraphRepository;
 import com.lorevault.api.content.Scene;
+import com.lorevault.api.testutil.builders.PublicationCoordinatesBuilder;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -22,16 +24,33 @@ import static org.mockito.Mockito.*;
 class IndividualPersistenceServiceTest {
 
     @Mock
-    private IndividualGraphRepository individualRepository;
+    private IndividualMentionGraphRepository individualMentionRepository;
 
     @InjectMocks
     private IndividualPersistenceService service;
 
     @Test
-    @DisplayName("Persists one Individual per extracted block and links mention by sceneIndex")
+    @DisplayName("Persists one IndividualMention per extracted block and links mention by sceneIndex")
     void persistsIndividualsAndLinksMentions() {
         UUID sceneId = UUID.randomUUID();
-        Scene persistedScene = new Scene(sceneId, 3, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null, null);
+        UUID chapterId = UUID.randomUUID();
+        UUID bookId = UUID.randomUUID();
+        Chapter chapter = Chapter.createStandalone(
+                bookId,
+                UUID.randomUUID(),
+                PublicationCoordinatesBuilder.coordinates()
+                        .withUniverse("cosmere")
+                        .withSeries("standalone")
+                        .withBookTitle("sunlit")
+                        .withChapterTitle("chapter-4")
+                        .withBookNumber(1)
+                        .withChapterNumber(4)
+                        .build(),
+                "Chapter 4",
+                "raw",
+                "hash"
+        );
+        Scene persistedScene = new Scene(sceneId, 3, 0L, 10L, "ctx", "text", chapterId, null, null, null, null, chapter);
         TriadOrchestrationService.TriadIndividualExtraction extracted =
                 new TriadOrchestrationService.TriadIndividualExtraction(
                         List.of("  Nyx  ", "N."),
@@ -42,19 +61,24 @@ class IndividualPersistenceServiceTest {
         TriadOrchestrationService.TriadSceneIndividualExtraction byScene =
                 new TriadOrchestrationService.TriadSceneIndividualExtraction(3, List.of(extracted));
 
-        when(individualRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(individualMentionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.persistExtractedIndividuals(List.of(persistedScene), List.of(byScene));
 
-        ArgumentCaptor<Individual> savedCaptor = ArgumentCaptor.forClass(Individual.class);
-        verify(individualRepository).save(savedCaptor.capture());
-        Individual saved = savedCaptor.getValue();
-        assertThat(saved.provisional()).isTrue();
+        ArgumentCaptor<IndividualMention> savedCaptor = ArgumentCaptor.forClass(IndividualMention.class);
+        verify(individualMentionRepository).save(savedCaptor.capture());
+        IndividualMention saved = savedCaptor.getValue();
         assertThat(saved.source()).isEqualTo("ai-pass2");
         assertThat(saved.displayName()).isEqualTo("Nyx");
+        assertThat(saved.normalizedName()).isEqualTo("nyx");
         assertThat(saved.aliases()).containsExactly("  Nyx  ", "N.");
+        assertThat(saved.sceneId()).isEqualTo(sceneId);
+        assertThat(saved.chapterId()).isEqualTo(chapterId);
+        assertThat(saved.bookId()).isNull();
+        assertThat(saved.resolutionStatus()).isEqualTo("unresolved");
+        assertThat(saved.extractionIndex()).isEqualTo(0);
 
-        verify(individualRepository).linkMentionedIndividual(eq(sceneId), eq(saved.id()));
+        verify(individualMentionRepository).linkMentionToScene(eq(sceneId), eq(saved.id()));
     }
 
     @Test
@@ -70,10 +94,9 @@ class IndividualPersistenceServiceTest {
                 );
         TriadOrchestrationService.TriadSceneIndividualExtraction byScene =
                 new TriadOrchestrationService.TriadSceneIndividualExtraction(0, List.of(invalid));
-
         service.persistExtractedIndividuals(List.of(persistedScene), List.of(byScene));
 
-        verify(individualRepository, never()).save(any());
-        verify(individualRepository, never()).linkMentionedIndividual(any(), any());
+        verify(individualMentionRepository, never()).save(any());
+        verify(individualMentionRepository, never()).linkMentionToScene(any(), any());
     }
 }

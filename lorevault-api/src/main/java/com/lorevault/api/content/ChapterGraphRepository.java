@@ -1,6 +1,5 @@
 package com.lorevault.api.content;
 
-import com.lorevault.api.content.Chapter;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 
@@ -23,4 +22,5 @@ public interface ChapterGraphRepository extends Neo4jRepository<Chapter, UUID> {
             ORDER BY c.chapterNumber
             """)
     List<Chapter> findByBookId(UUID bookId);
+
 }
