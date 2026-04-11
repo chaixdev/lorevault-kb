@@ -39,6 +39,7 @@ class SceneDetectionHandlerTest {
     @Mock private SceneDetectionService sceneDetectionService;
     @Mock private SceneProcessingService sceneProcessingService;
     @Mock private IndividualPersistenceService individualPersistenceService;
+    @Mock private ChapterIndividualResolutionService chapterIndividualResolutionService;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private DefaultTemporalEdgeService defaultTemporalEdgeService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -97,6 +98,7 @@ class SceneDetectionHandlerTest {
             verify(sceneDetectionService).detectScenesInText(jobId, chapterId, (String) new BeanWrapperImpl(testChapter).getPropertyValue("rawText"));
             verify(sceneProcessingService).persistDetectedScenes(chapterId, sceneCoords);
             verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, List.of());
+            verify(chapterIndividualResolutionService).resolveChapter(chapterId);
             verify(defaultTemporalEdgeService).createAllDefaults(bookId);
 
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
@@ -125,6 +127,7 @@ class SceneDetectionHandlerTest {
             verify(sceneDetectionService, never()).detectScenesInText(any(), any(), anyString());
             verify(sceneProcessingService, never()).persistDetectedScenes(any(), any());
             verify(individualPersistenceService, never()).persistExtractedIndividuals(any(), any());
+            verify(chapterIndividualResolutionService).resolveChapter(chapterId);
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
@@ -213,6 +216,7 @@ class SceneDetectionHandlerTest {
             // Then
             verify(sceneDetectionService, never()).detectScenesInText(any(), any(), anyString());
             verify(individualPersistenceService, never()).persistExtractedIndividuals(any(), any());
+            verify(chapterIndividualResolutionService).resolveChapter(chapterId);
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
@@ -231,6 +235,7 @@ class SceneDetectionHandlerTest {
             handler.handleChapterIngestion(testEvent);
 
             // Then
+            verify(chapterIndividualResolutionService).resolveChapter(chapterId);
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
             assertThat((List<?>) new BeanWrapperImpl(eventCaptor.getValue()).getPropertyValue("sceneIds")).isEmpty();

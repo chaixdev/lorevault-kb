@@ -1,0 +1,120 @@
+package com.lorevault.api.ingestion;
+
+import com.lorevault.api.content.ChapterIndividual;
+import com.lorevault.api.content.ChapterIndividualGraphRepository;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("ChapterIndividualResolutionService")
+class ChapterIndividualResolutionServiceTest {
+
+    @Mock
+    private ChapterIndividualGraphRepository chapterIndividualRepository;
+
+    @InjectMocks
+    private ChapterIndividualResolutionService service;
+
+    @Test
+    @DisplayName("Rebuilds one ChapterIndividual per normalized name and relinks mentions")
+    void rebuildsChapterIndividualsFromCandidates() {
+        UUID chapterId = UUID.randomUUID();
+        ChapterIndividualGraphRepository.ChapterIndividualCandidateView nyx = candidate("Nyx", "nyx", 2L);
+        ChapterIndividualGraphRepository.ChapterIndividualCandidateView orion = candidate("Orion", "orion", 1L);
+
+        when(chapterIndividualRepository.findResolutionCandidates(chapterId)).thenReturn(List.of(nyx, orion));
+        when(chapterIndividualRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.resolveChapter(chapterId);
+
+        verify(chapterIndividualRepository).deleteByChapterId(chapterId);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Iterable<ChapterIndividual>> savedCaptor = ArgumentCaptor.forClass(Iterable.class);
+        verify(chapterIndividualRepository).saveAll(savedCaptor.capture());
+        List<ChapterIndividual> saved = toList(savedCaptor.getValue());
+        assertThat(saved)
+                .hasSize(2)
+                .extracting(ChapterIndividual::displayName, ChapterIndividual::normalizedName, ChapterIndividual::mentionCount)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple("Nyx", "nyx", 2),
+                        org.assertj.core.groups.Tuple.tuple("Orion", "orion", 1)
+                );
+
+        for (ChapterIndividual chapterIndividual : saved) {
+            verify(chapterIndividualRepository).linkChapterToIndividual(chapterId, chapterIndividual.id());
+            verify(chapterIndividualRepository).linkMentionsToChapterIndividual(
+                    chapterId,
+                    chapterIndividual.normalizedName(),
+                    chapterIndividual.id(),
+                    ChapterIndividualResolutionService.CHAPTER_RESOLVED
+            );
+        }
+    }
+
+    @Test
+    @DisplayName("Skips save when there are no candidates")
+    void skipsSaveWhenNoCandidates() {
+        UUID chapterId = UUID.randomUUID();
+        when(chapterIndividualRepository.findResolutionCandidates(chapterId)).thenReturn(List.of());
+
+        service.resolveChapter(chapterId);
+
+        verify(chapterIndividualRepository).deleteByChapterId(chapterId);
+        verify(chapterIndividualRepository, never()).saveAll(any());
+        verify(chapterIndividualRepository, never()).linkChapterToIndividual(any(), any());
+        verify(chapterIndividualRepository, never()).linkMentionsToChapterIndividual(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Ignores blank normalized names from candidates")
+    void ignoresBlankNormalizedNames() {
+        UUID chapterId = UUID.randomUUID();
+        ChapterIndividualGraphRepository.ChapterIndividualCandidateView blank = candidate("Narrator", "   ", 2L);
+        when(chapterIndividualRepository.findResolutionCandidates(chapterId)).thenReturn(List.of(blank));
+
+        service.resolveChapter(chapterId);
+
+        verify(chapterIndividualRepository).deleteByChapterId(chapterId);
+        verify(chapterIndividualRepository, never()).saveAll(any());
+        verify(chapterIndividualRepository, never()).linkMentionsToChapterIndividual(any(), any(), any(), any());
+    }
+
+    private ChapterIndividualGraphRepository.ChapterIndividualCandidateView candidate(
+            String displayName,
+            String normalizedName,
+            Long mentionCount
+    ) {
+        return new ChapterIndividualGraphRepository.ChapterIndividualCandidateView() {
+            @Override
+            public String getDisplayName() {
+                return displayName;
+            }
+
+            @Override
+            public String getNormalizedName() {
+                return normalizedName;
+            }
+
+            @Override
+            public Long getMentionCount() {
+                return mentionCount;
+            }
+        };
+    }
+
+    private List<ChapterIndividual> toList(Iterable<ChapterIndividual> iterable) {
+        return iterable == null ? List.of() : org.assertj.core.util.Lists.newArrayList(iterable);
+    }
+}
