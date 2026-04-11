@@ -8,16 +8,21 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
 
-@Node("Individual")
-public record Individual(
+@Node("IndividualMention")
+public record IndividualMention(
         @Id UUID id,
-        boolean provisional,
         String source,
         String displayName,
+        String normalizedName,
         List<String> aliases,
         String description,
         String age,
         String physicalProperties,
+        UUID sceneId,
+        UUID chapterId,
+        UUID bookId,
+        String resolutionStatus,
+        Integer extractionIndex,
         @CreatedDate LocalDateTime createdAt,
         @LastModifiedDate LocalDateTime updatedAt
 ) {}
