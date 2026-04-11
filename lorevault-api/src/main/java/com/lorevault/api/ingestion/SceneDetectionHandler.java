@@ -2,17 +2,14 @@ package com.lorevault.api.ingestion;
 
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
-import com.lorevault.api.ingestion.IngestionStatus;
-import com.lorevault.api.ingestion.ChapterIngestionEvent;
-import com.lorevault.api.ingestion.ScenesDetectedEvent;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
 import com.lorevault.api.ai.SceneDetectionService;
 import com.lorevault.api.ai.SceneProcessingService;
-import com.lorevault.api.ingestion.IngestionJobService;
 import com.lorevault.api.timeline.DefaultTemporalEdgeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -45,6 +42,7 @@ public class SceneDetectionHandler {
     private final SceneDetectionService sceneDetectionService;
     private final SceneProcessingService sceneProcessingService;
     private final IndividualPersistenceService individualPersistenceService;
+    private final ChapterIndividualResolutionService chapterIndividualResolutionService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
@@ -55,6 +53,7 @@ public class SceneDetectionHandler {
             SceneDetectionService sceneDetectionService,
             SceneProcessingService sceneProcessingService,
             IndividualPersistenceService individualPersistenceService,
+            ChapterIndividualResolutionService chapterIndividualResolutionService,
             IngestionJobService ingestionJobService,
             DefaultTemporalEdgeService defaultTemporalEdgeService,
             ApplicationEventPublisher eventPublisher
@@ -64,6 +63,7 @@ public class SceneDetectionHandler {
         this.sceneDetectionService = sceneDetectionService;
         this.sceneProcessingService = sceneProcessingService;
         this.individualPersistenceService = individualPersistenceService;
+        this.chapterIndividualResolutionService = chapterIndividualResolutionService;
         this.defaultTemporalEdgeService = defaultTemporalEdgeService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
@@ -72,8 +72,8 @@ public class SceneDetectionHandler {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleChapterIngestion(ChapterIngestionEvent event) {
-        UUID jobId = event.getJobId();
-        UUID chapterId = event.getChapterId();
+        UUID jobId = readUuidProperty(event, "jobId");
+        UUID chapterId = readUuidProperty(event, "chapterId");
         
         log.info("[SCENE_DETECTION] Starting pipeline for job={}, chapter={}", jobId, chapterId);
         
@@ -87,7 +87,7 @@ public class SceneDetectionHandler {
             Chapter chapter = chapterRepo.findById(chapterId)
                     .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
             
-            UUID bookId = chapter.getBookId();
+            UUID bookId = readUuidProperty(chapter, "bookId");
             
                     stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
                     "Analyzing chapter text with AI to identify semantic scene boundaries");
@@ -97,12 +97,14 @@ public class SceneDetectionHandler {
             if (!existingScenes.isEmpty()) {
                 log.info("[SCENE_DETECTION] Found {} existing scenes for chapter {}, skipping detection", 
                         existingScenes.size(), chapterId);
+                chapterIndividualResolutionService.resolveChapter(chapterId);
                 emitScenesDetected(jobId, chapterId, bookId, existingScenes);
                 return null;
             }
 
             // Detect and persist new scenes
             List<Scene> scenes = detectAndPersistScenes(jobId, chapterId);
+            chapterIndividualResolutionService.resolveChapter(chapterId);
             
             if (scenes.isEmpty()) {
                 log.warn("[SCENE_DETECTION] No scenes detected for chapter {}", chapterId);
@@ -129,7 +131,7 @@ public class SceneDetectionHandler {
         Chapter chapter = chapterRepo.findById(chapterId)
                 .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
 
-        String chapterText = chapter.getRawText();
+        String chapterText = readStringProperty(chapter, "rawText");
         if (chapterText == null || chapterText.trim().isEmpty()) {
             log.warn("[SCENE_DETECTION] Chapter {} has no text content", chapterId);
             return List.of();
@@ -170,5 +172,14 @@ public class SceneDetectionHandler {
                 message.contains("Empty response") || 
                 message.contains("timeout") ||
                 message.contains("rate limit"));
+    }
+
+    private UUID readUuidProperty(Object target, String propertyName) {
+        return (UUID) new BeanWrapperImpl(target).getPropertyValue(propertyName);
+    }
+
+    private String readStringProperty(Object target, String propertyName) {
+        Object value = new BeanWrapperImpl(target).getPropertyValue(propertyName);
+        return value == null ? null : value.toString();
     }
 }
