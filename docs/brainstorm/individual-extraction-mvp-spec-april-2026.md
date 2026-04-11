@@ -386,6 +386,15 @@ Those are explicitly **not** part of this proposal.
   - first non-blank alias => `displayName`
   - otherwise extracted individual is skipped.
 - Cleanup correction applied: removed `BeanWrapperImpl` reflection usage from production scene/triad/handler flow and restored typed accessor usage to align with repository style.
+- Corrected provisional graph semantics after implementation: the first persisted layer now represents `IndividualMention` evidence nodes rather than canonical `Individual` entities.
+- Adopted mention-ready metadata on provisional nodes for later reconciliation work:
+  - `sceneId`
+  - `chapterId`
+  - `normalizedName`
+  - `resolutionStatus`
+  - `extractionIndex`
+- Deferred persisted `bookId` on mention nodes for now; current mention evidence keeps `chapterId`, and book scope can be resolved via chapter lookup during the first reconciliation pass without widening this MVP refactor.
+- Deferred canonical `Individual` creation entirely for now; current writes remain mention-only and preserve the future `IndividualMention -> REFERS_TO -> Individual` path.
 - Kept scope intentionally narrow:
   - persisted only pass2 `current_scene_entities.individuals`
   - no matching/dedup/merge logic
