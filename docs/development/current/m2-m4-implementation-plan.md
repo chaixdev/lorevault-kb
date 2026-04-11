@@ -1,16 +1,19 @@
 # M2–M4 Implementation Plan
 
 Date: April 2026  
-Status: **M2 complete, M3 complete** — M4 is next  
-Baseline: M1 merged (`cfb7404`) — ingestion entities annotated `@Node`, mirror classes deleted.  
-M2 complete: all 6 content domain entities annotated `@Node`, mirror classes and `Neo4jMapper` deleted.  
-M3 complete: `ContentPersistencePort` deleted, all 5 remaining port interfaces gone, services inject concrete beans directly. 248 tests passing.
+Status: **Historical execution plan — M2, M3, and M4 complete**  
+Baseline at plan creation: M1 merged (`cfb7404`) — ingestion entities annotated `@Node`, mirror classes deleted.  
+Final outcome: all 6 content domain entities annotated `@Node`; mirror classes and `Neo4jMapper` deleted; remaining port interfaces deleted; Spring AI upgraded to 1.1.4; package layout flattened into the current feature-oriented structure; 263 tests passing.
+
+This document is preserved as the detailed execution record for the M2-M4 structural program. It is no longer an active plan; use `refactor-roadmap.md` and `PROJECT-STATUS.md` for current direction.
+
+Structured-response note: although Spring AI structured `.entity(...)` mapping is now used in parts of the ingestion flow, XML scene parsing still works in the current codebase and is not causing enough friction to justify immediate cleanup. A full move away from XML can be revisited later, but it is not a current priority.
 
 See `refactor-roadmap.md` for architectural vision and ADRs.
 
 ---
 
-## ~~What Remains~~ What Was Done (M2/M3 Summary)
+## What Was Done (M2/M3 Summary)
 
 **M2 — completed.** All 6 content domain entities now carry `@Node` directly:
 - `Universe`, `Series`, `Book`, `Chapter`, `Scene`, `Chunk`
@@ -27,9 +30,14 @@ See `refactor-roadmap.md` for architectural vision and ADRs.
 
 ---
 
-## M4 — Still Pending
+## How To Read This Document
 
-The sections below document what remains. Skip to [M4](#m4--spring-ai-upgrade--structured-output--package-flatten) to see the active work.
+The slices below are kept mostly in their original execution-plan form because they still capture useful implementation detail. Read them as:
+- what the codebase looked like before the work landed
+- what sequence was chosen to carry out the refactor safely
+- which assumptions were made during the execution
+
+Where current reality diverged from the original plan, short notes are added inline.
 
 ---
 
@@ -112,13 +120,15 @@ The sections below document what remains. Skip to [M4](#m4--spring-ai-upgrade--s
 | `LibraryService` | 214 | Hierarchy CRUD via ContentPersistencePort |
 | `HealthMetricsCollector` | 205 | Metrics assembly |
 
-**Spring AI:** currently `1.0.0`, upgrading to `1.1.4`  
-**TriadXmlParser:** 96 LOC — parses triad pass-2 XML; replaced in M4 by Spring AI `.entity()` structured output  
-**Package count:** ~42 packages → target 12
+**Spring AI at plan time:** `1.0.0`, with upgrade to `1.1.4` planned and later completed.  
+**XML parsing note:** this plan assumed `TriadXmlParser` would be removed as part of the structured-output cleanup. In the current codebase, structured `.entity(...)` mapping is used in `SceneDetectionClient`, but XML scene parsing still remains where it is working acceptably; finishing that cleanup is deferred.  
+**Package count at plan time:** ~42 packages → target 12 (implemented result later converged to 10 top-level feature packages)
 
 ---
 
 ## Migration Strategy
+
+Historical note: this sequencing was largely followed successfully. The key enduring idea was to do invasive persistence simplification before package flattening, so behavioural changes stayed easier to verify.
 
 **Core principle:** Keep `ContentPersistencePort` interface stable throughout M2–M3. Services do not change their injection point — only the adapter internals change beneath them. Delete the port only after all consumers are migrated off it in M3.
 
@@ -323,6 +333,8 @@ Validation: `mvn compile && mvn test`. Zero references to `ContentPersistencePor
 
 ## M4 — Spring AI Upgrade + Structured Output + Package Flatten
 
+Historical note: most of this milestone landed, but not every cleanup item was completed exactly as originally phrased below. In particular, the package-flattening outcome ended up at 10 top-level feature packages, and XML parsing cleanup is not fully finished because the remaining XML path is still working well enough.
+
 ### Slice 4.1 — Spring AI upgrade (1.0.0 → 1.1.4)
 
 Steps:
@@ -351,6 +363,8 @@ Validation: `mvn test`. Run a live embedding smoke test.
 
 ### Slice 4.3 — Replace TriadXmlParser with structured output
 
+Historical note: the original plan treated XML removal as part of M4. In practice, this became non-urgent. Structured response mapping via `.entity(...)` is already in use, but the remaining XML path works and is not creating enough operational friction to force immediate removal.
+
 Prerequisite: confirm OpenRouter/Nebius provider supports `response_format: json_schema`.
 
 Steps:
@@ -360,9 +374,11 @@ Steps:
 4. Delete `TriadXmlParser.java`.
 5. Test with live or recorded provider responses.
 
+Current status: partially realized in spirit, but not completed as a full XML-removal effort. Treat this slice as deferred cleanup rather than active roadmap work.
+
 Validation: `mvn test`. Run a live triad detection smoke test.
 
-### Slice 4.4 — Package flattening (layered → 12 feature packages)
+### Slice 4.4 — Package flattening (layered → small feature-oriented package set)
 
 Target structure (from `refactor-roadmap.md`):
 
@@ -393,7 +409,9 @@ Steps:
 
 Validation: `mvn compile && mvn test`.
 
-**M4 definition of done:** `mvn test` green, Spring AI on 1.1.4, TriadXmlParser deleted, ~12 packages, ~55 total files.
+**Original M4 definition of done:** `mvn test` green, Spring AI on 1.1.4, TriadXmlParser deleted, ~12 packages, ~55 total files.
+
+Actual outcome: Spring AI upgrade and package flattening landed; the implemented package layout converged to 10 top-level feature packages; the exact file-count target was not pursued literally; XML cleanup remains deferred.
 
 ---
 

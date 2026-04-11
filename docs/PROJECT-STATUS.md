@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
 **Last Updated:** April 2026  
-**Status:** Active — M1/M2/M3/M4 complete; spoiler-aware search shipped  
+**Status:** Active — M1/M2/M3/M4 complete; spoiler-aware search and budgeted scene detection shipped  
 **Primary Direction:** Simplify architecture, preserve mechanical sympathy, reduce indirection
 
 ## What LoreVault Is
@@ -11,11 +11,13 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 ## Current State
 
 - Core pipeline works end to end
-- 186 tests passing
+- 263 tests passing
 - Stack: Java 21, Spring Boot 3.5.4, Spring AI 1.1.4, Neo4j 5.26
 - All domain content entities annotated `@Node` directly (no mirror Node classes)
 - Internal port/adapter indirection removed — services inject concrete beans/repositories directly
 - Package structure: 10 top-level feature-oriented packages in `lorevault-api` (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`, `support/`, `timeline/`, `web/`)
+- Scene detection now enforces context-budget checks and deterministic segmented fallback for oversized chapters
+- Individual mentions are persisted from scene detection output, with normalized-name and resolution metadata for later linking
 
 ## What Is Done
 
@@ -27,28 +29,30 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **M3 complete** — `ContentPersistencePort` deleted; `EmbeddingException` deleted; `ContentPersistencePortTCK` deleted; all 7 integration tests migrated to `@Autowired Neo4jContentPersistenceAdapter`; `PromptRepositoryPort`, `SemanticSearchPort`, `EmbeddingPort`, `TemporalEdgePort` all gone in earlier commits
 - **M4 complete** — Spring AI upgraded to 1.1.4 (BOM bump); `EmbeddingModelAdapter` replaced with Spring AI `EmbeddingModel`; `TriadXmlParser` replaced with `.entity(Record.class)` structured output; package structure flattened from layered packages to 10 top-level feature packages in `lorevault-api`
 - **Spoiler-aware search shipped** — Per-request `SpoilerVisibility` DTO accepted on `/api/query/ask/vector` and `/api/query/ask/rag`; `ANY()` Cypher predicate filters chunks beyond the reader's per-series read-through position; `UnconfiguredSeriesPolicy` defaults to `HIDE`; oversample multiplier configurable in `application.yml`; documented in ADR 006
+- **Budgeted scene detection shipped** — Pass-1 scene detection now checks model context budget before full-chapter submission and falls back to deterministic segmentation when needed; segment-boundary risk is tagged for later reconciliation
+- **Individual mention foundation shipped** — Extraction output is now modeled as `IndividualMention`, persisted per scene, and enriched with metadata needed for future chapter/book-level resolution
 
 ## What Is Next
 
-M1–M4 are complete. The architecture is now a flat, feature-oriented modulith with direct Spring AI integration and no port/adapter indirection.
+M1–M4 are complete. The architecture is now a flat, feature-oriented modulith with direct Spring AI integration and no port/adapter indirection. Recent feature work has shifted from structural cleanup to ingestion quality and retrieval correctness.
 
 Next direction candidates:
+- Individual resolution on top of persisted mentions (`IndividualMention -> ChapterIndividual -> BookIndividual`)
+- Broader entity extraction (Locations, Collectives, and later claims)
 - Timeline modeling with Scene-as-Event entities
-- Spoiler-aware search using publication coordinates
-- Entity extraction (Characters, Locations, etc.)
 - Production hardening (observability, rate limiting, error budgets)
 
 ## Active Architectural Direction
 
 - Keep Neo4j for graph + vectors
-- Keep Spring AI and upgrade it
+- Keep Spring AI current
 - Prefer direct services and repositories over internal port/adapter indirection
 - Flatten toward feature-oriented packages
 - Keep event-driven ingestion where it adds real value
 
 ## Open Decisions
 
-All 4 decisions from the original plan are resolved. No open decisions blocking M4.
+All 4 decisions from the original modulith plan are resolved. No architectural decision is currently blocking feature work; the main open question is next-feature sequencing.
 
 ## Canonical Entry Points
 

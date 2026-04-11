@@ -1,7 +1,7 @@
 # Refactor Roadmap
 
 Date: April 2026
-Status: Active roadmap
+Status: Structural roadmap completed; retained as continuity document for post-modulith feature direction
 Relationship: Promoted from refactor follow-up analysis; historical companion remains `../../archive/refactor/PRAGMATIC_MODULITH_PLAN.md`
 
 ## Context
@@ -35,30 +35,41 @@ Three separate plans reused the word "phase" with their own numbering. This sect
 
 | Phase | What | When | Status |
 |---|---|---|---|
-| C1 | Ingestion entities → @Node | Dec 28 | Done, merged locally on `main` |
-| C2 | Content entities → @Node | — | Not started |
-| C3 | Search & AI port cleanup | — | Not started |
+| C1 | Ingestion entities → @Node | Dec 28 | Done |
+| C2 | Content entities → @Node | Apr 2026 | Done |
+| C3 | Port cleanup, Spring AI modernization, package flatten | Apr 2026 | Done |
 
 The branch `refactor/phase5-pragmatic-modulith` is named "phase 5" because it followed Plan B's 4 phases sequentially. Its commit message says "Phase 1 of Pragmatic Modulith plan" because within Plan C it IS phase 1. Both refer to the same work: C1.
 
-**Going forward**, all phase references use the **M-prefix** (Modulith): M1, M2, M3, etc. Plans A and B are complete history.
+**Going forward**, all phase references use the **M-prefix** (Modulith): M1, M2, M3, etc. Plans A and B are complete history, and M1-M4 are now complete as well.
 
 ## Current Audit Findings
 
-Current state of the codebase:
+Original April audit baseline before M2-M4 completion:
 - 153 production Java files, 78 test files, ~60 packages
 - 263 passing tests
 - Stack: Java 21, Spring Boot 3.5.4, Spring AI 1.0, Neo4j 5.26
 - Core pipeline functional: Ingestion → Scene Detection → Chunking → Embedding → Semantic Search/RAG
 
-Remaining structural issues:
-- ContentPersistencePort: 40+ methods, remains a God Port
-- Neo4jMapper: 372 LOC, redundant domain/node mapping for content entities
-- Neo4jContentPersistenceAdapter: 590 LOC monolith
-- SceneProcessingService: 694 LOC god class
-- Package bloat: ~60 packages where ~12 are sufficient
+Those findings motivated the completed structural work:
+- `ContentPersistencePort` deleted in M3
+- `Neo4jMapper` deleted in M2
+- `Neo4jContentPersistenceAdapter` deleted in M3
+- Package layout flattened in M4 to 10 top-level feature packages
+- Scene processing remains a large service, but the structural blockers called out here are no longer present
 
-Verdict: Domain remains viable, codebase is salvageable through consolidation.
+Verdict from that audit was correct: the codebase was salvageable through consolidation, and the consolidation work has since landed.
+
+## Current Post-M4 State
+
+Current implemented state:
+- 138 production Java files, 57 test Java files, 10 top-level feature packages
+- 263 passing tests
+- Stack: Java 21, Spring Boot 3.5.4, Spring AI 1.1.4, Neo4j 5.26
+- Core pipeline functional: Ingestion → Scene Detection → Chunking → Embedding → Semantic Search/RAG
+- Scene detection now includes context-budget checks and deterministic segmented fallback
+- Spoiler-aware search is shipped with per-series visibility windows
+- Individual mentions are persisted as groundwork for later entity resolution
 
 ## Architectural Reframe
 
@@ -72,7 +83,7 @@ The original plan retained 4 port abstractions (EmbeddingPort, SemanticSearchPor
 
 A high-IQ reasoning model (Oracle) synthesized the audit findings and Twikey philosophy into a consolidated vision.
 
-Target structure: 12 feature-oriented packages:
+Target structure discussed during the audit was 12 feature-oriented packages. The implemented result converged to 10 top-level feature packages:
 ```
 com.lorevault.api/
 ├── config/       # Spring @Configuration beans
@@ -94,7 +105,7 @@ Structural moves:
 - Repositories return domain types directly.
 - Services inject repositories directly.
 - Delete ContentPersistencePort, all adapters, and all mappers.
-- Target: ~55 total files, 3-hop maximum call depth.
+- The exact file-count target was not pursued literally; the meaningful outcome was removal of redundant layers and consolidation into feature packages.
 
 ## Storage Decision
 
@@ -136,28 +147,38 @@ Migration: Define Java records, use `.entity()`, and delete `TriadXmlParser` and
 
 ## Immediate Next Work
 
-Before the next feature-stage task, implement scene-detection context budgeting and deterministic segmented fallback.
+The previously listed first item has now shipped:
 
-Priority order:
-
-1. **Scene detection context budget + deterministic segmentation fallback**
-   - Add `maxContextTokens` per model
-   - Use a hardcoded 70% input threshold for pass 1 admission
-   - Apply conservative token estimation before sending full chapter text
-   - If over budget, split deterministically on paragraph / line / sentence / whitespace boundaries
-   - Tag segment-edge scenes with `PotentialSplitSceneStart` / `PotentialSplitSceneEnd`
-   - Defer merge-back logic to a later background task
+1. **Scene detection context budget + deterministic segmentation fallback** — complete in `21e2369`
+   - Added `maxContextTokens` handling and conservative admission checks
+   - Added deterministic segmentation fallback for oversized chapters
+   - Tagged segment-boundary risk for later reconciliation
    - See `../../brainstorm/scene-detection-context-budget-and-segmentation-spec-april-2026.md`
 
-2. **Entity extraction (Individuals, Locations, Collectives)**
-   - Capture entity data already requested by the pass2 prompt
+Current priority order:
+
+1. **Individual resolution on top of persisted mentions**
+   - Build `IndividualMention -> ChapterIndividual -> BookIndividual` incrementally
+   - Start with chapter-local exact linking for real retrieval value
+
+2. **Broader entity extraction (Locations, Collectives, later claims)**
+   - Extend the extraction foundation beyond individuals
    - Preserve the current simple architecture: extract first, map later
 
-## M1 Baseline (Merged Locally)
+3. **Timeline modeling and production hardening**
+   - Revisit scene-as-event enrichment once entity-linked retrieval is more valuable
+   - Continue operational hardening where needed
 
-The branch `origin/refactor/phase5-pragmatic-modulith` has been merged locally into `main` at:
+## M1-M4 Completion Baseline
+
+Key milestones now landed on `main`:
 
 - `cfb7404` — `refactor(ingestion): complete Phase 1 of Pragmatic Modulith plan`
+- `1b41679` — docs updated to reflect M2/M3 completion
+- `dc7e3b6` — `refactor(m4): flatten packages from 44 layered to 12 feature packages`
+- `76d25df` — spoiler-aware search shipped
+- `21e2369` — scene budget checks and deterministic segmented processing shipped
+- `05e2752` — individual mention metadata persistence improved
 
 The two accompanying docs commits that describe guardrails/rules are:
 
@@ -175,7 +196,7 @@ Implementation commit `cfb7404` (26 files, -813/+419 lines):
 - Repositories return domain types; services use repositories directly.
 - All tests updated and passing.
 
-This establishes M1 as the current local planning baseline. Remote push and rollout sequencing are tracked separately.
+These commits establish the structural program as complete and show the transition into feature work on ingestion quality, retrieval correctness, and entity groundwork.
 
 ## Comparison — Original Plan vs Current Proposal
 
@@ -187,7 +208,7 @@ This establishes M1 as the current local planning baseline. Remote push and roll
 | Delete mappers | Yes | Yes |
 | Retained ports | 4 (Embedding, Search, LLM, Prompt) | 0 — kill all |
 | Spring AI | Keep | Keep + Upgrade (1.1.4) |
-| Package layout | Layered (app/domain/infra) | Feature-oriented (12 flat packages) |
+| Package layout | Layered (app/domain/infra) | Feature-oriented layout; implemented as 10 top-level packages |
 | File count target | Not specified | ~55 files |
 | Max call depth | Not specified | 3 hops |
 
@@ -196,16 +217,11 @@ This establishes M1 as the current local planning baseline. Remote push and roll
 Resolved:
 
 1. **M2 start boundary** — Content entities → @Node first (same pattern as M1). Port/adapter elimination follows in M3. Spring AI upgrade deferred to M4.
-2. **Package layout** — Flatten to 12 feature packages in M4, after all ports/adapters are gone. Not mixed with structural work.
+2. **Package layout** — Flatten to a small feature-oriented package set in M4, after all ports/adapters are gone. Implemented result: 10 top-level packages.
 3. **Migration sequence** — M2 (content @Node) → M3 (kill all ports) → M4 (Spring AI upgrade + package flatten).
 4. **Provider stabilization** — XML→JSON structured output in M4.3; prerequisite is confirming provider JSON Schema support before coding.
 
-Remaining open (tracked in implementation plan):
-
-- Relationship field placement on domain entities (M2 prerequisite)
-- InMemorySemanticSearchAdapter fate in tests (M3.4)
-- Provider JSON Schema support confirmation (M4.3)
-- Neo4jVectorStore/Neo4j 5.26 HNSW compatibility (M4.2)
+Remaining open items from the structural program are largely historical. The roadmap-level open question is no longer how to finish M2-M4, but which feature tranche should follow them.
 
 ---
 ## Related Documents
