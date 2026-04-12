@@ -40,6 +40,10 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE CONSTRAINT chapter_individual_id_unique IF NOT EXISTS FOR (ci:ChapterIndividual) REQUIRE ci.id IS UNIQUE";
     private static final String CHAPTER_INDIVIDUAL_SCOPE_UNIQUE =
             "CREATE CONSTRAINT chapter_individual_scope_unique IF NOT EXISTS FOR (ci:ChapterIndividual) REQUIRE (ci.chapterId, ci.normalizedName) IS UNIQUE";
+    private static final String BOOK_INDIVIDUAL_ID_UNIQUE =
+            "CREATE CONSTRAINT book_individual_id_unique IF NOT EXISTS FOR (bi:BookIndividual) REQUIRE bi.id IS UNIQUE";
+    private static final String BOOK_INDIVIDUAL_SCOPE_UNIQUE =
+            "CREATE CONSTRAINT book_individual_scope_unique IF NOT EXISTS FOR (bi:BookIndividual) REQUIRE (bi.bookId, bi.normalizedName) IS UNIQUE";
 
     // Content hash uniqueness
     private static final String CHAPTER_CONTENT_HASH_UNIQUE =
@@ -58,6 +62,8 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE INDEX chunk_embeddingHash IF NOT EXISTS FOR (ch:Chunk) ON (ch.embeddingHash)";
     private static final String INDIVIDUAL_MENTION_CHAPTER_NAME_INDEX =
             "CREATE INDEX individual_mention_chapter_name IF NOT EXISTS FOR (m:IndividualMention) ON (m.chapterId, m.normalizedName)";
+    private static final String BOOK_INDIVIDUAL_BOOK_NAME_INDEX =
+            "CREATE INDEX book_individual_book_name IF NOT EXISTS FOR (bi:BookIndividual) ON (bi.bookId, bi.normalizedName)";
 
     // Per-chapter ordering index for events
     private static final String EVENT_PER_CHAPTER_SCENE_INDEX =
@@ -78,9 +84,11 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(CHUNK_ID_UNIQUE, "Chunk.id unique"));
         results.add(executeConstraint(INGESTION_JOB_ID_UNIQUE, "IngestionJob.id unique"));
         results.add(executeConstraint(STATUS_RECORD_ID_UNIQUE, "StatusRecord.id unique"));
-    results.add(executeConstraint(LLM_CALL_RECORD_ID_UNIQUE, "LlmCallRecord.id unique"));
+        results.add(executeConstraint(LLM_CALL_RECORD_ID_UNIQUE, "LlmCallRecord.id unique"));
         results.add(executeConstraint(CHAPTER_INDIVIDUAL_ID_UNIQUE, "ChapterIndividual.id unique"));
         results.add(executeConstraint(CHAPTER_INDIVIDUAL_SCOPE_UNIQUE, "ChapterIndividual(chapterId, normalizedName) unique"));
+        results.add(executeConstraint(BOOK_INDIVIDUAL_ID_UNIQUE, "BookIndividual.id unique"));
+        results.add(executeConstraint(BOOK_INDIVIDUAL_SCOPE_UNIQUE, "BookIndividual(bookId, normalizedName) unique"));
         results.add(executeConstraint(CHAPTER_CONTENT_HASH_UNIQUE, "Chapter.contentHash unique"));
         
         // Event identity constraint
@@ -91,6 +99,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(CHUNK_CONTENT_HASH_INDEX, "Chunk.contentHash"));
         results.add(executeIndex(CHUNK_EMBEDDING_HASH_INDEX, "Chunk.embeddingHash"));
         results.add(executeIndex(INDIVIDUAL_MENTION_CHAPTER_NAME_INDEX, "IndividualMention(chapterId, normalizedName)"));
+        results.add(executeIndex(BOOK_INDIVIDUAL_BOOK_NAME_INDEX, "BookIndividual(bookId, normalizedName)"));
         
         // Event per-chapter ordering index
         results.add(executeIndex(EVENT_PER_CHAPTER_SCENE_INDEX, "Event(chapterId, sceneIndex)"));
