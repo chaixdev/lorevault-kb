@@ -3,14 +3,15 @@ package com.lorevault.api.ingestion;
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.ingestion.IngestionStatus;
 import com.lorevault.api.ingestion.ChunksCreatedEvent;
-import com.lorevault.api.ingestion.IngestionCompletedEvent;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
 import com.lorevault.api.ingestion.IngestionJobGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
 import com.lorevault.api.ai.EmbeddingService;
 import com.lorevault.api.ingestion.IngestionJobService;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
@@ -30,8 +31,9 @@ import java.util.UUID;
  * - Gather final statistics and mark job complete
  */
 @Component
-@Slf4j
 public class EmbeddingHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(EmbeddingHandler.class);
 
     private final ChapterGraphRepository chapterRepo;
     private final ChunkGraphRepository chunkRepo;
@@ -64,11 +66,13 @@ public class EmbeddingHandler {
     @Async
     @EventListener
     public void handleChunksCreated(ChunksCreatedEvent event) {
-        UUID jobId = event.getJobId();
-        UUID chapterId = event.getChapterId();
+        BeanWrapperImpl eventBean = new BeanWrapperImpl(event);
+        UUID jobId = (UUID) eventBean.getPropertyValue("jobId");
+        UUID chapterId = (UUID) eventBean.getPropertyValue("chapterId");
+        Integer chunkCount = (Integer) eventBean.getPropertyValue("chunkCount");
         
         log.info("[EMBEDDING] Starting for job={}, chapter={}, chunkCount={}", 
-                jobId, chapterId, event.getChunkCount());
+                jobId, chapterId, chunkCount);
         
                 stageSupport.runStage(
                         this,
@@ -109,20 +113,21 @@ public class EmbeddingHandler {
             // Get chapter length for job completion
             Chapter chapter = chapterRepo.findById(chapterId)
                     .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
-            int chapterLength = chapter.getRawText() != null ? chapter.getRawText().length() : 0;
+            String rawText = (String) new BeanWrapperImpl(chapter).getPropertyValue("rawText");
+            int chapterLength = rawText != null ? rawText.length() : 0;
             
-            // Get the job and mark complete
-            var job = jobRepo.findById(jobId)
-                    .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
-            
-            ingestionJobService.completeJob(job, chapterId, chapterLength);
-            
-            log.info("[COMPLETION] Job {} completed: {} scenes, {} chunks, {} embeddings", 
+            log.info("[COMPLETION] Embedding branch finished for job {}: {} scenes, {} chunks, {} embeddings", 
                     jobId, sceneCount, chunkCount, embeddedCount);
             
-            // Emit completion event
-            eventPublisher.publishEvent(new IngestionCompletedEvent(
-                    this, jobId, chapterId, sceneCount, chunkCount, embeddedCount));
+            eventPublisher.publishEvent(new EmbeddingsCompletedEvent(
+                    this,
+                    jobId,
+                    chapterId,
+                    sceneCount,
+                    chunkCount,
+                    embeddedCount,
+                    chapterLength
+            ));
             
         } catch (Exception e) {
             log.error("[COMPLETION] Failed for job={}, chapter={}: {}", 
