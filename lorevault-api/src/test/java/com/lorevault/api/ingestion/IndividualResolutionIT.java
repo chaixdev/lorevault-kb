@@ -8,6 +8,7 @@ import com.lorevault.api.content.Book;
 import com.lorevault.api.content.BookGraphRepository;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.integration.TestConfig;
+import com.lorevault.api.support.BookIndividualResolutionResponse;
 import com.lorevault.api.support.ChapterIndividualResolutionResponse;
 import com.lorevault.api.support.SubmitChapterRequest;
 import com.lorevault.api.support.SubmitChapterResponse;
@@ -49,6 +50,7 @@ import static org.mockito.Mockito.when;
         SceneProcessingService.class,
         IndividualPersistenceService.class,
         ChapterIndividualResolutionService.class,
+        BookIndividualReductionService.class,
         DefaultTemporalEdgeService.class
 })
 @Tag("integration")
@@ -86,6 +88,9 @@ class IndividualResolutionIT {
     private ChapterIndividualResolutionService chapterIndividualResolutionService;
 
     @Autowired
+    private BookIndividualReductionService bookIndividualReductionService;
+
+    @Autowired
     private Neo4jClient neo4jClient;
 
     @Autowired
@@ -121,17 +126,24 @@ class IndividualResolutionIT {
         sceneDetectionHandler.handleChapterIngestion(new ChapterIngestionEvent(this, jobId, chapterId));
 
         ChapterIndividualResolutionResponse resolutionResponse = chapterIndividualResolutionService.resolveChapter(chapterId);
+        BookIndividualResolutionResponse bookResolutionResponse = bookIndividualReductionService.resolveBook(readUuidProperty(chapterRepo.findById(chapterId).orElseThrow(), "bookId"));
 
         assertThat(chapterRepo.findById(chapterId)).isPresent();
         assertThat(resolutionResponse.isProcessed()).isTrue();
         assertThat(resolutionResponse.getMentionCount()).isEqualTo(3);
         assertThat(resolutionResponse.getChapterIndividualCount()).isEqualTo(2);
+        assertThat(bookResolutionResponse.isProcessed()).isTrue();
+        assertThat(bookResolutionResponse.getChapterIndividualCount()).isEqualTo(2);
+        assertThat(bookResolutionResponse.getBookIndividualCount()).isEqualTo(2);
         assertThat(countNodes("IndividualMention")).isEqualTo(3L);
         assertThat(countNodes("ChapterIndividual")).isEqualTo(2L);
+        assertThat(countNodes("BookIndividual")).isEqualTo(2L);
         assertThat(countMentionLinks()).isEqualTo(3L);
+        assertThat(countBookLinks()).isEqualTo(2L);
         assertThat(countChapterIndividualsForName(chapterId, "nyx")).isEqualTo(1L);
         assertThat(countMentionRefsForName(chapterId, "nyx")).isEqualTo(2L);
         assertThat(countChapterIndividualsForName(chapterId, "orion")).isEqualTo(1L);
+        assertThat(countBookIndividualsForName(readUuidProperty(chapterRepo.findById(chapterId).orElseThrow(), "bookId"), "nyx")).isEqualTo(1L);
         assertThat(loadChapterIndividualProjection(chapterId, "nyx"))
                 .containsEntry("displayName", "Nyx")
                 .containsEntry("mentionCount", 2L);
@@ -182,6 +194,13 @@ class IndividualResolutionIT {
                 .orElse(0L);
     }
 
+    private long countBookLinks() {
+        return neo4jClient.query("MATCH (:ChapterIndividual)-[r:REFERS_TO]->(:BookIndividual) RETURN count(r) AS value")
+                .fetchAs(Long.class)
+                .one()
+                .orElse(0L);
+    }
+
     private long countChapterIndividualsForName(UUID chapterId, String normalizedName) {
         return neo4jClient.query("""
                 MATCH (ci:ChapterIndividual {chapterId: $chapterId, normalizedName: $normalizedName})
@@ -200,6 +219,18 @@ class IndividualResolutionIT {
                 RETURN count(*) AS value
                 """)
                 .bind(chapterId.toString()).to("chapterId")
+                .bind(normalizedName).to("normalizedName")
+                .fetchAs(Long.class)
+                .one()
+                .orElse(0L);
+    }
+
+    private long countBookIndividualsForName(UUID bookId, String normalizedName) {
+        return neo4jClient.query("""
+                MATCH (bi:BookIndividual {bookId: $bookId, normalizedName: $normalizedName})
+                RETURN count(bi) AS value
+                """)
+                .bind(bookId.toString()).to("bookId")
                 .bind(normalizedName).to("normalizedName")
                 .fetchAs(Long.class)
                 .one()
