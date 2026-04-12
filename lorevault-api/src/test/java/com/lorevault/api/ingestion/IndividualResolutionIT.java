@@ -8,6 +8,7 @@ import com.lorevault.api.content.Book;
 import com.lorevault.api.content.BookGraphRepository;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.integration.TestConfig;
+import com.lorevault.api.support.ChapterIndividualResolutionResponse;
 import com.lorevault.api.support.SubmitChapterRequest;
 import com.lorevault.api.support.SubmitChapterResponse;
 import com.lorevault.api.testutil.SampleChapterLoader;
@@ -82,6 +83,9 @@ class IndividualResolutionIT {
     private SceneDetectionHandler sceneDetectionHandler;
 
     @Autowired
+    private ChapterIndividualResolutionService chapterIndividualResolutionService;
+
+    @Autowired
     private Neo4jClient neo4jClient;
 
     @Autowired
@@ -116,7 +120,12 @@ class IndividualResolutionIT {
 
         sceneDetectionHandler.handleChapterIngestion(new ChapterIngestionEvent(this, jobId, chapterId));
 
+        ChapterIndividualResolutionResponse resolutionResponse = chapterIndividualResolutionService.resolveChapter(chapterId);
+
         assertThat(chapterRepo.findById(chapterId)).isPresent();
+        assertThat(resolutionResponse.isProcessed()).isTrue();
+        assertThat(resolutionResponse.getMentionCount()).isEqualTo(3);
+        assertThat(resolutionResponse.getChapterIndividualCount()).isEqualTo(2);
         assertThat(countNodes("IndividualMention")).isEqualTo(3L);
         assertThat(countNodes("ChapterIndividual")).isEqualTo(2L);
         assertThat(countMentionLinks()).isEqualTo(3L);
@@ -127,11 +136,6 @@ class IndividualResolutionIT {
                 .containsEntry("displayName", "Nyx")
                 .containsEntry("mentionCount", 2L);
 
-        sceneDetectionHandler.handleChapterIngestion(new ChapterIngestionEvent(this, UUID.randomUUID(), chapterId));
-
-        assertThat(countNodes("IndividualMention")).isEqualTo(3L);
-        assertThat(countNodes("ChapterIndividual")).isEqualTo(2L);
-        assertThat(countMentionLinks()).isEqualTo(3L);
     }
 
     private void persistDeathworldersBook() {

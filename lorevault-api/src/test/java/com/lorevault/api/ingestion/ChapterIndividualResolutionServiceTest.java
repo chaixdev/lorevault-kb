@@ -2,6 +2,7 @@ package com.lorevault.api.ingestion;
 
 import com.lorevault.api.content.ChapterIndividual;
 import com.lorevault.api.content.ChapterIndividualGraphRepository;
+import com.lorevault.api.support.ChapterIndividualResolutionResponse;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -33,10 +34,16 @@ class ChapterIndividualResolutionServiceTest {
         ChapterIndividualGraphRepository.ChapterIndividualCandidateView nyx = candidate("Nyx", "nyx", 2L);
         ChapterIndividualGraphRepository.ChapterIndividualCandidateView orion = candidate("Orion", "orion", 1L);
 
+        when(chapterIndividualRepository.countMentionsByChapterId(chapterId)).thenReturn(3L);
         when(chapterIndividualRepository.findResolutionCandidates(chapterId)).thenReturn(List.of(nyx, orion));
         when(chapterIndividualRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(chapterIndividualRepository.countChapterIndividualsByChapterId(chapterId)).thenReturn(2L);
 
-        service.resolveChapter(chapterId);
+        ChapterIndividualResolutionResponse response = service.resolveChapter(chapterId);
+
+        assertThat(response.isProcessed()).isTrue();
+        assertThat(response.getMentionCount()).isEqualTo(3);
+        assertThat(response.getChapterIndividualCount()).isEqualTo(2);
 
         verify(chapterIndividualRepository).deleteByChapterId(chapterId);
 
@@ -67,9 +74,14 @@ class ChapterIndividualResolutionServiceTest {
     @DisplayName("Skips save when there are no candidates")
     void skipsSaveWhenNoCandidates() {
         UUID chapterId = UUID.randomUUID();
+        when(chapterIndividualRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
         when(chapterIndividualRepository.findResolutionCandidates(chapterId)).thenReturn(List.of());
 
-        service.resolveChapter(chapterId);
+        ChapterIndividualResolutionResponse response = service.resolveChapter(chapterId);
+
+        assertThat(response.isProcessed()).isFalse();
+        assertThat(response.getMentionCount()).isEqualTo(2);
+        assertThat(response.getChapterIndividualCount()).isZero();
 
         verify(chapterIndividualRepository).deleteByChapterId(chapterId);
         verify(chapterIndividualRepository, never()).saveAll(any());
@@ -82,13 +94,31 @@ class ChapterIndividualResolutionServiceTest {
     void ignoresBlankNormalizedNames() {
         UUID chapterId = UUID.randomUUID();
         ChapterIndividualGraphRepository.ChapterIndividualCandidateView blank = candidate("Narrator", "   ", 2L);
+        when(chapterIndividualRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
         when(chapterIndividualRepository.findResolutionCandidates(chapterId)).thenReturn(List.of(blank));
 
-        service.resolveChapter(chapterId);
+        ChapterIndividualResolutionResponse response = service.resolveChapter(chapterId);
+
+        assertThat(response.isProcessed()).isFalse();
+        assertThat(response.getMentionCount()).isEqualTo(2);
 
         verify(chapterIndividualRepository).deleteByChapterId(chapterId);
         verify(chapterIndividualRepository, never()).saveAll(any());
         verify(chapterIndividualRepository, never()).linkMentionsToChapterIndividual(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Returns no-op response when chapter has no mentions")
+    void returnsNoOpWhenChapterHasNoMentions() {
+        UUID chapterId = UUID.randomUUID();
+        when(chapterIndividualRepository.countMentionsByChapterId(chapterId)).thenReturn(0L);
+
+        ChapterIndividualResolutionResponse response = service.resolveChapter(chapterId);
+
+        assertThat(response.isProcessed()).isFalse();
+        assertThat(response.getMentionCount()).isZero();
+        assertThat(response.getChapterIndividualCount()).isZero();
+        verify(chapterIndividualRepository, never()).deleteByChapterId(any());
     }
 
     private ChapterIndividualGraphRepository.ChapterIndividualCandidateView candidate(
