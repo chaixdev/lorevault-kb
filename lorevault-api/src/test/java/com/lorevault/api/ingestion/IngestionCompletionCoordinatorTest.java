@@ -1,0 +1,56 @@
+package com.lorevault.api.ingestion;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.BeanWrapperImpl;
+import org.springframework.context.ApplicationEventPublisher;
+
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("IngestionCompletionCoordinator")
+class IngestionCompletionCoordinatorTest {
+
+    @Mock
+    private IngestionJobGraphRepository jobRepo;
+
+    @Mock
+    private IngestionJobService ingestionJobService;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
+    @InjectMocks
+    private IngestionCompletionCoordinator coordinator;
+
+    @Test
+    @DisplayName("Completes ingestion only after embedding and identity branches finish")
+    void completesOnlyWhenBothBranchesArrive() {
+        UUID jobId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+        IngestionJob job = new IngestionJob();
+        BeanWrapperImpl jobBean = new BeanWrapperImpl(job);
+        jobBean.setPropertyValue("id", jobId);
+        jobBean.setPropertyValue("chapterId", chapterId);
+
+        when(jobRepo.findById(jobId)).thenReturn(java.util.Optional.of(job));
+
+        coordinator.handleBookIndividualsReduced(new BookIndividualsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 3, 1));
+
+        verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));
+
+        coordinator.handleEmbeddingsCompleted(new EmbeddingsCompletedEvent(this, jobId, chapterId, 2, 4, 4, 1200));
+
+        verify(ingestionJobService).completeJob(job, chapterId, 1200);
+        verify(eventPublisher).publishEvent(any(IngestionCompletedEvent.class));
+    }
+}
