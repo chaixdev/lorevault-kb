@@ -119,6 +119,7 @@ class SceneDetectionClientTest {
 
         assertThat(responseBodyCaptor.getValue()).contains("\"timelineMarker\":\"timeline-marker\"");
         assertThat(responseBodyCaptor.getValue()).contains("\"currentSceneEntities\"");
+        assertThat(responseBodyCaptor.getValue()).contains("\"activity\":\"A soldier with a spear\"");
         assertThat(responseBodyCaptor.getValue()).doesNotContain("[structured-response:");
         assertThat(outputTokensCaptor.getValue()).isGreaterThan(0);
     }

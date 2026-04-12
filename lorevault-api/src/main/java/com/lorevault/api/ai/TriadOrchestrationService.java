@@ -31,7 +31,7 @@ public class TriadOrchestrationService {
             List<String> aliases,
             String physicalProperties,
             String age,
-            String description
+            String activity
     ) {}
 
     public record TriadCurrentSceneEntities(List<TriadIndividualExtraction> individuals) {}
@@ -178,7 +178,7 @@ public class TriadOrchestrationService {
                         normalizeAliases(individual.aliases()),
                         normalizeText(individual.physicalProperties()),
                         normalizeText(individual.age()),
-                        normalizeText(individual.description())
+                        normalizeText(individual.activity())
                 ))
                 .toList();
     }

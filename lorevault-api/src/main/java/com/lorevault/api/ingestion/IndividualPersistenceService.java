@@ -57,7 +57,7 @@ public class IndividualPersistenceService {
                         displayName,
                         normalizeName(displayName),
                         extracted.aliases(),
-                        extracted.description(),
+                        extracted.activity(),
                         extracted.age(),
                         extracted.physicalProperties(),
                         sceneId,

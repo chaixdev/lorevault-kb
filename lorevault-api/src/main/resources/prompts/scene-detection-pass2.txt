@@ -78,7 +78,7 @@ Entity Categories — definitions (for <scene_entities>)
         </aliases>
         <physical_properties></physical_properties>
         <age></age>
-        <description>two or three sentences</description>
+        <activity>two or three sentences on what the individual is doing in the scene</activity>
       </individual>
     </individuals>
     <collectives></collectives>
