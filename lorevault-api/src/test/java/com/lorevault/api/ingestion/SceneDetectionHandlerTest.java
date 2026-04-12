@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeanWrapperImpl;
@@ -108,6 +109,29 @@ class SceneDetectionHandlerTest {
             assertThat(eventBean.getPropertyValue("chapterId")).isEqualTo(chapterId);
             assertThat(eventBean.getPropertyValue("bookId")).isEqualTo(bookId);
             assertThat((List<?>) eventBean.getPropertyValue("sceneIds")).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("Should emit ScenesDetectedEvent after persisting extracted individuals")
+        void handleChapterPersisted_persistsMentionsBeforeEventEmission() {
+            List<SceneWithCoordinates> sceneCoords = List.of(new SceneWithCoordinates(0, 0, 20, "Scene 1"));
+            Scene scene = createScene(0);
+            List<Scene> persistedScenes = List.of(scene);
+            List<com.lorevault.api.ai.TriadOrchestrationService.TriadSceneIndividualExtraction> extractions = List.of();
+
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneDetectionService.detectScenesInText(jobId, chapterId, (String) new BeanWrapperImpl(testChapter).getPropertyValue("rawText")))
+                    .thenReturn(new SceneDetectionService.SceneDetectionOutcome(sceneCoords, extractions));
+            when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
+
+            handler.handleChapterIngestion(testEvent);
+
+            verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, extractions);
+            verify(eventPublisher).publishEvent(any(ScenesDetectedEvent.class));
+            InOrder inOrder = inOrder(individualPersistenceService, eventPublisher);
+            inOrder.verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, extractions);
+            inOrder.verify(eventPublisher).publishEvent(any(ScenesDetectedEvent.class));
         }
 
         @Test
