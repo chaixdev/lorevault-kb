@@ -41,4 +41,12 @@ public interface BookIndividualGraphRepository extends Neo4jRepository<BookIndiv
             MERGE (ci)-[:REFERS_TO]->(bi)
             """)
     void linkChapterIndividualToBookIndividual(UUID chapterIndividualId, UUID bookIndividualId);
+
+    @Query("""
+            MATCH (c:Chapter)-[:IN_BOOK]->(:Book {id: $bookId})
+            MATCH (c)-[:HAS_INDIVIDUAL]->(ci:ChapterIndividual {normalizedName: $normalizedName})
+            MATCH (bi:BookIndividual {id: $bookIndividualId})
+            MERGE (ci)-[:REFERS_TO]->(bi)
+            """)
+    void linkChapterIndividualsForBookAndNameToBookIndividual(UUID bookId, String normalizedName, UUID bookIndividualId);
 }

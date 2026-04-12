@@ -150,6 +150,39 @@ class IndividualResolutionIT {
 
     }
 
+    @Test
+    void bookResolution_linksAllChapterIndividuals_withSameNormalizedNameAcrossChapters() {
+        SubmitChapterRequest chapterOne = createSubmitChapterRequest(1, "Chapter One", "Kevin Jenkins arrives.");
+        SubmitChapterRequest chapterTwo = createSubmitChapterRequest(2, "Chapter Two", "Kevin Jenkins observes the station.");
+        SubmitChapterRequest chapterThree = createSubmitChapterRequest(3, "Chapter Three", "Kevin Jenkins departs.");
+
+        when(sceneDetectionService.detectScenesInText(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(
+                        outcomeWithSingleIndividual("Kevin Jenkins"),
+                        outcomeWithSingleIndividual("Kevin Jenkins"),
+                        outcomeWithSingleIndividual("Kevin Jenkins")
+                );
+
+        UUID chapterIdOne = ingestAndResolveChapter(chapterOne);
+        UUID chapterIdTwo = ingestAndResolveChapter(chapterTwo);
+        UUID chapterIdThree = ingestAndResolveChapter(chapterThree);
+        UUID bookId = readUuidProperty(chapterRepo.findById(chapterIdOne).orElseThrow(), "bookId");
+
+        BookIndividualResolutionResponse bookResolutionResponse = bookIndividualReductionService.resolveBook(bookId);
+
+        assertThat(bookResolutionResponse.isProcessed()).isTrue();
+        assertThat(bookResolutionResponse.getChapterIndividualCount()).isEqualTo(1);
+        assertThat(bookResolutionResponse.getBookIndividualCount()).isEqualTo(1);
+        assertThat(countNodes("ChapterIndividual")).isEqualTo(3L);
+        assertThat(countNodes("BookIndividual")).isEqualTo(1L);
+        assertThat(countBookLinks()).isEqualTo(3L);
+        assertThat(countBookIndividualsForName(bookId, "kevin jenkins")).isEqualTo(1L);
+        assertThat(countChapterIndividualsLinkedToBookIndividual(bookId, "kevin jenkins")).isEqualTo(3L);
+    }
+
     private void persistDeathworldersBook() {
         Book book = Book.createInSeries(
                 UUID.nameUUIDFromBytes("deathworlders-universe".getBytes()),
@@ -161,6 +194,28 @@ class IndividualResolutionIT {
         );
         new BeanWrapperImpl(book).setPropertyValue("id", UUID.nameUUIDFromBytes("Deathworlders".getBytes()));
         bookRepo.save(book);
+    }
+
+    private UUID ingestAndResolveChapter(SubmitChapterRequest request) {
+        SubmitChapterResponse response = ingestionService.submitChapter(request);
+        UUID jobId = readUuidProperty(response, "jobId");
+        UUID chapterId = readUuidProperty(response, "chapterId");
+
+        sceneDetectionHandler.handleChapterIngestion(new ChapterIngestionEvent(this, jobId, chapterId));
+        ChapterIndividualResolutionResponse resolutionResponse = chapterIndividualResolutionService.resolveChapter(chapterId);
+
+        assertThat(resolutionResponse.isProcessed()).isTrue();
+        return chapterId;
+    }
+
+    private SubmitChapterRequest createSubmitChapterRequest(int chapterNumber, String chapterTitle, String chapterText) {
+        SubmitChapterRequest request = new SubmitChapterRequest();
+        BeanWrapperImpl wrapper = new BeanWrapperImpl(request);
+        wrapper.setPropertyValue("bookId", UUID.nameUUIDFromBytes("Deathworlders".getBytes()));
+        wrapper.setPropertyValue("chapterNumber", chapterNumber);
+        wrapper.setPropertyValue("chapterTitle", chapterTitle);
+        wrapper.setPropertyValue("chapterText", chapterText);
+        return request;
     }
 
     private SceneDetectionService.SceneDetectionOutcome outcomeWithRepeatedNyx() {
@@ -175,6 +230,18 @@ class IndividualResolutionIT {
                 )),
                 new TriadOrchestrationService.TriadSceneIndividualExtraction(1, List.of(
                         new TriadOrchestrationService.TriadIndividualExtraction(List.of("Nyx"), "tall", "20s", "pilot again")
+                ))
+        );
+        return new SceneDetectionService.SceneDetectionOutcome(scenes, extractions);
+    }
+
+    private SceneDetectionService.SceneDetectionOutcome outcomeWithSingleIndividual(String displayName) {
+        List<SceneWithCoordinates> scenes = List.of(
+                new SceneWithCoordinates(0, 0, 120, displayName + " scene")
+        );
+        List<TriadOrchestrationService.TriadSceneIndividualExtraction> extractions = List.of(
+                new TriadOrchestrationService.TriadSceneIndividualExtraction(0, List.of(
+                        new TriadOrchestrationService.TriadIndividualExtraction(List.of(displayName), null, null, null)
                 ))
         );
         return new SceneDetectionService.SceneDetectionOutcome(scenes, extractions);
@@ -229,6 +296,19 @@ class IndividualResolutionIT {
         return neo4jClient.query("""
                 MATCH (bi:BookIndividual {bookId: $bookId, normalizedName: $normalizedName})
                 RETURN count(bi) AS value
+                """)
+                .bind(bookId.toString()).to("bookId")
+                .bind(normalizedName).to("normalizedName")
+                .fetchAs(Long.class)
+                .one()
+                .orElse(0L);
+    }
+
+    private long countChapterIndividualsLinkedToBookIndividual(UUID bookId, String normalizedName) {
+        return neo4jClient.query("""
+                MATCH (c:Chapter)-[:IN_BOOK]->(:Book {id: $bookId})
+                MATCH (c)-[:HAS_INDIVIDUAL]->(ci:ChapterIndividual {normalizedName: $normalizedName})-[:REFERS_TO]->(:BookIndividual {bookId: $bookId, normalizedName: $normalizedName})
+                RETURN count(DISTINCT ci) AS value
                 """)
                 .bind(bookId.toString()).to("bookId")
                 .bind(normalizedName).to("normalizedName")

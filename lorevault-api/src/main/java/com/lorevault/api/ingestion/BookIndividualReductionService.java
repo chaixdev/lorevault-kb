@@ -65,11 +65,11 @@ public class BookIndividualReductionService {
 
         for (BookIndividual bookIndividual : savedIndividuals) {
             bookIndividualRepository.linkBookToIndividual(bookId, bookIndividual.id());
-            for (BookReductionCandidate candidate : candidates) {
-                if (bookIndividual.normalizedName().equals(candidate.getNormalizedName())) {
-                    bookIndividualRepository.linkChapterIndividualToBookIndividual(candidate.getChapterIndividualId(), bookIndividual.id());
-                }
-            }
+            bookIndividualRepository.linkChapterIndividualsForBookAndNameToBookIndividual(
+                    bookId,
+                    bookIndividual.normalizedName(),
+                    bookIndividual.id()
+            );
         }
 
         return new BookIndividualResolutionResponse(

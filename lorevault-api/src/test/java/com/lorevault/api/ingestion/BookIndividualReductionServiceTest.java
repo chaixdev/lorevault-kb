@@ -85,9 +85,13 @@ class BookIndividualReductionServiceTest {
 
         for (BookIndividual bookIndividual : saved) {
             verify(bookIndividualRepository).linkBookToIndividual(bookId, bookIndividual.id());
+            verify(bookIndividualRepository).linkChapterIndividualsForBookAndNameToBookIndividual(
+                    bookId,
+                    bookIndividual.normalizedName(),
+                    bookIndividual.id()
+            );
         }
-        verify(bookIndividualRepository).linkChapterIndividualToBookIndividual(eq(nyxChapterIndividualId), any());
-        verify(bookIndividualRepository).linkChapterIndividualToBookIndividual(eq(orionChapterIndividualId), any());
+        verify(bookIndividualRepository, never()).linkChapterIndividualToBookIndividual(any(), any());
     }
 
     @Test
