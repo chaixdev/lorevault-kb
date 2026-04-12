@@ -1,0 +1,10 @@
+meta {
+  name: resolveChapterIndividuals
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/command/ingest/chapters/{{chapterId}}/resolve-individuals
+  auth: inherit
+}
