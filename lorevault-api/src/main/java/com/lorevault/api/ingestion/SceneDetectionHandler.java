@@ -42,7 +42,6 @@ public class SceneDetectionHandler {
     private final SceneDetectionService sceneDetectionService;
     private final SceneProcessingService sceneProcessingService;
     private final IndividualPersistenceService individualPersistenceService;
-    private final ChapterIndividualResolutionService chapterIndividualResolutionService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
@@ -53,7 +52,6 @@ public class SceneDetectionHandler {
             SceneDetectionService sceneDetectionService,
             SceneProcessingService sceneProcessingService,
             IndividualPersistenceService individualPersistenceService,
-            ChapterIndividualResolutionService chapterIndividualResolutionService,
             IngestionJobService ingestionJobService,
             DefaultTemporalEdgeService defaultTemporalEdgeService,
             ApplicationEventPublisher eventPublisher
@@ -63,7 +61,6 @@ public class SceneDetectionHandler {
         this.sceneDetectionService = sceneDetectionService;
         this.sceneProcessingService = sceneProcessingService;
         this.individualPersistenceService = individualPersistenceService;
-        this.chapterIndividualResolutionService = chapterIndividualResolutionService;
         this.defaultTemporalEdgeService = defaultTemporalEdgeService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
@@ -97,14 +94,12 @@ public class SceneDetectionHandler {
             if (!existingScenes.isEmpty()) {
                 log.info("[SCENE_DETECTION] Found {} existing scenes for chapter {}, skipping detection", 
                         existingScenes.size(), chapterId);
-                chapterIndividualResolutionService.resolveChapter(chapterId);
                 emitScenesDetected(jobId, chapterId, bookId, existingScenes);
                 return null;
             }
 
             // Detect and persist new scenes
             List<Scene> scenes = detectAndPersistScenes(jobId, chapterId);
-            chapterIndividualResolutionService.resolveChapter(chapterId);
             
             if (scenes.isEmpty()) {
                 log.warn("[SCENE_DETECTION] No scenes detected for chapter {}", chapterId);

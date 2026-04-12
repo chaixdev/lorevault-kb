@@ -7,6 +7,18 @@ import org.springframework.data.neo4j.repository.query.Query;
 
 public interface ChapterIndividualGraphRepository extends Neo4jRepository<ChapterIndividual, UUID> {
 
+    @Query("""
+            MATCH (m:IndividualMention {chapterId: $chapterId})
+            RETURN count(m)
+            """)
+    long countMentionsByChapterId(UUID chapterId);
+
+    @Query("""
+            MATCH (ci:ChapterIndividual {chapterId: $chapterId})
+            RETURN count(ci)
+            """)
+    long countChapterIndividualsByChapterId(UUID chapterId);
+
     interface ChapterIndividualCandidateView {
         String getDisplayName();
 
@@ -17,6 +29,8 @@ public interface ChapterIndividualGraphRepository extends Neo4jRepository<Chapte
 
     @Query("""
             MATCH (m:IndividualMention {chapterId: $chapterId})
+            OPTIONAL MATCH (m)-[r:REFERS_TO]->(:ChapterIndividual {chapterId: $chapterId})
+            DELETE r
             SET m.resolutionStatus = 'unresolved'
             WITH DISTINCT $chapterId AS chapterId
             OPTIONAL MATCH (ci:ChapterIndividual {chapterId: chapterId})

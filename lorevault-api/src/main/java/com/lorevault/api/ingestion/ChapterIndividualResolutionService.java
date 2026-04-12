@@ -2,6 +2,7 @@ package com.lorevault.api.ingestion;
 
 import com.lorevault.api.content.ChapterIndividual;
 import com.lorevault.api.content.ChapterIndividualGraphRepository;
+import com.lorevault.api.support.ChapterIndividualResolutionResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -20,9 +21,20 @@ public class ChapterIndividualResolutionService {
     }
 
     @Transactional
-    public void resolveChapter(UUID chapterId) {
+    public ChapterIndividualResolutionResponse resolveChapter(UUID chapterId) {
         if (chapterId == null) {
-            return;
+            return new ChapterIndividualResolutionResponse(null, false, 0, 0, "Chapter ID is required");
+        }
+
+        long mentionCount = chapterIndividualRepository.countMentionsByChapterId(chapterId);
+        if (mentionCount == 0) {
+            return new ChapterIndividualResolutionResponse(
+                    chapterId,
+                    false,
+                    0,
+                    0,
+                    "No individual mentions found for chapter"
+            );
         }
 
         chapterIndividualRepository.deleteByChapterId(chapterId);
@@ -30,7 +42,13 @@ public class ChapterIndividualResolutionService {
         List<ChapterIndividualGraphRepository.ChapterIndividualCandidateView> candidates =
                 chapterIndividualRepository.findResolutionCandidates(chapterId);
         if (candidates.isEmpty()) {
-            return;
+            return new ChapterIndividualResolutionResponse(
+                    chapterId,
+                    false,
+                    Math.toIntExact(mentionCount),
+                    0,
+                    "No resolvable mentions found for chapter"
+            );
         }
 
         List<ChapterIndividual> chapterIndividuals = new ArrayList<>();
@@ -50,7 +68,13 @@ public class ChapterIndividualResolutionService {
         }
 
         if (chapterIndividuals.isEmpty()) {
-            return;
+            return new ChapterIndividualResolutionResponse(
+                    chapterId,
+                    false,
+                    Math.toIntExact(mentionCount),
+                    0,
+                    "No resolvable mentions found for chapter"
+            );
         }
 
         List<ChapterIndividual> savedIndividuals = new ArrayList<>();
@@ -65,6 +89,14 @@ public class ChapterIndividualResolutionService {
                     CHAPTER_RESOLVED
             );
         }
+
+        return new ChapterIndividualResolutionResponse(
+                chapterId,
+                true,
+                Math.toIntExact(mentionCount),
+                Math.toIntExact(chapterIndividualRepository.countChapterIndividualsByChapterId(chapterId)),
+                "Resolved chapter individual mentions"
+        );
     }
 
     private int safeMentionCount(Long mentionCount) {
