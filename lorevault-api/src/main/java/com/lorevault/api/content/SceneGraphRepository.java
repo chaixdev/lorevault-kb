@@ -1,6 +1,5 @@
 package com.lorevault.api.content;
 
-import com.lorevault.api.content.Scene;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 
@@ -18,16 +17,28 @@ public interface SceneGraphRepository extends Neo4jRepository<Scene, UUID> {
     @Query("MATCH (a:Scene {id: $fromId})-[r:MEETS]->(b:Scene {id: $toId}) RETURN count(r)")
     long countMeetsBetween(UUID fromId, UUID toId);
 
-    @Query("MATCH (a:Scene {id: $fromId}), (b:Scene {id: $toId}) MERGE (a)-[:MEETS]->(b)")
+    @Query("""
+            MATCH (a:Scene {id: $fromId})
+            WITH a
+            MATCH (b:Scene {id: $toId})
+            MERGE (a)-[:MEETS]->(b)
+            """)
     void createMeetsBetween(UUID fromId, UUID toId);
 
     @Query("""
-            MATCH (s:Scene {id: $sceneId}), (ch:Chunk {id: $chunkId})
+            MATCH (s:Scene {id: $sceneId})
+            WITH s
+            MATCH (ch:Chunk {id: $chunkId})
             MERGE (s)-[r:HAS_CHUNK]->(ch)
             SET r.chunkIndex = $chunkIndex
             """)
     void linkChunkToScene(UUID sceneId, UUID chunkId, Integer chunkIndex);
 
-    @Query("MATCH (c:Chapter {id: $chapterId}), (s:Scene {id: $sceneId}) MERGE (c)-[:HAS_SCENE]->(s)")
+    @Query("""
+            MATCH (c:Chapter {id: $chapterId})
+            WITH c
+            MATCH (s:Scene {id: $sceneId})
+            MERGE (c)-[:HAS_SCENE]->(s)
+            """)
     void linkSceneToChapter(UUID chapterId, UUID sceneId);
 }
