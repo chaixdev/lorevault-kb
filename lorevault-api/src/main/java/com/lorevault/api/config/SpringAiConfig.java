@@ -105,7 +105,10 @@ public class SpringAiConfig {
     @Bean
     @Profile("!test")
     @Qualifier("embeddingModel")
-    public EmbeddingModel embeddingModel(LoreVaultModelsProperties models) {
+    public EmbeddingModel embeddingModel(
+            LoreVaultModelsProperties models,
+            LoreVaultEmbeddingProperties embeddingProperties
+    ) {
         var cfg = models.embedding();
         var openAiApi = OpenAiApi.builder()
             .baseUrl(cfg.baseUrl())
@@ -113,6 +116,7 @@ public class SpringAiConfig {
             .build();
         OpenAiEmbeddingOptions options = OpenAiEmbeddingOptions.builder()
                 .model(cfg.model())
+                .dimensions(embeddingProperties.model().dimensions())
                 .build();
         return new OpenAiEmbeddingModel(openAiApi, org.springframework.ai.document.MetadataMode.EMBED, options);
     }

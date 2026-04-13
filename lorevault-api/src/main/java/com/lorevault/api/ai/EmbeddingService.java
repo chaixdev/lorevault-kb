@@ -34,10 +34,10 @@ public class EmbeddingService {
     private final ChunkGraphRepository chunkRepo;
     private final EmbeddingModel embeddingModel;
 
-    @Value("${lorevault.embedding.dim:1536}")
-    private int embeddingDim = 1536; // default for non-Spring unit tests
+    @Value("${lorevault.embedding.model.dimensions:3072}")
+    private int embeddingDim = 3072; // default for non-Spring unit tests
 
-    @Value("${lorevault.embedding.batch-size:32}")
+    @Value("${lorevault.embedding.model.batch-size:32}")
     private int batchSize = 32; // default for non-Spring unit tests
 
     @Value("${lorevault.ai.models.embedding.model:}")

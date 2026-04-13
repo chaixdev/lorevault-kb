@@ -129,13 +129,15 @@ lorevault:
       min-chunk-size: 400      # Allow smaller chunks for scene boundaries (was 2000)
       max-chunk-size: 1200     # Upper bound with padding (was 4000)
 
-  # Embedding configuration (configured to request 1536 dimensions from Gemini)
+  # Embedding configuration standardized on 3072 dimensions
   embedding:
     model:
       provider: openai-compatible
       model: gemini-embedding-001
-      dimensions: 1536  # Request 1536 dimensions from Gemini (configurable via API)
+      dimensions: 3072
       batch-size: 32
+    health:
+      expected-dim: 3072
 
   # Semantic search configuration
   search:
@@ -148,6 +150,6 @@ lorevault:
     neo4j:
       vector-index-name: chunk_embedding_idx
       similarity-function: cosine
-      dimensions: 1536
+      dimensions: 3072
 
   
