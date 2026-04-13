@@ -7,6 +7,7 @@ import com.lorevault.api.content.Scene;
 import com.lorevault.api.timeline.TriadEdgePersistenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 public class SceneDetectionService {
 
     private static final Logger log = LoggerFactory.getLogger(SceneDetectionService.class);
+    private static final double MIN_LOCALIZATION_SUCCESS_RATIO = 0.8;
 
     public record SceneDetectionOutcome(
             List<SceneWithCoordinates> scenes,
@@ -156,7 +158,7 @@ public class SceneDetectionService {
             Chapter chapter = Chapter.createWithReferences(
                     null, null, null, null, null, chapterText, null
             );
-            chapter.setId(chapterId);
+            new BeanWrapperImpl(chapter).setPropertyValue("id", chapterId);
             
             // Convert SceneWithCoordinates to Scene objects temporarily for triad analysis
             // (without persisting - that will happen later in the ingestion pipeline)
@@ -188,7 +190,6 @@ public class SceneDetectionService {
                         null,
                         null
                 );
-                scene.setText(sceneText);
                 return scene;
             }).toList();
             
@@ -277,7 +278,25 @@ public class SceneDetectionService {
         if (scenes.isEmpty()) {
             throw new RuntimeException("Scene coordinate localization returned empty results");
         }
+        validateLocalizationCoverage(sceneResults.size(), scenes.size());
         return scenes;
+    }
+
+    private void validateLocalizationCoverage(int parsedSceneCount, int localizedSceneCount) {
+        if (parsedSceneCount <= 0) {
+            return;
+        }
+
+        double successRatio = (double) localizedSceneCount / parsedSceneCount;
+        if (successRatio < MIN_LOCALIZATION_SUCCESS_RATIO) {
+            throw new RuntimeException(String.format(
+                    "Scene coordinate localization dropped too many scenes (parsed=%d localized=%d successRatio=%.2f threshold=%.2f)",
+                    parsedSceneCount,
+                    localizedSceneCount,
+                    successRatio,
+                    MIN_LOCALIZATION_SUCCESS_RATIO
+            ));
+        }
     }
 
     private List<SegmentWindow> createDeterministicSegments(String text, int estimatedTotalInput, int usableInputBudget) {

@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -96,6 +97,75 @@ class SceneDetectionServiceTest {
         assertThat(scenes.get(0).potentialSplitSceneStart()).isFalse();
         assertThat(scenes.get(0).potentialSplitSceneEnd()).isFalse();
         assertThat(outcome.sceneIndividualExtractions()).isEmpty();
+        verify(sceneDetectionClient, times(1)).detectScenesPass1(eq(jobId), eq(chapterText));
+    }
+
+    @Test
+    @DisplayName("Should retry when localization drops too many parsed scenes")
+    void shouldRetryWhenLocalizationDropsTooManyScenes() {
+        UUID jobId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+        String chapterText = "Short text.";
+
+        SceneDetectionClient.Pass1BudgetCheck admission = new SceneDetectionClient.Pass1BudgetCheck(
+                "nlp-small", 128000, 89600, 10, 10, 20, true
+        );
+
+        when(sceneDetectionClient.evaluatePass1Budget(chapterText)).thenReturn(admission);
+        when(sceneDetectionClient.detectScenesPass1(eq(jobId), eq(chapterText))).thenReturn(
+                "<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>"
+        );
+        when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt())).thenReturn(List.of(
+                new SceneDetectionResult(0, "a", "ctx-1", "", "", "", ""),
+                new SceneDetectionResult(1, "b", "ctx-2", "", "", "", ""),
+                new SceneDetectionResult(2, "c", "ctx-3", "", "", "", ""),
+                new SceneDetectionResult(3, "d", "ctx-4", "", "", "", "")
+        ));
+        when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
+                .thenReturn(List.of(new SceneWithCoordinates(0, 0, chapterText.length(), "ctx-1")));
+
+        assertThatThrownBy(() -> sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Scene detection failed with retry")
+                .hasMessageContaining("Scene coordinate localization dropped too many scenes");
+
+        verify(sceneDetectionClient, times(4)).detectScenesPass1(eq(jobId), eq(chapterText));
+    }
+
+    @Test
+    @DisplayName("Should tolerate a small amount of localization loss")
+    void shouldTolerateSmallLocalizationLoss() {
+        UUID jobId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+        String chapterText = "Short text.";
+
+        SceneDetectionClient.Pass1BudgetCheck admission = new SceneDetectionClient.Pass1BudgetCheck(
+                "nlp-small", 128000, 89600, 10, 10, 20, true
+        );
+
+        when(sceneDetectionClient.evaluatePass1Budget(chapterText)).thenReturn(admission);
+        when(sceneDetectionClient.detectScenesPass1(eq(jobId), eq(chapterText))).thenReturn(
+                "<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>"
+        );
+        when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt())).thenReturn(List.of(
+                new SceneDetectionResult(0, "a", "ctx-1", "", "", "", ""),
+                new SceneDetectionResult(1, "b", "ctx-2", "", "", "", ""),
+                new SceneDetectionResult(2, "c", "ctx-3", "", "", "", ""),
+                new SceneDetectionResult(3, "d", "ctx-4", "", "", "", ""),
+                new SceneDetectionResult(4, "e", "ctx-5", "", "", "", "")
+        ));
+        when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any())).thenReturn(List.of(
+                new SceneWithCoordinates(0, 0, 2, "ctx-1"),
+                new SceneWithCoordinates(1, 2, 4, "ctx-2"),
+                new SceneWithCoordinates(2, 4, 6, "ctx-3"),
+                new SceneWithCoordinates(3, 6, 8, "ctx-4")
+        ));
+        when(triadOrchestrationService.analyzeChapterTriadsWithIndividuals(eq(jobId), any()))
+                .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of()));
+
+        SceneDetectionService.SceneDetectionOutcome outcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
+
+        assertThat(outcome.scenes()).hasSize(4);
         verify(sceneDetectionClient, times(1)).detectScenesPass1(eq(jobId), eq(chapterText));
     }
 }
