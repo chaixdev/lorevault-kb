@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
 **Last Updated:** April 2026  
-**Status:** Active — M1/M2/M3/M4 complete; spoiler-aware search and budgeted scene detection shipped  
+**Status:** Active — M1/M2/M3/M4 complete; spoiler-aware search, budgeted scene detection, and scoped individual resolution shipped  
 **Primary Direction:** Simplify architecture, preserve mechanical sympathy, reduce indirection
 
 ## What LoreVault Is
@@ -11,13 +11,14 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 ## Current State
 
 - Core pipeline works end to end
-- 263 tests passing
 - Stack: Java 21, Spring Boot 3.5.4, Spring AI 1.1.4, Neo4j 5.26
 - All domain content entities annotated `@Node` directly (no mirror Node classes)
 - Internal port/adapter indirection removed — services inject concrete beans/repositories directly
 - Package structure: 10 top-level feature-oriented packages in `lorevault-api` (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`, `support/`, `timeline/`, `web/`)
 - Scene detection now enforces context-budget checks and deterministic segmented fallback for oversized chapters
-- Individual mentions are persisted from scene detection output, with normalized-name and resolution metadata for later linking
+- Individual mentions are persisted from scene detection output, with normalized-name and resolution metadata
+- Scoped identity resolution is now active: `IndividualMention -> ChapterIndividual -> BookIndividual`
+- Ingestion completion is coordinated across two post-scene branches: embedding completion and book-level identity reduction
 
 ## What Is Done
 
@@ -30,17 +31,22 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **M4 complete** — Spring AI upgraded to 1.1.4 (BOM bump); `EmbeddingModelAdapter` replaced with Spring AI `EmbeddingModel`; `TriadXmlParser` replaced with `.entity(Record.class)` structured output; package structure flattened from layered packages to 10 top-level feature packages in `lorevault-api`
 - **Spoiler-aware search shipped** — Per-request `SpoilerVisibility` DTO accepted on `/api/query/ask/vector` and `/api/query/ask/rag`; `ANY()` Cypher predicate filters chunks beyond the reader's per-series read-through position; `UnconfiguredSeriesPolicy` defaults to `HIDE`; oversample multiplier configurable in `application.yml`; documented in ADR 006
 - **Budgeted scene detection shipped** — Pass-1 scene detection now checks model context budget before full-chapter submission and falls back to deterministic segmentation when needed; segment-boundary risk is tagged for later reconciliation
-- **Individual mention foundation shipped** — Extraction output is now modeled as `IndividualMention`, persisted per scene, and enriched with metadata needed for future chapter/book-level resolution
+- **Scoped individual resolution shipped** — Triad extraction now persists `IndividualMention` evidence per scene, automatic chapter-level resolution groups mentions into `ChapterIndividual`, and automatic book-level reduction links those chapter identities into thin `BookIndividual` nodes
+- **Coordinated ingestion completion shipped** — `IngestionCompletedEvent` is now emitted only after both branches triggered from `ScenesDetectedEvent` finish: `ChunksCreatedEvent -> EmbeddingsCompletedEvent` and `ChapterIndividualsResolvedEvent -> BookIndividualsReducedEvent`
+- **Ingestion hardening shipped** — recent follow-up fixes standardized embeddings on 3072 dimensions, persisted `chunkIndex` on `HAS_CHUNK` relationships for deterministic ordering, tightened scene-localization retry behavior when too many scenes are dropped, and removed cartesian-product warning patterns from graph-link queries
 
 ## What Is Next
 
 M1–M4 are complete. The architecture is now a flat, feature-oriented modulith with direct Spring AI integration and no port/adapter indirection. Recent feature work has shifted from structural cleanup to ingestion quality and retrieval correctness.
 
-Next direction candidates:
-- Individual resolution on top of persisted mentions (`IndividualMention -> ChapterIndividual -> BookIndividual`)
+Current focus:
+- Refresh canonical docs to reflect the shipped scoped identity pipeline and recent ingestion hardening
+
+Next direction candidates after documentation catch-up:
 - Broader entity extraction (Locations, Collectives, and later claims)
 - Timeline modeling with Scene-as-Event entities
 - Production hardening (observability, rate limiting, error budgets)
+- Improved candidate generation and scoring for identity resolution after the current deterministic ladder
 
 ## Active Architectural Direction
 
@@ -61,6 +67,7 @@ All 4 decisions from the original modulith plan are resolved. No architectural d
 - `docs/development/current/refactor-roadmap.md`
 - `docs/development/current/m2-m4-implementation-plan.md`
 - `docs/patterns/README.md`
+- `docs/patterns/individual-resolution-ladder.md`
 - `docs/adr/README.md`
 - `docs/concepts/README.md`
 - `docs/rules/README.md`

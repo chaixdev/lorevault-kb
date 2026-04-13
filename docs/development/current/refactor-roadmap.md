@@ -157,9 +157,10 @@ The previously listed first item has now shipped:
 
 Current priority order:
 
-1. **Individual resolution on top of persisted mentions**
-   - Build `IndividualMention -> ChapterIndividual -> BookIndividual` incrementally
-   - Start with chapter-local exact linking for real retrieval value
+1. **Refresh canonical docs for the shipped scoped identity pipeline**
+   - Update status and roadmap continuity to reflect the current implementation
+   - Append implementation notes to the April 2026 individual-resolution proposal
+   - Promote the as-is mechanism into canonical docs as a present-state pattern
 
 2. **Broader entity extraction (Locations, Collectives, later claims)**
    - Extend the extraction foundation beyond individuals
@@ -168,6 +169,27 @@ Current priority order:
 3. **Timeline modeling and production hardening**
    - Revisit scene-as-event enrichment once entity-linked retrieval is more valuable
    - Continue operational hardening where needed
+
+## Shipped Feature Work Since The Last Roadmap Refresh
+
+The roadmap previously listed individual resolution as the next tranche to start. That is now outdated.
+
+Shipped as implemented on `main`:
+
+- `IndividualMention` evidence is persisted from triad extraction and linked to `Scene`
+- Chapter-level resolution groups mention evidence into `ChapterIndividual`
+- Book-level reduction groups chapter identities into thin `BookIndividual`
+- The identity branch now runs automatically from ingestion events while manual command endpoints remain available
+- Ingestion completion is coordinated so a job completes only after both the embedding branch and the book-level identity branch finish
+
+Recent follow-up hardening also landed:
+
+- embedding configuration standardized on 3072 dimensions
+- `HAS_CHUNK.chunkIndex` persisted so chunk ordering is deterministic across scene links and embedding traversal
+- scene localization now escalates low-coverage results into retryable failures
+- graph-link queries were rewritten to avoid cartesian-product warning patterns
+
+This means the current roadmap question is no longer whether to begin scoped individual resolution, but how to document the shipped mechanism clearly and which post-identity tranche should come next.
 
 ## M1-M4 Completion Baseline
 

@@ -20,6 +20,7 @@ Patterns explain important areas of the current system that are implemented acro
 ## Index
 
 - [Ingestion Pipeline](ingestion-pipeline.md) — async stage-based chapter processing from upload to embedding
+- [Individual Resolution Ladder](individual-resolution-ladder.md) — scene-local evidence to chapter and book identity aggregation during ingestion
 - [Ingestion Observability](ingestion-job-observability.md) — append-only StatusRecord chain and LLM call logging
 - [Triad Analysis](triad-analysis.md) — three-scene sliding window for relationship extraction
 - [Scene Detection Budgeted Segmentation](scene-detection-budgeted-segmentation.md) — pass-1 context budget guard with deterministic split fallback and split-risk labels
