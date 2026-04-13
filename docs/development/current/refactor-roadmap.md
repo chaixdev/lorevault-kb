@@ -162,11 +162,42 @@ Current priority order:
    - Append implementation notes to the April 2026 individual-resolution proposal
    - Promote the as-is mechanism into canonical docs as a present-state pattern
 
-2. **Broader entity extraction (Locations, Collectives, later claims)**
+2. **Execute the next phase as iterative slices**
+   - Keep the broader roadmap direction intact
+   - Use small product-facing slices so each step can reshape the next one
+
+## Near-Term Iterative Slices
+
+These slices do **not** replace the broader roadmap. They clarify how the next phase should be executed.
+
+1. **Location entity extraction**
+   - Add one more entity type before deeper query work so the next product slice is entity-based, not individual-specific
+   - Keep the first location slice narrow and evidence-first
+
+2. **Entity-aware Q&A improvements**
+   - Use at least individuals + locations so query improvements do not hard-code a character-only product shape
+   - Emphasize entity-aware retrieval, citations, disambiguation, and follow-up navigation
+
+3. **Unified SSE diagnostics feed**
+   - Add a normalized event stream for job progress, warnings, failures, and completion
+   - Treat this as enabling infrastructure for diagnostics first and product streaming later
+
+4. **Basic UI for chapter upload + SSE visibility**
+   - Build a minimal surface for chapter submission and real-time status observation
+   - Prefer a narrow operator/developer-friendly UI before committing to a broader product shell
+
+5. **Additional entity types**
+   - Continue broadening extraction once the first entity-aware query/product slice has validated the direction
+
+## Broader Follow-On Directions
+
+These remain the larger roadmap buckets after the slices above:
+
+1. **Broader entity extraction (Locations, Collectives, later claims)**
    - Extend the extraction foundation beyond individuals
    - Preserve the current simple architecture: extract first, map later
 
-3. **Timeline modeling and production hardening**
+2. **Timeline modeling and production hardening**
    - Revisit scene-as-event enrichment once entity-linked retrieval is more valuable
    - Continue operational hardening where needed
 

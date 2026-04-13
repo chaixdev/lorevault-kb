@@ -40,9 +40,21 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 M1–M4 are complete. The architecture is now a flat, feature-oriented modulith with direct Spring AI integration and no port/adapter indirection. Recent feature work has shifted from structural cleanup to ingestion quality and retrieval correctness.
 
 Current focus:
-- Refresh canonical docs to reflect the shipped scoped identity pipeline and recent ingestion hardening
+- Clarify the near-term execution plan as iterative product-facing slices rather than one large next tranche
 
-Next direction candidates after documentation catch-up:
+Near-term execution slices:
+1. **Location entity extraction**
+   - Add one additional entity type so the next query/product work is not overly anchored on individuals
+2. **Entity-aware Q&A improvements**
+   - Improve query behavior against at least two entity types instead of building a character-only vertical
+3. **Unified SSE diagnostics feed**
+   - Add a normalized live stream for job progress, warnings, failures, and completion notifications
+4. **Basic UI for chapter upload + SSE status visibility**
+   - Build a minimal user-facing/operator-facing surface that can ingest chapters and watch progress in real time
+5. **Additional entity types**
+   - Extend beyond individuals and locations once the first entity-aware product slice proves the pattern
+
+Broader planned directions remain intact after these slices:
 - Broader entity extraction (Locations, Collectives, and later claims)
 - Timeline modeling with Scene-as-Event entities
 - Production hardening (observability, rate limiting, error budgets)

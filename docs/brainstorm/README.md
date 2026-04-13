@@ -34,8 +34,8 @@ When a brainstorm becomes stable enough, either:
 
 ### Individual resolution
 
-- [Mention-to-individual linking brainstorm — April 2026](individual-resolution/mention-to-individual-linking-brainstorm-april-2026.md) — consolidated exploration of how `IndividualMention` evidence nodes might be linked to canonical `Individual` nodes, including hook points, available graph signals, architecture options, and tradeoff analysis
-- [Individual resolution proposal — April 2026](individual-resolution/individual-resolution-proposal-april-2026.md) — cleaned-up proposed direction for `IndividualMention -> ChapterIndividual -> BookIndividual`, preserving the converged design without the wider brainstorming option space
+- [Mention-to-individual linking brainstorm — April 2026](entity-pipelines/mention-to-individual-linking-brainstorm-april-2026.md) — consolidated exploration of how `IndividualMention` evidence nodes might be linked to canonical `Individual` nodes, including hook points, available graph signals, architecture options, and tradeoff analysis
+- [Individual resolution proposal — April 2026](entity-pipelines/individual-resolution-proposal-april-2026.md) — cleaned-up proposed direction for `IndividualMention -> ChapterIndividual -> BookIndividual`, preserving the converged design without the wider brainstorming option space
 
 ### Scene detection
 
