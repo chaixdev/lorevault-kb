@@ -126,7 +126,7 @@ sequenceDiagram
 
 ### Embedding Generation
 - Uses OpenAI-compatible API (configurable endpoint)
-- Typical dimensions: 1536 for text-embedding-3-small
+- Typical dimensions: 3072 for the current LoreVault embedding standard
 - Includes retry logic with exponential backoff
 - Falls back to empty vectors on failure (skipped in persistence)
 
