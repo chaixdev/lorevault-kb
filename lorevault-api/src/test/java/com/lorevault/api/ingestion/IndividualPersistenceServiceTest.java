@@ -72,7 +72,7 @@ class IndividualPersistenceServiceTest {
         assertThat(saved.displayName()).isEqualTo("Nyx");
         assertThat(saved.normalizedName()).isEqualTo("nyx");
         assertThat(saved.aliases()).containsExactly("  Nyx  ", "N.");
-        assertThat(saved.description()).isEqualTo("protagonist");
+        assertThat(saved.activity()).isEqualTo("protagonist");
         assertThat(saved.sceneId()).isEqualTo(sceneId);
         assertThat(saved.chapterId()).isEqualTo(chapterId);
         assertThat(saved.bookId()).isNull();

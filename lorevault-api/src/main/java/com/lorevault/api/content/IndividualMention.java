@@ -15,7 +15,7 @@ public record IndividualMention(
         String displayName,
         String normalizedName,
         List<String> aliases,
-        String description,
+        String activity,
         String age,
         String physicalProperties,
         UUID sceneId,
