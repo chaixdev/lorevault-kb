@@ -53,14 +53,17 @@ public interface ChapterIndividualGraphRepository extends Neo4jRepository<Chapte
     List<ChapterIndividualCandidateView> findResolutionCandidates(UUID chapterId);
 
     @Query("""
-            MATCH (c:Chapter {id: $chapterId}), (ci:ChapterIndividual {id: $chapterIndividualId})
+            MATCH (c:Chapter {id: $chapterId})
+            WITH c
+            MATCH (ci:ChapterIndividual {id: $chapterIndividualId})
             MERGE (c)-[:HAS_INDIVIDUAL]->(ci)
             """)
     void linkChapterToIndividual(UUID chapterId, UUID chapterIndividualId);
 
     @Query("""
-            MATCH (m:IndividualMention {chapterId: $chapterId, normalizedName: $normalizedName}),
-                  (ci:ChapterIndividual {id: $chapterIndividualId})
+            MATCH (m:IndividualMention {chapterId: $chapterId, normalizedName: $normalizedName})
+            WITH m
+            MATCH (ci:ChapterIndividual {id: $chapterIndividualId})
             MERGE (m)-[:REFERS_TO]->(ci)
             SET m.resolutionStatus = $resolutionStatus
             """)
