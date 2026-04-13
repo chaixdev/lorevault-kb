@@ -21,8 +21,12 @@ public interface SceneGraphRepository extends Neo4jRepository<Scene, UUID> {
     @Query("MATCH (a:Scene {id: $fromId}), (b:Scene {id: $toId}) MERGE (a)-[:MEETS]->(b)")
     void createMeetsBetween(UUID fromId, UUID toId);
 
-    @Query("MATCH (s:Scene {id: $sceneId}), (ch:Chunk {id: $chunkId}) MERGE (s)-[:HAS_CHUNK]->(ch)")
-    void linkChunkToScene(UUID sceneId, UUID chunkId);
+    @Query("""
+            MATCH (s:Scene {id: $sceneId}), (ch:Chunk {id: $chunkId})
+            MERGE (s)-[r:HAS_CHUNK]->(ch)
+            SET r.chunkIndex = $chunkIndex
+            """)
+    void linkChunkToScene(UUID sceneId, UUID chunkId, Integer chunkIndex);
 
     @Query("MATCH (c:Chapter {id: $chapterId}), (s:Scene {id: $sceneId}) MERGE (c)-[:HAS_SCENE]->(s)")
     void linkSceneToChapter(UUID chapterId, UUID sceneId);

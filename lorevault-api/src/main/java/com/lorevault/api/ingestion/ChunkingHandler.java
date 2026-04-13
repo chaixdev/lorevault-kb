@@ -144,7 +144,7 @@ public class ChunkingHandler {
                     chunk.setId(java.util.UUID.randomUUID());
                 }
                 Chunk saved = chunkRepo.save(chunk);
-                sceneRepo.linkChunkToScene(scene.getId(), saved.getId());
+                sceneRepo.linkChunkToScene(scene.getId(), saved.getId(), chunk.getChunkNumberInChapter());
             }
             return chunks.size();
         }
