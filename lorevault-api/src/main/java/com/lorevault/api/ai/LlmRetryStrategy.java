@@ -1,12 +1,12 @@
 package com.lorevault.api.ai;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 /**
  * Retry strategy specifically designed for LLM interactions.
@@ -14,8 +14,9 @@ import java.util.function.Supplier;
  * and response validation (parsing) failures.
  */
 @Component
-@Slf4j
 public class LlmRetryStrategy {
+
+    private static final Logger log = LoggerFactory.getLogger(LlmRetryStrategy.class);
     
     private static final Random random = new Random();
     

@@ -304,23 +304,24 @@ public class Chapter {
                                              PublicationCoordinates coordinates, 
                                              String chapterTitle, String rawText, String contentHash) {
         Chapter chapter = new Chapter();
-        chapter.setId(UUID.randomUUID());
-        chapter.setBookId(bookId);
-        chapter.setUniverseId(universeId);
-        chapter.setSeriesId(seriesId);
-        chapter.setCoordinates(coordinates);
+        chapter.id = UUID.randomUUID();
+        chapter.bookId = bookId;
+        chapter.universeId = universeId;
+        chapter.seriesId = seriesId;
+        chapter.coordinates = coordinates;
         if (coordinates != null) {
-            chapter.setUniverse(coordinates.getUniverse());
-            chapter.setSeries(coordinates.getSeries());
-            chapter.setBookTitle(coordinates.getBookTitle());
-            chapter.setBookNumber(coordinates.getBookNumber());
-            chapter.setChapterNumber(coordinates.getChapterNumber());
+            chapter.universe = coordinates.getUniverse();
+            chapter.series = coordinates.getSeries();
+            chapter.bookTitle = coordinates.getBookTitle();
+            chapter.bookNumber = coordinates.getBookNumber();
+            chapter.chapterNumber = coordinates.getChapterNumber();
         }
-        chapter.setChapterTitle(chapterTitle);
-        chapter.setRawText(rawText);
-        chapter.setContentHash(contentHash);
-        chapter.setCreatedAt(LocalDateTime.now());
-        chapter.setUpdatedAt(chapter.getCreatedAt());
+        chapter.chapterTitle = chapterTitle;
+        chapter.rawText = rawText;
+        chapter.contentHash = contentHash;
+        LocalDateTime now = LocalDateTime.now();
+        chapter.createdAt = now;
+        chapter.updatedAt = now;
         return chapter;
     }
 
