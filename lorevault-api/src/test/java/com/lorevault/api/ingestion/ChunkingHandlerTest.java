@@ -59,18 +59,19 @@ class ChunkingHandlerTest {
         UUID chapterId = UUID.randomUUID();
         UUID bookId = UUID.randomUUID();
         UUID sceneId = UUID.randomUUID();
+        String chapterText = "Scene one text. Scene two text.";
 
         Chapter chapter = new Chapter();
         BeanWrapperImpl chapterBean = new BeanWrapperImpl(chapter);
         chapterBean.setPropertyValue("id", chapterId);
-        chapterBean.setPropertyValue("rawText", "Scene one text. Scene two text.");
+        chapterBean.setPropertyValue("rawText", chapterText);
 
         Scene scene = new Scene(null, null, null, null, null, null, null, null, null, null, null, null);
         BeanWrapperImpl sceneBean = new BeanWrapperImpl(scene);
         sceneBean.setPropertyValue("id", sceneId);
         sceneBean.setPropertyValue("sceneIndex", 0);
         sceneBean.setPropertyValue("startCharacterOffset", 0L);
-        sceneBean.setPropertyValue("endCharacterOffset", 29L);
+        sceneBean.setPropertyValue("endCharacterOffset", (long) chapterText.length());
 
         Chunk first = new Chunk(null, null, null, null, null, null, null, null, null, null, null);
         BeanWrapperImpl firstBean = new BeanWrapperImpl(first);
@@ -90,7 +91,7 @@ class ChunkingHandlerTest {
         when(chunkRepo.existsForChapter(chapterId)).thenReturn(false);
         when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(chapter));
         when(sceneRepo.findByChapterId(chapterId)).thenReturn(List.of(scene));
-        when(textChunkingService.extractChunks("Scene one text. Scene two text"))
+        when(textChunkingService.extractChunks(chapterText))
                 .thenReturn(List.of(first, second));
         when(chunkRepo.save(any(Chunk.class))).thenAnswer(invocation -> {
             Chunk chunk = invocation.getArgument(0);
