@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,7 @@ public class BookIndividualReductionService {
 
     private final BookIndividualGraphRepository bookIndividualRepository;
     private final Neo4jClient neo4jClient;
+    private final ConcurrentHashMap<UUID, ReentrantLock> bookLocks = new ConcurrentHashMap<>();
 
     public BookIndividualReductionService(
             BookIndividualGraphRepository bookIndividualRepository,
@@ -30,6 +33,20 @@ public class BookIndividualReductionService {
         if (bookId == null) {
             return new BookIndividualResolutionResponse(null, false, 0, 0, "Book ID is required");
         }
+
+        ReentrantLock lock = bookLocks.computeIfAbsent(bookId, ignored -> new ReentrantLock());
+        lock.lock();
+        try {
+            return resolveBookLocked(bookId);
+        } finally {
+            lock.unlock();
+            if (!lock.hasQueuedThreads()) {
+                bookLocks.remove(bookId, lock);
+            }
+        }
+    }
+
+    private BookIndividualResolutionResponse resolveBookLocked(UUID bookId) {
 
         List<BookReductionCandidate> candidates = findReductionCandidates(bookId);
         if (candidates.isEmpty()) {
