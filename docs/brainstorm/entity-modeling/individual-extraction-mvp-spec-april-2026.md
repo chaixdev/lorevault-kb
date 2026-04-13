@@ -231,7 +231,7 @@ Recommended node properties:
 - `source: "ai-pass2"`
 - `displayName: String`
 - `aliases: List<String>`
-- `description: String`
+- `activity: String`
 - `age: String`
 - `physicalProperties: String`
 - `createdAt`

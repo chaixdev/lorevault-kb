@@ -100,7 +100,7 @@ It should continue to store:
 
 - extracted naming surface
 - aliases
-- descriptive text
+- activity text
 - source scene/chapter linkage
 - extraction metadata
 - resolution metadata
@@ -171,7 +171,7 @@ Examples of high-value signals:
 - alias overlap
 - same chapter
 - nearby scenes
-- similar descriptive text
+- similar activity text
 - compatible age / physical properties
 - co-mention neighborhood overlap
 
@@ -432,3 +432,136 @@ In delivery terms, that means:
 3. improve candidate generation and scoring third
 
 This is the cleanest current proposal for LoreVault's identity-resolution shape and rollout order.
+
+---
+
+## Implementation Notes Since This Proposal
+
+**Status update:** The first two slices of this proposal have now shipped in implemented form on `main`.
+
+### What is now implemented
+
+LoreVault's ingestion pipeline now persists and links the scoped identity ladder automatically:
+
+- `Scene -[:MENTIONS]-> IndividualMention`
+- `IndividualMention -[:REFERS_TO]-> ChapterIndividual`
+- `ChapterIndividual -[:REFERS_TO]-> BookIndividual`
+
+The automatic event chain is now:
+
+1. chapter ingestion publishes `ChapterIngestionEvent`
+2. scene detection persists scenes and extracted `IndividualMention` evidence
+3. `ScenesDetectedEvent` triggers two branches in parallel:
+   - chunking → embedding
+   - chapter-level identity resolution → book-level reduction
+4. ingestion is marked complete only after both branches finish
+
+This means the proposal is no longer just conceptual. A deterministic first-pass version is implemented and participating in the standard ingestion flow.
+
+### Implemented trigger points
+
+Automatic triggers now exist for both identity layers:
+
+- `ScenesDetectedEvent` automatically triggers chapter-level resolution
+- `ChapterIndividualsResolvedEvent` automatically triggers book-level reduction
+
+The manual command endpoints proposed as optional escape hatches also remain available:
+
+- chapter manual trigger endpoint
+- book manual trigger endpoint
+
+So the implemented system supports both automatic ingestion-time processing and explicit operator-driven reruns.
+
+### What the shipped implementation kept from the proposal
+
+The implementation stayed aligned with the core proposal in these ways:
+
+- mentions remain the evidence-bearing layer
+- chapter is the first real consolidation boundary
+- `BookIndividual` remains intentionally thin
+- the first implementation is deterministic rather than embedding-assisted
+- the ladder is scope-explicit instead of flattening immediately into a global canonical `Individual`
+
+### Important implementation details learned after shipping
+
+#### 1. Completion semantics needed explicit coordination
+
+One key design clarification after implementation was that `IngestionCompletedEvent` should not trigger book reduction.
+
+Instead, book reduction is now part of the work that must finish **before** ingestion is considered complete.
+
+That led to an explicit completion coordinator:
+
+- embedding completion publishes `EmbeddingsCompletedEvent`
+- book reduction publishes `BookIndividualsReducedEvent`
+- ingestion completion fires only after both are present for the same job/chapter
+
+This preserves the meaning that chapter ingestion is not done until all reactive work stemming from upload has finished.
+
+#### 2. Book reduction needed per-book serialization
+
+Once book-level reduction was triggered automatically, concurrent chapter completions for the same book exposed a race.
+
+The implemented solution is a per-book lock around reduction so the delete-and-rebuild cycle for `BookIndividual` state remains safe.
+
+This is an implementation note worth preserving because the proposal assumed incremental orchestration would fit the event model cleanly, but the shipped version needed explicit concurrency control to make that true in practice.
+
+#### 3. The representative field shape is now concrete
+
+The proposal suggested that `BookIndividual` stay thin and likely hold a representative chapter-level pointer plus first-seen coordinates.
+
+The implemented node now concretely stores:
+
+- `bookId`
+- `displayName`
+- `normalizedName`
+- `chapterIndividualCount`
+- `representativeChapterIndividualId`
+- `firstSeenChapterId`
+
+This is close to the original proposal and confirms that the thin-book-individual direction held up during implementation.
+
+#### 4. Chapter-level aggregation is still intentionally minimal
+
+The proposal discussed richer chapter-local aggregate facts as a possible benefit of `ChapterIndividual`.
+
+The shipped implementation is more conservative so far. `ChapterIndividual` currently stores:
+
+- `chapterId`
+- `displayName`
+- `normalizedName`
+- `mentionCount`
+
+This means the current implementation has proven the graph shape and trigger chain before widening the aggregate payload.
+
+#### 5. The prompt field rename landed differently than the proposal vocabulary
+
+During implementation, the extraction prompt shape changed from `description` to `activity` on the LLM side.
+
+The graph model is now aligned to that terminology and persists the field as `IndividualMention.activity`.
+
+### What remains unimplemented from the proposal
+
+The following parts of the proposal are still future work:
+
+- embedding-assisted candidate generation for identity resolution
+- weighted lexical + graph scoring beyond the current deterministic grouping shape
+- richer chapter-level aggregate fields
+- anything cross-book or cross-series
+- a general reusable resolution framework for other entity types
+
+So the current state is best described as:
+
+- **Slice 1 shipped**
+- **Slice 2 shipped in a thin deterministic form**
+- **Slice 3 not yet started**
+
+### Documentation consequence
+
+Because these slices now exist in code, the proposal should no longer be read as the sole description of current behavior.
+
+Canonical current-state documentation should describe the shipped mechanism directly, while this proposal remains useful for:
+
+- preserving the rationale for the scope-explicit ladder
+- showing which ideas were intentionally deferred
+- explaining why the implementation chose deterministic structure first and better scoring later
