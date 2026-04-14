@@ -69,7 +69,7 @@ Current implemented state:
 - Core pipeline functional: Ingestion → Scene Detection → Chunking → Embedding → Semantic Search/RAG
 - Scene detection now includes context-budget checks and deterministic segmented fallback
 - Spoiler-aware search is shipped with per-series visibility windows
-- Individual mentions are persisted as groundwork for later entity resolution
+- Scoped entity evidence and reduction are active for both Individuals and Locations
 
 ## Architectural Reframe
 
@@ -170,32 +170,28 @@ Current priority order:
 
 These slices do **not** replace the broader roadmap. They clarify how the next phase should be executed.
 
-1. **Location entity extraction**
-   - Add one more entity type before deeper query work so the next product slice is entity-based, not individual-specific
-   - Keep the first location slice narrow and evidence-first
+1. **Entity-aware Q&A improvements**
+    - Use at least individuals + locations so query improvements do not hard-code a character-only product shape
+    - Emphasize entity-aware retrieval, citations, disambiguation, and follow-up navigation
 
-2. **Entity-aware Q&A improvements**
-   - Use at least individuals + locations so query improvements do not hard-code a character-only product shape
-   - Emphasize entity-aware retrieval, citations, disambiguation, and follow-up navigation
+2. **Unified SSE diagnostics feed**
+    - Add a normalized event stream for job progress, warnings, failures, and completion
+    - Treat this as enabling infrastructure for diagnostics first and product streaming later
 
-3. **Unified SSE diagnostics feed**
-   - Add a normalized event stream for job progress, warnings, failures, and completion
-   - Treat this as enabling infrastructure for diagnostics first and product streaming later
+3. **Basic UI for chapter upload + SSE visibility**
+    - Build a minimal surface for chapter submission and real-time status observation
+    - Prefer a narrow operator/developer-friendly UI before committing to a broader product shell
 
-4. **Basic UI for chapter upload + SSE visibility**
-   - Build a minimal surface for chapter submission and real-time status observation
-   - Prefer a narrow operator/developer-friendly UI before committing to a broader product shell
-
-5. **Additional entity types**
-   - Continue broadening extraction once the first entity-aware query/product slice has validated the direction
+4. **Additional entity types**
+    - Continue broadening extraction once the first entity-aware query/product slice has validated the direction
 
 ## Broader Follow-On Directions
 
 These remain the larger roadmap buckets after the slices above:
 
-1. **Broader entity extraction (Locations, Collectives, later claims)**
-   - Extend the extraction foundation beyond individuals
-   - Preserve the current simple architecture: extract first, map later
+1. **Broader entity extraction (Collectives, later claims)**
+    - Extend the extraction foundation beyond individuals
+    - Preserve the current simple architecture: extract first, map later
 
 2. **Timeline modeling and production hardening**
    - Revisit scene-as-event enrichment once entity-linked retrieval is more valuable
@@ -221,6 +217,14 @@ Recent follow-up hardening also landed:
 - graph-link queries were rewritten to avoid cartesian-product warning patterns
 
 This means the current roadmap question is no longer whether to begin scoped individual resolution, but how to document the shipped mechanism clearly and which post-identity tranche should come next.
+
+Shipped after that roadmap refresh:
+
+- `LocationMention` evidence is persisted from triad extraction and linked to `Scene`
+- chapter-level resolution groups mention evidence into `ChapterLocation`
+- book-level reduction groups chapter locations into thin `BookLocation`
+- the Location branch runs as a sibling post-scene branch beside the Individual branch
+- ingestion completion now waits for embeddings, book-level Individual reduction, and book-level Location reduction
 
 ## M1-M4 Completion Baseline
 

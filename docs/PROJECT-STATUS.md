@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
 **Last Updated:** April 2026  
-**Status:** Active — M1/M2/M3/M4 complete; spoiler-aware search, budgeted scene detection, and scoped individual resolution shipped  
+**Status:** Active — M1/M2/M3/M4 complete; spoiler-aware search, budgeted scene detection, and scoped Individual plus Location resolution shipped  
 **Primary Direction:** Simplify architecture, preserve mechanical sympathy, reduce indirection
 
 ## What LoreVault Is
@@ -17,8 +17,10 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Package structure: 10 top-level feature-oriented packages in `lorevault-api` (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`, `support/`, `timeline/`, `web/`)
 - Scene detection now enforces context-budget checks and deterministic segmented fallback for oversized chapters
 - Individual mentions are persisted from scene detection output, with normalized-name and resolution metadata
-- Scoped identity resolution is now active: `IndividualMention -> ChapterIndividual -> BookIndividual`
-- Ingestion completion is coordinated across two post-scene branches: embedding completion and book-level identity reduction
+- Scoped entity resolution is now active for two lanes:
+  - `IndividualMention -> ChapterIndividual -> BookIndividual`
+  - `LocationMention -> ChapterLocation -> BookLocation`
+- Ingestion completion is coordinated across required post-scene branches: embedding completion, book-level Individual reduction, and book-level Location reduction
 
 ## What Is Done
 
@@ -32,7 +34,8 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Spoiler-aware search shipped** — Per-request `SpoilerVisibility` DTO accepted on `/api/query/ask/vector` and `/api/query/ask/rag`; `ANY()` Cypher predicate filters chunks beyond the reader's per-series read-through position; `UnconfiguredSeriesPolicy` defaults to `HIDE`; oversample multiplier configurable in `application.yml`; documented in ADR 006
 - **Budgeted scene detection shipped** — Pass-1 scene detection now checks model context budget before full-chapter submission and falls back to deterministic segmentation when needed; segment-boundary risk is tagged for later reconciliation
 - **Scoped individual resolution shipped** — Triad extraction now persists `IndividualMention` evidence per scene, automatic chapter-level resolution groups mentions into `ChapterIndividual`, and automatic book-level reduction links those chapter identities into thin `BookIndividual` nodes
-- **Coordinated ingestion completion shipped** — `IngestionCompletedEvent` is now emitted only after both branches triggered from `ScenesDetectedEvent` finish: `ChunksCreatedEvent -> EmbeddingsCompletedEvent` and `ChapterIndividualsResolvedEvent -> BookIndividualsReducedEvent`
+- **Scoped Location resolution shipped** — Triad extraction now persists `LocationMention` evidence per scene, automatic chapter-level resolution groups mentions into `ChapterLocation`, and automatic book-level reduction links those chapter locations into thin `BookLocation` nodes
+- **Coordinated ingestion completion shipped** — `IngestionCompletedEvent` is now emitted only after all required branches triggered from `ScenesDetectedEvent` finish: `ChunksCreatedEvent -> EmbeddingsCompletedEvent`, `ChapterIndividualsResolvedEvent -> BookIndividualsReducedEvent`, and `ChapterLocationsResolvedEvent -> BookLocationsReducedEvent`
 - **Ingestion hardening shipped** — recent follow-up fixes standardized embeddings on 3072 dimensions, persisted `chunkIndex` on `HAS_CHUNK` relationships for deterministic ordering, tightened scene-localization retry behavior when too many scenes are dropped, and removed cartesian-product warning patterns from graph-link queries
 
 ## What Is Next
@@ -43,19 +46,17 @@ Current focus:
 - Clarify the near-term execution plan as iterative product-facing slices rather than one large next tranche
 
 Near-term execution slices:
-1. **Location entity extraction**
-   - Add one additional entity type so the next query/product work is not overly anchored on individuals
-2. **Entity-aware Q&A improvements**
+1. **Entity-aware Q&A improvements**
    - Improve query behavior against at least two entity types instead of building a character-only vertical
-3. **Unified SSE diagnostics feed**
+2. **Unified SSE diagnostics feed**
    - Add a normalized live stream for job progress, warnings, failures, and completion notifications
-4. **Basic UI for chapter upload + SSE status visibility**
+3. **Basic UI for chapter upload + SSE status visibility**
    - Build a minimal user-facing/operator-facing surface that can ingest chapters and watch progress in real time
-5. **Additional entity types**
+4. **Additional entity types**
    - Extend beyond individuals and locations once the first entity-aware product slice proves the pattern
 
 Broader planned directions remain intact after these slices:
-- Broader entity extraction (Locations, Collectives, and later claims)
+- Broader entity extraction (Collectives and later claims)
 - Timeline modeling with Scene-as-Event entities
 - Production hardening (observability, rate limiting, error budgets)
 - Improved candidate generation and scoring for identity resolution after the current deterministic ladder
@@ -80,6 +81,7 @@ All 4 decisions from the original modulith plan are resolved. No architectural d
 - `docs/development/current/m2-m4-implementation-plan.md`
 - `docs/patterns/README.md`
 - `docs/patterns/individual-resolution-ladder.md`
+- `docs/patterns/location-resolution-ladder.md`
 - `docs/adr/README.md`
 - `docs/concepts/README.md`
 - `docs/rules/README.md`

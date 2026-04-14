@@ -389,7 +389,7 @@ This is the lightest useful path that keeps the next query/product work entity-b
 
 ## Implementation Notes Since This Proposal
 
-**Status update:** This proposal is now partially implemented in the working tree as the next ingestion slice after the shipped `Individual` ladder.
+**Status update:** This proposal's first slice is now shipped on `main` as the next ingestion slice after the shipped `Individual` ladder.
 
 ### What the implementation kept from the proposal
 
