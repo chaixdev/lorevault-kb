@@ -384,3 +384,95 @@ using:
 - a Location-specific field set instead of copying individual fields blindly
 
 This is the lightest useful path that keeps the next query/product work entity-based rather than individual-specific.
+
+---
+
+## Implementation Notes Since This Proposal
+
+**Status update:** This proposal is now partially implemented in the working tree as the next ingestion slice after the shipped `Individual` ladder.
+
+### What the implementation kept from the proposal
+
+The current implementation remains aligned with the core proposal in these ways:
+
+- `Location` is modeled as a sibling Entity lane rather than as an Individual-specific extension
+- `LocationMention` remains the evidence-bearing layer
+- `ChapterLocation` and `BookLocation` are both included already in the first slice
+- matching stays exact and lightweight: normalized primary name plus normalized aliases only
+- `Scene -[:MENTIONS]-> LocationMention` remains the first semantic edge instead of introducing a stronger claim like `LOCATED_IN`
+
+### Important implementation details learned while building it
+
+#### 1. The actual scoped node payloads are thinner than the proposal's mention payload
+
+The mention layer preserves the Location-specific descriptive fields:
+
+- `displayName`
+- `normalizedName`
+- `aliases`
+- `kind`
+- `region`
+- `description`
+
+But the scoped reduction layers are intentionally thinner:
+
+- `ChapterLocation` stores `chapterId`, `displayName`, `normalizedName`, `aliases`, and `mentionCount`
+- `BookLocation` stores `bookId`, `displayName`, `normalizedName`, `aliases`, `chapterLocationCount`, `representativeChapterLocationId`, and `firstSeenChapterId`
+
+So the current implementation keeps richer descriptive evidence on `LocationMention`, while the chapter/book layers stay focused on grouping and query navigation.
+
+#### 2. Lightweight matching already includes transitive alias bridging
+
+The proposal called for exact normalized primary-name and alias matching.
+
+The implemented clustering logic keeps that rule, but one useful detail is now explicit: clusters can merge transitively when aliases bridge previously separate exact-match groups.
+
+That means the implementation is still exact-only, but it is slightly stronger than a naive one-pass grouping by a single key.
+
+This is worth preserving because it should remain an intentional property if future Entity lanes reuse the same reduction pattern.
+
+#### 3. The parallel branch semantics are now concrete in the ingestion flow
+
+The proposal said the `Location` branch should run in parallel with the `Individual` branch once pass 2 output exists and scenes are persisted.
+
+That is now reflected directly in the implementation shape:
+
+1. pass 2 returns scene-level Individuals and Locations
+2. scenes are persisted first
+3. `IndividualMention` and `LocationMention` persistence both use the real persisted Scene IDs
+4. chapter/book `Individual` and chapter/book `Location` follow-up processing run as sibling post-scene branches
+5. `IngestionCompleted` waits for all required scene-level follow-up work rather than firing per Entity type
+
+This is a canonical-doc candidate because it clarifies that new Entity lanes should attach as sibling branches, not as nested sub-steps of earlier Entity types.
+
+#### 4. Book-level Location reduction is fed by a direct repository query
+
+One implementation deviation worth noting is that book-level `Location` reduction currently reads `ChapterLocation` nodes through a direct repository query:
+
+- `ChapterLocationGraphRepository.findByBookId(...)`
+
+instead of traversing `Chapter` objects first and then mapping chapter IDs in memory.
+
+This was a practical simplification and also avoided fragile getter/accessor behavior in the current environment. It is a good example of preferring direct graph reads for reduction inputs when the scope boundary is already known.
+
+#### 5. Completion coordination now explicitly includes the Location branch
+
+`IngestionCompleted` already had to wait for embeddings and book-level `Individual` reduction.
+
+With the `Location` branch added, the completion coordinator now also waits for book-level `Location` reduction before publishing the terminal ingestion event.
+
+That preserves the meaning that ingestion completion covers the whole scene-derived reactive workload, not just the original `Individual` path.
+
+### What remains intentionally unimplemented
+
+The current implementation still does **not** add:
+
+- lat/lng
+- canonical IDs
+- containment reasoning
+- fuzzy matching
+- geo heuristics
+- richer ontology/taxonomy design
+- generic multi-Entity framework extraction
+
+So the present state is best described as a concrete second Entity lane built with the same structural pattern as Individuals, while deliberately keeping the resolution rules and graph semantics conservative.
