@@ -44,6 +44,14 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE CONSTRAINT book_individual_id_unique IF NOT EXISTS FOR (bi:BookIndividual) REQUIRE bi.id IS UNIQUE";
     private static final String BOOK_INDIVIDUAL_SCOPE_UNIQUE =
             "CREATE CONSTRAINT book_individual_scope_unique IF NOT EXISTS FOR (bi:BookIndividual) REQUIRE (bi.bookId, bi.normalizedName) IS UNIQUE";
+    private static final String CHAPTER_LOCATION_ID_UNIQUE =
+            "CREATE CONSTRAINT chapter_location_id_unique IF NOT EXISTS FOR (cl:ChapterLocation) REQUIRE cl.id IS UNIQUE";
+    private static final String CHAPTER_LOCATION_SCOPE_UNIQUE =
+            "CREATE CONSTRAINT chapter_location_scope_unique IF NOT EXISTS FOR (cl:ChapterLocation) REQUIRE (cl.chapterId, cl.normalizedName) IS UNIQUE";
+    private static final String BOOK_LOCATION_ID_UNIQUE =
+            "CREATE CONSTRAINT book_location_id_unique IF NOT EXISTS FOR (bl:BookLocation) REQUIRE bl.id IS UNIQUE";
+    private static final String BOOK_LOCATION_SCOPE_UNIQUE =
+            "CREATE CONSTRAINT book_location_scope_unique IF NOT EXISTS FOR (bl:BookLocation) REQUIRE (bl.bookId, bl.normalizedName) IS UNIQUE";
 
     // Content hash uniqueness
     private static final String CHAPTER_CONTENT_HASH_UNIQUE =
@@ -64,6 +72,10 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE INDEX individual_mention_chapter_name IF NOT EXISTS FOR (m:IndividualMention) ON (m.chapterId, m.normalizedName)";
     private static final String BOOK_INDIVIDUAL_BOOK_NAME_INDEX =
             "CREATE INDEX book_individual_book_name IF NOT EXISTS FOR (bi:BookIndividual) ON (bi.bookId, bi.normalizedName)";
+    private static final String LOCATION_MENTION_CHAPTER_NAME_INDEX =
+            "CREATE INDEX location_mention_chapter_name IF NOT EXISTS FOR (m:LocationMention) ON (m.chapterId, m.normalizedName)";
+    private static final String BOOK_LOCATION_BOOK_NAME_INDEX =
+            "CREATE INDEX book_location_book_name IF NOT EXISTS FOR (bl:BookLocation) ON (bl.bookId, bl.normalizedName)";
 
     // Per-chapter ordering index for events
     private static final String EVENT_PER_CHAPTER_SCENE_INDEX =
@@ -89,6 +101,10 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(CHAPTER_INDIVIDUAL_SCOPE_UNIQUE, "ChapterIndividual(chapterId, normalizedName) unique"));
         results.add(executeConstraint(BOOK_INDIVIDUAL_ID_UNIQUE, "BookIndividual.id unique"));
         results.add(executeConstraint(BOOK_INDIVIDUAL_SCOPE_UNIQUE, "BookIndividual(bookId, normalizedName) unique"));
+        results.add(executeConstraint(CHAPTER_LOCATION_ID_UNIQUE, "ChapterLocation.id unique"));
+        results.add(executeConstraint(CHAPTER_LOCATION_SCOPE_UNIQUE, "ChapterLocation(chapterId, normalizedName) unique"));
+        results.add(executeConstraint(BOOK_LOCATION_ID_UNIQUE, "BookLocation.id unique"));
+        results.add(executeConstraint(BOOK_LOCATION_SCOPE_UNIQUE, "BookLocation(bookId, normalizedName) unique"));
         results.add(executeConstraint(CHAPTER_CONTENT_HASH_UNIQUE, "Chapter.contentHash unique"));
         
         // Event identity constraint
@@ -100,6 +116,8 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(CHUNK_EMBEDDING_HASH_INDEX, "Chunk.embeddingHash"));
         results.add(executeIndex(INDIVIDUAL_MENTION_CHAPTER_NAME_INDEX, "IndividualMention(chapterId, normalizedName)"));
         results.add(executeIndex(BOOK_INDIVIDUAL_BOOK_NAME_INDEX, "BookIndividual(bookId, normalizedName)"));
+        results.add(executeIndex(LOCATION_MENTION_CHAPTER_NAME_INDEX, "LocationMention(chapterId, normalizedName)"));
+        results.add(executeIndex(BOOK_LOCATION_BOOK_NAME_INDEX, "BookLocation(bookId, normalizedName)"));
         
         // Event per-chapter ordering index
         results.add(executeIndex(EVENT_PER_CHAPTER_SCENE_INDEX, "Event(chapterId, sceneIndex)"));
