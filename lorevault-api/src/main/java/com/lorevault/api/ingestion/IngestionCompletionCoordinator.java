@@ -67,9 +67,30 @@ public class IngestionCompletionCoordinator {
         completeIfReady(key);
     }
 
+    @Async
+    @EventListener
+    public void handleBookLocationsReduced(BookLocationsReducedEvent event) {
+        BeanWrapperImpl eventBean = new BeanWrapperImpl(event);
+        CompletionKey key = new CompletionKey(
+                (UUID) eventBean.getPropertyValue("jobId"),
+                (UUID) eventBean.getPropertyValue("chapterId")
+        );
+
+        completionStates.compute(key, (ignored, current) -> {
+            CompletionState next = current == null ? new CompletionState() : current;
+            next.bookLocationsReducedEvent = event;
+            return next;
+        });
+
+        completeIfReady(key);
+    }
+
     private void completeIfReady(CompletionKey key) {
         completionStates.computeIfPresent(key, (ignored, state) -> {
-            if (state.completed || state.embeddingsCompletedEvent == null || state.bookIndividualsReducedEvent == null) {
+            if (state.completed
+                    || state.embeddingsCompletedEvent == null
+                    || state.bookIndividualsReducedEvent == null
+                    || state.bookLocationsReducedEvent == null) {
                 return state;
             }
 
@@ -102,6 +123,7 @@ public class IngestionCompletionCoordinator {
     private static final class CompletionState {
         private EmbeddingsCompletedEvent embeddingsCompletedEvent;
         private BookIndividualsReducedEvent bookIndividualsReducedEvent;
+        private BookLocationsReducedEvent bookLocationsReducedEvent;
         private boolean completed;
     }
 }

@@ -232,7 +232,7 @@ class IndividualResolutionIT {
                         new TriadOrchestrationService.TriadIndividualExtraction(List.of("Nyx"), "tall", "20s", "pilot again")
                 ))
         );
-        return new SceneDetectionService.SceneDetectionOutcome(scenes, extractions);
+        return new SceneDetectionService.SceneDetectionOutcome(scenes, extractions, List.of());
     }
 
     private SceneDetectionService.SceneDetectionOutcome outcomeWithSingleIndividual(String displayName) {
@@ -244,7 +244,7 @@ class IndividualResolutionIT {
                         new TriadOrchestrationService.TriadIndividualExtraction(List.of(displayName), null, null, null)
                 ))
         );
-        return new SceneDetectionService.SceneDetectionOutcome(scenes, extractions);
+        return new SceneDetectionService.SceneDetectionOutcome(scenes, extractions, List.of());
     }
 
     private long countNodes(String label) {

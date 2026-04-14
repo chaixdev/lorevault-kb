@@ -33,7 +33,7 @@ class IngestionCompletionCoordinatorTest {
     private IngestionCompletionCoordinator coordinator;
 
     @Test
-    @DisplayName("Completes ingestion only after embedding and identity branches finish")
+    @DisplayName("Completes ingestion only after embedding, individual, and location branches finish")
     void completesOnlyWhenBothBranchesArrive() {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
@@ -49,6 +49,10 @@ class IngestionCompletionCoordinatorTest {
         verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));
 
         coordinator.handleEmbeddingsCompleted(new EmbeddingsCompletedEvent(this, jobId, chapterId, 2, 4, 4, 1200));
+
+        verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));
+
+        coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 2, 1));
 
         verify(ingestionJobService).completeJob(job, chapterId, 1200);
         verify(eventPublisher).publishEvent(any(IngestionCompletedEvent.class));
