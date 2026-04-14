@@ -81,6 +81,13 @@ class SceneDetectionClientTest {
                                 "tall, scarred",
                                 "20s",
                                 "A soldier with a spear"
+                        )),
+                        List.of(new TriadOrchestrationService.TriadLocationExtraction(
+                                "Bridge Four Barracks",
+                                List.of("the barracks"),
+                                "building",
+                                "Shattered Plains",
+                                "military housing"
                         ))
                 )
         );
@@ -120,6 +127,7 @@ class SceneDetectionClientTest {
         assertThat(responseBodyCaptor.getValue()).contains("\"timelineMarker\":\"timeline-marker\"");
         assertThat(responseBodyCaptor.getValue()).contains("\"currentSceneEntities\"");
         assertThat(responseBodyCaptor.getValue()).contains("\"activity\":\"A soldier with a spear\"");
+        assertThat(responseBodyCaptor.getValue()).contains("\"primaryName\":\"Bridge Four Barracks\"");
         assertThat(responseBodyCaptor.getValue()).doesNotContain("[structured-response:");
         assertThat(outputTokensCaptor.getValue()).isGreaterThan(0);
     }

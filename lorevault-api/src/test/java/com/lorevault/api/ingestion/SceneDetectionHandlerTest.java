@@ -40,6 +40,7 @@ class SceneDetectionHandlerTest {
     @Mock private SceneDetectionService sceneDetectionService;
     @Mock private SceneProcessingService sceneProcessingService;
     @Mock private IndividualPersistenceService individualPersistenceService;
+    @Mock private LocationPersistenceService locationPersistenceService;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private DefaultTemporalEdgeService defaultTemporalEdgeService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -87,7 +88,7 @@ class SceneDetectionHandlerTest {
             when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
             when(sceneDetectionService.detectScenesInText(jobId, chapterId, (String) new BeanWrapperImpl(testChapter).getPropertyValue("rawText"))).thenReturn(
-                    new SceneDetectionService.SceneDetectionOutcome(sceneCoords, List.of())
+                    new SceneDetectionService.SceneDetectionOutcome(sceneCoords, List.of(), List.of())
             );
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
 
@@ -98,6 +99,7 @@ class SceneDetectionHandlerTest {
             verify(sceneDetectionService).detectScenesInText(jobId, chapterId, (String) new BeanWrapperImpl(testChapter).getPropertyValue("rawText"));
             verify(sceneProcessingService).persistDetectedScenes(chapterId, sceneCoords);
             verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, List.of());
+            verify(locationPersistenceService).persistExtractedLocations(persistedScenes, List.of());
             verify(defaultTemporalEdgeService).createAllDefaults(bookId);
 
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
@@ -118,19 +120,22 @@ class SceneDetectionHandlerTest {
             Scene scene = createScene(0);
             List<Scene> persistedScenes = List.of(scene);
             List<com.lorevault.api.ai.TriadOrchestrationService.TriadSceneIndividualExtraction> extractions = List.of();
+            List<com.lorevault.api.ai.TriadOrchestrationService.TriadSceneLocationExtraction> locationExtractions = List.of();
 
             when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
             when(sceneDetectionService.detectScenesInText(jobId, chapterId, (String) new BeanWrapperImpl(testChapter).getPropertyValue("rawText")))
-                    .thenReturn(new SceneDetectionService.SceneDetectionOutcome(sceneCoords, extractions));
+                    .thenReturn(new SceneDetectionService.SceneDetectionOutcome(sceneCoords, extractions, locationExtractions));
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
 
             handler.handleChapterIngestion(testEvent);
 
             verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, extractions);
+            verify(locationPersistenceService).persistExtractedLocations(persistedScenes, locationExtractions);
             verify(eventPublisher).publishEvent(any(ScenesDetectedEvent.class));
-            InOrder inOrder = inOrder(individualPersistenceService, eventPublisher);
+            InOrder inOrder = inOrder(individualPersistenceService, locationPersistenceService, eventPublisher);
             inOrder.verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, extractions);
+            inOrder.verify(locationPersistenceService).persistExtractedLocations(persistedScenes, locationExtractions);
             inOrder.verify(eventPublisher).publishEvent(any(ScenesDetectedEvent.class));
         }
 
@@ -149,6 +154,7 @@ class SceneDetectionHandlerTest {
             verify(sceneDetectionService, never()).detectScenesInText(any(), any(), anyString());
             verify(sceneProcessingService, never()).persistDetectedScenes(any(), any());
             verify(individualPersistenceService, never()).persistExtractedIndividuals(any(), any());
+            verify(locationPersistenceService, never()).persistExtractedLocations(any(), any());
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());

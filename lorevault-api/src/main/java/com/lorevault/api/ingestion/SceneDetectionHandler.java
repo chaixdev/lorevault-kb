@@ -42,6 +42,7 @@ public class SceneDetectionHandler {
     private final SceneDetectionService sceneDetectionService;
     private final SceneProcessingService sceneProcessingService;
     private final IndividualPersistenceService individualPersistenceService;
+    private final LocationPersistenceService locationPersistenceService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
@@ -52,6 +53,7 @@ public class SceneDetectionHandler {
             SceneDetectionService sceneDetectionService,
             SceneProcessingService sceneProcessingService,
             IndividualPersistenceService individualPersistenceService,
+            LocationPersistenceService locationPersistenceService,
             IngestionJobService ingestionJobService,
             DefaultTemporalEdgeService defaultTemporalEdgeService,
             ApplicationEventPublisher eventPublisher
@@ -61,6 +63,7 @@ public class SceneDetectionHandler {
         this.sceneDetectionService = sceneDetectionService;
         this.sceneProcessingService = sceneProcessingService;
         this.individualPersistenceService = individualPersistenceService;
+        this.locationPersistenceService = locationPersistenceService;
         this.defaultTemporalEdgeService = defaultTemporalEdgeService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
@@ -146,6 +149,10 @@ public class SceneDetectionHandler {
         individualPersistenceService.persistExtractedIndividuals(
                 persistedScenes,
                 detectionOutcome.sceneIndividualExtractions()
+        );
+        locationPersistenceService.persistExtractedLocations(
+                persistedScenes,
+                detectionOutcome.sceneLocationExtractions()
         );
         return persistedScenes;
     }

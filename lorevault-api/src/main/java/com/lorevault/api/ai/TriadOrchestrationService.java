@@ -8,6 +8,7 @@ import com.lorevault.api.timeline.TriadRelationInverter;
 import com.lorevault.api.ingestion.IngestionJobService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.stereotype.Service;
 
@@ -34,7 +35,18 @@ public class TriadOrchestrationService {
             String activity
     ) {}
 
-    public record TriadCurrentSceneEntities(List<TriadIndividualExtraction> individuals) {}
+    public record TriadLocationExtraction(
+            String primaryName,
+            List<String> aliases,
+            String kind,
+            String region,
+            String description
+    ) {}
+
+    public record TriadCurrentSceneEntities(
+            List<TriadIndividualExtraction> individuals,
+            List<TriadLocationExtraction> locations
+    ) {}
 
     public record TriadStructuredResult(
             String timelineMarker,
@@ -50,6 +62,8 @@ public class TriadOrchestrationService {
     }
 
     public record TriadSceneIndividualExtraction(int sceneIndex, List<TriadIndividualExtraction> individuals) {}
+
+    public record TriadSceneLocationExtraction(int sceneIndex, List<TriadLocationExtraction> locations) {}
 
     public record TriadAnalysis(
             UUID previousSceneId,
@@ -67,7 +81,8 @@ public class TriadOrchestrationService {
 
     public record TriadOutcome(
             List<TriadAnalysis> triadAnalyses,
-            List<TriadSceneIndividualExtraction> sceneIndividualExtractions
+            List<TriadSceneIndividualExtraction> sceneIndividualExtractions,
+            List<TriadSceneLocationExtraction> sceneLocationExtractions
     ) {}
 
     private final TriadBuilderService triadBuilder;
@@ -91,7 +106,7 @@ public class TriadOrchestrationService {
     public TriadOutcome analyzeChapterTriadsWithIndividuals(UUID jobId, Chapter chapter) {
         List<TriadBuilderService.SceneTriad> triads = triadBuilder.buildTriadsForChapter(chapter);
         if (triads.isEmpty()) {
-            return new TriadOutcome(List.of(), List.of());
+            return new TriadOutcome(List.of(), List.of(), List.of());
         }
 
         PromptTemplate systemTemplate = promptRepository.get("scene-detection-pass2");
@@ -99,6 +114,7 @@ public class TriadOrchestrationService {
 
         List<TriadAnalysis> analyses = new ArrayList<>();
         Map<Integer, List<TriadIndividualExtraction>> extractedIndividualsBySceneIndex = new HashMap<>();
+        Map<Integer, List<TriadLocationExtraction>> extractedLocationsBySceneIndex = new HashMap<>();
 
         int triadIndex = 0;
         for (TriadBuilderService.SceneTriad t : triads) {
@@ -153,6 +169,13 @@ public class TriadOrchestrationService {
                             .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
                             .addAll(triadIndividuals);
                 }
+
+                List<TriadLocationExtraction> triadLocations = normalizeLocations(parsed);
+                if (!triadLocations.isEmpty()) {
+                    extractedLocationsBySceneIndex
+                            .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
+                            .addAll(triadLocations);
+                }
             }
         }
 
@@ -161,7 +184,12 @@ public class TriadOrchestrationService {
                 .sorted(java.util.Comparator.comparingInt(TriadSceneIndividualExtraction::sceneIndex))
                 .toList();
 
-        return new TriadOutcome(analyses, sceneExtractions);
+        List<TriadSceneLocationExtraction> sceneLocationExtractions = extractedLocationsBySceneIndex.entrySet().stream()
+                .map(e -> new TriadSceneLocationExtraction(e.getKey(), List.copyOf(e.getValue())))
+                .sorted(java.util.Comparator.comparingInt(TriadSceneLocationExtraction::sceneIndex))
+                .toList();
+
+        return new TriadOutcome(analyses, sceneExtractions, sceneLocationExtractions);
     }
 
     public List<TriadAnalysis> analyzeChapterTriads(UUID jobId, Chapter chapter) {
@@ -179,6 +207,22 @@ public class TriadOrchestrationService {
                         normalizeText(individual.physicalProperties()),
                         normalizeText(individual.age()),
                         normalizeText(individual.activity())
+                ))
+                .toList();
+    }
+
+    private List<TriadLocationExtraction> normalizeLocations(TriadStructuredResult parsed) {
+        if (parsed == null || parsed.currentSceneEntities() == null || parsed.currentSceneEntities().locations() == null) {
+            return List.of();
+        }
+        return parsed.currentSceneEntities().locations().stream()
+                .filter(location -> location != null)
+                .map(location -> new TriadLocationExtraction(
+                        normalizeText(location.primaryName()),
+                        normalizeAliases(location.aliases()),
+                        normalizeText(location.kind()),
+                        normalizeText(location.region()),
+                        normalizeText(location.description())
                 ))
                 .toList();
     }
@@ -302,7 +346,8 @@ public class TriadOrchestrationService {
         if (scene == null) {
             return "";
         }
-        String summary = scene.getContextSummary();
+        Object value = new BeanWrapperImpl(scene).getPropertyValue("contextSummary");
+        String summary = value == null ? null : value.toString();
         return summary == null ? "" : summary;
     }
 
@@ -310,7 +355,8 @@ public class TriadOrchestrationService {
         if (chapter == null) {
             return null;
         }
-        return chapter.getRawText();
+        Object value = new BeanWrapperImpl(chapter).getPropertyValue("rawText");
+        return value == null ? null : value.toString();
     }
 
     private String textOrEmpty(String v) {

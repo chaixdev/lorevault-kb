@@ -33,7 +33,8 @@ public class SceneDetectionService {
 
     public record SceneDetectionOutcome(
             List<SceneWithCoordinates> scenes,
-            List<TriadOrchestrationService.TriadSceneIndividualExtraction> sceneIndividualExtractions
+            List<TriadOrchestrationService.TriadSceneIndividualExtraction> sceneIndividualExtractions,
+            List<TriadOrchestrationService.TriadSceneLocationExtraction> sceneLocationExtractions
     ) {}
 
     private final SceneDetectionClient sceneDetectionClient;
@@ -67,7 +68,7 @@ public class SceneDetectionService {
         // Handle null or empty text gracefully
         if (chapterText == null || chapterText.trim().isEmpty()) {
             log.warn("Chapter {} has no text content for scene detection", chapterId);
-            return new SceneDetectionOutcome(Collections.emptyList(), List.of());
+            return new SceneDetectionOutcome(Collections.emptyList(), List.of(), List.of());
         }
         
         log.info("Starting scene detection with retry for chapter {} (job {}, length={} chars)", 
@@ -205,7 +206,11 @@ public class SceneDetectionService {
 
             log.debug("Successfully completed triad-based scene detection pipeline: {} scenes detected, {} triad analyses completed", 
                      scenes.size(), triadOutcome.triadAnalyses().size());
-            return new SceneDetectionOutcome(scenes, triadOutcome.sceneIndividualExtractions());
+            return new SceneDetectionOutcome(
+                    scenes,
+                    triadOutcome.sceneIndividualExtractions(),
+                    triadOutcome.sceneLocationExtractions()
+            );
 
         } catch (Exception e) {
             // Log the specific stage that failed for debugging with full stack trace

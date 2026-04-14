@@ -93,7 +93,11 @@ Entity Categories — definitions (for <scene_entities>)
     </objects>
     <locations>
       <location>
-        <name></name>
+        <primaryName></primaryName>
+        <aliases>
+          <alias></alias>
+        </aliases>
+        <kind></kind>
         <region></region>
         <description></description>
       </location>

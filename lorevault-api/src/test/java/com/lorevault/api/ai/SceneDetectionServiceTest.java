@@ -55,7 +55,7 @@ class SceneDetectionServiceTest {
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
                 .thenReturn(List.of(new SceneWithCoordinates(0, 0, 10, "ctx")));
         when(triadOrchestrationService.analyzeChapterTriadsWithIndividuals(eq(jobId), any()))
-                .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of()));
+                .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of(), List.of()));
 
         SceneDetectionService.SceneDetectionOutcome outcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
         List<SceneWithCoordinates> scenes = outcome.scenes();
@@ -88,7 +88,7 @@ class SceneDetectionServiceTest {
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
                 .thenReturn(List.of(new SceneWithCoordinates(0, 0, chapterText.length(), "ctx")));
         when(triadOrchestrationService.analyzeChapterTriadsWithIndividuals(eq(jobId), any()))
-                .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of()));
+                .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of(), List.of()));
 
         SceneDetectionService.SceneDetectionOutcome outcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
         List<SceneWithCoordinates> scenes = outcome.scenes();
@@ -161,7 +161,7 @@ class SceneDetectionServiceTest {
                 new SceneWithCoordinates(3, 6, 8, "ctx-4")
         ));
         when(triadOrchestrationService.analyzeChapterTriadsWithIndividuals(eq(jobId), any()))
-                .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of()));
+                .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of(), List.of()));
 
         SceneDetectionService.SceneDetectionOutcome outcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
 
