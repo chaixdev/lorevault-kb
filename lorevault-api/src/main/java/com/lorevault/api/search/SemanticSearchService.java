@@ -29,14 +29,14 @@ public class SemanticSearchService {
 
     /**
      * Perform semantic search for the given query.
-     * 
+     *
      * @param request Search request with query and optional filters
      * @return Search results with metadata
      */
     public SemanticSearchResponse search(SemanticSearchRequest request) {
-        log.debug("Performing semantic search for query: '{}' with topK: {}", 
+        log.debug("Performing semantic search for query: '{}' with topK: {}",
                  request.getQuery(), request.getTopK());
-        
+
         long startTime = System.currentTimeMillis();
 
         // Generate query embedding
@@ -61,7 +61,7 @@ public class SemanticSearchService {
             .toList();
 
         long processingTime = System.currentTimeMillis() - startTime;
-        
+
         SearchMetadata metadata = SearchMetadata.of(
             request.getQuery(),
             searchResults.size(),
@@ -69,7 +69,7 @@ public class SemanticSearchService {
             processingTime
         );
 
-        log.debug("Semantic search completed in {}ms, found {} results", 
+        log.debug("Semantic search completed in {}ms, found {} results",
                  processingTime, searchResults.size());
 
         return SemanticSearchResponse.of(resultDtos, metadata);
@@ -77,7 +77,7 @@ public class SemanticSearchService {
 
     /**
      * Check if semantic search is currently available.
-     * 
+     *
      * @return true if search can be performed, false otherwise
      */
     public boolean isAvailable() {
@@ -88,10 +88,10 @@ public class SemanticSearchService {
         if (filters == null) {
             return SearchFilters.empty();
         }
-        
+
         return new SearchFilters(
             filters.getUniverse(),
-            filters.getSeries(), 
+            filters.getSeries(),
             filters.getBookNumber(),
             filters.getChapterNumber()
         );
@@ -104,7 +104,11 @@ public class SemanticSearchService {
             result.snippet(),
             result.chapterId(),
             result.bookNumber(),
-            result.chapterNumber()
+            result.chapterNumber(),
+            result.sceneId(),
+            result.sceneSummary(),
+            result.individualsPresent(),
+            result.locationsPresent()
         );
     }
 

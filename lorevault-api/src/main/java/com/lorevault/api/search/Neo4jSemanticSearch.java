@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +28,11 @@ public class Neo4jSemanticSearch {
             String snippet,
             UUID chapterId,
             Integer bookNumber,
-            Integer chapterNumber
+            Integer chapterNumber,
+            UUID sceneId,
+            String sceneSummary,
+            List<String> individualsPresent,
+            List<String> locationsPresent
     ) {}
 
     public record SearchFilters(
@@ -99,8 +104,23 @@ public class Neo4jSemanticSearch {
                         Integer mappedChapterNumber = record.get("chapterNumber").isNull()
                                 ? null : record.get("chapterNumber").asInt();
 
+                        UUID sceneId = record.get("sceneId").isNull()
+                                ? null : UUID.fromString(record.get("sceneId").asString());
+                        String sceneSummary = record.get("sceneSummary").isNull()
+                                ? null : record.get("sceneSummary").asString();
+
+                        List<String> individualsPresent = record.get("individualsPresent").isNull()
+                                ? List.of()
+                                : record.get("individualsPresent").asList(v -> v.asString());
+                        List<String> locationsPresent = record.get("locationsPresent").isNull()
+                                ? List.of()
+                                : record.get("locationsPresent").asList(v -> v.asString());
+
                         return new SearchResult(chunkId, score, snippet, chapterId,
-                                mappedBookNumber, mappedChapterNumber);
+                                mappedBookNumber, mappedChapterNumber,
+                                sceneId, sceneSummary,
+                                new ArrayList<>(individualsPresent),
+                                new ArrayList<>(locationsPresent));
                     })
                     .all()
                     .stream()
@@ -168,21 +188,33 @@ public class Neo4jSemanticSearch {
             YIELD node, score
             WITH node AS chunk, score
             OPTIONAL MATCH (chapterDirect:Chapter)-[:HAS_CHUNK]->(chunk)
-            OPTIONAL MATCH (chapterViaScene:Chapter)-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(chunk)
-            WITH chunk, score, coalesce(chapterViaScene, chapterDirect) AS chapter
+            OPTIONAL MATCH (sceneViaChunk:Scene)-[:HAS_CHUNK]->(chunk)
+            OPTIONAL MATCH (chapterViaScene:Chapter)-[:HAS_SCENE]->(sceneViaChunk)
+            WITH chunk, score,
+                 coalesce(chapterViaScene, chapterDirect) AS chapter,
+                 sceneViaChunk AS scene
             WHERE score > 0.0
               AND ($universe      IS NULL OR chapter.universe      = $universe)
               AND ($series        IS NULL OR chapter.series        = $series)
               AND ($bookNumber    IS NULL OR chapter.bookNumber    = $bookNumber)
               AND ($chapterNumber IS NULL OR chapter.chapterNumber = $chapterNumber)
             """ + spoilerClause + """
+            OPTIONAL MATCH (scene)-[:MENTIONS]->(im:IndividualMention)
+            OPTIONAL MATCH (scene)-[:MENTIONS]->(lm:LocationMention)
+            WITH chunk, score, chapter, scene,
+                 collect(DISTINCT im.displayName) AS individualsPresent,
+                 collect(DISTINCT lm.displayName) AS locationsPresent
             RETURN
                 chunk.id AS chunkId,
                 score,
                 chunk.text AS text,
                 chapter.id AS chapterId,
                 chapter.bookNumber AS bookNumber,
-                chapter.chapterNumber AS chapterNumber
+                chapter.chapterNumber AS chapterNumber,
+                scene.id AS sceneId,
+                scene.contextSummary AS sceneSummary,
+                individualsPresent,
+                locationsPresent
             ORDER BY score DESC
             LIMIT $topK
             """;

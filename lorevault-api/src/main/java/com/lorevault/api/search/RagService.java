@@ -13,7 +13,6 @@ import com.lorevault.api.search.SemanticSearchDtos.SearchResultDto;
 import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchFilters;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
-import com.lorevault.api.search.SemanticSearchService;
 import com.lorevault.api.ai.PromptRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +21,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.IntStream;
@@ -48,7 +48,7 @@ public class RagService {
 
     /**
      * Answer a question using RAG (Retrieve-Augment-Generate) approach.
-     * 
+     *
      * @param request Question and search parameters
      * @return Answer with source citations and metadata
      */
@@ -118,7 +118,7 @@ public class RagService {
     /**
      * Validates filter hierarchy and returns properly structured filters.
      * Enforces hierarchy: universe -> series -> book -> chapter
-     * 
+     *
      * @param askFilters The filters from the ask request
      * @return Valid semantic search filters or null if all filters are invalid
      */
@@ -159,7 +159,7 @@ public class RagService {
         searchFilters.setBookNumber(bookNumber);
         searchFilters.setChapterNumber(chapterNumber);
         
-        log.debug("Applied validated filters: universe='{}', series='{}', book={}, chapter={}", 
+        log.debug("Applied validated filters: universe='{}', series='{}', book={}, chapter={}",
                  universe, series, bookNumber, chapterNumber);
         
         return searchFilters;
@@ -218,27 +218,55 @@ public class RagService {
 
     private String buildContextFromEvidence(List<SearchResultDto> evidence) {
         StringBuilder context = new StringBuilder();
-        
+
         IntStream.range(0, evidence.size())
             .forEach(i -> {
                 SearchResultDto result = evidence.get(i);
-                
+
                 // Fetch full chunk content instead of using snippet
                 Optional<Chunk> chunkOpt = chunkRepo.findById(result.getChunkId());
                 String chunkText = chunkOpt.map(Chunk::getText).orElse(result.getSnippet());
-                
+
                 context.append(String.format("[%d] %s", i + 1, chunkText));
-                
-                // Add chapter context if available
-                if (result.getBookNumber() != null && result.getChapterNumber() != null) {
-                    context.append(String.format(" (Book %d, Chapter %d)", 
-                                   result.getBookNumber(), result.getChapterNumber()));
+
+                // Build location annotation: (Book N, Chapter N — featuring: X, Y — at: Z)
+                String locationTag = buildLocationTag(result);
+                if (!locationTag.isEmpty()) {
+                    context.append(" ").append(locationTag);
                 }
-                
+
                 context.append("\n\n");
             });
-        
+
         return context.toString();
+    }
+
+    /**
+     * Builds the parenthetical annotation that follows a chunk in the RAG context string.
+     * Example output: "(Book 2, Chapter 5 — featuring: Vin, Kelsier — at: Luthadel)"
+     * Parts are omitted when the corresponding data is absent.
+     */
+    private String buildLocationTag(SearchResultDto result) {
+        List<String> parts = new ArrayList<>();
+
+        if (result.getBookNumber() != null && result.getChapterNumber() != null) {
+            parts.add(String.format("Book %d, Chapter %d", result.getBookNumber(), result.getChapterNumber()));
+        }
+
+        List<String> individuals = result.getIndividualsPresent();
+        if (individuals != null && !individuals.isEmpty()) {
+            parts.add("featuring: " + String.join(", ", individuals));
+        }
+
+        List<String> locations = result.getLocationsPresent();
+        if (locations != null && !locations.isEmpty()) {
+            parts.add("at: " + String.join(", ", locations));
+        }
+
+        if (parts.isEmpty()) {
+            return "";
+        }
+        return "(" + String.join(" \u2014 ", parts) + ")";
     }
 
     private String buildSystemPrompt() {

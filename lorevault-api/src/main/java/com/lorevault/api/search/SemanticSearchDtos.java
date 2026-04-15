@@ -79,7 +79,7 @@ public class SemanticSearchDtos {
     }
 
     /**
-     * Individual search result.
+     * Individual search result, including scene-level entity context when available.
      */
     @Data
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -90,9 +90,21 @@ public class SemanticSearchDtos {
         private UUID chapterId;
         private Integer bookNumber;
         private Integer chapterNumber;
+        private UUID sceneId;
+        private String sceneSummary;
+        private List<String> individualsPresent;
+        private List<String> locationsPresent;
 
-        public static SearchResultDto of(UUID chunkId, double score, String snippet, 
-                                        UUID chapterId, Integer bookNumber, Integer chapterNumber) {
+        public static SearchResultDto of(UUID chunkId, double score, String snippet,
+                                         UUID chapterId, Integer bookNumber, Integer chapterNumber) {
+            return of(chunkId, score, snippet, chapterId, bookNumber, chapterNumber,
+                      null, null, List.of(), List.of());
+        }
+
+        public static SearchResultDto of(UUID chunkId, double score, String snippet,
+                                         UUID chapterId, Integer bookNumber, Integer chapterNumber,
+                                         UUID sceneId, String sceneSummary,
+                                         List<String> individualsPresent, List<String> locationsPresent) {
             SearchResultDto dto = new SearchResultDto();
             dto.chunkId = chunkId;
             dto.score = score;
@@ -100,6 +112,10 @@ public class SemanticSearchDtos {
             dto.chapterId = chapterId;
             dto.bookNumber = bookNumber;
             dto.chapterNumber = chapterNumber;
+            dto.sceneId = sceneId;
+            dto.sceneSummary = sceneSummary;
+            dto.individualsPresent = (individualsPresent == null || individualsPresent.isEmpty()) ? null : individualsPresent;
+            dto.locationsPresent  = (locationsPresent  == null || locationsPresent.isEmpty())  ? null : locationsPresent;
             return dto;
         }
     }

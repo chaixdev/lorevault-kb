@@ -70,8 +70,21 @@ public class FakeNeo4jSemanticSearch extends Neo4jSemanticSearch {
 		return h;
 	}
 
-	// Helper to create a result quickly
-	public static SearchResult result(UUID chunkId, double score, String snippet, UUID chapterId, Integer bookNumber, Integer chapterNumber) {
-		return new SearchResult(chunkId, score, snippet, chapterId, bookNumber, chapterNumber);
+	// ── Convenience factory methods ───────────────────────────────────────────
+
+	/** Creates a minimal result with no scene/entity data (null/empty defaults). */
+	public static SearchResult result(UUID chunkId, double score, String snippet,
+			UUID chapterId, Integer bookNumber, Integer chapterNumber) {
+		return new SearchResult(chunkId, score, snippet, chapterId, bookNumber, chapterNumber,
+				null, null, List.of(), List.of());
+	}
+
+	/** Creates a result with full scene/entity context. */
+	public static SearchResult result(UUID chunkId, double score, String snippet,
+			UUID chapterId, Integer bookNumber, Integer chapterNumber,
+			UUID sceneId, String sceneSummary,
+			List<String> individualsPresent, List<String> locationsPresent) {
+		return new SearchResult(chunkId, score, snippet, chapterId, bookNumber, chapterNumber,
+				sceneId, sceneSummary, individualsPresent, locationsPresent);
 	}
 }

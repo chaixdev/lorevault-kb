@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
@@ -25,6 +26,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -295,6 +297,55 @@ class RagServiceTest {
             verify(chunkRepo).findById(chunkId1);
             verify(chapterRepo).findById(chapterId);
             verify(callSpec).content();
+        }
+
+        @Test
+        void shouldAppendEntityAndLocationAnnotationsToContextWhenPresent() {
+            // Arrange
+            when(chatClient.prompt()).thenReturn(requestSpec);
+            when(requestSpec.system(anyString())).thenReturn(systemSpec);
+            ArgumentCaptor<String> userPromptCaptor = ArgumentCaptor.forClass(String.class);
+            when(systemSpec.user(userPromptCaptor.capture())).thenReturn(requestSpec);
+            when(requestSpec.call()).thenReturn(callSpec);
+            when(callSpec.content()).thenReturn("Vin is the main protagonist.");
+
+            AskDtos.AskRequest request = new AskDtos.AskRequest();
+            request.setQuestion("Who is Vin?");
+            request.setTopK(3);
+
+            UUID chunkId  = UUID.randomUUID();
+            UUID chapterId = UUID.randomUUID();
+
+            // Result carrying scene-level entity data
+            SemanticSearchDtos.SearchResultDto searchResult = SemanticSearchDtos.SearchResultDto.of(
+                chunkId, 0.91, "Vin crept through the mists.", chapterId, 2, 5,
+                UUID.randomUUID(), "Vin infiltrates the keep",
+                List.of("Vin", "Kelsier"),
+                List.of("Luthadel")
+            );
+
+            SemanticSearchDtos.SemanticSearchResponse searchResponse = new SemanticSearchDtos.SemanticSearchResponse();
+            searchResponse.setResults(List.of(searchResult));
+
+            Chunk mockChunk = new Chunk();
+            mockChunk.setId(chunkId);
+            mockChunk.setText("Vin crept through the mists.");
+            when(chunkRepo.findById(chunkId)).thenReturn(Optional.of(mockChunk));
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.empty());
+
+            when(semanticSearchService.search(any(SemanticSearchDtos.SemanticSearchRequest.class)))
+                .thenReturn(searchResponse);
+            when(mockPromptRepository.get("rag-answer-generation"))
+                .thenReturn(new PromptTemplate("You are a helpful assistant."));
+
+            // Act
+            ragService.ask(request);
+
+            // Assert — the user prompt sent to the LLM must contain both annotations
+            String capturedUserPrompt = userPromptCaptor.getValue();
+            assertThat(capturedUserPrompt).contains("featuring: Vin, Kelsier");
+            assertThat(capturedUserPrompt).contains("at: Luthadel");
+            assertThat(capturedUserPrompt).contains("Book 2, Chapter 5");
         }
     }
 }
