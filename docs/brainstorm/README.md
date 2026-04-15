@@ -40,8 +40,15 @@ When a brainstorm becomes stable enough, either:
 ### Scene detection
 
 - [Scene detection context budget and segmentation spec — April 2026](scene-detection/scene-detection-context-budget-and-segmentation-spec-april-2026.md) — pass 1 context budgeting, segmented processing fallback, and implementation notes
+- [Scene detection naming analysis — April 2026](scene-detection/scene-detection-naming-analysis-april-2026.md) — why `pass1` / `pass2` should be renamed before the terminology hardens further; recommends `chapter segmentation` and `scene analysis`
 
 ### Architecture
 
 - [Pragmatic modulith plan](architecture/pragmatic-modulith-plan.md)
 - [Event-driven architecture plan](architecture/event-driven-architecture-plan.md)
+
+### Query and retrieval
+
+- [Robust Q&A strategy report — April 2026](query/2026-04-15_robust-qa-strategy-report.md) — long-horizon strategy analysis: substrate vs mycelium vs fruiting body, question-space ambition, concept-model fit, bottleneck map, and phased direction for growing LoreVault into a robust lore Q&A system
+- [Graph-aware Q&A design — April 2026](query/2026-04-12_graph-aware-qa-design-april-2026.md) — applies external GraphRAG pattern research to LoreVault's schema: vector-seeded entity expansion, Cypher template registry, intent router, spoiler-safe entity injection, and a prioritized implementation plan
+- [Multi-entity retrieval: external research — April 2026](query/2026-04-12_multi-entity-retrieval-external-research.md) — pressure-tests the shortestPath() proposal against 10+ external sources; verdict: scene co-occurrence beats path traversal for narrative "X+Y at Z" questions; includes Java/Spring/Neo4j stack mapping and staged implementation plan
