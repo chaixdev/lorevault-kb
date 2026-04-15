@@ -28,7 +28,7 @@ This makes the graph more symmetrical for later Q&A and navigation work while ke
 
 ### 1) Scene detection carries Location extraction alongside Individual extraction
 
-The pass-2 scene-analysis prompt already asks for Locations.
+The scene-analysis prompt already asks for Locations.
 
 `TriadOrchestrationService` and `SceneDetectionService` now carry structured Location data with these fields:
 

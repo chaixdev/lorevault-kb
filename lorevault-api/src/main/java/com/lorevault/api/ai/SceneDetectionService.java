@@ -90,7 +90,7 @@ public class SceneDetectionService {
         // Configure retry strategy for scene detection
         LlmRetryConfig retryConfig = LlmRetryConfig.defaultConfig();
 
-        log.info("Scene segmentation (Pass 1) starting with retry (max {} attempts) for job {}",
+        log.info("Chapter segmentation starting with retry (max {} attempts) for job {}",
                 retryConfig.getMaxAttempts(), jobId);
 
         // Execute scene detection with retry
@@ -100,7 +100,7 @@ public class SceneDetectionService {
                 () -> performFullSceneDetection(jobId, chapterId, chapterText));
 
         if (retryResult.isSuccess()) {
-        String successMsg = String.format("Scene segmentation (Pass 1) succeeded after %d/%d attempts in %d ms",
+        String successMsg = String.format("Chapter segmentation succeeded after %d/%d attempts in %d ms",
                     retryResult.getAttemptsUsed(), retryConfig.getMaxAttempts(),
                     retryResult.getTotalDurationMs());
 
@@ -108,7 +108,7 @@ public class SceneDetectionService {
             return retryResult.getResult();
 
         } else {
-        String failureMsg = String.format("Scene segmentation (Pass 1) failed after %d attempts in %d ms: %s",
+        String failureMsg = String.format("Chapter segmentation failed after %d attempts in %d ms: %s",
                     retryResult.getAttemptsUsed(), retryResult.getTotalDurationMs(),
                     retryResult.getLastException().getMessage());
 
@@ -123,16 +123,16 @@ public class SceneDetectionService {
     }
 
     /**
-     * Perform the complete scene detection pipeline (Pass 1 + triad-based Pass 2 + parsing + localization)
+     * Perform the complete scene detection pipeline (segmentation + triad-based analysis + parsing + localization)
      */
     private SceneDetectionOutcome performFullSceneDetection(UUID jobId, UUID chapterId, String chapterText) {
         try {
             // DEADLOCK RISK: do NOT call ingestionJobService.updateJobStatus() inside this method.
             // Outer tx (SceneDetectionHandler) holds a read-lock on IngestionJob; updateJobStatus
             // uses REQUIRES_NEW and needs a write-lock on the same node → Neo4j deadlock.
-            log.info("Scene segmentation (Pass 1): starting for job {} chapter {}", jobId, chapterId);
+            log.info("Chapter segmentation: starting for job {} chapter {}", jobId, chapterId);
 
-            SceneDetectionClient.Pass1BudgetCheck budgetCheck = sceneDetectionClient.evaluatePass1Budget(chapterText);
+            SceneDetectionClient.SegmentationBudgetCheck budgetCheck = sceneDetectionClient.evaluateSegmentationBudget(chapterText);
             List<SegmentWindow> segments = createDeterministicSegments(
                     chapterText,
                     budgetCheck.estimatedTotalInput(),
@@ -140,10 +140,10 @@ public class SceneDetectionService {
             );
 
             if (segments.size() == 1 && budgetCheck.isWithinBudget()) {
-                log.info("Pass 1 budget check accepted for chapter {} (estimatedInput={}, budget={})",
+                log.info("Segmentation budget check accepted for chapter {} (estimatedInput={}, budget={})",
                         chapterId, budgetCheck.estimatedTotalInput(), budgetCheck.usableInputBudget());
             } else {
-                log.info("Pass 1 budget check exceeded for chapter {} (estimatedInput={}, budget={}). Using segmented processing with {} segment(s).",
+                log.info("Segmentation budget check exceeded for chapter {} (estimatedInput={}, budget={}). Using segmented processing with {} segment(s).",
                         chapterId, budgetCheck.estimatedTotalInput(), budgetCheck.usableInputBudget(), segments.size());
             }
 
@@ -154,8 +154,8 @@ public class SceneDetectionService {
                 throw new RuntimeException("Scene coordinate localization returned empty results");
             }
 
-            // Triad Pass 2: analyze prev/curr/next scene triads and persist TEMPORAL edges
-            // This replaces the old Pass 2 approach that sent full XML to LLM
+            // Triad scene analysis: analyze prev/curr/next scene triads and persist TEMPORAL edges
+            log.info("Triad scene analysis: starting for job {} chapter {}", jobId, chapterId);
             Chapter chapter = Chapter.createWithReferences(
                     null, null, null, null, null, chapterText, null
             );
@@ -200,7 +200,7 @@ public class SceneDetectionService {
             }
 
             // Run triad orchestration with populated chapter
-            log.info("Triad analysis (Pass 2): starting for job {} chapter {}", jobId, chapterId);
+            log.info("Scene analysis (triad): starting for job {} chapter {}", jobId, chapterId);
             var triadOutcome = triadOrchestrationService.analyzeChapterTriadsWithIndividuals(jobId, chapter);
             triadEdgePersistenceService.applyTriadAnalyses(triadOutcome.triadAnalyses());
 
@@ -274,10 +274,10 @@ public class SceneDetectionService {
     }
 
     private List<SceneWithCoordinates> detectScenesInSingleSegment(UUID jobId, String segmentText) {
-        String pass1XmlResponse = sceneDetectionClient.detectScenesPass1(jobId, segmentText);
-        List<SceneDetectionResult> sceneResults = sceneProcessingService.parseSceneDetectionXml(pass1XmlResponse, segmentText.length());
+        String segmentationXmlResponse = sceneDetectionClient.detectChapterSegmentation(jobId, segmentText);
+        List<SceneDetectionResult> sceneResults = sceneProcessingService.parseSceneDetectionXml(segmentationXmlResponse, segmentText.length());
         if (sceneResults.isEmpty()) {
-            throw new RuntimeException("Pass 1 scene detection parsing returned empty results - likely malformed XML response");
+            throw new RuntimeException("Chapter segmentation parsing returned empty results - likely malformed XML response");
         }
         List<SceneWithCoordinates> scenes = sceneProcessingService.localizeSceneCoordinates(segmentText, sceneResults);
         if (scenes.isEmpty()) {

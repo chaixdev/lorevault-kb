@@ -215,7 +215,7 @@ The first step is fine but already mostly done. The second step (DAG enrichment)
 
 1. **Stabilize Scene-as-Event** — fix the Neo4j label mismatch (Scene nodes don't carry :Event label despite queries expecting it), standardize temporal property naming, possibly extend Event interface. This is a half-day task, not a stage.
 
-2. **Entity extraction** — Individual, Location, Collective first. The pass2 LLM prompt already requests entities but the code ignores them (`TriadStructuredResult` only captures temporal relations). Low-hanging fruit: capture what the LLM already returns.
+2. **Entity extraction** — Individual, Location, Collective first. The scene analysis LLM prompt already requests entities but the code ignores them (`TriadStructuredResult` only captures temporal relations). Low-hanging fruit: capture what the LLM already returns.
 
 3. **Entity-to-Scene/Chunk linking** — connect extracted entities to their scenes with evidence spans. Gives immediate value for "where does X appear" and "who is in this scene."
 
@@ -257,7 +257,7 @@ The first step is fine but already mostly done. The second step (DAG enrichment)
 - Some Cypher queries match `(s:Scene:Event)` — may return nothing if Event label missing
 - Property naming mismatch: Java `temporalRelation` (enum) vs Cypher `type` (string)
 - Event interface is skeletal (3 methods only)
-- Pass2 prompt requests entity extraction but code discards the results
+- Scene analysis prompt requests entity extraction but code discards the results
 
 ---
 

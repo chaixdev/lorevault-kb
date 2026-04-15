@@ -88,13 +88,13 @@ class LlmCallRecordPersistenceIntegrationTest {
         // Act: Log an LLM call
         LlmCallRecord logged = loggingService.logCall(
             jobId,
-            "scene-detection-pass1",
+            "chapter-segmentation",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass1.txt",
+            "chapter-segmentation.txt",
             "You are an AI assistant that detects scenes in narrative text...",
             "Chapter 1: The hero begins their journey in a small village...",
             "This is a test response that is longer than 50 characters and should be truncated in the integration test",
@@ -115,7 +115,7 @@ class LlmCallRecordPersistenceIntegrationTest {
         assertThat(record.getJobId()).isEqualTo(jobId);
         // Skip statusRecordId assertion for now - it should be null without a status record
         assertThat(record.getStatusRecordId()).isNull();
-        assertThat(record.getStep()).isEqualTo("scene-detection-pass1");
+        assertThat(record.getStep()).isEqualTo("chapter-segmentation");
         assertThat(record.getProvider()).isEqualTo("openai-compatible");
         assertThat(record.getModel()).isEqualTo("gpt-4o-mini");
         assertThat(record.getTemperature()).isEqualTo(0.1);
@@ -125,7 +125,7 @@ class LlmCallRecordPersistenceIntegrationTest {
         assertThat(record.getInputTokens()).isEqualTo(500);
         assertThat(record.getOutputTokens()).isEqualTo(150);
         assertThat(record.getTokensEstimated()).isTrue();
-        assertThat(record.getPromptTemplateId()).isEqualTo("scene-detection-pass1.txt");
+        assertThat(record.getPromptTemplateId()).isEqualTo("chapter-segmentation.txt");
         assertThat(record.getStoreRenderedPrompt()).isTrue();
         assertThat(record.getRenderedPrompt()).isEqualTo("You are an AI assistant that detects scenes in narrative text...");
         assertThat(record.getInputPreview()).isEqualTo("Chapter 1: The hero begins their journey in a small village...");
@@ -148,36 +148,36 @@ class LlmCallRecordPersistenceIntegrationTest {
         job.setCreatedAt(LocalDateTime.now());
         job = jobRepo.save(job);
 
-        // Act: Log two different pass calls for the same job
-        LlmCallRecord pass1 = loggingService.logCall(
+        // Act: Log two different step calls for the same job
+        LlmCallRecord segmentationCall = loggingService.logCall(
             jobId,
-            "scene-detection-pass1",
+            "chapter-segmentation",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass1.txt",
-            "Pass 1 system prompt",
+            "chapter-segmentation.txt",
+            "Segmentation system prompt",
             "Chapter text",
-            "Pass 1 response that is short",
+            "Segmentation response that is short",
             1000L,
             400,
             100
         );
 
-        LlmCallRecord pass2 = loggingService.logCall(
+        LlmCallRecord analysisCall = loggingService.logCall(
             jobId,
-            "scene-detection-pass2",
+            "scene-analysis",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass2.txt",
-            "Pass 2 system prompt",
-            "Pass 1 XML result",
-            "Pass 2 response that is also short",
+            "scene-analysis.txt",
+            "Analysis system prompt",
+            "Segmentation XML result",
+            "Analysis response that is also short",
             800L,
             200,
             80
@@ -188,17 +188,17 @@ class LlmCallRecordPersistenceIntegrationTest {
         assertThat(allCalls).hasSize(2);
 
         // Verify by step filtering
-        List<LlmCallRecord> pass1Calls = llmCallRepo.findByJobIdAndStep(jobId, "scene-detection-pass1");
-        assertThat(pass1Calls).hasSize(1);
-        assertThat(pass1Calls.get(0).getStep()).isEqualTo("scene-detection-pass1");
-        assertThat(pass1Calls.get(0).getResponseBody()).isEqualTo("Pass 1 response that is short");
-        assertThat(pass1Calls.get(0).getTruncated()).isFalse(); // Short, not truncated
+        List<LlmCallRecord> segmentationCalls = llmCallRepo.findByJobIdAndStep(jobId, "chapter-segmentation");
+        assertThat(segmentationCalls).hasSize(1);
+        assertThat(segmentationCalls.get(0).getStep()).isEqualTo("chapter-segmentation");
+        assertThat(segmentationCalls.get(0).getResponseBody()).isEqualTo("Segmentation response that is short");
+        assertThat(segmentationCalls.get(0).getTruncated()).isFalse(); // Short, not truncated
 
-        List<LlmCallRecord> pass2Calls = llmCallRepo.findByJobIdAndStep(jobId, "scene-detection-pass2");
-        assertThat(pass2Calls).hasSize(1);
-        assertThat(pass2Calls.get(0).getStep()).isEqualTo("scene-detection-pass2");
-        assertThat(pass2Calls.get(0).getResponseBody()).isEqualTo("Pass 2 response that is also short");
-        assertThat(pass2Calls.get(0).getTruncated()).isFalse(); // Short, not truncated
+        List<LlmCallRecord> analysisCalls = llmCallRepo.findByJobIdAndStep(jobId, "scene-analysis");
+        assertThat(analysisCalls).hasSize(1);
+        assertThat(analysisCalls.get(0).getStep()).isEqualTo("scene-analysis");
+        assertThat(analysisCalls.get(0).getResponseBody()).isEqualTo("Analysis response that is also short");
+        assertThat(analysisCalls.get(0).getTruncated()).isFalse(); // Short, not truncated
     }
 
     @Test 
@@ -209,13 +209,13 @@ class LlmCallRecordPersistenceIntegrationTest {
         // Act: Try to log without creating the job first
         LlmCallRecord logged = loggingService.logCall(
             nonExistentJobId,
-            "scene-detection-pass1",
+            "chapter-segmentation",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass1.txt",
+            "chapter-segmentation.txt",
             "System prompt",
             "Input preview",
             "Response content",
@@ -251,13 +251,13 @@ class LlmCallRecordPersistenceIntegrationTest {
         // Act
         LlmCallRecord logged = loggingService.logCall(
             jobId,
-            "scene-detection-pass1",
+            "chapter-segmentation",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass1.txt",
+            "chapter-segmentation.txt",
             "System prompt",
             "Input preview",
             exactSize50Response,
@@ -286,13 +286,13 @@ class LlmCallRecordPersistenceIntegrationTest {
         // Act: Log an LLM call
         LlmCallRecord record = loggingService.logCall(
             jobId,
-            "scene-detection-pass-1",
+            "chapter-segmentation",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass1.txt",
+            "chapter-segmentation.txt",
             "Test system prompt",
             "Test input",
             "Test response",

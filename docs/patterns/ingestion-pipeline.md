@@ -62,7 +62,7 @@ sequenceDiagram
     Service->>SDH : "publish ChapterIngestionEvent (async)"
     
     SDH->>SDS : "detectScenesInText(chapter)"
-    Note over SDS : "Pass 1: Segmentation<br>Pass 2: Triad Analysis"
+    Note over SDS : "Chapter Segmentation<br>Scene Analysis"
     SDS-->>SDH : "return scenes"
     SDH->>SDH : "persist scenes and temporal edges"
     SDH->>CH : "publish ScenesDetectedEvent"
@@ -106,8 +106,8 @@ sequenceDiagram
 
 **Stage 2: Scene Detection + evidence persistence** (`SceneDetectionHandler`)
 - Maintains idempotency by checking for existing scenes in the repository before starting work.
-- Executes Pass 1: Uses an LLM for initial segmentation followed by XML parsing and a 3-tier fallback for coordinate localization.
-- Executes Pass 2: Performs triad analysis to establish complex temporal relationships and to extract scene-local entity evidence.
+- Executes Chapter Segmentation: Uses an LLM for initial segmentation followed by XML parsing and a 3-tier fallback for coordinate localization.
+- Executes Scene Analysis: Performs triad analysis to establish complex temporal relationships and to extract scene-local entity evidence.
 - Automatically creates default sequential temporal edges through the `DefaultTemporalEdgeService`.
 - Persists scene-local `IndividualMention` and `LocationMention` evidence after real scene IDs exist.
 - Classified as retryable for transient LLM, API, or connection timeout errors.

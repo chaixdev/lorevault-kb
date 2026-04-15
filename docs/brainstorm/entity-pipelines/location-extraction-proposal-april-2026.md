@@ -16,7 +16,7 @@ The best way to prevent that is to add one more entity lane first.
 
 `Location` is the strongest candidate because it is:
 
-- already requested by the pass 2 scene-analysis prompt
+- already requested by the scene analysis prompt
 - high-value for lore retrieval and reader questions
 - structurally simpler than many other entity types
 - enough to push the next product slice toward a generic entity-aware solution instead of a character-only solution
@@ -27,11 +27,11 @@ The best way to prevent that is to add one more entity lane first.
 
 ### Prompt behavior
 
-The current pass 2 prompt already requests Locations.
+The current scene analysis prompt already requests Locations.
 
 Relevant file:
 
-- `lorevault-api/src/main/resources/prompts/scene-detection-pass2.txt`
+- `lorevault-api/src/main/resources/prompts/scene-analysis.txt`
 
 So LoreVault is already paying for Location extraction attempts in the existing triad call.
 
@@ -41,7 +41,7 @@ Today the code captures and persists only individual extraction results.
 
 The current individual flow is:
 
-1. pass 2 returns structured scene-local entity output
+1. scene analysis returns structured scene-local entity output
 2. `TriadOrchestrationService` normalizes and buffers individual extractions by `sceneIndex`
 3. scenes are persisted
 4. extracted individuals are persisted after final scene persistence
@@ -53,7 +53,7 @@ Locations are not currently captured in the structured Java DTOs or persisted an
 
 The individual implementation has already proven a durable pattern for:
 
-- structured pass 2 capture
+- structured scene analysis capture
 - post-scene persistence timing
 - evidence-node persistence
 - scoped chapter/book consolidation
@@ -75,7 +75,7 @@ This differs from the earlier instinct to stop at a mention-only MVP.
 
 Current recommendation:
 
-- Locations should run in parallel to individuals once pass 2 results are available
+- Locations should run in parallel to individuals once scene analysis results are available
 - Locations should use the same post-scene persistence timing as individuals
 - Locations should get a minimal scoped ladder in v1
 - matching should stay intentionally light: primary name + aliases only
@@ -103,8 +103,8 @@ Adding thin chapter/book Location layers now avoids that asymmetry at relatively
 
 ### In scope
 
-- capturing Location data from pass 2 output
-- extending structured pass 2 DTOs so current-scene Locations are available to application code
+- capturing Location data from scene analysis output
+- extending structured scene analysis DTOs so current-scene Locations are available to application code
 - carrying extracted Locations forward until real scene persistence completes
 - persisting `LocationMention` evidence nodes
 - linking `Scene -> LocationMention`
@@ -129,7 +129,7 @@ Adding thin chapter/book Location layers now avoids that asymmetry at relatively
 
 ## Proposed Data Source
 
-Continue using the existing pass 2 triad prompt.
+Continue using the existing scene analysis triad prompt.
 
 Do **not** add a separate Location-extraction prompt for this slice.
 
@@ -138,7 +138,7 @@ Reasoning:
 - lower incremental cost
 - matches the existing individual extraction path
 - keeps the first Location slice focused on capture + persistence + lightweight reduction
-- gives us signal about whether current pass 2 output is good enough before redesigning prompt architecture
+- gives us signal about whether current scene analysis output is good enough before redesigning prompt architecture
 
 ---
 
@@ -182,7 +182,7 @@ Location processing should follow the same persistence timing as individuals, wi
 
 ### Timing
 
-1. pass 2 returns current-scene entity results
+1. scene analysis returns current-scene entity results
 2. extracted Locations are buffered by chapter-local `sceneIndex`
 3. scenes are persisted
 4. Location persistence resolves `sceneIndex -> persisted Scene.id`
@@ -190,7 +190,7 @@ Location processing should follow the same persistence timing as individuals, wi
 
 ### Parallelism
 
-Once pass 2 results are available and scenes are persisted, the Location pipeline can and should execute in parallel to the individual pipeline.
+Once scene analysis results are available and scenes are persisted, the Location pipeline can and should execute in parallel to the individual pipeline.
 
 That means:
 
@@ -344,7 +344,7 @@ Example question classes this could support:
 
 Recommended order:
 
-1. extend pass 2 structured DTOs to carry current-scene Locations
+1. extend scene analysis structured DTOs to carry current-scene Locations
 2. normalize and buffer Location results by `sceneIndex`
 3. add `LocationMention` persistence after final scene save
 4. add `ChapterLocation` deterministic grouping
@@ -433,11 +433,11 @@ This is worth preserving because it should remain an intentional property if fut
 
 #### 3. The parallel branch semantics are now concrete in the ingestion flow
 
-The proposal said the `Location` branch should run in parallel with the `Individual` branch once pass 2 output exists and scenes are persisted.
+The proposal said the `Location` branch should run in parallel with the `Individual` branch once scene analysis output exists and scenes are persisted.
 
 That is now reflected directly in the implementation shape:
 
-1. pass 2 returns scene-level Individuals and Locations
+1. scene analysis returns scene-level Individuals and Locations
 2. scenes are persisted first
 3. `IndividualMention` and `LocationMention` persistence both use the real persisted Scene IDs
 4. chapter/book `Individual` and chapter/book `Location` follow-up processing run as sibling post-scene branches

@@ -14,7 +14,7 @@ This mechanism also supports cross-chapter continuity. When the system analyzes 
 
 ```mermaid
 graph TD
-    SDService["SceneDetectionService"] -->|"Pass 2 orchestration"| TOService["TriadOrchestrationService"]
+    SDService["SceneDetectionService"] -->|"Scene Analysis orchestration"| TOService["TriadOrchestrationService"]
     TOService -->|"Builds triads"| TBService["TriadBuilderService"]
     TBService -->|"Resolves previous chapter"| CRRepo["ChapterReadRepository"]
     TOService -->|"LLM call"| SDClient["SceneDetectionClient"]
@@ -41,7 +41,7 @@ sequenceDiagram
     TBS-->>TOS: "List<SceneTriad>"
     loop "For EACH triad"
         TOS->>TOS: "emit SCENE_TRIAD_ANALYSIS status"
-        TOS->>SDC: "detectScenesPass2Triad(systemPrompt, userVars)"
+        TOS->>SDC: "detectSceneAnalysisTriad(systemPrompt, userVars)"
         SDC-->>TOS: "TriadStructuredResult"
         TOS->>TOS: "validate result"
         TOS->>TRI: "invertPrevToCurr()"
@@ -121,7 +121,7 @@ The `PipelineStageSupport.extractFailure()` method is configured to unwrap these
 ## Boundaries
 
 The triad analysis pattern is focused on temporal inference and does not cover:
-- **Scene detection (Pass 1)**: The initial identification of scene boundaries is handled by the general ingestion pipeline pattern.
+- **Scene detection (Chapter Segmentation)**: The initial identification of scene boundaries is handled by the general ingestion pipeline pattern.
 - **Coordinate localization**: The 3-tier anchor matching for text positioning is part of the `SceneProcessingService`.
 - **LLM prompt design**: The actual text of the prompts is managed separately in the `PromptRepository`.
 - **Retry logic**: Retrying failed LLM calls is the responsibility of the `LlmRetryStrategy` within `SceneDetectionService`.

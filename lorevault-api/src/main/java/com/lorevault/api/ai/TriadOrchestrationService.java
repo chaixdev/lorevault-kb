@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Orchestrates Pass 2 triad-based analysis end-to-end, fully in-memory.
+ * Orchestrates triad-based scene analysis end-to-end, fully in-memory.
  */
 @Service
 public class TriadOrchestrationService {
@@ -109,7 +109,7 @@ public class TriadOrchestrationService {
             return new TriadOutcome(List.of(), List.of(), List.of());
         }
 
-        PromptTemplate systemTemplate = promptRepository.get("scene-detection-pass2");
+        PromptTemplate systemTemplate = promptRepository.get("scene-analysis");
         String systemPrompt = systemTemplate.render(Map.of());
 
         List<TriadAnalysis> analyses = new ArrayList<>();
@@ -135,7 +135,7 @@ public class TriadOrchestrationService {
                     statusProps
             );
 
-            TriadStructuredResult parsed = sceneDetectionClient.detectScenesPass2Triad(
+            TriadStructuredResult parsed = sceneDetectionClient.detectSceneAnalysisTriad(
                     jobId,
                     systemPrompt,
                     vars,
@@ -313,7 +313,7 @@ public class TriadOrchestrationService {
     private Map<String, Object> buildUserVars(Chapter chapter, TriadBuilderService.SceneTriad triad) {
         Map<String, Object> v = new HashMap<>();
         v.put("prev_context_summary", textOrEmpty(readContextSummary(triad.previous())));
-        v.put("prev_time_indicators", ""); // placeholder until pass1 data is threaded
+        v.put("prev_time_indicators", ""); // placeholder until segmentation data is threaded
         v.put("prev_break_reason", "");
         v.put("prev_text", extractSceneText(chapter, triad.previous()));
 

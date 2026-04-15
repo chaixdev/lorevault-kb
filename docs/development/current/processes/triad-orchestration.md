@@ -1,12 +1,12 @@
 # Triad Orchestration Process (v0.8.3+)
 
-Purpose: describe how triads are constructed and processed during Pass 2 scene normalization, including status emission and LLM call logging for observability.
+Purpose: describe how triads are constructed and processed during scene analysis normalization, including status emission and LLM call logging for observability.
 
 ## Triad Definition
 
 A triad bundles the context needed for cross-chapter temporal reasoning:
 
-- currentChapterPass1Xml: Pass 1 output for the current chapter
+- currentChapterSegmentationXml: chapter segmentation output for the current chapter
 - previousChapterLastScene: prior chapter's final scene context summary and temporal marker (if available)
 - chapterMetadata: title, book/series context used for disambiguation
 
@@ -17,7 +17,7 @@ A triad bundles the context needed for cross-chapter temporal reasoning:
    - Prefer in-memory scene context to avoid premature persistence during analysis
 
 2. Per-Triad Normalization
-   - Run Pass 2 normalization for each triad independently
+   - Run scene analysis normalization for each triad independently
    - Emit per-triad status records: STARTED → LLM_CALLED → PARSED → PERSISTED (or FAILED)
    - Link LLM calls to the corresponding triad status record for traceability
 
@@ -40,7 +40,7 @@ sequenceDiagram
    participant Neo4j
 
    Client->>IngestionService: Submit chapter for processing
-   IngestionService->>TriadBuilder: Build triads (Pass1 XML, prev scene, metadata)
+   IngestionService->>TriadBuilder: Build triads (chapter segmentation XML, prev scene, metadata)
    TriadBuilder->>ChapterLookupPort: findChapterIdsUpTo(bookId, chapterNumber)
    alt chapterNumber == 1 OR no prior chapter
       ChapterLookupPort-->>TriadBuilder: [] or current only
@@ -56,9 +56,9 @@ sequenceDiagram
    loop for each Triad
       IngestionService->>TriadOrchestrator: Process Triad (jobId, triadKey)
       TriadOrchestrator->>Neo4j: HAS_STATUS: TRIAD_STARTED
-      TriadOrchestrator->>LLM: Call Pass2 prompt (triad input)
+      TriadOrchestrator->>LLM: Call scene analysis prompt (triad input)
       Note right of LLM: Rendered prompt (curly braces vars)
-      LLM-->>TriadOrchestrator: Pass2 XML
+      LLM-->>TriadOrchestrator: Scene analysis XML
       TriadOrchestrator->>Neo4j: Create LlmCallRecord
       TriadOrchestrator->>Neo4j: OF_JOB + OF_STATUS relationships
       TriadOrchestrator->>Neo4j: HAS_STATUS: TRIAD_LLM_CALLED
@@ -145,7 +145,7 @@ sequenceDiagram
 
 ## Persistence Notes
 
-- Pass 2 outputs strict `scenes` XML which is then mapped to Scene nodes
+- Scene analysis outputs strict `scenes` XML which is then mapped to Scene nodes
 - Temporal relationships are persisted as a single `:TEMPORAL` edge with relationType/certaintyLevel/marker
 - Cross-chapter relations can be created when sufficient evidence exists via the triad context
 

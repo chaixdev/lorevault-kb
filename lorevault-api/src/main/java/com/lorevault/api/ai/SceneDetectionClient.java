@@ -63,22 +63,22 @@ public class SceneDetectionClient {
         this.objectMapper = objectMapper;
     }
 
-    private static final double PASS1_INPUT_BUDGET_RATIO = 0.70d;
+    private static final double SEGMENTATION_INPUT_BUDGET_RATIO = 0.70d;
 
-    public Pass1BudgetCheck evaluatePass1Budget(String chapterText) {
-        PromptTemplate template = promptRepository.get("scene-detection-pass1");
+    public SegmentationBudgetCheck evaluateSegmentationBudget(String chapterText) {
+        PromptTemplate template = promptRepository.get("chapter-segmentation");
         String systemPrompt = template.render(Map.of());
 
-        String modelSlot = promptProperties.getSceneDetectionPass1Model();
+        String modelSlot = promptProperties.getChapterSegmentationModel();
         LoreVaultModelsProperties.ModelProperties cfg = getModelProperties(modelSlot);
 
         int estimatedPromptTokens = estimateTokens(systemPrompt);
         int estimatedInputTokens = estimateTokens(chapterText);
         int estimatedTotalInput = estimatedPromptTokens + estimatedInputTokens;
         int maxContextTokens = cfg.maxContextTokens();
-        int usableInputBudget = (int) Math.floor(maxContextTokens * PASS1_INPUT_BUDGET_RATIO);
+        int usableInputBudget = (int) Math.floor(maxContextTokens * SEGMENTATION_INPUT_BUDGET_RATIO);
 
-        return new Pass1BudgetCheck(
+        return new SegmentationBudgetCheck(
                 modelSlot,
                 maxContextTokens,
                 usableInputBudget,
@@ -89,83 +89,51 @@ public class SceneDetectionClient {
         );
     }
 
-    /**
-     * Perform two-pass scene detection on chapter text.
-     * Pass 1: Initial scene segmentation and rich hints.
-     * Pass 2: Schema normalization of pass 1 results.
-     * 
-     * @param chapterText The full chapter text to analyze
-     * @return Raw XML response from Pass 2 (normalized scenes)
-     * @throws RuntimeException if either pass fails after retries
-     */
     public String detectScenesTwoPass(UUID jobId, String chapterText) {
-        String pass1ModelId = getModelIdForPass("pass1");
-        log.debug("[LLM] Starting two-pass scene detection: inputLength={} chars, pass1Model={}", 
-                 chapterText == null ? 0 : chapterText.length(), pass1ModelId);
+        String segmentationModelId = getModelIdForStage("segmentation");
+        log.debug("[LLM] Starting two-stage scene detection: inputLength={} chars, segmentationModel={}", 
+                 chapterText == null ? 0 : chapterText.length(), segmentationModelId);
         
-        // Pass 1: Initial scene detection with rich hints
-        String pass1Result = detectScenesPass1(jobId, chapterText);
-        log.debug("[LLM] Pass 1 completed, result length={} chars", pass1Result.length());
+        String segmentationResult = detectChapterSegmentation(jobId, chapterText);
+        log.debug("[LLM] Chapter segmentation completed, result length={} chars", segmentationResult.length());
         
-        // Pass 2: Schema normalization using pass 1 results
-        String pass2Result = detectScenesPass2(jobId, pass1Result);
-        log.debug("[LLM] Pass 2 completed, final result length={} chars", pass2Result.length());
+        String analysisResult = detectSceneAnalysis(jobId, segmentationResult);
+        log.debug("[LLM] Scene analysis completed, final result length={} chars", analysisResult.length());
         
-        return pass2Result;
+        return analysisResult;
     }
 
-    /**
-     * Pass 1: Initial scene segmentation with rich hints.
-     * 
-     * @param chapterText The full chapter text to analyze
-     * @return Raw XML response from Pass 1
-     * @throws RuntimeException if pass 1 fails after retries
-     */
-    public String detectScenesPass1(UUID jobId, String chapterText) {
-        PromptTemplate template = promptRepository.get("scene-detection-pass1");
+    public String detectChapterSegmentation(UUID jobId, String chapterText) {
+        PromptTemplate template = promptRepository.get("chapter-segmentation");
         String systemPrompt = template.render(Map.of());
         
-        String modelId = promptProperties.getSceneDetectionPass1Model();
+        String modelId = promptProperties.getChapterSegmentationModel();
         ChatClient chatClient = getChatClientForModel(modelId);
-        String actualModelId = getModelIdForPass("pass1");
+        String actualModelId = getModelIdForStage("segmentation");
         
-        return executeSceneDetectionCall(jobId, "scene-detection-pass1", systemPrompt, chapterText, chatClient, actualModelId);
+        return executeSceneDetectionCall(jobId, "chapter-segmentation", systemPrompt, chapterText, chatClient, actualModelId);
     }
 
-    /**
-     * Pass 2: Schema normalization of Pass 1 results.
-     * 
-     * @param pass1XmlResult The XML output from Pass 1
-     * @return Raw XML response from Pass 2 (normalized)
-     * @throws RuntimeException if pass 2 fails after retries  
-     */
-    public String detectScenesPass2(UUID jobId, String pass1XmlResult) {
-        PromptTemplate template = promptRepository.get("scene-detection-pass2");
+    public String detectSceneAnalysis(UUID jobId, String segmentationXmlResult) {
+        PromptTemplate template = promptRepository.get("scene-analysis");
         String systemPrompt = template.render(Map.of());
         
-        String modelId = promptProperties.getSceneDetectionPass2Model();
+        String modelId = promptProperties.getSceneAnalysisModel();
         ChatClient chatClient = getChatClientForModel(modelId);
-        String actualModelId = getModelIdForPass("pass2");
+        String actualModelId = getModelIdForStage("analysis");
         
-        return executeSceneDetectionCall(jobId, "scene-detection-pass2", systemPrompt, pass1XmlResult, chatClient, actualModelId);
+        return executeSceneDetectionCall(jobId, "scene-analysis", systemPrompt, segmentationXmlResult, chatClient, actualModelId);
     }
 
-    /**
-     * Pass 2 (triad): use user template to send prev/curr/next scene slices.
-     * @param jobId Job context
-     * @param systemPrompt The triad system prompt content
-     * @param userVariables Variables for the user template
-     * @return Structured triad response mapped to {@code responseType}
-     */
-    public <T> T detectScenesPass2Triad(UUID jobId, String systemPrompt, Map<String, Object> userVariables, Class<T> responseType) {
-        PromptTemplate userTemplate = promptRepository.get("scene-detection-pass2-user");
+    public <T> T detectSceneAnalysisTriad(UUID jobId, String systemPrompt, Map<String, Object> userVariables, Class<T> responseType) {
+        PromptTemplate userTemplate = promptRepository.get("scene-analysis-user");
         String userInput = userTemplate.render(userVariables);
 
-        String modelId = promptProperties.getSceneDetectionPass2Model();
+        String modelId = promptProperties.getSceneAnalysisModel();
         ChatClient chatClient = getChatClientForModel(modelId);
-        String actualModelId = getModelIdForPass("pass2");
+        String actualModelId = getModelIdForStage("analysis");
 
-        return executeSceneDetectionStructuredCall(jobId, "scene-detection-pass2", systemPrompt, userInput, chatClient, actualModelId, responseType);
+        return executeSceneDetectionStructuredCall(jobId, "scene-analysis", systemPrompt, userInput, chatClient, actualModelId, responseType);
     }
 
     /**
@@ -176,11 +144,9 @@ public class SceneDetectionClient {
      * @throws RuntimeException if all retry attempts fail
      */
     public String detectScenes(String chapterText) {
-        // Load the system prompt (instructions) from resources
-        PromptTemplate template = promptRepository.get("scene-detection");
+        PromptTemplate template = promptRepository.get("scene-analysis");
         String systemPrompt = template.render(Map.of());
         
-        // Legacy uses small model by default
         return executeSceneDetectionCall(null, "scene-detection-single-pass", systemPrompt, chapterText, nlpSmallChatClient, nlpSmallModelId);
     }
 
@@ -195,14 +161,11 @@ public class SceneDetectionClient {
         };
     }
     
-    /**
-     * Get the actual model ID for the specified pass.
-     */
-    private String getModelIdForPass(String pass) {
-        return switch (pass) {
-            case "pass1" -> "nlp-big".equals(promptProperties.getSceneDetectionPass1Model()) ? nlpBigModelId : nlpSmallModelId;
-            case "pass2" -> "nlp-big".equals(promptProperties.getSceneDetectionPass2Model()) ? nlpBigModelId : nlpSmallModelId;
-            default -> nlpSmallModelId; // Default fallback
+    private String getModelIdForStage(String stage) {
+        return switch (stage) {
+            case "segmentation" -> "nlp-big".equals(promptProperties.getChapterSegmentationModel()) ? nlpBigModelId : nlpSmallModelId;
+            case "analysis" -> "nlp-big".equals(promptProperties.getSceneAnalysisModel()) ? nlpBigModelId : nlpSmallModelId;
+            default -> nlpSmallModelId;
         };
     }
 
@@ -216,11 +179,11 @@ public class SceneDetectionClient {
 
     /**
      * Execute a scene detection call with retry logic.
-     * Common implementation for both passes and legacy single-pass.
+     * Common implementation for both stages and legacy single-pass.
      * 
-     * @param passName Descriptive name for logging (e.g., "Pass 1", "Pass 2", "Single-pass")
+     * @param step Descriptive name for logging (e.g., "chapter-segmentation", "scene-analysis", "scene-detection-single-pass")
      * @param systemPrompt The system prompt to use
-     * @param userInput The user input (chapter text or pass 1 results)
+     * @param userInput The user input (chapter text or chapter segmentation results)
      * @param chatClient The ChatClient to use for this call
      * @param modelId The model ID for logging
      * @return Raw XML response from the AI model
@@ -278,7 +241,7 @@ public class SceneDetectionClient {
                     options.getTopP(),
                     options.getMaxTokens(),
                     // Prompt metadata
-                    step.equals("scene-detection-pass1") ? promptProperties.getSceneDetectionPass1Path() : promptProperties.getSceneDetectionPass2Path(),
+                    step.equals("chapter-segmentation") ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
                     systemPrompt,
                     safeInput.length() <= 1000 ? safeInput : safeInput.substring(0, 1000),
                     response,
@@ -346,7 +309,7 @@ public class SceneDetectionClient {
                         options.getTemperature(),
                         options.getTopP(),
                         options.getMaxTokens(),
-                        step.equals("scene-detection-pass1") ? promptProperties.getSceneDetectionPass1Path() : promptProperties.getSceneDetectionPass2Path(),
+                    step.equals("chapter-segmentation") ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
                         systemPrompt,
                         safeInput.length() <= 1000 ? safeInput : safeInput.substring(0, 1000),
                         responseBody,
@@ -387,7 +350,7 @@ public class SceneDetectionClient {
         }
     }
 
-    public record Pass1BudgetCheck(
+    public record SegmentationBudgetCheck(
             String modelSlot,
             int maxContextTokens,
             int usableInputBudget,

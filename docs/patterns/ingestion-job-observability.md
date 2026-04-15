@@ -44,7 +44,7 @@ graph LR
 
 ## LLM Call Records
 
-Every LLM call (Pass 1 scene detection, Pass 2 triad analysis) is recorded as an `LlmCallRecord`. Records capture the provider, model, token counts (prompt + completion), timing, and request/response payload. These records link to the parent `IngestionJob` via a `FOR_JOB` relationship. When processing triads, records also link to the specific `StatusRecord` via `FOR_STATUS` for per-triad correlation. Separate records are created per retry attempt, ensuring old evidence is preserved rather than overwritten.
+Every LLM call (chapter segmentation scene detection, scene analysis triad analysis) is recorded as an `LlmCallRecord`. Records capture the provider, model, token counts (prompt + completion), timing, and request/response payload. These records link to the parent `IngestionJob` via a `FOR_JOB` relationship. When processing triads, records also link to the specific `StatusRecord` via `FOR_STATUS` for per-triad correlation. Separate records are created per retry attempt, ensuring old evidence is preserved rather than overwritten.
 
 ## StatusRecord Properties
 

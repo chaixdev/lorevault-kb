@@ -65,13 +65,13 @@ class LlmCallLoggingServiceTest {
         // Act
         LlmCallRecord result = service.logCall(
             jobId,
-            "scene-detection-pass1",
+            "chapter-segmentation",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass1.txt",
+            "chapter-segmentation.txt",
             "You are an AI assistant...",
             "Chapter text preview...",
             "<scenes><scene>Response content</scene></scenes>",
@@ -84,7 +84,7 @@ class LlmCallLoggingServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getJobId()).isEqualTo(jobId);
         assertThat(result.getStatusRecordId()).isEqualTo(statusId);
-        assertThat(result.getStep()).isEqualTo("scene-detection-pass1");
+        assertThat(result.getStep()).isEqualTo("chapter-segmentation");
         assertThat(result.getProvider()).isEqualTo("openai-compatible");
         assertThat(result.getModel()).isEqualTo("gpt-4o-mini");
         assertThat(result.getTemperature()).isEqualTo(0.1);
@@ -94,7 +94,7 @@ class LlmCallLoggingServiceTest {
         assertThat(result.getInputTokens()).isEqualTo(500);
         assertThat(result.getOutputTokens()).isEqualTo(150);
         assertThat(result.getTokensEstimated()).isTrue();
-        assertThat(result.getPromptTemplateId()).isEqualTo("scene-detection-pass1.txt");
+        assertThat(result.getPromptTemplateId()).isEqualTo("chapter-segmentation.txt");
         assertThat(result.getStoreRenderedPrompt()).isTrue();
         assertThat(result.getRenderedPrompt()).isEqualTo("You are an AI assistant...");
         assertThat(result.getInputPreview()).isEqualTo("Chapter text preview...");
@@ -111,13 +111,13 @@ class LlmCallLoggingServiceTest {
         // Act
         LlmCallRecord result = service.logCall(
             null, // null jobId
-            "scene-detection-pass1",
+            "chapter-segmentation",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass1.txt",
+            "chapter-segmentation.txt",
             "You are an AI assistant...",
             "Chapter text preview...",
             "Response content",
@@ -140,13 +140,13 @@ class LlmCallLoggingServiceTest {
         // Act
         LlmCallRecord result = service.logCall(
             UUID.randomUUID(),
-            "scene-detection-pass1",
+            "chapter-segmentation",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass1.txt",
+            "chapter-segmentation.txt",
             "You are an AI assistant...",
             "Chapter text preview...",
             "Response content",
@@ -173,13 +173,13 @@ class LlmCallLoggingServiceTest {
         // Act
         LlmCallRecord result = service.logCall(
             jobId,
-            "scene-detection-pass1",
+            "chapter-segmentation",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass1.txt",
+            "chapter-segmentation.txt",
             "You are an AI assistant...",
             "Chapter text preview...",
             "Response content",
@@ -210,13 +210,13 @@ class LlmCallLoggingServiceTest {
         // Act
         LlmCallRecord result = service.logCall(
             jobId,
-            "scene-detection-pass1",
+            "chapter-segmentation",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass1.txt",
+            "chapter-segmentation.txt",
             "You are an AI assistant...",
             "Chapter text preview...",
             "Response content",
@@ -247,15 +247,15 @@ class LlmCallLoggingServiceTest {
         // Act
         LlmCallRecord result = service.logCall(
             jobId,
-            "scene-detection-pass2",
+            "scene-analysis",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass2.txt",
+            "scene-analysis.txt",
             "You are an AI assistant...",
-            "Pass 1 XML result...",
+            "Chapter segmentation XML result...",
             longResponse,
             1500L,
             400,
@@ -286,13 +286,13 @@ class LlmCallLoggingServiceTest {
         // Act
         LlmCallRecord result = service.logCall(
             jobId,
-            "scene-detection-pass1",
+            "chapter-segmentation",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass1.txt",
+            "chapter-segmentation.txt",
             "You are an AI assistant...",
             longInput,
             "Short response",
@@ -319,13 +319,13 @@ class LlmCallLoggingServiceTest {
         // Act
         LlmCallRecord result = service.logCall(
             jobId,
-            "scene-detection-pass1",
+            "chapter-segmentation",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass1.txt",
+            "chapter-segmentation.txt",
             "You are an AI assistant...",
             "Chapter text preview...",
             "Response content",
@@ -356,15 +356,15 @@ class LlmCallLoggingServiceTest {
         // Act
         LlmCallRecord result = service.logCall(
             jobId,
-            "scene-detection-pass2",
+            "scene-analysis",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-detection-pass2.txt",
+            "scene-analysis.txt",
             "You are an AI assistant...",
-            "Pass 1 XML result...",
+            "Chapter segmentation XML result...",
             "Response content",
             1500L,
             400,

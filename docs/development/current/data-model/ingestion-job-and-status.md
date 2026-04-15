@@ -30,7 +30,7 @@ This document defines the nodes and relationships for ingestion jobs, their stat
 ## Status Chain Semantics
 
 - Append-only: Status records form an immutable audit trail
-- Per-triad statuses are emitted during Pass 2 normalization to reflect progress at triad granularity
+- Per-triad statuses are emitted during scene analysis normalization to reflect progress at triad granularity
 - Legacy step names removed; standardized TRIAD_* steps avoid duplication and ambiguity
 
 ## Constraints

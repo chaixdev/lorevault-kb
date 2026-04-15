@@ -32,8 +32,8 @@ public class PromptTemplateRenderingTest {
     }
 
     @Test
-    void sceneDetectionPass2UserTemplate_renders_with_variables() {
-        PromptTemplate t = repo.get("scene-detection-pass2-user");
+    void sceneAnalysisUserTemplate_renders_with_variables() {
+        PromptTemplate t = repo.get("scene-analysis-user");
 
         Map<String, Object> vars = new HashMap<>();
         vars.put("prev_context_summary", "prev ctx");

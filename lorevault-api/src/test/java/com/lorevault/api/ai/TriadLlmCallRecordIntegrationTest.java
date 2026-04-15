@@ -117,15 +117,15 @@ class TriadLlmCallRecordIntegrationTest {
         llmCallRecord.setId(UUID.randomUUID());
         llmCallRecord.setJobId(testJobId);
         llmCallRecord.setStatusRecordId(currentStatus.getId()); // Link to the triad status
-        llmCallRecord.setStep("scene-detection-pass2");
+        llmCallRecord.setStep("scene-analysis");
         llmCallRecord.setProvider("openai-compatible");
         llmCallRecord.setModel("llama-3.3-70b-versatile");
         llmCallRecord.setTemperature(0.1);
         llmCallRecord.setTopP(0.9);
         llmCallRecord.setMaxTokens(6000);
-        llmCallRecord.setPromptTemplateId("scene-detection-pass2.txt");
+        llmCallRecord.setPromptTemplateId("scene-analysis.txt");
         llmCallRecord.setRenderedPrompt("System prompt for triad analysis");
-        llmCallRecord.setInputPreview("[userTemplate=scene-detection-pass2-user] Triad user input...");
+        llmCallRecord.setInputPreview("[userTemplate=scene-analysis-user] Triad user input...");
         llmCallRecord.setResponseBody("<scene_analysis>...</scene_analysis>");
         llmCallRecord.setLatencyMs(1500L);
         llmCallRecord.setCreatedAt(LocalDateTime.now());
@@ -135,13 +135,13 @@ class TriadLlmCallRecordIntegrationTest {
         llmCallRepo.save(llmCallRecord);
 
         // Assert - Verify the linking worked correctly
-        List<LlmCallRecord> callRecords = llmCallRepo.findByJobIdAndStep(testJobId, "scene-detection-pass2");
+        List<LlmCallRecord> callRecords = llmCallRepo.findByJobIdAndStep(testJobId, "scene-analysis");
         assertThat(callRecords).hasSize(1);
 
         LlmCallRecord savedRecord = callRecords.get(0);
         assertThat(savedRecord.getStatusRecordId()).isEqualTo(currentStatus.getId());
-        assertThat(savedRecord.getStep()).isEqualTo("scene-detection-pass2");
-        assertThat(savedRecord.getInputPreview()).startsWith("[userTemplate=scene-detection-pass2-user]");
+        assertThat(savedRecord.getStep()).isEqualTo("scene-analysis");
+        assertThat(savedRecord.getInputPreview()).startsWith("[userTemplate=scene-analysis-user]");
 
         // Verify graph relationships exist
         assertThat(llmCallRepo.hasOfJobRelation(savedRecord.getId(), testJobId)).isTrue();
@@ -210,7 +210,7 @@ class TriadLlmCallRecordIntegrationTest {
         llmCallRepo.save(secondCall);
 
         // Assert - Verify both records are linked correctly
-        List<LlmCallRecord> allTriadCalls = llmCallRepo.findByJobIdAndStep(testJobId, "scene-detection-pass2");
+        List<LlmCallRecord> allTriadCalls = llmCallRepo.findByJobIdAndStep(testJobId, "scene-analysis");
         assertThat(allTriadCalls).hasSize(2);
 
         // Verify each call is linked to the correct status record
@@ -279,15 +279,15 @@ class TriadLlmCallRecordIntegrationTest {
         record.setId(UUID.randomUUID());
         record.setJobId(testJobId);
         record.setStatusRecordId(statusRecordId);
-        record.setStep("scene-detection-pass2");
+        record.setStep("scene-analysis");
         record.setProvider("openai-compatible");
         record.setModel("llama-3.3-70b-versatile");
         record.setTemperature(0.1);
         record.setTopP(0.9);
         record.setMaxTokens(6000);
-        record.setPromptTemplateId("scene-detection-pass2.txt");
+        record.setPromptTemplateId("scene-analysis.txt");
         record.setRenderedPrompt("System prompt content");
-        record.setInputPreview("[userTemplate=scene-detection-pass2-user] User content preview");
+        record.setInputPreview("[userTemplate=scene-analysis-user] User content preview");
         record.setResponseBody("<scene_analysis>mock response</scene_analysis>");
         record.setLatencyMs(1200L);
         record.setCreatedAt(LocalDateTime.now());

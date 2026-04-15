@@ -1,4 +1,4 @@
-# LV-085-0 Implementation Summary: Triad-Based Pass 2 Refactor
+# LV-085-0 Implementation Summary: Triad-Based Scene Analysis Refactor
 
 **Ticket**: LV-085-0  
 **Implementation Date**: August 25, 2025  
@@ -7,16 +7,16 @@
 
 ## Overview
 
-Comprehensive refactor of the scene detection pipeline from legacy two-pass approach to triad-based Pass 2 processing with enhanced anchor matching resilience. This implementation consolidates temporal relationships, enables cross-chapter reasoning, and handles LLM variability through multi-tier fallback strategies.
+Comprehensive refactor of the scene detection pipeline from legacy two-pass approach to triad-based scene analysis processing with enhanced anchor matching resilience. This implementation consolidates temporal relationships, enables cross-chapter reasoning, and handles LLM variability through multi-tier fallback strategies.
 
 ## Key Changes Implemented
 
 ### 1. Triad-Based Orchestration Architecture
 
-**Previous**: Pass 2 only received Pass 1 XML, no cross-chapter context  
-**Enhanced**: Pass 2 now receives a "triad" of information:
+**Previous**: Scene analysis only received chapter segmentation XML, no cross-chapter context  
+**Enhanced**: Scene analysis now receives a "triad" of information:
 
-- Current chapter's Pass 1 XML
+- Current chapter's chapter segmentation XML
 - Previous chapter's final scene (context, temporal relation, timeline marker)
 - Chapter metadata (title, book context)
 
@@ -98,15 +98,15 @@ graph TD
 
 ### Key Classes and Responsibilities
 
-**`TriadOrchestrationService`**: Central coordinator for triad-based Pass 2 processing
+**`TriadOrchestrationService`**: Central coordinator for triad-based scene analysis processing
 - Builds scene triads with cross-chapter context
-- Orchestrates Pass 2 LLM calls with enhanced context
+- Orchestrates scene analysis LLM calls with enhanced context
 - Manages coordinate localization and persistence workflows
 
 **`TriadBuilderService`**: Context preparation and validation
 - Assembles previous scene context from preceding chapters
 - Validates chapter continuity and metadata consistency
-- Prepares structured context for Pass 2 processing
+- Prepares structured context for scene analysis processing
 
 **`SceneCoordinateLocalizer`**: Enhanced anchor-to-coordinate conversion
 - Multi-tier fallback algorithm implementation

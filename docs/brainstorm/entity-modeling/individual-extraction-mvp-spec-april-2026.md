@@ -2,13 +2,13 @@
 
 **Date:** April 2026  
 **Status:** Proposed  
-**Purpose:** Persist useful individual-extraction data already returned by the pass 2 LLM response, without identity resolution
+**Purpose:** Persist useful individual-extraction data already returned by the scene analysis LLM response, without identity resolution
 
 ---
 
 ## Problem
 
-LoreVault's pass 2 scene-analysis prompt already asks the LLM to extract entities for the current scene, including individuals.
+LoreVault's scene analysis prompt already asks the LLM to extract entities for the current scene, including individuals.
 
 Today that work is effectively wasted:
 
@@ -25,9 +25,9 @@ This means LoreVault is already paying for useful extraction work during triad a
 
 ### Prompt behavior
 
-The current pass 2 system prompt lives at:
+The current scene analysis system prompt lives at:
 
-- `lorevault-api/src/main/resources/prompts/scene-detection-pass2.txt`
+- `lorevault-api/src/main/resources/prompts/scene-analysis.txt`
 
 It asks for:
 
@@ -52,10 +52,10 @@ For individuals, the prompt currently asks for:
 
 ### Runtime behavior
 
-The pass 2 triad flow currently works like this:
+The scene analysis triad flow currently works like this:
 
-1. `TriadOrchestrationService` builds triads and renders the pass 2 prompt
-2. `SceneDetectionClient.detectScenesPass2Triad(...)` sends the structured call
+1. `TriadOrchestrationService` builds triads and renders the scene analysis prompt
+2. `SceneDetectionClient.detectSceneAnalysis(...)` sends the structured call
 3. Spring AI maps the result into `TriadStructuredResult`
 4. `TriadEdgePersistenceService` persists only temporal edges
 
@@ -66,7 +66,7 @@ Current limitation:
   - `previousToCurrent`
   - `currentToNext`
 
-So the existing pass 2 entity output is discarded.
+So the existing scene analysis entity output is discarded.
 
 ### Key judgment
 
@@ -77,7 +77,7 @@ It is already a useful rope bridge:
 - the model is already being asked for individuals
 - the current scene is already the extraction target
 - the triad context may improve local disambiguation
-- the system already has a structured pass 2 call site where this data can be captured
+- the system already has a structured scene analysis call site where this data can be captured
 
 What should be discarded is the idea of using the full current entity schema as a large first implementation. The MVP should narrow to the smallest useful slice.
 
@@ -89,7 +89,7 @@ Implement a first MVP for **Individual extraction only**.
 
 Rules:
 
-- leverage the existing pass 2 LLM output
+- leverage the existing scene analysis LLM output
 - persist only extracted `Individual` data
 - ignore collectives, locations, objects, concepts, and events for now
 - do **not** do identity matching, deduplication, alias resolution, or chapter/global merging
@@ -107,8 +107,8 @@ This is intentionally a **rope bridge** design, not a canonical entity system.
 
 ### In scope
 
-- capturing individual data from pass 2 output
-- extending the structured pass 2 DTO so individual data is available to application code
+- capturing individual data from scene analysis output
+- extending the structured scene analysis DTO so individual data is available to application code
 - carrying extracted individual data forward until real scene persistence completes
 - persisting provisional `Individual` nodes
 - creating `Scene -> Individual` mention links
@@ -134,7 +134,7 @@ This is intentionally a **rope bridge** design, not a canonical entity system.
 
 The highest-value observation from the current codebase is simple:
 
-> pass 2 already asks for individuals, but the result is thrown away.
+> scene analysis already asks for individuals, but the result is thrown away.
 
 This makes individual persistence the best next step because it:
 
@@ -153,7 +153,7 @@ So this MVP deliberately biases toward under-merging by doing **no merging at al
 
 ## Proposed Data Source
 
-Continue using the existing pass 2 triad analysis prompt.
+Continue using the existing scene analysis triad prompt.
 
 Do **not** add a separate entity-extraction prompt in this MVP.
 
@@ -174,11 +174,11 @@ All other returned entity blocks should be ignored.
 
 ## Structured Output Strategy
 
-Do **not** add a second raw-XML parsing path for pass 2.
+Do **not** add a second raw-XML parsing path for scene analysis.
 
 Instead:
 
-- extend the existing structured pass 2 DTO shape
+- extend the existing structured scene analysis DTO shape
 - continue using Spring AI `.entity(...)`
 - include only the minimum additional structure needed to carry current-scene individuals
 
@@ -187,12 +187,12 @@ Recommended direction:
 - keep the existing temporal fields unchanged
 - add a `currentSceneEntities` object
 - inside it, add an `individuals` collection
-- ignore the other pass 2 entity categories in application code for now
+- ignore the other scene analysis entity categories in application code for now
 
-This keeps the application on one pass 2 integration path instead of maintaining both:
+This keeps the application on one scene analysis integration path instead of maintaining both:
 
 - structured DTO mapping
-- manual pass 2 XML parsing
+- manual scene analysis XML parsing
 
 ---
 
@@ -228,7 +228,7 @@ Recommended node properties:
 
 - `id: UUID`
 - `provisional: true`
-- `source: "ai-pass2"`
+- `source: "ai-scene-analysis"`
 - `displayName: String`
 - `aliases: List<String>`
 - `activity: String`
@@ -250,7 +250,7 @@ Persist scene links as:
 
 Recommended relationship properties:
 
-- `source: "ai-pass2"`
+- `source: "ai-scene-analysis"`
 - `createdAt`
 - optional `extractionIndex` if ordering is useful
 
@@ -282,7 +282,7 @@ This rule can be upgraded later if the prompt shape changes to provide a stronge
 
 Recommended implementation flow:
 
-1. Extend pass 2 structured result mapping to expose `current_scene_entities.individuals`
+1. Extend scene analysis structured result mapping to expose `current_scene_entities.individuals`
 2. During triad orchestration, collect extracted individuals keyed by `sceneIndex`
 3. Continue existing temporal-edge flow unchanged
 4. After `SceneProcessingService.persistDetectedScenes(...)` saves final scenes:
@@ -302,11 +302,11 @@ This keeps temporal and entity work adjacent but not entangled.
 
 ## Failure Behavior
 
-This MVP should not introduce a new ingestion-wide hard failure mode beyond existing pass 2 behavior.
+This MVP should not introduce a new ingestion-wide hard failure mode beyond existing scene analysis behavior.
 
 Recommended behavior:
 
-- if pass 2 succeeds but individual extraction block is absent or empty: persist no individuals and continue
+- if scene analysis succeeds but individual extraction block is absent or empty: persist no individuals and continue
 - if an extracted individual has no usable alias/display name: skip that individual and continue
 - if individual persistence fails after scenes are saved: fail the ingestion step only if the repository write itself fails, not because the LLM returned sparse individual data
 
@@ -334,7 +334,7 @@ Cons:
 - some prompt fields may be noisy or inconsistently populated
 - triad prompt remains broader than the MVP actually uses
 
-These tradeoffs are acceptable because the purpose of this iteration is to validate that current pass 2 individual output is useful enough to deserve a later canonical entity system.
+These tradeoffs are acceptable because the purpose of this iteration is to validate that current scene analysis individual output is useful enough to deserve a later canonical entity system.
 
 ---
 
@@ -342,7 +342,7 @@ These tradeoffs are acceptable because the purpose of this iteration is to valid
 
 This proposal is successful if, after implementation, LoreVault can:
 
-- persist pass 2 extracted individuals into Neo4j
+- persist scene analysis extracted individuals into Neo4j
 - show which provisional individuals were extracted for each scene
 - do so without any cross-scene identity logic
 - leave temporal/event behavior unchanged
@@ -361,7 +361,7 @@ If the MVP proves useful, likely next steps are:
 
 1. add `Location` extraction persistence
 2. add `Collective` extraction persistence
-3. improve pass 2 prompt shape for persistence-grade evidence
+3. improve scene analysis prompt shape for persistence-grade evidence
 4. add manual review workflows for provisional individuals
 5. design a true identity layer for canonical entity matching
 
@@ -371,7 +371,7 @@ Those are explicitly **not** part of this proposal.
 
 ## Implementation Notes (April 2026)
 
-- Implemented pass2 individual capture by extending `TriadOrchestrationService.TriadStructuredResult` with `currentSceneEntities.individuals` using structured `.entity(...)` mapping only (no raw pass2 XML parser added).
+- Implemented scene analysis individual capture by extending `TriadOrchestrationService.TriadStructuredResult` with `currentSceneEntities.individuals` using structured `.entity(...)` mapping only (no raw scene analysis XML parser added).
 - Preserved temporal triad behavior: temporal analysis records and `TriadEdgePersistenceService` flow remain unchanged in semantics and write shape.
 - Added `TriadOutcome` in orchestration and threaded extracted individuals as chapter-local `sceneIndex -> individuals` data.
 - Updated scene detection pipeline contract to return both:
@@ -396,7 +396,7 @@ Those are explicitly **not** part of this proposal.
 - Deferred persisted `bookId` on mention nodes for now; current mention evidence keeps `chapterId`, and book scope can be resolved via chapter lookup during the first reconciliation pass without widening this MVP refactor.
 - Deferred canonical `Individual` creation entirely for now; current writes remain mention-only and preserve the future `IndividualMention -> REFERS_TO -> Individual` path.
 - Kept scope intentionally narrow:
-  - persisted only pass2 `current_scene_entities.individuals`
+  - persisted only scene analysis `current_scene_entities.individuals`
   - no matching/dedup/merge logic
   - no location/collective/object/concept/event persistence
   - no event DAG or temporal edge semantics changes.

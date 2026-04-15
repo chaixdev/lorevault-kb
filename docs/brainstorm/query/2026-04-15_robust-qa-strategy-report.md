@@ -908,7 +908,7 @@ The later discussion also surfaced a more concrete possibility for the interpret
 
 Some ingestion byproducts may already be usable as the seed of answer-serving packets.
 
-For example, an LLM pass-2 scene response may already contain enough structure to seed a retrieval-serving artifact that combines:
+For example, an LLM scene analysis response may already contain enough structure to seed a retrieval-serving artifact that combines:
 
 - scene summary
 - entity context
@@ -937,7 +937,7 @@ Potential packet families include:
 
 Scene packets can plausibly be derived from:
 
-- pass-2 scene summary
+- scene analysis summary
 - scene-linked entities and locations
 - chunk snippets or representative chunk context
 - previous/next scene references
@@ -948,7 +948,7 @@ This is a meaningful architectural option because many questions are not best an
 
 ### Important caution
 
-The packet should not simply be “store the entire raw pass-2 response.”
+The packet should not simply be “store the entire raw scene analysis response.”
 
 The valuable version is a **serving-shaped packet**:
 
@@ -959,7 +959,7 @@ The valuable version is a **serving-shaped packet**:
 
 So a useful first research question for packet-based interpretation-layer design is:
 
-> Is the existing pass-2 scene output already a good seed for a Q&A-serving scene packet, or does it need a narrower serving-specific transformation?
+> Is the existing scene analysis output already a good seed for a Q&A-serving scene packet, or does it need a narrower serving-specific transformation?
 
 ### Why packets matter strategically
 
@@ -979,7 +979,7 @@ This is useful because it reinforces the rule that packets are **serving artifac
 
 Likely derived from:
 
-- LLM pass-2 scene summary / context
+- LLM scene analysis summary / context
 - scene-linked Individuals and Locations
 - chunk snippets or representative chunk text
 - previous/next scene references

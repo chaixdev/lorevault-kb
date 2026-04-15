@@ -51,7 +51,7 @@ class LocationPersistenceServiceTest {
         ArgumentCaptor<LocationMention> savedCaptor = ArgumentCaptor.forClass(LocationMention.class);
         verify(locationMentionRepository).save(savedCaptor.capture());
         LocationMention saved = savedCaptor.getValue();
-        assertThat(saved.source()).isEqualTo("ai-pass2");
+        assertThat(saved.source()).isEqualTo("ai-scene-analysis");
         assertThat(saved.displayName()).isEqualTo("Urithiru");
         assertThat(saved.normalizedName()).isEqualTo("urithiru");
         assertThat(saved.aliases()).containsExactly("the tower", "Urithiru");

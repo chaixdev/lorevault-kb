@@ -25,7 +25,7 @@ This document consolidates advice from multiple analysis sessions into one actio
 | Stage | What | Effort | Why this order |
 |---|---|---|---|
 | 0 | Fix Scene :Event label bug | Half day | Existing Cypher queries match `:Scene:Event` but nodes may lack the Event label. Blocks nothing but is a real correctness issue. |
-| 1 | Entity extraction (Individual, Location, Collective) | Medium | The pass2 LLM prompt already requests entities but `TriadStructuredResult` discards them. Capture what the LLM already returns. Highest value-per-effort ratio. |
+| 1 | Entity extraction (Individual, Location, Collective) | Medium | The scene analysis LLM prompt already requests entities but `TriadStructuredResult` discards them. Capture what the LLM already returns. Highest value-per-effort ratio. |
 | 2 | Entity-to-Scene/Chunk linking with evidence spans | Medium | Gives immediate retrieval value: "where does X appear," "who is in this scene," event participation. |
 | 3 | Simple raw claim persistence (ascription + relation only) | Medium | Use the existing three-bin schema. Append-only. Evidence-backed. No aggregation math yet. |
 | 4 | Minimal in-app catalog for core IDs | Small | Tiny registry of relation types and property IDs. Repo-versioned. No service, no UI. |
@@ -106,9 +106,9 @@ Only 3 methods: `getEventId()`, `getStartOffset()`, `getEndOffset()`. If other e
 
 **Recommendation:** Consider adding `getChapterId()` and `getSceneIndex()` if timeline code should treat Event generically. Or leave minimal if Scene remains the only Event type.
 
-### 3.4 Pass2 prompt already requests entities — code ignores them
+### 3.4 Scene analysis prompt already requests entities — code ignores them
 
-The `scene-detection-pass2.txt` system prompt explicitly asks the LLM to extract entities (individuals, collectives, objects, locations, concepts, events) for each scene. But `TriadStructuredResult` only captures `timelineMarker`, `previousToCurrent`, and `currentToNext` — the entity data is discarded.
+The `scene-analysis.txt` system prompt explicitly asks the LLM to extract entities (individuals, collectives, objects, locations, concepts, events) for each scene. But `TriadStructuredResult` only captures `timelineMarker`, `previousToCurrent`, and `currentToNext` — the entity data is discarded.
 
 **This is the single biggest low-hanging fruit.** Expanding `TriadStructuredResult` to capture entity mentions would give you entity extraction almost for free, using an LLM call you already make.
 
@@ -121,9 +121,9 @@ TriadBuilderService.buildTriadsForChapter(chapter)
 
 TriadOrchestrationService.analyzeTriads(chapter, triads)
   → for each triad:
-    → builds user variables from scene-detection-pass2-usertemplate.xml
-    → loads system prompt from scene-detection-pass2.txt
-    → calls SceneDetectionClient.detectScenesPass2Triad(...)
+    → builds user variables from scene-analysis-usertemplate.xml
+    → loads system prompt from scene-analysis.txt
+    → calls SceneDetectionClient.detectSceneAnalysisTriad(...)
     → validates TriadStructuredResult (temporal relations must be present)
     → inverts prev→curr relation via TriadRelationInverter
     → produces TriadAnalysis records
@@ -131,7 +131,7 @@ TriadOrchestrationService.analyzeTriads(chapter, triads)
 TriadEdgePersistenceService.applyTriadAnalyses(analyses)
   → for each analysis:
     → maps certainty string to weight (Explicit=0.9, StronglyImplied=0.7, WeaklyImplied=0.5, Heuristic=0.3)
-    → calls TemporalEdgeWriteRepository.upsertTemporalEdge(from, to, type, certainty, weight, "ai-pass2-triad", evidence, ...)
+    → calls TemporalEdgeWriteRepository.upsertTemporalEdge(from, to, type, certainty, weight, "ai-scene-analysis-triad", evidence, ...)
 ```
 
 ### 3.6 Default temporal edge creation

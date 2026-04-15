@@ -4,23 +4,23 @@
 
 ## Purpose
 
-This pattern explains how LoreVault protects Scene Detection Pass 1 from LLM context-window overflow while still ingesting large chapters.
+This pattern explains how LoreVault protects Scene Detection Chapter Segmentation from LLM context-window overflow while still ingesting large chapters.
 
 The mechanism adds:
 
-- a conservative pass-1 budget preflight,
+- a conservative chapter-segmentation budget preflight,
 - deterministic chapter segmentation when budget is exceeded,
 - and explicit split-risk labeling on boundary scenes.
 
 ## Problem
 
-Pass 1 previously sent full chapter text without a preflight context budget check. That made successful ingestion depend on chapter length and current model context limits, with no deterministic fallback path for oversized input.
+Chapter segmentation previously sent full chapter text without a preflight context budget check. That made successful ingestion depend on chapter length and current model context limits, with no deterministic fallback path for oversized input.
 
 ## Mechanism Overview
 
 ### 1) Budget check preflight
 
-Before Pass 1 calls the LLM, `SceneDetectionClient` computes a `Pass1BudgetCheck`:
+Before chapter segmentation calls the LLM, `SceneDetectionClient` computes a `SegmentationBudgetCheck`:
 
 - `estimatedPromptTokens = estimate(systemPrompt)`
 - `estimatedInputTokens = estimate(chapterText)`
@@ -47,7 +47,7 @@ Estimator (guardrail, not billing-accurate):
 
 Per segment:
 
-1. run Pass 1
+1. run chapter segmentation
 2. parse scene XML
 3. localize scene coordinates against segment text
 4. rebase offsets to chapter-global coordinates
@@ -86,7 +86,7 @@ Model config now uses context-window intent explicitly:
 - `maxContextTokens` (per model)
 
 `maxTokens` was removed from the operator-facing `lorevault.ai.models.*` surface for this flow.
-Pass-1 call output caps remain hardcoded in code (`maxTokens=6000`) for controlled behavior.
+Chapter-segmentation call output caps remain hardcoded in code (`maxTokens=6000`) for controlled behavior.
 
 ## Key Code References
 

@@ -12,8 +12,8 @@ import org.springframework.validation.annotation.Validated;
 public record LoreVaultPromptProperties(
     String basePath,
     PromptConfig sceneDetection,
-    PromptConfig sceneDetectionPass1,
-    PromptConfig sceneDetectionPass2,
+    PromptConfig chapterSegmentation,
+    PromptConfig sceneAnalysis,
     PromptConfig entityExtraction,
     PromptConfig ragAnswerGeneration
 ) {
@@ -41,38 +41,38 @@ public record LoreVaultPromptProperties(
     }
     
     /**
-     * Get scene detection pass 1 prompt path.
+     * Get chapter segmentation prompt path.
      */
-    public String getSceneDetectionPass1Path() {
-        return sceneDetectionPass1 != null && sceneDetectionPass1.systemPrompt() != null 
-            ? getPromptPath(sceneDetectionPass1.systemPrompt()) 
-            : getPromptPath("scene-detection-pass1.txt");
+    public String getChapterSegmentationPath() {
+        return chapterSegmentation != null && chapterSegmentation.systemPrompt() != null 
+            ? getPromptPath(chapterSegmentation.systemPrompt()) 
+            : getPromptPath("chapter-segmentation.txt");
     }
     
     /**
-     * Get scene detection pass 2 prompt path.
+     * Get scene analysis prompt path.
      */
-    public String getSceneDetectionPass2Path() {
-        return sceneDetectionPass2 != null && sceneDetectionPass2.systemPrompt() != null 
-            ? getPromptPath(sceneDetectionPass2.systemPrompt()) 
-            : getPromptPath("scene-detection-pass2.txt");
+    public String getSceneAnalysisPath() {
+        return sceneAnalysis != null && sceneAnalysis.systemPrompt() != null 
+            ? getPromptPath(sceneAnalysis.systemPrompt()) 
+            : getPromptPath("scene-analysis.txt");
     }
     
     /**
-     * Get scene detection pass 1 model.
+     * Get chapter segmentation model.
      */
-    public String getSceneDetectionPass1Model() {
-        return sceneDetectionPass1 != null && sceneDetectionPass1.model() != null 
-            ? sceneDetectionPass1.model() 
+    public String getChapterSegmentationModel() {
+        return chapterSegmentation != null && chapterSegmentation.model() != null 
+            ? chapterSegmentation.model() 
             : "nlp-small";
     }
     
     /**
-     * Get scene detection pass 2 model.
+     * Get scene analysis model.
      */
-    public String getSceneDetectionPass2Model() {
-        return sceneDetectionPass2 != null && sceneDetectionPass2.model() != null 
-            ? sceneDetectionPass2.model() 
+    public String getSceneAnalysisModel() {
+        return sceneAnalysis != null && sceneAnalysis.model() != null 
+            ? sceneAnalysis.model() 
             : "nlp-small";
     }
     

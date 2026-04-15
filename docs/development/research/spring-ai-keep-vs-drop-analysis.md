@@ -140,7 +140,7 @@ public record TriadResult(
 }
 ```
 
-Then in `SceneDetectionClient.detectScenesPass2Triad()`:
+Then in `SceneDetectionClient.detectSceneAnalysisTriad()`:
 ```java
 // Before (XML string):
 return chatClient.prompt()
@@ -317,8 +317,8 @@ Effort: 3–5 hours
 Risk: Medium (prompt changes + LLM behavior change)
 
 1. Define TriadResult as a Java record with JSON annotations
-2. Update scene-detection-pass2 system prompt to request JSON (not XML)
-3. Update SceneDetectionClient.detectScenesPass2Triad() to use .entity()
+2. Update scene-analysis system prompt to request JSON (not XML)
+3. Update SceneDetectionClient.detectSceneAnalysisTriad() to use .entity()
 4. Delete TriadXmlParser (96 lines)
 5. Full integration test with real LLM call
 6. Verify Groq llama-3.3-70b-versatile produces valid JSON with this approach

@@ -69,7 +69,7 @@ class SceneDetectionClientTest {
     }
 
     @Test
-    void detectScenesPass2Triad_shouldPersistSerializedStructuredResponseBody() {
+    void detectSceneAnalysisTriad_shouldPersistSerializedStructuredResponseBody() {
         UUID jobId = UUID.randomUUID();
         var response = new TriadOrchestrationService.TriadStructuredResult(
                 "timeline-marker",
@@ -92,10 +92,10 @@ class SceneDetectionClientTest {
                 )
         );
 
-        when(promptRepository.get("scene-detection-pass2-user"))
+        when(promptRepository.get("scene-analysis-user"))
                 .thenReturn(new org.springframework.ai.chat.prompt.PromptTemplate("{curr_text}"));
-        when(promptProperties.getSceneDetectionPass2Model()).thenReturn("nlp-small");
-        when(promptProperties.getSceneDetectionPass2Path()).thenReturn("prompts/scene-detection-pass2.txt");
+        when(promptProperties.getSceneAnalysisModel()).thenReturn("nlp-small");
+        when(promptProperties.getSceneAnalysisPath()).thenReturn("prompts/scene-analysis.txt");
         when(nlpSmallChatClient.prompt()).thenReturn(requestSpec);
         when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
         when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
@@ -103,19 +103,19 @@ class SceneDetectionClientTest {
         when(requestSpec.call()).thenReturn(callSpec);
         when(callSpec.entity(eq(TriadOrchestrationService.TriadStructuredResult.class))).thenReturn(response);
 
-        client.detectScenesPass2Triad(jobId, "system prompt", Map.of("curr_text", "chapter text"), TriadOrchestrationService.TriadStructuredResult.class);
+        client.detectSceneAnalysisTriad(jobId, "system prompt", Map.of("curr_text", "chapter text"), TriadOrchestrationService.TriadStructuredResult.class);
 
         ArgumentCaptor<String> responseBodyCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(llmLog).logCall(
                 eq(jobId),
-                eq("scene-detection-pass2"),
+                eq("scene-analysis"),
                 eq("openai-compatible"),
                 eq(null),
                 eq(0.1),
                 eq(0.9),
                 eq(6000),
-                eq("prompts/scene-detection-pass2.txt"),
+                eq("prompts/scene-analysis.txt"),
                 eq("system prompt"),
                 eq("chapter text"),
                 responseBodyCaptor.capture(),

@@ -131,7 +131,7 @@ public class SampleChapterLoader {
     /**
      * Load XML test data from the scene-detection test resources.
      * 
-     * @param filename The filename to load (e.g., "000_pass1.xml", "000_pass2.xml")
+     * @param filename The filename to load (e.g., "000_chapter-segmentation_output.xml", "000_scene-analysis_output.xml")
      * @return The XML content as a string
      */
     public static String loadSceneDetectionXml(String filename) {

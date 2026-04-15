@@ -78,11 +78,11 @@ class TriadOrchestrationServiceTest {
         List<TriadBuilderService.SceneTriad> triads = createTestTriads();
         
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
-        when(promptRepository.get("scene-detection-pass2")).thenReturn(mockTemplate);
+        when(promptRepository.get("scene-analysis")).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
-        when(sceneDetectionClient.detectScenesPass2Triad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
         // Act
@@ -142,7 +142,7 @@ class TriadOrchestrationServiceTest {
         // Assert
         assertThat(result).isEmpty();
         verify(ingestionJobService, never()).updateJobStatus(any(), any(), any(), any());
-        verify(sceneDetectionClient, never()).detectScenesPass2Triad(any(), any(), any(), any());
+        verify(sceneDetectionClient, never()).detectSceneAnalysisTriad(any(), any(), any(), any());
     }
 
     @Test
@@ -153,11 +153,11 @@ class TriadOrchestrationServiceTest {
         List<TriadBuilderService.SceneTriad> triads = List.of(createSingleTriad());
         
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
-        when(promptRepository.get("scene-detection-pass2")).thenReturn(mockTemplate);
+        when(promptRepository.get("scene-analysis")).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
-        when(sceneDetectionClient.detectScenesPass2Triad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
         // Act
@@ -166,7 +166,7 @@ class TriadOrchestrationServiceTest {
         // Assert - verify order: status update first, then LLM call
         var inOrder = inOrder(ingestionJobService, sceneDetectionClient);
         inOrder.verify(ingestionJobService).updateJobStatus(any(), any(), any(), any());
-        inOrder.verify(sceneDetectionClient).detectScenesPass2Triad(
+        inOrder.verify(sceneDetectionClient).detectSceneAnalysisTriad(
                 eq(testJobId),
                 eq("mock system prompt"),
                 any(),
@@ -182,11 +182,11 @@ class TriadOrchestrationServiceTest {
         List<TriadBuilderService.SceneTriad> triads = List.of(createSingleTriad());
         
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
-        when(promptRepository.get("scene-detection-pass2")).thenReturn(mockTemplate);
+        when(promptRepository.get("scene-analysis")).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
-        when(sceneDetectionClient.detectScenesPass2Triad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
         // Capture the user variables passed to the LLM client
@@ -197,7 +197,7 @@ class TriadOrchestrationServiceTest {
         triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
 
         // Assert
-        verify(sceneDetectionClient).detectScenesPass2Triad(
+        verify(sceneDetectionClient).detectSceneAnalysisTriad(
                 eq(testJobId),
                 eq("mock system prompt"),
                 userVarsCaptor.capture(),

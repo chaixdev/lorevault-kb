@@ -73,7 +73,7 @@ classDiagram
 - Ingest chapter/episode text and normalize minimally (whitespace, headings) so anchors are findable and stable.
 - Maintain the publication order (reading order) of scenes; do not re-order at this stage.
 
-### 3.2 Pass 1 — Scene Detection & Cards
+### 3.2 Chapter Segmentation — Scene Detection & Cards
 
 - Identify scenes and assign **stable IDs** (e.g., chapter-scoped indices).
 - For each scene, capture:
@@ -85,7 +85,7 @@ classDiagram
 
 - **Boundary rule**: The end of a scene is determined by the next scene’s start (or chapter end). No model-generated end anchors.
 
-### 3.3 Pass 2 — Triad Temporal Resolver
+### 3.3 Scene Analysis — Triad Temporal Resolver
 
 - For each interior scene _i_, construct a **triad**: `Prev = i−1`, `Curr = i`, `Next = i+1`. At chapter boundaries, triads cross chapter edges.
 - Resolver outputs for **Curr**:
@@ -139,8 +139,8 @@ flowchart LR
   subgraph Intake
     A[Chapters/Episodes]
   end
-  A --> B[Pass 1: Scene Cards]
-  B --> C[Pass 2: Triad Temporal Resolver]
+  A --> B[Chapter Segmentation: Scene Cards]
+  B --> C[Scene Analysis: Triad Temporal Resolver]
   C --> D{Edge Agreement?}
   D -- Agree --> E[Scene↔Scene edges (confirmed)]
   D -- Diverge --> F[Scene↔Scene edges (contested)]

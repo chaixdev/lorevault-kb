@@ -68,7 +68,7 @@ class IndividualPersistenceServiceTest {
         ArgumentCaptor<IndividualMention> savedCaptor = ArgumentCaptor.forClass(IndividualMention.class);
         verify(individualMentionRepository).save(savedCaptor.capture());
         IndividualMention saved = savedCaptor.getValue();
-        assertThat(saved.source()).isEqualTo("ai-pass2");
+        assertThat(saved.source()).isEqualTo("ai-scene-analysis");
         assertThat(saved.displayName()).isEqualTo("Nyx");
         assertThat(saved.normalizedName()).isEqualTo("nyx");
         assertThat(saved.aliases()).containsExactly("  Nyx  ", "N.");

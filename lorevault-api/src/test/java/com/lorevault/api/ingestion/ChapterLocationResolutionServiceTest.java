@@ -99,7 +99,7 @@ class ChapterLocationResolutionServiceTest {
         UUID chapterId = UUID.randomUUID();
         LocationMention blank = new LocationMention(
                 UUID.randomUUID(),
-                "pass2",
+                "ai-scene-analysis",
                 " ",
                 " ",
                 List.of(" "),
@@ -156,7 +156,7 @@ class ChapterLocationResolutionServiceTest {
     ) {
         return new LocationMention(
                 id,
-                "pass2",
+                "ai-scene-analysis",
                 displayName,
                 normalizedName,
                 aliases,

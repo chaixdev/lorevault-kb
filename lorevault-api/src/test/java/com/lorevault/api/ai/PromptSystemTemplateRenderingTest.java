@@ -28,8 +28,8 @@ public class PromptSystemTemplateRenderingTest {
     }
 
     @Test
-    void sceneDetectionPass2SystemTemplate_renders_without_variables() {
-        PromptTemplate t = repo.get("scene-detection-pass2");
+    void sceneAnalysisSystemTemplate_renders_without_variables() {
+        PromptTemplate t = repo.get("scene-analysis");
         String rendered = t.render(java.util.Map.of());
         assertThat(rendered).contains("<scene_analysis>");
         assertThat(rendered).contains("<relationships>");

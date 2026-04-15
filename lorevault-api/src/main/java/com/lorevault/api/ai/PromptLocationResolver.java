@@ -17,32 +17,30 @@ public class PromptLocationResolver {
     /**
      * Resolve a logical prompt name to its resource path.
      * 
-     * @param logicalName the logical name (e.g., "scene-detection-pass1")
+     * @param logicalName the logical name (e.g., "chapter-segmentation")
      * @return the full resource path
      * @throws IllegalArgumentException if prompt name is not recognized
      */
     public String resolve(String logicalName) {
         return switch (logicalName) {
-            case "scene-detection-pass1" -> getSceneDetectionPass1Path();
-            case "scene-detection-pass2" -> getSceneDetectionPass2Path();
-            case "scene-detection" -> getSceneDetectionPass2Path(); // legacy alias
-            case "scene-detection-pass2-user" -> getSceneDetectionPass2UserPath();
+            case "chapter-segmentation" -> getChapterSegmentationPath();
+            case "scene-analysis" -> getSceneAnalysisPath();
+            case "scene-analysis-user" -> getSceneAnalysisUserPath();
             case "rag-answer-generation" -> getRagAnswerGenerationPath();
             default -> throw new IllegalArgumentException("Unknown prompt name: " + logicalName);
         };
     }
 
-    private String getSceneDetectionPass1Path() {
-        return promptProperties.getSceneDetectionPass1Path();
+    private String getChapterSegmentationPath() {
+        return promptProperties.getChapterSegmentationPath();
     }
 
-    private String getSceneDetectionPass2Path() {
-        return promptProperties.getSceneDetectionPass2Path();
+    private String getSceneAnalysisPath() {
+        return promptProperties.getSceneAnalysisPath();
     }
 
-    private String getSceneDetectionPass2UserPath() {
-        // Use .st extension to ensure ST4 template renderer is selected
-        return promptProperties.getPromptPath("scene-detection-pass2-usertemplate.st");
+    private String getSceneAnalysisUserPath() {
+        return promptProperties.getPromptPath("scene-analysis-usertemplate.st");
     }
 
     private String getRagAnswerGenerationPath() {

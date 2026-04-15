@@ -24,12 +24,12 @@ public enum IngestionStatus {
     DETECTING_SCENES,
     
     /**
-     * Pass 1: Scene boundary detection and segmentation
+     * Chapter segmentation: Scene boundary detection and segmentation
      */
     SCENE_SEGMENTATION,
     
     /**
-     * Pass 2: Triad-based analysis (prev/curr/next) for temporal relations
+     * Scene analysis: Triad-based analysis (prev/curr/next) for temporal relations
      */
     SCENE_TRIAD_ANALYSIS,
     

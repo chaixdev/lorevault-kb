@@ -107,11 +107,11 @@ lorevault:
       # scene-detection: 
       #   system-prompt: scene-detection-v2.txt
       #   model: nlp-small
-      scene-detection-pass1: 
-        system-prompt: scene-detection-pass1.txt
+      chapter-segmentation: 
+        system-prompt: chapter-segmentation.txt
         model: nlp-big
-      scene-detection-pass2: 
-        system-prompt: scene-detection-pass2.txt
+      scene-analysis: 
+        system-prompt: scene-analysis.txt
         model: nlp-small
       entity-extraction: 
         system-prompt: entity-extraction.txt

@@ -28,7 +28,7 @@ public class LlmCallRecord {
     private UUID statusRecordId; // optional: current status at call time
 
     // Classification
-    private String step; // e.g., scene-detection-pass1 | scene-detection-pass2
+    private String step; // e.g., chapter-segmentation | scene-analysis
 
     // Provider/model metadata
     private String provider;

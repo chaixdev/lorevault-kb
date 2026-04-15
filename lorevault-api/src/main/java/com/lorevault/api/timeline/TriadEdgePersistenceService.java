@@ -33,7 +33,7 @@ public class TriadEdgePersistenceService {
         try {
         Double weight = mapCertaintyToWeight(certainty);
         temporalEdgeWriteRepository.upsertTemporalEdge(
-            from, to, type, certainty, weight, "ai-pass2-triad", evidence, null, null, null
+            from, to, type, certainty, weight, "ai-scene-analysis-triad", evidence, null, null, null
         );
         } catch (Exception e) {
             log.warn("Failed to upsert TEMPORAL edge {} -> {} type {}: {}", from, to, type, e.getMessage());

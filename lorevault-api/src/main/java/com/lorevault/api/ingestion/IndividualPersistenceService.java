@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class IndividualPersistenceService {
 
-    private static final String SOURCE = "ai-pass2";
+    private static final String SOURCE = "ai-scene-analysis";
     private static final String UNRESOLVED = "unresolved";
 
     private final IndividualMentionGraphRepository individualMentionRepository;

@@ -146,7 +146,7 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
         SET t.temporalRelation = $type,
             t.certainty = $certainty,
             t.weight = coalesce($weight, 0.0),
-            t.source = coalesce($source, 'ai-pass2'),
+            t.source = coalesce($source, 'ai-scene-analysis'),
             t.rationale = coalesce($rationale, ''),
             t.evidenceStartOffset = $evidenceStart,
             t.evidenceEndOffset = $evidenceEnd,

@@ -9,7 +9,7 @@ Purpose: Capture per-step LLM request/response metadata during ingestion for obs
 Key properties
 
 - `jobId`, `statusRecordId` (linkage for indexing)
-- `step` (e.g., `scene-detection-pass1` | `scene-detection-pass2`)
+- `step` (e.g., `chapter-segmentation` | `scene-analysis`)
 - Provider/model: `provider`, `model`, `temperature`, `topP`, `maxTokens`
 - Telemetry: `latencyMs`, `inputTokens`, `outputTokens`, `tokensEstimated`
 - Prompt: `promptTemplateId`, `storeRenderedPrompt`, `renderedPrompt`

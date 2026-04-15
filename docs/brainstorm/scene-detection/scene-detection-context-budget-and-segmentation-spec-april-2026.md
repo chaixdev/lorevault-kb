@@ -2,13 +2,13 @@
 
 **Date:** April 2026  
 **Status:** Proposed  
-**Purpose:** Prevent pass 1 context overflows while keeping ingestion moving for large chapters
+**Purpose:** Prevent chapter segmentation context overflows while keeping ingestion moving for large chapters
 
 ---
 
 ## Problem
 
-Scene detection pass 1 currently sends the full chapter text to the LLM with no preflight context-window guard. This means safety depends on the configured model/provider having enough headroom for the system prompt, chapter text, and structured response.
+Scene detection chapter segmentation currently sends the full chapter text to the LLM with no preflight context-window guard. This means safety depends on the configured model/provider having enough headroom for the system prompt, chapter text, and structured response.
 
 This is risky because:
 
@@ -21,14 +21,14 @@ This is risky because:
 
 ## Decision Summary
 
-Implement a simple, opinionated context-budget guard for scene detection pass 1.
+Implement a simple, opinionated context-budget guard for scene detection chapter segmentation.
 
 Rules:
 
 - Add `maxContextTokens` as a per-model config value
 - Use a hardcoded **70% input threshold** for admission control
-- Estimate input tokens conservatively before pass 1
-- If the chapter fits, run the existing pass 1 flow unchanged
+- Estimate input tokens conservatively before chapter segmentation
+- If the chapter fits, run the existing chapter segmentation flow unchanged
 - If the chapter does not fit, fall back to **deterministic naive segmentation**
 - Tag likely segment-edge split scenes for later merge/review work
 - Keep response token caps hardcoded in code, not configurable
@@ -62,7 +62,7 @@ This proposal therefore keeps the config surface minimal:
 
 ## Admission Rule
 
-Before pass 1, compute:
+Before chapter segmentation, compute:
 
 - `estimatedPromptTokens = estimate(systemPrompt)`
 - `estimatedInputTokens = estimate(chapterText)`
@@ -71,8 +71,8 @@ Before pass 1, compute:
 
 Decision:
 
-- if `estimatedTotalInput <= usableInputBudget`: run normal pass 1
-- otherwise: run segmented pass 1 fallback
+- if `estimatedTotalInput <= usableInputBudget`: run normal chapter segmentation
+- otherwise: run segmented chapter segmentation fallback
 
 Rationale:
 
@@ -128,11 +128,11 @@ This is intentionally a **naive split** design with later merge/review of tagged
 
 ---
 
-## Pass 1 Fallback Flow
+## Chapter Segmentation Fallback Flow
 
 For each segment:
 
-1. run pass 1 independently on segment text
+1. run chapter segmentation independently on segment text
 2. parse XML response independently
 3. localize scene coordinates against the segment text
 4. rebase localized offsets back to chapter-global coordinates
@@ -239,7 +239,7 @@ These are all reasonable future improvements, but not required for the first saf
 Expected code changes:
 
 - `LoreVaultModelsProperties` — add `maxContextTokens`
-- `SceneDetectionClient` — add conservative input estimator and pass 1 budget helper
+- `SceneDetectionClient` — add conservative input estimator and chapter segmentation budget helper
 - `SceneDetectionService` — add segmented fallback orchestration and offset rebasing
 - `SceneWithCoordinates` — carry split-scene risk markers
 - `SceneProcessingService` — persist split-scene risk labels onto `Scene`
@@ -270,9 +270,9 @@ This section is append-only during implementation and validation.
 Implemented:
 
 - Added per-model `maxContextTokens` support in `LoreVaultModelsProperties.ModelProperties` with default `128000`.
-- Added pass-1 admission preflight in `SceneDetectionClient`:
-  - `Pass1Admission` record
-  - `assessPass1Admission(...)`
+- Added chapter segmentation admission preflight in `SceneDetectionClient`:
+  - `SegmentationBudgetCheck` record
+  - `evaluateSegmentationBudget(...)`
   - hardcoded `70%` usable input budget ratio
 - Upgraded token estimator heuristic from `chars/4` to:
   - `charsEstimate = ceil(chars/3.0)`
@@ -281,7 +281,7 @@ Implemented:
 - Added deterministic segmented fallback orchestration in `SceneDetectionService`:
   - segment count from `ceil(estimatedTotalInput / usableInputBudget)`
   - boundary preference ordering: paragraph → line → sentence → whitespace → hard cut
-  - per-segment pass-1 detection, coordinate localization, global offset rebasing
+  - per-segment chapter segmentation detection, coordinate localization, global offset rebasing
   - global sort + scene index renumbering
 - Added split-risk flags to `SceneWithCoordinates`:
   - `potentialSplitSceneStart`
@@ -314,7 +314,7 @@ Deviations / clarifications from original prose:
 Based on review feedback, implementation was refined as follows:
 
 - Terminology cleanup:
-  - Renamed pass-1 preflight concept from `Admission` to `BudgetCheck` (`Pass1BudgetCheck`, `evaluatePass1Budget(...)`).
+  - Renamed chapter segmentation preflight concept from `Admission` to `BudgetCheck` (`SegmentationBudgetCheck`, `evaluateSegmentationBudget(...)`).
 - Uniform segmented processing flow:
   - Refactored orchestration so detection always processes a segment list iteratively.
   - If budget check passes, segment list size is `1` (full chapter) and processing path stays identical.
