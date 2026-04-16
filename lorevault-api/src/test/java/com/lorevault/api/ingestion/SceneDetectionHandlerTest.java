@@ -189,6 +189,7 @@ class SceneDetectionHandlerTest {
             assertThat(failedBean.getPropertyValue("retryable")).isEqualTo(true); // LLM errors are retryable
 
             verify(ingestionJobService).updateJobStatus(eq(jobId), eq(IngestionStatus.FAILED), anyString(), any());
+            verify(eventPublisher, never()).publishEvent(any(ScenesDetectedEvent.class));
         }
 
         @Test

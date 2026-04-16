@@ -127,14 +127,14 @@ class SceneDetectionServiceTest {
         assertThatThrownBy(() -> sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Scene detection failed with retry")
-                .hasMessageContaining("Scene coordinate localization dropped too many scenes");
+                .hasMessageContaining("Scene coordinate localization dropped scenes");
 
         verify(sceneDetectionClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText));
     }
 
     @Test
-    @DisplayName("Should tolerate a small amount of localization loss")
-    void shouldTolerateSmallLocalizationLoss() {
+    @DisplayName("Should retry when localization drops any parsed scene")
+    void shouldRetryWhenLocalizationDropsAnyParsedScene() {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         String chapterText = "Short text.";
@@ -160,12 +160,39 @@ class SceneDetectionServiceTest {
                 new SceneWithCoordinates(2, 4, 6, "ctx-3"),
                 new SceneWithCoordinates(3, 6, 8, "ctx-4")
         ));
-        when(triadOrchestrationService.analyzeChapterTriadsWithIndividuals(eq(jobId), any()))
-                .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of(), List.of()));
 
-        SceneDetectionService.SceneDetectionOutcome outcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
+        assertThatThrownBy(() -> sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Scene detection failed with retry")
+                .hasMessageContaining("Scene coordinate localization dropped scenes");
 
-        assertThat(outcome.scenes()).hasSize(4);
-        verify(sceneDetectionClient, times(1)).detectChapterSegmentation(eq(jobId), eq(chapterText));
+        verify(sceneDetectionClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText));
+    }
+
+    @Test
+    @DisplayName("Should retry when a segment produces no localizable scenes")
+    void shouldRetryWhenSegmentProducesNoLocalizableScenes() {
+        UUID jobId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+        String chapterText = "Paragraph one sentence one.\n\nParagraph two sentence two.".repeat(40);
+
+        SceneDetectionClient.SegmentationBudgetCheck admission = new SceneDetectionClient.SegmentationBudgetCheck(
+                "nlp-big", 400, 100, 20, 180, 200, false
+        );
+
+        when(sceneDetectionClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
+        when(sceneDetectionClient.detectChapterSegmentation(eq(jobId), any(String.class))).thenReturn(
+                "<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>"
+        );
+        when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt()))
+                .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "", "", "", "")));
+        when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any())).thenReturn(List.of());
+
+        assertThatThrownBy(() -> sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Scene detection failed with retry")
+                .hasMessageContaining("Scene coordinate localization returned empty results");
+
+        verify(sceneDetectionClient, times(4)).detectChapterSegmentation(eq(jobId), any(String.class));
     }
 }

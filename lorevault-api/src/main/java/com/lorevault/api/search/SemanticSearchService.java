@@ -7,17 +7,23 @@ import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchResponse;
 import com.lorevault.api.search.SemanticSearchDtos.SearchResultDto;
 import com.lorevault.api.search.SemanticSearchDtos.SearchMetadata;
 import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchFilters;
+import com.lorevault.api.search.entityextraction.ExtractionResult;
+import com.lorevault.api.search.entityextraction.QueryEntityExtractor;
 import com.lorevault.api.support.SpoilerVisibility;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Service for performing semantic search across chunk content.
- * Orchestrates query embedding generation and vector similarity search.
+ * Orchestrates query embedding generation, vector similarity search,
+ * and entity-aware re-ranking.
  */
 @Service
 @RequiredArgsConstructor
@@ -26,18 +32,35 @@ public class SemanticSearchService {
 
     private final EmbeddingModel embeddingModel;
     private final Neo4jSemanticSearch semanticSearch;
+    private final QueryEntityExtractor entityExtractor;
+
+    /**
+     * Score bonus added per matched entity name found in a chunk's scene metadata.
+     * Default 0.05 keeps re-ranking subtle; raise to 0.15+ for stronger entity preference.
+     * Configurable via {@code lorevault.search.entity-boost-per-match}.
+     */
+    @Value("${lorevault.search.entity-boost-per-match:0.05}")
+    private double entityBoostPerMatch;
 
     /**
      * Perform semantic search for the given query.
      *
      * @param request Search request with query and optional filters
-     * @return Search results with metadata
+     * @return Search results with metadata, re-ranked by entity overlap when applicable
      */
     public SemanticSearchResponse search(SemanticSearchRequest request) {
         log.debug("Performing semantic search for query: '{}' with topK: {}",
                  request.getQuery(), request.getTopK());
 
         long startTime = System.currentTimeMillis();
+
+        // Extract entity candidates from the query (runs before embedding — no extra latency on
+        // the embedding call, and lets us log extracted entities for observability)
+        ExtractionResult entities = entityExtractor.extract(request.getQuery());
+        if (!entities.isEmpty()) {
+            log.debug("Entity extraction: known={}, discovered={}",
+                    entities.knownEntities(), entities.unknownNounPhrases());
+        }
 
         // Generate query embedding
         float[] queryEmbeddingRaw = embeddingModel.embed(request.getQuery());
@@ -47,7 +70,7 @@ public class SemanticSearchService {
         // Convert filters
         SearchFilters searchFilters = convertFilters(request.getFilters());
 
-        // Perform search
+        // Perform vector search
         List<SearchResult> searchResults = semanticSearch.search(
             queryEmbedding,
             request.getTopK(),
@@ -60,19 +83,22 @@ public class SemanticSearchService {
             .map(this::convertSearchResult)
             .toList();
 
+        // Re-rank by entity overlap (no-op when no entities extracted)
+        List<SearchResultDto> rankedDtos = rerankByEntityOverlap(resultDtos, entities);
+
         long processingTime = System.currentTimeMillis() - startTime;
 
         SearchMetadata metadata = SearchMetadata.of(
             request.getQuery(),
             searchResults.size(),
-            resultDtos.size(),
+            rankedDtos.size(),
             processingTime
         );
 
         log.debug("Semantic search completed in {}ms, found {} results",
                  processingTime, searchResults.size());
 
-        return SemanticSearchResponse.of(resultDtos, metadata);
+        return SemanticSearchResponse.of(rankedDtos, metadata);
     }
 
     /**
@@ -83,6 +109,75 @@ public class SemanticSearchService {
     public boolean isAvailable() {
         return semanticSearch.isAvailable();
     }
+
+    // --- entity re-ranking ---
+
+    /**
+     * Re-ranks results by boosting scores for chunks whose scene metadata mentions
+     * entities extracted from the query.
+     *
+     * <p>The boost is additive: {@code boostedScore = score + entityBoostPerMatch * matchCount}.
+     * Results are then sorted descending by boosted score. The original vector similarity
+     * scores remain available (they are not overwritten in the DTO).</p>
+     *
+     * @param results   DTOs from vector search, already in descending score order
+     * @param entities  extracted entity candidates from the query
+     * @return re-ordered list (may be identical to input if no entities or no overlap)
+     */
+    private List<SearchResultDto> rerankByEntityOverlap(
+            List<SearchResultDto> results,
+            ExtractionResult entities) {
+
+        if (results.isEmpty() || entities.isEmpty()) {
+            return results;
+        }
+
+        Set<String> candidates = entities.allCandidates(); // case-insensitive TreeSet
+
+        // Compute boosted score for each result
+        record Boosted(SearchResultDto dto, double boostedScore) {}
+
+        List<Boosted> boosted = results.stream()
+                .map(dto -> {
+                    long matchCount = countEntityMatches(dto, candidates);
+                    double boost = matchCount * entityBoostPerMatch;
+                    return new Boosted(dto, dto.getScore() + boost);
+                })
+                .toList();
+
+        boolean anyBoosted = boosted.stream().anyMatch(b -> b.boostedScore() > b.dto().getScore());
+        if (anyBoosted) {
+            log.debug("Entity re-ranking applied: candidates={}, boost/match={}",
+                    candidates, entityBoostPerMatch);
+        }
+
+        return boosted.stream()
+                .sorted(Comparator.comparingDouble(Boosted::boostedScore).reversed())
+                .map(Boosted::dto)
+                .toList();
+    }
+
+    /**
+     * Counts how many of the given entity candidates appear in a result's
+     * {@code individualsPresent} or {@code locationsPresent} lists.
+     */
+    private long countEntityMatches(SearchResultDto dto, Set<String> candidates) {
+        long count = 0;
+
+        List<String> individuals = dto.getIndividualsPresent();
+        if (individuals != null) {
+            count += individuals.stream().filter(candidates::contains).count();
+        }
+
+        List<String> locations = dto.getLocationsPresent();
+        if (locations != null) {
+            count += locations.stream().filter(candidates::contains).count();
+        }
+
+        return count;
+    }
+
+    // --- helpers ---
 
     private SearchFilters convertFilters(SemanticSearchFilters filters) {
         if (filters == null) {

@@ -6,8 +6,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.UUID;
 
@@ -38,9 +38,8 @@ class IngestionCompletionCoordinatorTest {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         IngestionJob job = new IngestionJob();
-        BeanWrapperImpl jobBean = new BeanWrapperImpl(job);
-        jobBean.setPropertyValue("id", jobId);
-        jobBean.setPropertyValue("chapterId", chapterId);
+        ReflectionTestUtils.setField(job, "id", jobId);
+        ReflectionTestUtils.setField(job, "chapterId", chapterId);
 
         when(jobRepo.findById(jobId)).thenReturn(java.util.Optional.of(job));
 
@@ -56,5 +55,28 @@ class IngestionCompletionCoordinatorTest {
 
         verify(ingestionJobService).completeJob(job, chapterId, 1200);
         verify(eventPublisher).publishEvent(any(IngestionCompletedEvent.class));
+    }
+
+    @Test
+    @DisplayName("Does not complete ingestion for failed jobs")
+    void doesNotCompleteFailedJobs() {
+        UUID jobId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+        IngestionJob job = new IngestionJob();
+        ReflectionTestUtils.setField(job, "id", jobId);
+        ReflectionTestUtils.setField(job, "chapterId", chapterId);
+
+        StatusRecord failedStatus = new StatusRecord();
+        ReflectionTestUtils.setField(failedStatus, "status", IngestionStatus.FAILED);
+        ReflectionTestUtils.setField(job, "currentStatus", failedStatus);
+
+        when(jobRepo.findById(jobId)).thenReturn(java.util.Optional.of(job));
+
+        coordinator.handleBookIndividualsReduced(new BookIndividualsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 3, 1));
+        coordinator.handleEmbeddingsCompleted(new EmbeddingsCompletedEvent(this, jobId, chapterId, 2, 4, 4, 1200));
+        coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 2, 1));
+
+        verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));
+        verify(eventPublisher, never()).publishEvent(any(IngestionCompletedEvent.class));
     }
 }

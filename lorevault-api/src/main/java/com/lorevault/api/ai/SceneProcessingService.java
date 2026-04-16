@@ -236,9 +236,11 @@ public class SceneProcessingService {
                         beforePosition);
 
                 if (startPos == -1) {
-                    log.warn("Skipping scene {} because start anchor '{}' was not found",
-                            result.sceneIndex(), result.startAnchor());
-                    continue;
+                    throw new RuntimeException(String.format(
+                            "Failed to localize scene %d because start anchor '%s' was not found",
+                            result.sceneIndex(),
+                            result.startAnchor()
+                    ));
                 }
 
                 long endPos;
@@ -259,11 +261,19 @@ public class SceneProcessingService {
                     log.debug("Localized scene {}: start={}, end={}, length={}",
                             result.sceneIndex(), startPos, endPos, endPos - startPos);
                 } else {
-                    log.warn("Failed to localize scene {}: invalid bounds startPos={}, endPos={}",
-                            result.sceneIndex(), startPos, endPos);
+                    throw new RuntimeException(String.format(
+                            "Failed to localize scene %d: invalid bounds startPos=%d, endPos=%d",
+                            result.sceneIndex(),
+                            startPos,
+                            endPos
+                    ));
                 }
             } catch (Exception e) {
-                log.error("Error localizing scene {}: {}", result.sceneIndex(), e.getMessage());
+                throw new RuntimeException(String.format(
+                        "Error localizing scene %d: %s",
+                        result.sceneIndex(),
+                        e.getMessage()
+                ), e);
             }
         }
 

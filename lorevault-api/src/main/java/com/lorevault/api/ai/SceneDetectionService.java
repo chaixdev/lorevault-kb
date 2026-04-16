@@ -29,8 +29,6 @@ import java.util.ArrayList;
 public class SceneDetectionService {
 
     private static final Logger log = LoggerFactory.getLogger(SceneDetectionService.class);
-    private static final double MIN_LOCALIZATION_SUCCESS_RATIO = 0.8;
-
     public record SceneDetectionOutcome(
             List<SceneWithCoordinates> scenes,
             List<TriadOrchestrationService.TriadSceneIndividualExtraction> sceneIndividualExtractions,
@@ -225,7 +223,11 @@ public class SceneDetectionService {
         for (SegmentWindow segment : segments) {
             List<SceneWithCoordinates> localizedSegmentScenes = detectScenesInSingleSegment(jobId, segment.text());
             if (localizedSegmentScenes.isEmpty()) {
-                continue;
+                throw new RuntimeException(String.format(
+                        "Segment %d/%d produced no localizable scenes",
+                        segment.segmentIndex() + 1,
+                        segment.totalSegments()
+                ));
             }
 
             List<SceneWithCoordinates> sortedSegmentScenes = localizedSegmentScenes.stream()
@@ -292,14 +294,11 @@ public class SceneDetectionService {
             return;
         }
 
-        double successRatio = (double) localizedSceneCount / parsedSceneCount;
-        if (successRatio < MIN_LOCALIZATION_SUCCESS_RATIO) {
+        if (localizedSceneCount != parsedSceneCount) {
             throw new RuntimeException(String.format(
-                    "Scene coordinate localization dropped too many scenes (parsed=%d localized=%d successRatio=%.2f threshold=%.2f)",
+                    "Scene coordinate localization dropped scenes (parsed=%d localized=%d)",
                     parsedSceneCount,
-                    localizedSceneCount,
-                    successRatio,
-                    MIN_LOCALIZATION_SUCCESS_RATIO
+                    localizedSceneCount
             ));
         }
     }

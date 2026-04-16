@@ -21,6 +21,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -59,13 +60,29 @@ class RagServiceTest {
     @Mock
     private ChatClient.CallResponseSpec callSpec;
 
+    @Mock
+    private QuestionIntentClassifier intentClassifier;
+
+    @Mock
+    private CypherTemplateRegistry templateRegistry;
+
     private RagService ragService;
 
     @BeforeEach
     void setUp() {
-        ragService = new RagService(semanticSearchService, mockPromptRepository, chunkRepo, chapterRepo, chatClient);
-        
+        ragService = new RagService(
+                semanticSearchService, mockPromptRepository, chunkRepo, chapterRepo,
+                intentClassifier, templateRegistry, chatClient);
+
         ReflectionTestUtils.setField(ragService, "modelId", "test-model");
+    }
+
+    // Helper: build a SemanticSearchResponse using the static factory
+    private static SemanticSearchDtos.SemanticSearchResponse searchResponseOf(
+            List<SemanticSearchDtos.SearchResultDto> results) {
+        return SemanticSearchDtos.SemanticSearchResponse.of(
+                results,
+                SemanticSearchDtos.SearchMetadata.of("", results.size(), results.size(), 0L));
     }
 
     @Nested
@@ -73,14 +90,15 @@ class RagServiceTest {
 
         @Test
         void shouldIncludeNestedCoordinatesInCitations() {
-            // Arrange
+            // Arrange — question is narrative QA (not entity lookup)
+            when(intentClassifier.classify(any())).thenReturn(QuestionIntent.NARRATIVE_QA);
             when(chatClient.prompt()).thenReturn(requestSpec);
             when(requestSpec.system(any(String.class))).thenReturn(systemSpec);
             when(systemSpec.user(any(String.class))).thenReturn(requestSpec);
             when(requestSpec.call()).thenReturn(callSpec);
 
             AskDtos.AskRequest request = new AskDtos.AskRequest();
-            request.setQuestion("Who is Kaladin?");
+            request.setQuestion("What does Kaladin do?");
             request.setTopK(3);
 
             UUID chunkId = UUID.randomUUID();
@@ -89,8 +107,7 @@ class RagServiceTest {
             SemanticSearchDtos.SearchResultDto searchResult = SemanticSearchDtos.SearchResultDto.of(
                 chunkId, 0.93, "Kaladin is a spearman.", chapterId, 1, 1
             );
-            SemanticSearchDtos.SemanticSearchResponse searchResponse = new SemanticSearchDtos.SemanticSearchResponse();
-            searchResponse.setResults(List.of(searchResult));
+            SemanticSearchDtos.SemanticSearchResponse searchResponse = searchResponseOf(List.of(searchResult));
 
             // Mock chunk
             Chunk mockChunk = new Chunk();
@@ -136,6 +153,7 @@ class RagServiceTest {
         @Test
         void shouldGenerateAnswerWithCitations() {
             // Arrange
+            when(intentClassifier.classify(any())).thenReturn(QuestionIntent.NARRATIVE_QA);
             when(chatClient.prompt()).thenReturn(requestSpec);
             when(requestSpec.system(any(String.class))).thenReturn(systemSpec);
             when(systemSpec.user(any(String.class))).thenReturn(requestSpec);
@@ -152,10 +170,7 @@ class RagServiceTest {
             SemanticSearchDtos.SearchResultDto searchResult = SemanticSearchDtos.SearchResultDto.of(
                 chunkId, 0.95, "The meaning of life is 42.", chapterId, 1, 1
             );
-            List<SemanticSearchDtos.SearchResultDto> searchResults = List.of(searchResult);
-
-            SemanticSearchDtos.SemanticSearchResponse searchResponse = new SemanticSearchDtos.SemanticSearchResponse();
-            searchResponse.setResults(searchResults);
+            SemanticSearchDtos.SemanticSearchResponse searchResponse = searchResponseOf(List.of(searchResult));
 
             String llmResponse = "Based on the context, the meaning of life is 42. [1]";
 
@@ -207,12 +222,13 @@ class RagServiceTest {
         @Test
         void shouldHandleNoSearchResults() {
             // Arrange
+            when(intentClassifier.classify(any())).thenReturn(QuestionIntent.NARRATIVE_QA);
+
             AskDtos.AskRequest request = new AskDtos.AskRequest();
             request.setQuestion("What is the meaning of life?");
             request.setTopK(5);
 
-            SemanticSearchDtos.SemanticSearchResponse searchResponse = new SemanticSearchDtos.SemanticSearchResponse();
-            searchResponse.setResults(Collections.emptyList());
+            SemanticSearchDtos.SemanticSearchResponse searchResponse = searchResponseOf(Collections.emptyList());
 
             when(semanticSearchService.search(any(SemanticSearchDtos.SemanticSearchRequest.class)))
                 .thenReturn(searchResponse);
@@ -234,6 +250,7 @@ class RagServiceTest {
         @Test
         void shouldFilterResultsByThreshold() {
             // Arrange
+            when(intentClassifier.classify(any())).thenReturn(QuestionIntent.NARRATIVE_QA);
             when(chatClient.prompt()).thenReturn(requestSpec);
             when(requestSpec.system(any(String.class))).thenReturn(systemSpec);
             when(systemSpec.user(any(String.class))).thenReturn(requestSpec);
@@ -255,10 +272,8 @@ class RagServiceTest {
                 chunkId2, 0.85, "Machine learning is a subset of AI.", chapterId, 1, 2
             );
             
-            List<SemanticSearchDtos.SearchResultDto> searchResults = List.of(highScoreResult, lowScoreResult);
-
-            SemanticSearchDtos.SemanticSearchResponse searchResponse = new SemanticSearchDtos.SemanticSearchResponse();
-            searchResponse.setResults(searchResults);
+            SemanticSearchDtos.SemanticSearchResponse searchResponse =
+                    searchResponseOf(List.of(highScoreResult, lowScoreResult));
 
             String llmResponse = "AI stands for artificial intelligence. [1]";
 
@@ -301,7 +316,8 @@ class RagServiceTest {
 
         @Test
         void shouldAppendEntityAndLocationAnnotationsToContextWhenPresent() {
-            // Arrange
+            // Arrange — narrative QA path (entity expansion already in vector results)
+            when(intentClassifier.classify(any())).thenReturn(QuestionIntent.NARRATIVE_QA);
             when(chatClient.prompt()).thenReturn(requestSpec);
             when(requestSpec.system(anyString())).thenReturn(systemSpec);
             ArgumentCaptor<String> userPromptCaptor = ArgumentCaptor.forClass(String.class);
@@ -310,7 +326,7 @@ class RagServiceTest {
             when(callSpec.content()).thenReturn("Vin is the main protagonist.");
 
             AskDtos.AskRequest request = new AskDtos.AskRequest();
-            request.setQuestion("Who is Vin?");
+            request.setQuestion("What does Vin do in the mists?");
             request.setTopK(3);
 
             UUID chunkId  = UUID.randomUUID();
@@ -324,8 +340,7 @@ class RagServiceTest {
                 List.of("Luthadel")
             );
 
-            SemanticSearchDtos.SemanticSearchResponse searchResponse = new SemanticSearchDtos.SemanticSearchResponse();
-            searchResponse.setResults(List.of(searchResult));
+            SemanticSearchDtos.SemanticSearchResponse searchResponse = searchResponseOf(List.of(searchResult));
 
             Chunk mockChunk = new Chunk();
             mockChunk.setId(chunkId);
@@ -346,6 +361,77 @@ class RagServiceTest {
             assertThat(capturedUserPrompt).contains("featuring: Vin, Kelsier");
             assertThat(capturedUserPrompt).contains("at: Luthadel");
             assertThat(capturedUserPrompt).contains("Book 2, Chapter 5");
+        }
+
+        @Test
+        void shouldRouteEntityLookupToTemplateRegistryAndFallBackWhenEmpty() {
+            // Arrange — entity lookup intent, but template returns nothing → falls back to narrative QA
+            when(intentClassifier.classify(any())).thenReturn(QuestionIntent.ENTITY_LOOKUP);
+            when(templateRegistry.execute(any(), any(), any())).thenReturn(List.of());
+
+            // Narrative QA fallback path
+            when(intentClassifier.classify(any())).thenReturn(QuestionIntent.ENTITY_LOOKUP);
+            when(chatClient.prompt()).thenReturn(requestSpec);
+            when(requestSpec.system(any(String.class))).thenReturn(systemSpec);
+            when(systemSpec.user(any(String.class))).thenReturn(requestSpec);
+            when(requestSpec.call()).thenReturn(callSpec);
+            when(callSpec.content()).thenReturn("Vin is a Mistborn.");
+
+            AskDtos.AskRequest request = new AskDtos.AskRequest();
+            request.setQuestion("Who is Vin?");
+            request.setTopK(3);
+
+            UUID chunkId = UUID.randomUUID();
+            UUID chapterId = UUID.randomUUID();
+            SemanticSearchDtos.SearchResultDto result = SemanticSearchDtos.SearchResultDto.of(
+                    chunkId, 0.9, "Vin is a Mistborn.", chapterId, 1, 1);
+            when(semanticSearchService.search(any())).thenReturn(searchResponseOf(List.of(result)));
+            when(mockPromptRepository.get("rag-answer-generation"))
+                    .thenReturn(new PromptTemplate("You are a helpful assistant."));
+            Chunk mockChunk = new Chunk();
+            mockChunk.setId(chunkId);
+            mockChunk.setText("Vin is a Mistborn.");
+            when(chunkRepo.findById(chunkId)).thenReturn(Optional.of(mockChunk));
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.empty());
+
+            // Act
+            AskDtos.AskResponse response = ragService.ask(request);
+
+            // Assert — fell back to narrative QA, got an answer
+            assertThat(response.getAnswer()).isEqualTo("Vin is a Mistborn.");
+        }
+
+        @Test
+        void shouldReturnEntityAnswerWhenTemplateRegistryHasResults() {
+            // Arrange — entity lookup intent, template returns a result
+            when(intentClassifier.classify(any())).thenReturn(QuestionIntent.ENTITY_LOOKUP);
+
+            CypherTemplateRegistry.EntityLookupResult entityResult =
+                    new CypherTemplateRegistry.EntityLookupResult(
+                            "individual-lookup", "Vin", "vin", 47,
+                            "chapter-uuid-1", 1, 3, null, null, null, null);
+
+            when(templateRegistry.execute(any(), any(), any())).thenReturn(List.of(entityResult));
+
+            when(chatClient.prompt()).thenReturn(requestSpec);
+            when(requestSpec.system(any(String.class))).thenReturn(systemSpec);
+            when(systemSpec.user(any(String.class))).thenReturn(requestSpec);
+            when(requestSpec.call()).thenReturn(callSpec);
+            when(callSpec.content()).thenReturn("Vin is a Mistborn who appears in 47 chapters.");
+
+            when(mockPromptRepository.get("rag-answer-generation"))
+                    .thenReturn(new PromptTemplate("You are a helpful assistant."));
+
+            AskDtos.AskRequest request = new AskDtos.AskRequest();
+            request.setQuestion("Who is Vin?");
+            request.setTopK(3);
+
+            // Act
+            AskDtos.AskResponse response = ragService.ask(request);
+
+            // Assert — entity lane answered, no semantic search called
+            assertThat(response.getAnswer()).isEqualTo("Vin is a Mistborn who appears in 47 chapters.");
+            verify(semanticSearchService, never()).search(any());
         }
     }
 }

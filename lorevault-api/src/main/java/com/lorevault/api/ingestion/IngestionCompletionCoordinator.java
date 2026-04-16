@@ -2,9 +2,10 @@ package com.lorevault.api.ingestion;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.lang.reflect.Field;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
@@ -34,10 +35,9 @@ public class IngestionCompletionCoordinator {
     @Async
     @EventListener
     public void handleEmbeddingsCompleted(EmbeddingsCompletedEvent event) {
-        BeanWrapperImpl eventBean = new BeanWrapperImpl(event);
         CompletionKey key = new CompletionKey(
-                (UUID) eventBean.getPropertyValue("jobId"),
-                (UUID) eventBean.getPropertyValue("chapterId")
+                readUuidField(event, "jobId"),
+                readUuidField(event, "chapterId")
         );
 
         completionStates.compute(key, (ignored, current) -> {
@@ -52,10 +52,9 @@ public class IngestionCompletionCoordinator {
     @Async
     @EventListener
     public void handleBookIndividualsReduced(BookIndividualsReducedEvent event) {
-        BeanWrapperImpl eventBean = new BeanWrapperImpl(event);
         CompletionKey key = new CompletionKey(
-                (UUID) eventBean.getPropertyValue("jobId"),
-                (UUID) eventBean.getPropertyValue("chapterId")
+                readUuidField(event, "jobId"),
+                readUuidField(event, "chapterId")
         );
 
         completionStates.compute(key, (ignored, current) -> {
@@ -70,10 +69,9 @@ public class IngestionCompletionCoordinator {
     @Async
     @EventListener
     public void handleBookLocationsReduced(BookLocationsReducedEvent event) {
-        BeanWrapperImpl eventBean = new BeanWrapperImpl(event);
         CompletionKey key = new CompletionKey(
-                (UUID) eventBean.getPropertyValue("jobId"),
-                (UUID) eventBean.getPropertyValue("chapterId")
+                readUuidField(event, "jobId"),
+                readUuidField(event, "chapterId")
         );
 
         completionStates.compute(key, (ignored, current) -> {
@@ -97,17 +95,23 @@ public class IngestionCompletionCoordinator {
             UUID jobId = key.jobId();
             UUID chapterId = key.chapterId();
             EmbeddingsCompletedEvent embeddingsEvent = state.embeddingsCompletedEvent;
-            BeanWrapperImpl embeddingsBean = new BeanWrapperImpl(embeddingsEvent);
 
             jobRepo.findById(jobId).ifPresent(job -> {
-                ingestionJobService.completeJob(job, chapterId, (Integer) embeddingsBean.getPropertyValue("chapterLength"));
+                StatusRecord currentStatus = readField(job, "currentStatus", StatusRecord.class);
+                if (currentStatus != null
+                        && readField(currentStatus, "status", IngestionStatus.class) == IngestionStatus.FAILED) {
+                    log.warn("[INGESTION_COMPLETION] Skipping completion event for failed job={} chapter={}", jobId, chapterId);
+                    return;
+                }
+
+                ingestionJobService.completeJob(job, chapterId, readField(embeddingsEvent, "chapterLength", Integer.class));
                 eventPublisher.publishEvent(new IngestionCompletedEvent(
                         this,
                         jobId,
                         chapterId,
-                        (Integer) embeddingsBean.getPropertyValue("totalScenes"),
-                        (Integer) embeddingsBean.getPropertyValue("totalChunks"),
-                        (Integer) embeddingsBean.getPropertyValue("totalEmbeddings")
+                        readField(embeddingsEvent, "totalScenes", Integer.class),
+                        readField(embeddingsEvent, "totalChunks", Integer.class),
+                        readField(embeddingsEvent, "totalEmbeddings", Integer.class)
                 ));
                 log.info("[INGESTION_COMPLETION] Completed coordinated ingestion for job={}, chapter={}", jobId, chapterId);
             });
@@ -118,6 +122,37 @@ public class IngestionCompletionCoordinator {
     }
 
     private record CompletionKey(UUID jobId, UUID chapterId) {
+    }
+
+    private UUID readUuidField(Object target, String fieldName) {
+        return readField(target, fieldName, UUID.class);
+    }
+
+    private <T> T readField(Object target, String fieldName, Class<T> type) {
+        Field field = findField(target.getClass(), fieldName);
+        if (field == null) {
+            throw new IllegalArgumentException("Field '" + fieldName + "' not found on " + target.getClass().getName());
+        }
+
+        try {
+            field.setAccessible(true);
+            Object value = field.get(target);
+            return type.cast(value);
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException("Unable to read field '" + fieldName + "' on " + target.getClass().getName(), e);
+        }
+    }
+
+    private Field findField(Class<?> type, String fieldName) {
+        Class<?> current = type;
+        while (current != null) {
+            try {
+                return current.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException ignored) {
+                current = current.getSuperclass();
+            }
+        }
+        return null;
     }
 
     private static final class CompletionState {
