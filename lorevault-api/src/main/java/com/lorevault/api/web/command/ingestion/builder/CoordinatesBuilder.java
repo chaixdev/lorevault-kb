@@ -43,8 +43,8 @@ public class CoordinatesBuilder {
 
     // Validation helpers
     public CoordinateValidationResult validateChapterNumber(Integer chapterNumber) {
-        if (chapterNumber == null || chapterNumber < 1) {
-            return CoordinateValidationResult.failure("INVALID_CHAPTER_NUMBER", "Chapter number must be a positive integer");
+        if (chapterNumber == null || chapterNumber < 0) {
+            return CoordinateValidationResult.failure("INVALID_CHAPTER_NUMBER", "Chapter number must be zero or a positive integer");
         }
         return CoordinateValidationResult.success();
     }

@@ -1,368 +1,475 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <body>
-<div th:fragment="uploadForm(libraryHierarchy, message, messageType)"
+<div th:fragment="uploadForm(message, messageType, chapterUploadForm)"
      id="chapter-upload-panel"
-     class="rounded-xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl"
-     x-data="{ 
-         selectedBookId: null, 
-         selectedBookTitle: '', 
-         fileName: '',
-         showBookSelector: false,
-         selectBook(id, title) {
-             this.selectedBookId = id;
-             this.selectedBookTitle = title;
-             this.showBookSelector = false;
-             document.getElementById('hidden-book-id').value = id;
-         }
-     }">
-    <div class="flex items-center gap-3 mb-4">
-        <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/20 to-amber-600/20">
-            <svg class="h-7 w-7 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+     class="flex flex-col gap-6"
+     x-data="chapterUploadConsole({
+         initialUniverse: /*[[${chapterUploadForm.universeSelection}]]*/ '',
+         initialSeries: /*[[${chapterUploadForm.seriesSelection}]]*/ '',
+         initialBook: /*[[${chapterUploadForm.bookSelection}]]*/ '',
+         uploadUrl: /*[[@{/ui/ingest/chapters}]]*/ '/ui/ingest/chapters'
+     })">
+    <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-600/20">
+            <svg class="h-6 w-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
             </svg>
         </div>
         <div>
-            <h2 class="text-xl font-semibold text-white">Upload Chapter</h2>
-            <p class="text-sm text-slate-400">Select a book and upload your chapter file</p>
+            <h2 class="text-base font-semibold text-white">Select Target &amp; Upload</h2>
+            <p class="text-xs text-slate-400">Choose destination scope, stage chapter files, then queue the batch.</p>
         </div>
     </div>
 
-    <form th:object="${chapterUploadForm}"
-          class="space-y-5"
-          th:hx-post="@{/ui/ingest/chapter}"
-          hx-target="#chapter-upload-panel"
-          hx-swap="outerHTML"
-          hx-encoding="multipart/form-data"
-          enctype="multipart/form-data">
-        
-        <!-- Hidden field for book ID -->
-        <input type="hidden" id="hidden-book-id" name="bookId" th:field="*{bookId}" />
-        
-        <!-- Book Selector -->
-        <div>
-            <label class="block text-sm font-medium text-slate-200 mb-3">Select Book</label>
-            
-            <!-- Selected Book Display or Browse Button -->
-            <div x-show="!selectedBookId" class="space-y-3">
-                <button type="button" 
-                        @click="showBookSelector = !showBookSelector"
-                        class="w-full rounded-lg border-2 border-dashed border-slate-700 bg-slate-950/50 px-6 py-8 text-center transition hover:border-amber-400/50 hover:bg-slate-950/80">
-                    <svg class="mx-auto h-12 w-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                    </svg>
-                    <p class="mt-3 text-sm font-medium text-amber-400">Browse Books</p>
-                    <p class="mt-1 text-xs text-slate-500">Click to select from your library</p>
+    <form class="rounded-xl border border-slate-800 bg-slate-900/60 shadow-xl overflow-hidden" @submit.prevent="submitAll()">
+        <div class="border-b border-slate-800 px-5 py-4 bg-slate-900/50">
+            <h3 class="text-sm font-medium text-slate-200">1. Destination Context</h3>
+        </div>
+        <div class="p-5 space-y-4 border-b border-slate-800">
+
+            <div>
+                <label for="upload-universe" class="block text-xs font-medium text-slate-400">Universe</label>
+                <input id="upload-universe-selected" type="hidden" name="selected" x-model="universeSelection">
+                <input id="upload-universe-create-option" type="hidden" name="includeCreateOption" value="true">
+                <select id="upload-universe"
+                        name="universeSelection"
+                        x-model="universeSelection"
+                        class="mt-1.5 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                        data-universe-options
+                        th:hx-get="@{/ui/library-options/universes}"
+                        hx-trigger="load"
+                        hx-target="this"
+                        hx-swap="innerHTML"
+                        hx-include="#upload-universe-selected, #upload-universe-create-option"
+                        @change="handleUniverseChange()">
+                    <option value="">Loading...</option>
+                </select>
+                <div x-show="universeSelection === '__new__'" x-cloak class="mt-3">
+                    <input type="text"
+                           name="newUniverseName"
+                           x-model="newUniverseName"
+                           placeholder="New universe name"
+                           class="w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white placeholder-slate-500 transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+                </div>
+            </div>
+
+            <div>
+                <label for="upload-series" class="block text-xs font-medium text-slate-400">Series <span class="text-[10px] text-slate-500">(optional)</span></label>
+                <input id="upload-series-selected" type="hidden" name="selected" x-model="seriesSelection">
+                <input id="upload-series-create-option" type="hidden" name="includeCreateOption" value="true">
+                <select id="upload-series"
+                        name="seriesSelection"
+                        x-model="seriesSelection"
+                        class="mt-1.5 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                        data-series-options
+                        th:hx-get="@{/ui/library-options/series}"
+                        hx-trigger="refresh"
+                        hx-target="this"
+                        hx-swap="innerHTML"
+                        hx-include="#upload-universe, #upload-series-selected, #upload-series-create-option"
+                        @change="handleSeriesChange()">
+                    <option value="">Standalone / no series</option>
+                </select>
+                <div x-show="seriesSelection === '__new__'" x-cloak class="mt-3">
+                    <input type="text"
+                           name="newSeriesName"
+                           x-model="newSeriesName"
+                           placeholder="New series name"
+                           class="w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white placeholder-slate-500 transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+                </div>
+            </div>
+
+            <div>
+                <label for="upload-book" class="block text-xs font-medium text-slate-400">Book <span class="text-rose-400">*</span></label>
+                <input id="upload-book-selected" type="hidden" name="selected" x-model="bookSelection">
+                <input id="upload-book-create-option" type="hidden" name="includeCreateOption" value="true">
+                <select id="upload-book"
+                        name="bookSelection"
+                        x-model="bookSelection"
+                        class="mt-1.5 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                        data-book-options
+                        th:hx-get="@{/ui/library-options/books}"
+                        hx-trigger="refresh"
+                        hx-target="this"
+                        hx-swap="innerHTML"
+                        hx-include="#upload-universe, #upload-series, #upload-book-selected, #upload-book-create-option"
+                        @change="handleBookChange()">
+                    <option value="">Select a book</option>
+                </select>
+                <div x-show="bookSelection === '__new__'" x-cloak class="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <input type="text"
+                               name="newBookTitle"
+                               x-model="newBookTitle"
+                               placeholder="New book title"
+                               class="w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white placeholder-slate-500 transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+                    </div>
+                    <div>
+                        <input type="number"
+                               min="1"
+                               name="newBookNumber"
+                               x-model="newBookNumber"
+                               placeholder="Book #"
+                               class="w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white placeholder-slate-500 transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+                        <p class="mt-1 text-[10px] text-slate-500">Required for series books; optional for standalone books.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-hidden">
+            <div class="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+                <div>
+                    <h3 class="text-sm font-medium text-slate-200 uppercase tracking-[0.2em]">Staged Chapter Files</h3>
+                    <p class="mt-1 text-[11px] text-slate-500">Numbers are inferred from a numeric prefix before the first underscore.</p>
+                </div>
+                <button type="button"
+                        class="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 transition hover:text-slate-300"
+                        @click="clearStaged()"
+                        x-show="stagedFiles.length > 0">
+                    Clear all
                 </button>
             </div>
 
-            <!-- Selected Book Card -->
-            <div x-show="selectedBookId" x-cloak class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/20">
-                            <svg class="h-6 w-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-emerald-200" x-text="selectedBookTitle"></p>
-                            <p class="text-xs text-emerald-400/70">Selected for upload</p>
-                        </div>
-                    </div>
-                    <button type="button" 
-                            @click="selectedBookId = null; selectedBookTitle = ''; document.getElementById('hidden-book-id').value = ''"
-                            class="text-emerald-400 hover:text-emerald-300 transition">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            <div class="border-b border-slate-800 px-4 py-4">
+                <div class="relative">
+                    <input id="chapter-files"
+                           type="file"
+                           multiple
+                           accept=".txt,.md"
+                           class="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                           @change="handleFileSelection($event)">
+                    <div class="rounded-lg border-2 border-dashed border-slate-700 bg-slate-950/50 px-4 py-5 text-center transition hover:border-emerald-400/50 hover:bg-slate-950/80">
+                        <svg class="mx-auto h-8 w-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                         </svg>
-                    </button>
+                        <p class="mt-2 text-xs text-slate-300">
+                            <span class="font-medium text-emerald-400">Click to upload</span> or drag and drop multiple chapter files
+                        </p>
+                        <p class="mt-1 text-[10px] text-slate-500">.txt or .md, max 1MB each</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- Book Selector Modal/Panel -->
-            <div x-show="showBookSelector" 
-                 x-cloak
-                 @click.away="showBookSelector = false"
-                 class="mt-3 rounded-lg border border-slate-700 bg-slate-900 p-4 max-h-96 overflow-y-auto">
-                
-                <div th:replace="~{ui/ingestion :: bookSelectorContent(libraryHierarchy=${libraryHierarchy})}"></div>
+            <div class="max-h-72 overflow-y-auto custom-scrollbar">
+                <template x-if="stagedFiles.length === 0">
+                    <div class="px-4 py-8 text-center text-xs text-slate-500">
+                        No staged files yet.
+                    </div>
+                </template>
+
+                <template x-if="stagedFiles.length > 0">
+                    <table class="min-w-full text-left text-xs">
+                        <thead class="bg-slate-900/90 text-slate-500 uppercase tracking-[0.18em]">
+                        <tr>
+                            <th class="px-4 py-2.5 w-16">#</th>
+                            <th class="px-4 py-2.5">Filename</th>
+                            <th class="px-4 py-2.5 w-20">St</th>
+                            <th class="px-4 py-2.5 w-12"></th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/80 bg-slate-900/30">
+                        <template x-for="item in stagedFiles" :key="item.id">
+                            <tr class="hover:bg-slate-800/50 transition">
+                                <td class="px-4 py-2.5 font-mono text-slate-300">
+                                    <span x-text="item.chapterNumberLabel"></span>
+                                </td>
+                                <td class="px-4 py-2.5 text-slate-200">
+                                    <div class="max-w-[220px] whitespace-normal break-words leading-5" :title="item.file.name" x-text="item.file.name"></div>
+                                    <p class="mt-1 text-[10px] text-rose-400" x-show="item.message && item.status === 'failed'" x-text="item.message"></p>
+                                </td>
+                                <td class="px-4 py-2.5">
+                                    <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                                          :class="statusBadgeClass(item.status)">
+                                        <span x-text="item.status"></span>
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2.5 text-right">
+                                    <button type="button"
+                                            class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition hover:text-rose-300"
+                                            @click="removeStaged(item.id)">
+                                        Remove
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                        </tbody>
+                    </table>
+                </template>
             </div>
 
-            <p th:if="${#fields.hasErrors('bookId')}"
-               class="mt-2 flex items-center gap-1.5 text-sm text-rose-400">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <span th:text="${#fields.errors('bookId')[0]}"></span>
-            </p>
-        </div>
+            <div class="border-t border-slate-800 px-4 py-4 space-y-3">
+                <div class="rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2 text-[11px] text-slate-400 flex items-center justify-between">
+                    <span x-text="stagedSummary"></span>
+                    <span class="text-rose-300" x-show="invalidFileCount > 0" x-text="`${invalidFileCount} need attention`"></span>
+                </div>
 
-        <!-- Existing Chapters Display (populated via HTMX) -->
-        <div id="book-chapters-display"></div>
+                <div x-show="batchMessage"
+                     x-cloak
+                     class="rounded-lg border px-3 py-2.5 text-xs"
+                     :class="batchMessageTone === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-rose-500/30 bg-rose-500/10 text-rose-100'">
+                    <p x-text="batchMessage"></p>
+                </div>
 
-        <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-                <label for="chapter-number" class="block text-sm font-medium text-slate-200">Chapter number</label>
-                <input id="chapter-number"
-                       th:field="*{chapterNumber}"
-                       name="chapterNumber"
-                       type="number"
-                       min="1"
-                       placeholder="1"
-                       class="mt-2 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white placeholder-slate-500 transition focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/40"/>
-                <p th:if="${#fields.hasErrors('chapterNumber')}"
-                   class="mt-2 flex items-center gap-1.5 text-sm text-rose-400">
+                <button type="submit"
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500/80 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-50"
+                        :disabled="!canSubmit || submitting">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span th:text="${#fields.errors('chapterNumber')[0]}"></span>
-                </p>
-            </div>
-            <div>
-                <label for="chapter-title" class="block text-sm font-medium text-slate-200">
-                    Chapter title <span class="text-xs text-slate-500">(optional)</span>
-                </label>
-                <input id="chapter-title"
-                       th:field="*{chapterTitle}"
-                       name="chapterTitle"
-                       type="text"
-                       placeholder="Auto-detected from filename"
-                       class="mt-2 w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white placeholder-slate-500 transition focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/40"/>
-                <p th:if="${#fields.hasErrors('chapterTitle')}"
-                   class="mt-2 flex items-center gap-1.5 text-sm text-rose-400">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span th:text="${#fields.errors('chapterTitle')[0]}"></span>
-                </p>
-            </div>
-        </div>
-
-        <div>
-            <label for="chapter-file" class="block text-sm font-medium text-slate-200 mb-2">Chapter file</label>
-            <div class="relative">
-                <input id="chapter-file"
-                       th:field="*{file}"
-                       name="file"
-                       type="file"
-                       accept=".txt,.md"
-                       @change="fileName = $event.target.files[0]?.name || ''"
-                       class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"/>
-                <div class="relative rounded-lg border-2 border-dashed border-slate-700 bg-slate-950/50 px-6 py-8 text-center transition hover:border-amber-400/50 hover:bg-slate-950/80">
-                    <svg class="mx-auto h-12 w-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                     </svg>
-                    <p class="mt-3 text-sm text-slate-300">
-                        <span class="font-medium text-amber-400">Click to upload</span> or drag and drop
-                    </p>
-                    <p class="mt-1 text-xs text-slate-500" x-text="fileName || '.txt or .md files, max 1MB'"></p>
-                </div>
+                    <span x-text="submitting ? 'Queueing…' : 'Queue All for Processing'"></span>
+                </button>
             </div>
-            <p th:if="${#fields.hasErrors('file')}"
-               class="mt-2 flex items-center gap-1.5 text-sm text-rose-400">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <span th:text="${#fields.errors('file')[0]}"></span>
-            </p>
-        </div>
-
-        <div th:if="${#fields.hasGlobalErrors()}"
-             class="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2.5 text-sm text-rose-200">
-            <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
-        </div>
-
-        <div th:if="${message != null}"
-             th:classappend=" ${messageType} == 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-slate-500/40 bg-slate-500/10 text-slate-200'"
-             class="rounded-lg border px-3 py-2.5 text-sm flex items-start gap-2">
-            <svg th:if="${messageType} == 'success'" class="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <svg th:if="${messageType} != 'success'" class="h-5 w-5 text-blue-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <p th:text="${message}"></p>
-        </div>
-
-        <div class="pt-2">
-            <button type="submit"
-                    class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition hover:from-amber-400 hover:to-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                </svg>
-                Upload & Queue for Processing
-            </button>
         </div>
     </form>
 
-    <th:block th:if="${triggerJobRefresh}">
-        <script>htmx.trigger(document.body, 'refresh-jobs');</script>
-    </th:block>
-</div>
+    <div id="book-chapters-display"></div>
 
-<!-- Book Selector Content Fragment -->
-<div th:fragment="bookSelectorContent(libraryHierarchy)">
-    <!-- Empty State -->
-    <div th:if="${libraryHierarchy.universes().isEmpty()}" 
-         class="rounded-lg border border-dashed border-slate-700 bg-slate-900/40 px-6 py-8 text-center">
-        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-800/50">
-            <svg class="h-6 w-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-            </svg>
-        </div>
-        <h3 class="mt-3 text-sm font-semibold text-slate-300">No books available</h3>
-        <p class="mt-1 text-xs text-slate-500">Create a book in the Library Manager first</p>
-    </div>
+    <script>
+        function chapterUploadConsole(config) {
+            return {
+                universeSelection: config.initialUniverse || '',
+                seriesSelection: config.initialSeries || '',
+                bookSelection: config.initialBook || '',
+                newUniverseName: '',
+                newSeriesName: '',
+                newBookTitle: '',
+                newBookNumber: '',
+                stagedFiles: [],
+                submitting: false,
+                batchMessage: '',
+                batchMessageTone: 'success',
+                init() {
+                    this.$nextTick(() => {
+                        htmx.process(this.$root);
+                        if (this.bookSelection && this.bookSelection !== '__new__') {
+                            this.refreshBookChapters();
+                        }
+                    });
+                },
+                handleUniverseChange() {
+                    this.seriesSelection = '';
+                    this.bookSelection = '';
+                    htmx.trigger('#upload-series', 'refresh');
+                    htmx.trigger('#upload-book', 'refresh');
+                    this.clearBookChapters();
+                },
+                handleSeriesChange() {
+                    this.bookSelection = '';
+                    htmx.trigger('#upload-book', 'refresh');
+                    this.clearBookChapters();
+                },
+                handleBookChange() {
+                    if (this.bookSelection && this.bookSelection !== '__new__') {
+                        this.refreshBookChapters();
+                    } else {
+                        this.clearBookChapters();
+                    }
+                },
+                handleFileSelection(event) {
+                    const files = Array.from(event.target.files || []);
+                    files.forEach((file) => this.addFile(file));
+                    event.target.value = '';
+                },
+                addFile(file) {
+                    const inferred = this.inferChapterNumber(file.name);
+                    const hasValidChapterNumber = inferred !== null && !Number.isNaN(inferred);
+                    const item = {
+                        id: `${Date.now()}-${Math.random()}`,
+                        file,
+                        chapterNumber: inferred,
+                        chapterNumberLabel: hasValidChapterNumber ? String(inferred).padStart(3, '0') : '—',
+                        chapterTitle: '',
+                        status: hasValidChapterNumber ? 'staged' : 'failed',
+                        message: hasValidChapterNumber ? '' : 'Expected a numeric prefix before the first underscore.'
+                    };
+                    this.stagedFiles.push(item);
+                    this.sortFiles();
+                },
+                removeStaged(id) {
+                    this.stagedFiles = this.stagedFiles.filter((item) => item.id !== id);
+                },
+                clearStaged() {
+                    this.stagedFiles = [];
+                    this.batchMessage = '';
+                },
+                sortFiles() {
+                    this.stagedFiles.sort((a, b) => {
+                        const aValue = a.chapterNumber ?? Number.MAX_SAFE_INTEGER;
+                        const bValue = b.chapterNumber ?? Number.MAX_SAFE_INTEGER;
+                        if (aValue === bValue) {
+                            return a.file.name.localeCompare(b.file.name);
+                        }
+                        return aValue - bValue;
+                    });
+                },
+                inferChapterNumber(fileName) {
+                    const match = /^\s*(\d+)_/.exec(fileName || '');
+                    return match ? Number.parseInt(match[1], 10) : null;
+                },
+                statusBadgeClass(status) {
+                    switch (status) {
+                        case 'staged': return 'border-slate-700 bg-slate-800/80 text-slate-200';
+                        case 'uploading': return 'border-sky-500/30 bg-sky-500/10 text-sky-200';
+                        case 'submitted': return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200';
+                        case 'failed': return 'border-rose-500/30 bg-rose-500/10 text-rose-200';
+                        default: return 'border-slate-700 bg-slate-800/80 text-slate-200';
+                    }
+                },
+                get invalidFileCount() {
+                    return this.stagedFiles.filter((item) => item.status === 'failed').length;
+                },
+                get hasValidDestination() {
+                    const universeReady = !!this.universeSelection && (this.universeSelection !== '__new__' || !!this.newUniverseName.trim());
+                    const seriesReady = this.seriesSelection !== '__new__' || !this.seriesSelection || !!this.newSeriesName.trim();
+                    const bookReady = !!this.bookSelection && (this.bookSelection !== '__new__' || !!this.newBookTitle.trim());
+                    const bookNeedsNumber = this.bookSelection === '__new__' && !!this.seriesSelection;
+                    const bookNumberReady = !bookNeedsNumber || !!String(this.newBookNumber || '').trim();
+                    return universeReady && seriesReady && bookReady && bookNumberReady;
+                },
+                get canSubmit() {
+                    return this.hasValidDestination && this.stagedFiles.length > 0 && this.invalidFileCount === 0;
+                },
+                get stagedSummary() {
+                    if (this.stagedFiles.length === 0) {
+                        return 'No files staged';
+                    }
+                    return `${this.stagedFiles.length} staged • ${this.stagedFiles.filter((item) => item.status === 'submitted').length} submitted`;
+                },
+                async submitAll() {
+                    if (!this.canSubmit || this.submitting) {
+                        return;
+                    }
 
-    <!-- Library Hierarchy -->
-    <div th:if="${!libraryHierarchy.universes().isEmpty()}" class="space-y-6">
-        <!-- Universe Groups -->
-        <div th:each="universe : ${libraryHierarchy.universes()}" class="space-y-3">
-            <!-- Universe Header -->
-            <div class="flex items-center gap-2 pb-2 border-b border-slate-700">
-                <svg class="h-4 w-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <h3 class="text-sm font-semibold text-purple-300" th:text="${universe.name()}"></h3>
-            </div>
+                    this.submitting = true;
+                    this.batchMessage = '';
+                    this.stagedFiles.forEach((item) => {
+                        if (item.status !== 'submitted') {
+                            item.status = 'uploading';
+                            item.message = '';
+                        }
+                    });
 
-            <!-- Series in Universe -->
-            <div th:if="${!universe.series().isEmpty()}" class="space-y-4">
-                <div th:each="series : ${universe.series()}" class="space-y-2">
-                    <!-- Series Header -->
-                    <div class="flex items-center gap-2">
-                        <svg class="h-3.5 w-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                        </svg>
-                        <p class="text-xs font-medium text-blue-300" th:text="${series.name()}"></p>
-                    </div>
+                    const payload = new FormData();
+                    payload.append('universeSelection', this.universeSelection);
+                    payload.append('seriesSelection', this.seriesSelection || '');
+                    payload.append('bookSelection', this.bookSelection);
+                    payload.append('newUniverseName', this.newUniverseName || '');
+                    payload.append('newSeriesName', this.newSeriesName || '');
+                    payload.append('newBookTitle', this.newBookTitle || '');
+                    payload.append('newBookNumber', this.newBookNumber || '');
 
-                    <!-- Books in Series Grid -->
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                            <button th:each="book : ${series.books()}" 
-                                type="button"
-                                @click="selectBook($el.dataset.bookId, $el.dataset.bookTitle)"
-                                th:data-book-id="${book.id()}"
-                                th:data-book-title="${book.displayTitle()}"
-                                th:hx-get="@{/ui/library-options/book-chapters/{bookId}(bookId=${book.id()})}"
-                                hx-trigger="click"
-                                hx-target="#book-chapters-display"
-                                hx-swap="innerHTML"
-                                class="group relative rounded-lg border border-slate-700 bg-slate-800/40 p-3 text-left transition hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/10">
-                            <div class="flex flex-col h-full">
-                                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 mb-2">
-                                    <span class="text-lg font-bold text-emerald-400" th:text="${book.bookNumber() != null ? '#' + book.bookNumber() : '📖'}"></span>
-                                </div>
-                                <p class="text-xs font-medium text-white line-clamp-2 flex-1" th:text="${book.title()}"></p>
-                                <p class="mt-1 text-xs text-slate-500">Book <span th:text="${book.bookNumber()}"></span></p>
-                            </div>
-                            <div class="absolute inset-0 rounded-lg ring-2 ring-emerald-500 opacity-0 group-hover:opacity-100 transition pointer-events-none"></div>
-                        </button>
-                    </div>
-                </div>
-            </div>
+                    this.stagedFiles.forEach((item) => {
+                        payload.append('clientIds', item.id);
+                        payload.append('chapterNumbers', item.chapterNumber);
+                        payload.append('chapterTitles', item.chapterTitle || '');
+                        payload.append('files', item.file, item.file.name);
+                    });
 
-            <!-- Standalone Books in Universe -->
-            <div th:if="${!universe.standaloneBooks().isEmpty()}" class="space-y-2">
-                <p class="text-xs font-medium text-slate-400">Standalone Books</p>
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                    <button th:each="book : ${universe.standaloneBooks()}" 
-                            type="button"
-                            @click="selectBook($el.dataset.bookId, $el.dataset.bookTitle)"
-                            th:data-book-id="${book.id()}"
-                            th:data-book-title="${book.title()}"
-                            th:hx-get="@{/ui/library-options/book-chapters/{bookId}(bookId=${book.id()})}"
-                            hx-trigger="click"
-                            hx-target="#book-chapters-display"
-                            hx-swap="innerHTML"
-                            class="group relative rounded-lg border border-slate-700 bg-slate-800/40 p-3 text-left transition hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/10">
-                        <div class="flex flex-col h-full">
-                            <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-slate-600/20 to-slate-700/20 mb-2">
-                                <svg class="h-6 w-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                                </svg>
-                            </div>
-                            <p class="text-xs font-medium text-white line-clamp-2" th:text="${book.title()}"></p>
-                        </div>
-                        <div class="absolute inset-0 rounded-lg ring-2 ring-emerald-500 opacity-0 group-hover:opacity-100 transition pointer-events-none"></div>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                    try {
+                        const response = await fetch(config.uploadUrl, {
+                            method: 'POST',
+                            body: payload,
+                            headers: {
+                                'HX-Request': 'true'
+                            }
+                        });
+                        const data = await response.json();
+                        this.batchMessage = data.message || 'Upload processed.';
+                        this.batchMessageTone = data.success ? 'success' : 'error';
 
-<!-- Book Chapters Content Fragment -->
-<div th:fragment="bookChaptersContent(chapters, bookId)">
-    <!-- Empty State -->
-    <div th:if="${chapters.isEmpty()}" 
-         class="rounded-lg border border-dashed border-amber-700/50 bg-amber-900/10 px-4 py-3">
-        <div class="flex items-start gap-3">
-            <svg class="h-5 w-5 text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <div>
-                <p class="text-sm font-medium text-amber-300">First Chapter</p>
-                <p class="text-xs text-amber-400/80 mt-0.5">This book has no chapters yet. You're uploading the first one!</p>
-            </div>
-        </div>
-    </div>
+                        if (data.universeSelection) this.universeSelection = data.universeSelection;
+                        if (data.seriesSelection !== undefined && data.seriesSelection !== null) this.seriesSelection = data.seriesSelection;
+                        if (data.bookSelection) this.bookSelection = data.bookSelection;
 
-    <!-- Chapters List -->
-    <div th:if="${!chapters.isEmpty()}" 
-         class="rounded-lg border border-slate-700 bg-slate-800/40 overflow-hidden">
-        <div class="bg-slate-800/60 px-4 py-2 border-b border-slate-700">
-            <div class="flex items-center justify-between">
-                <p class="text-xs font-semibold text-slate-300">Existing Chapters</p>
-                <span class="text-xs text-slate-500" th:text="${chapters.size()} + ' chapter' + (${chapters.size()} > 1 ? 's' : '')"></span>
-            </div>
-        </div>
-        <div class="divide-y divide-slate-700 max-h-48 overflow-y-auto">
-            <div th:each="chapter : ${chapters}" 
-                 class="px-4 py-2.5 hover:bg-slate-700/30 transition">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3 flex-1 min-w-0">
-                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-emerald-500/10">
-                            <span class="text-xs font-bold text-emerald-400" th:text="${chapter.chapterNumber()}"></span>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-white truncate" th:text="${chapter.title()}"></p>
-                            <p class="text-xs text-slate-400" th:if="${chapter.sceneCount() != null}" 
-                               th:text="${chapter.sceneCount()} + ' scene' + (${chapter.sceneCount()} != 1 ? 's' : '')"></p>
-                        </div>
-                    </div>
-                    <span th:if="${chapter.status()}" 
-                          class="text-xs px-2 py-0.5 rounded-full shrink-0"
-                          th:classappend="${chapter.status() == 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}"
-                          th:text="${chapter.status()}"></span>
-                </div>
-            </div>
-        </div>
-        <div class="bg-slate-800/60 px-4 py-2 border-t border-slate-700">
-            <p class="text-xs text-slate-400">
-                💡 Next available chapter number: <span class="font-semibold text-emerald-400" th:text="${chapters.size() + 1}"></span>
-            </p>
-        </div>
-    </div>
-    
-    <!-- Auto-fill chapter number -->
-    <script th:inline="javascript">
-        /*<![CDATA[*/
-        (function() {
-            var nextChapter = /*[[${chapters.size() + 1}]]*/ 1;
-            var chapterInput = document.getElementById('chapter-number');
-            if (chapterInput) {
-                chapterInput.value = nextChapter;
-                // Add a subtle highlight animation
-                chapterInput.classList.add('ring-2', 'ring-emerald-500/40');
-                setTimeout(() => {
-                    chapterInput.classList.remove('ring-2', 'ring-emerald-500/40');
-                }, 1500);
-            }
-        })();
-        /*]]>*/
+                        const resultMap = new Map((data.results || []).map((result) => [result.clientId, result]));
+                        this.stagedFiles = this.stagedFiles.map((item) => {
+                            const result = resultMap.get(item.id);
+                            if (!result) {
+                                return item;
+                            }
+                            return {
+                                ...item,
+                                status: result.status,
+                                message: result.message || ''
+                            };
+                        }).filter((item) => item.status !== 'submitted');
+
+                        if (data.successCount > 0) {
+                            htmx.trigger(document.body, 'refresh-jobs');
+                            this.refreshBookChapters();
+                        }
+                    } catch (error) {
+                        this.batchMessage = 'Batch submission failed. Please try again.';
+                        this.batchMessageTone = 'error';
+                        this.stagedFiles.forEach((item) => {
+                            if (item.status === 'uploading') {
+                                item.status = 'failed';
+                                item.message = 'Network error while submitting chapter.';
+                            }
+                        });
+                    } finally {
+                        this.submitting = false;
+                    }
+                },
+                refreshBookChapters() {
+                    if (this.bookSelection && this.bookSelection !== '__new__') {
+                        htmx.ajax('GET', `/ui/library-options/book-chapters/${this.bookSelection}`, '#book-chapters-display');
+                    }
+                },
+                clearBookChapters() {
+                    const panel = document.getElementById('book-chapters-display');
+                    if (panel) {
+                        panel.innerHTML = '';
+                    }
+                }
+            };
+        }
     </script>
+</div>
+
+<div th:fragment="bookChaptersContent(chapters, bookId)" class="rounded-xl border border-slate-800 bg-slate-900/60 shadow-xl overflow-hidden">
+    <div class="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+        <div>
+            <h3 class="text-sm font-medium text-slate-200 uppercase tracking-[0.2em]">Existing Chapters</h3>
+        </div>
+        <span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-300" th:text="${chapters.size()} + ' Loaded'"></span>
+    </div>
+
+    <div th:if="${chapters.isEmpty()}" class="px-4 py-8 text-center text-xs text-slate-500">
+        No chapters yet. You're uploading the first one.
+    </div>
+
+    <div th:if="${!chapters.isEmpty()}" class="max-h-64 overflow-y-auto custom-scrollbar">
+        <table class="min-w-full text-left text-xs">
+            <thead class="bg-slate-900/90 text-slate-500 uppercase tracking-[0.18em]">
+            <tr>
+                <th class="px-4 py-2.5 w-16">#</th>
+                <th class="px-4 py-2.5">Filename</th>
+                <th class="px-4 py-2.5 w-12 text-right">St</th>
+            </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/80 bg-slate-900/30">
+            <tr th:each="chapter, stat : ${chapters}"
+                th:classappend="${stat.index == 0} ? 'bg-slate-800/40' : ''"
+                class="hover:bg-slate-800/50 transition">
+                <td class="px-4 py-3 font-mono text-slate-400" th:text="${#numbers.formatDecimal(chapter.chapterNumber(), 3, 0)}"></td>
+                <td class="px-4 py-3 text-slate-200">
+                    <div class="font-medium whitespace-normal break-words leading-5" th:text="${chapter.title()}"></div>
+                </td>
+                <td class="px-4 py-3 text-right">
+                    <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-300" th:if="${chapter.status() == null || chapter.status() == 'COMPLETED'}">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </span>
+                    <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-500/10 text-sky-300" th:if="${chapter.status() != null && chapter.status() != 'COMPLETED'}">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 
 </body>

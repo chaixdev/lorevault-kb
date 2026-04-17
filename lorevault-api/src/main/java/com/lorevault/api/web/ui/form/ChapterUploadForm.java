@@ -6,15 +6,26 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.UUID;
-
 @Data
 public class ChapterUploadForm {
 
-    private UUID universeId;
+    private String universeSelection;
 
-    @NotNull(message = "Please select a book")
-    private UUID bookId;
+    private String seriesSelection;
+
+    private String bookSelection;
+
+    @Size(max = 255, message = "Universe name must not exceed 255 characters")
+    private String newUniverseName;
+
+    @Size(max = 255, message = "Series name must not exceed 255 characters")
+    private String newSeriesName;
+
+    @Size(max = 255, message = "Book title must not exceed 255 characters")
+    private String newBookTitle;
+
+    @Min(value = 1, message = "Book number must be at least 1")
+    private Integer newBookNumber;
 
     @NotNull(message = "Chapter number is required")
     @Min(value = 1, message = "Chapter number must be at least 1")
