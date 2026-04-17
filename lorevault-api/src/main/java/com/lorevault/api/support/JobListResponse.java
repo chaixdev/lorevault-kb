@@ -26,6 +26,7 @@ public class JobListResponse {
     public static class JobSummary {
         private UUID jobId;
         private UUID chapterId;
+        private UUID bookId;
         private String universe;
         private String series;
         private Integer bookNumber;

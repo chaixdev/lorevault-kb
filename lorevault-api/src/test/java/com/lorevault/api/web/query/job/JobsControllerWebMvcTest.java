@@ -60,6 +60,7 @@ class JobsControllerWebMvcTest {
         JobStatusResponse resp = new JobStatusResponse(
                 jobId,
                 chapterId,
+                UUID.randomUUID(),
                 IngestionStatus.SCENE_SEGMENTATION,
                 15,
                 LocalDateTime.now().minusMinutes(1),
@@ -101,6 +102,7 @@ class JobsControllerWebMvcTest {
     @Test
     void listJobs_success_returns200WithList() throws Exception {
         JobListResponse.JobSummary summary = new JobListResponse.JobSummary(
+                UUID.randomUUID(),
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "Middle Earth",

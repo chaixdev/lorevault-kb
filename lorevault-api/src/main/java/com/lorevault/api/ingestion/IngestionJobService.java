@@ -285,6 +285,10 @@ public class IngestionJobService {
         response.setCompletedAt(job.getCompletedAt());
         response.setRecentUpdates(recentUpdates);
 
+        if (job.getChapterId() != null) {
+            chapterRepo.findById(job.getChapterId()).ifPresent(chapter -> response.setBookId(chapter.getBookId()));
+        }
+
         // Set current status information
         var currentStatus = job.getCurrentStatus();
         if (currentStatus != null) {
@@ -436,6 +440,7 @@ public class IngestionJobService {
     private void enrichSummaryWithChapterInfo(JobListResponse.JobSummary summary, UUID chapterId) {
         try {
             chapterRepo.findById(chapterId).ifPresent(chapter -> {
+                summary.setBookId(chapter.getBookId());
                 summary.setChapterTitle(chapter.getChapterTitle());
                 summary.setUniverse(chapter.getUniverse());
                 summary.setSeries(chapter.getSeries());

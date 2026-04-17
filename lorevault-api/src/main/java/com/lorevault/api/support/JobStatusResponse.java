@@ -28,6 +28,11 @@ public class JobStatusResponse {
     private UUID chapterId;
 
     /**
+     * The book containing the chapter being processed by this job
+     */
+    private UUID bookId;
+
+    /**
      * Current status of the job
      */
     private IngestionStatus currentStatus;
