@@ -29,3 +29,4 @@ Rules should be short, opinionated, and easy to apply repeatedly.
 - [CI test profiles](ci-test-profiles.md)
 - [LLM structured output](llm-structured-output.md)
 - [Testing strategy](testing-strategy.md)
+- [Logging philosophy](logging-philosophy.md)

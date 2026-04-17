@@ -70,3 +70,4 @@ When a job fails, the `FAILED` status record carries structured failure informat
 
 - `../development/current/data-model/ingestion-job-and-status.md`
 - `../development/current/data-model/llm-call-records.md`
+- **Application-level logging rules** — see `../rules/logging-philosophy.md` and ADR 009
