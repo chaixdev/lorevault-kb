@@ -35,17 +35,44 @@ public class BookIndividualReductionHandler {
         UUID chapterId = (UUID) eventBean.getPropertyValue("chapterId");
         UUID bookId = (UUID) eventBean.getPropertyValue("bookId");
 
-        log.info("[BOOK_INDIVIDUAL_REDUCTION] Starting automatic reduction for book={} after chapter={}", bookId, chapterId);
+        log.info("[BOOK_INDIVIDUAL_REDUCTION] Started: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId);
 
-        BookIndividualResolutionResponse response = bookIndividualReductionService.resolveBook(bookId);
-        eventPublisher.publishEvent(new BookIndividualsReducedEvent(
-                this,
-                jobId,
-                chapterId,
-                bookId,
-                response.isProcessed(),
-                response.getChapterIndividualCount(),
-                response.getBookIndividualCount()
-        ));
+        try {
+            BookIndividualResolutionResponse response = bookIndividualReductionService.resolveBook(bookId);
+
+            if (response.isProcessed()) {
+                log.info(
+                        "[BOOK_INDIVIDUAL_REDUCTION] Completed: jobId={}, chapterId={}, bookId={}, chapterIndividualCount={}, bookIndividualCount={}",
+                        jobId,
+                        chapterId,
+                        bookId,
+                        response.getChapterIndividualCount(),
+                        response.getBookIndividualCount()
+                );
+            } else {
+                log.warn(
+                        "[BOOK_INDIVIDUAL_REDUCTION] Skipped: jobId={}, chapterId={}, bookId={}, chapterIndividualCount={}, bookIndividualCount={}, reason={}",
+                        jobId,
+                        chapterId,
+                        bookId,
+                        response.getChapterIndividualCount(),
+                        response.getBookIndividualCount(),
+                        response.getMessage()
+                );
+            }
+
+            eventPublisher.publishEvent(new BookIndividualsReducedEvent(
+                    this,
+                    jobId,
+                    chapterId,
+                    bookId,
+                    response.isProcessed(),
+                    response.getChapterIndividualCount(),
+                    response.getBookIndividualCount()
+            ));
+        } catch (Exception e) {
+            log.error("[BOOK_INDIVIDUAL_REDUCTION] Failed: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId, e);
+            throw e;
+        }
     }
 }

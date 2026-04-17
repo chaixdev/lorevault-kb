@@ -34,17 +34,44 @@ public class BookLocationReductionHandler {
         UUID chapterId = (UUID) eventBean.getPropertyValue("chapterId");
         UUID bookId = (UUID) eventBean.getPropertyValue("bookId");
 
-        log.info("[BOOK_LOCATION_REDUCTION] Starting automatic reduction for book={} after chapter={}", bookId, chapterId);
+        log.info("[BOOK_LOCATION_REDUCTION] Started: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId);
 
-        BookLocationResolutionResponse response = bookLocationReductionService.resolveBook(bookId);
-        eventPublisher.publishEvent(new BookLocationsReducedEvent(
-                this,
-                jobId,
-                chapterId,
-                bookId,
-                response.isProcessed(),
-                response.getChapterLocationCount(),
-                response.getBookLocationCount()
-        ));
+        try {
+            BookLocationResolutionResponse response = bookLocationReductionService.resolveBook(bookId);
+
+            if (response.isProcessed()) {
+                log.info(
+                        "[BOOK_LOCATION_REDUCTION] Completed: jobId={}, chapterId={}, bookId={}, chapterLocationCount={}, bookLocationCount={}",
+                        jobId,
+                        chapterId,
+                        bookId,
+                        response.getChapterLocationCount(),
+                        response.getBookLocationCount()
+                );
+            } else {
+                log.warn(
+                        "[BOOK_LOCATION_REDUCTION] Skipped: jobId={}, chapterId={}, bookId={}, chapterLocationCount={}, bookLocationCount={}, reason={}",
+                        jobId,
+                        chapterId,
+                        bookId,
+                        response.getChapterLocationCount(),
+                        response.getBookLocationCount(),
+                        response.getMessage()
+                );
+            }
+
+            eventPublisher.publishEvent(new BookLocationsReducedEvent(
+                    this,
+                    jobId,
+                    chapterId,
+                    bookId,
+                    response.isProcessed(),
+                    response.getChapterLocationCount(),
+                    response.getBookLocationCount()
+            ));
+        } catch (Exception e) {
+            log.error("[BOOK_LOCATION_REDUCTION] Failed: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId, e);
+            throw e;
+        }
     }
 }

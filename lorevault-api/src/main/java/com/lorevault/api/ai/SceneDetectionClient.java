@@ -208,6 +208,10 @@ public class SceneDetectionClient {
             return retryTemplate.execute(retryContext -> {
                 int retryCount = retryContext.getRetryCount();
                 String attemptMsg = retryCount > 0 ? " (retry=" + retryCount + ")" : "";
+                if (retryCount > 0) {
+                    log.warn("[LLM] Retrying: jobId={}, step={}, model={}, attempt={}",
+                            jobId, step, modelId, retryCount + 1);
+                }
                 log.debug("[LLM] Calling model={} for {}{}", modelId, step, attemptMsg);
                 
                 String response = chatClient.prompt()
@@ -255,6 +259,8 @@ public class SceneDetectionClient {
             }, recoveryContext -> {
                 Throwable lastError = recoveryContext.getLastThrowable();
                 String errorMsg = lastError != null ? lastError.getMessage() : "Unknown error";
+                log.error("[LLM] Retry exhausted: jobId={}, step={}, model={}, retryCount={}, lastError={}",
+                        jobId, step, modelId, recoveryContext.getRetryCount(), errorMsg);
                 log.error("[LLM] {} failed after {} retries: {}", 
                          step, recoveryContext.getRetryCount(), errorMsg);
                 throw new RuntimeException(step + " scene detection failed permanently after multiple attempts: " + errorMsg,
@@ -285,6 +291,10 @@ public class SceneDetectionClient {
             return retryTemplate.execute(retryContext -> {
                 int retryCount = retryContext.getRetryCount();
                 String attemptMsg = retryCount > 0 ? " (retry=" + retryCount + ")" : "";
+                if (retryCount > 0) {
+                    log.warn("[LLM] Retrying: jobId={}, step={}, model={}, attempt={}",
+                            jobId, step, modelId, retryCount + 1);
+                }
                 log.debug("[LLM] Calling model={} for {}{}", modelId, step, attemptMsg);
 
                 T response = chatClient.prompt()
@@ -322,10 +332,13 @@ public class SceneDetectionClient {
             }, recoveryContext -> {
                 Throwable lastError = recoveryContext.getLastThrowable();
                 String errorMsg = lastError != null ? lastError.getMessage() : "Unknown error";
+                log.error("[LLM] Retry exhausted: jobId={}, step={}, model={}, retryCount={}, lastError={}",
+                        jobId, step, modelId, recoveryContext.getRetryCount(), errorMsg);
                 throw new RuntimeException(step + " scene detection failed permanently after multiple attempts: " + errorMsg,
                         recoveryContext.getLastThrowable());
             });
         } catch (Exception e) {
+            log.error("[LLM] Unexpected error during {} scene detection: {}", step, e.getMessage(), e);
             throw new RuntimeException(step + " scene detection failed: " + e.getMessage(), e);
         }
     }

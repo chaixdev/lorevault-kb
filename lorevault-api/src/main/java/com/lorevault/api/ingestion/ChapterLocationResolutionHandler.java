@@ -33,16 +33,45 @@ public class ChapterLocationResolutionHandler {
         UUID chapterId = (UUID) eventBean.getPropertyValue("chapterId");
         UUID jobId = (UUID) eventBean.getPropertyValue("jobId");
         UUID bookId = (UUID) eventBean.getPropertyValue("bookId");
-        log.info("[CHAPTER_LOCATION_RESOLUTION] Starting automatic resolution for chapter={}", chapterId);
-        ChapterLocationResolutionResponse response = chapterLocationResolutionService.resolveChapter(chapterId);
-        eventPublisher.publishEvent(new ChapterLocationsResolvedEvent(
-                this,
-                jobId,
-                chapterId,
-                bookId,
-                response.isProcessed(),
-                response.getMentionCount(),
-                response.getChapterLocationCount()
-        ));
+
+        log.info("[CHAPTER_LOCATION_RESOLUTION] Started: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId);
+
+        try {
+            ChapterLocationResolutionResponse response = chapterLocationResolutionService.resolveChapter(chapterId);
+
+            if (response.isProcessed()) {
+                log.info(
+                        "[CHAPTER_LOCATION_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterLocationCount={}",
+                        jobId,
+                        chapterId,
+                        bookId,
+                        response.getMentionCount(),
+                        response.getChapterLocationCount()
+                );
+            } else {
+                log.warn(
+                        "[CHAPTER_LOCATION_RESOLUTION] Skipped: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterLocationCount={}, reason={}",
+                        jobId,
+                        chapterId,
+                        bookId,
+                        response.getMentionCount(),
+                        response.getChapterLocationCount(),
+                        response.getMessage()
+                );
+            }
+
+            eventPublisher.publishEvent(new ChapterLocationsResolvedEvent(
+                    this,
+                    jobId,
+                    chapterId,
+                    bookId,
+                    response.isProcessed(),
+                    response.getMentionCount(),
+                    response.getChapterLocationCount()
+            ));
+        } catch (Exception e) {
+            log.error("[CHAPTER_LOCATION_RESOLUTION] Failed: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId, e);
+            throw e;
+        }
     }
 }

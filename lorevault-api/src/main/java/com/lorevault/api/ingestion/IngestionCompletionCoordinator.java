@@ -39,12 +39,23 @@ public class IngestionCompletionCoordinator {
                 readUuidField(event, "jobId"),
                 readUuidField(event, "chapterId")
         );
+        logBranchArrival(
+                "EMBEDDINGS_COMPLETED",
+                key,
+                null,
+                "totalScenes=" + readField(event, "totalScenes", Integer.class)
+                        + ", totalChunks=" + readField(event, "totalChunks", Integer.class)
+                        + ", totalEmbeddings=" + readField(event, "totalEmbeddings", Integer.class)
+                        + ", chapterLength=" + readField(event, "chapterLength", Integer.class)
+        );
 
         completionStates.compute(key, (ignored, current) -> {
             CompletionState next = current == null ? new CompletionState() : current;
             next.embeddingsCompletedEvent = event;
             return next;
         });
+
+        logCoordinatorState("EMBEDDINGS_COMPLETED", key);
 
         completeIfReady(key);
     }
@@ -56,12 +67,22 @@ public class IngestionCompletionCoordinator {
                 readUuidField(event, "jobId"),
                 readUuidField(event, "chapterId")
         );
+        logBranchArrival(
+                "BOOK_INDIVIDUALS_REDUCED",
+                key,
+                readUuidField(event, "bookId"),
+                "processed=" + readField(event, "processed", Boolean.class)
+                        + ", chapterIndividualCount=" + readField(event, "chapterIndividualCount", Integer.class)
+                        + ", bookIndividualCount=" + readField(event, "bookIndividualCount", Integer.class)
+        );
 
         completionStates.compute(key, (ignored, current) -> {
             CompletionState next = current == null ? new CompletionState() : current;
             next.bookIndividualsReducedEvent = event;
             return next;
         });
+
+        logCoordinatorState("BOOK_INDIVIDUALS_REDUCED", key);
 
         completeIfReady(key);
     }
@@ -73,12 +94,22 @@ public class IngestionCompletionCoordinator {
                 readUuidField(event, "jobId"),
                 readUuidField(event, "chapterId")
         );
+        logBranchArrival(
+                "BOOK_LOCATIONS_REDUCED",
+                key,
+                readUuidField(event, "bookId"),
+                "processed=" + readField(event, "processed", Boolean.class)
+                        + ", chapterLocationCount=" + readField(event, "chapterLocationCount", Integer.class)
+                        + ", bookLocationCount=" + readField(event, "bookLocationCount", Integer.class)
+        );
 
         completionStates.compute(key, (ignored, current) -> {
             CompletionState next = current == null ? new CompletionState() : current;
             next.bookLocationsReducedEvent = event;
             return next;
         });
+
+        logCoordinatorState("BOOK_LOCATIONS_REDUCED", key);
 
         completeIfReady(key);
     }
@@ -95,12 +126,29 @@ public class IngestionCompletionCoordinator {
             UUID jobId = key.jobId();
             UUID chapterId = key.chapterId();
             EmbeddingsCompletedEvent embeddingsEvent = state.embeddingsCompletedEvent;
+            UUID bookId = state.bookIndividualsReducedEvent != null
+                    ? readUuidField(state.bookIndividualsReducedEvent, "bookId")
+                    : state.bookLocationsReducedEvent != null ? readUuidField(state.bookLocationsReducedEvent, "bookId") : null;
+
+            log.info(
+                    "[INGESTION_COMPLETION] Ready to complete: jobId={}, chapterId={}, bookId={}, satisfied={}, pending=[]",
+                    jobId,
+                    chapterId,
+                    bookId,
+                    satisfiedBranches(state)
+            );
 
             jobRepo.findById(jobId).ifPresent(job -> {
                 StatusRecord currentStatus = readField(job, "currentStatus", StatusRecord.class);
                 if (currentStatus != null
                         && readField(currentStatus, "status", IngestionStatus.class) == IngestionStatus.FAILED) {
-                    log.warn("[INGESTION_COMPLETION] Skipping completion event for failed job={} chapter={}", jobId, chapterId);
+                    log.warn(
+                            "[INGESTION_COMPLETION] Skipping completion for failed job: jobId={}, chapterId={}, bookId={}, satisfied={}, pending=[]",
+                            jobId,
+                            chapterId,
+                            bookId,
+                            satisfiedBranches(state)
+                    );
                     return;
                 }
 
@@ -113,7 +161,15 @@ public class IngestionCompletionCoordinator {
                         readField(embeddingsEvent, "totalChunks", Integer.class),
                         readField(embeddingsEvent, "totalEmbeddings", Integer.class)
                 ));
-                log.info("[INGESTION_COMPLETION] Completed coordinated ingestion for job={}, chapter={}", jobId, chapterId);
+                log.info(
+                        "[INGESTION_COMPLETION] Completed: jobId={}, chapterId={}, bookId={}, totalScenes={}, totalChunks={}, totalEmbeddings={}",
+                        jobId,
+                        chapterId,
+                        bookId,
+                        readField(embeddingsEvent, "totalScenes", Integer.class),
+                        readField(embeddingsEvent, "totalChunks", Integer.class),
+                        readField(embeddingsEvent, "totalEmbeddings", Integer.class)
+                );
             });
 
             state.completed = true;
@@ -153,6 +209,66 @@ public class IngestionCompletionCoordinator {
             }
         }
         return null;
+    }
+
+    private void logBranchArrival(String branch, CompletionKey key, UUID bookId, String details) {
+        log.info(
+                "[INGESTION_COMPLETION] Branch received: jobId={}, chapterId={}, bookId={}, branch={}, {}",
+                key.jobId(),
+                key.chapterId(),
+                bookId,
+                branch,
+                details
+        );
+    }
+
+    private void logCoordinatorState(String branch, CompletionKey key) {
+        CompletionState state = completionStates.get(key);
+        if (state == null) {
+            return;
+        }
+
+        UUID bookId = state.bookIndividualsReducedEvent != null
+                ? readUuidField(state.bookIndividualsReducedEvent, "bookId")
+                : state.bookLocationsReducedEvent != null ? readUuidField(state.bookLocationsReducedEvent, "bookId") : null;
+
+        log.info(
+                "[INGESTION_COMPLETION] Waiting after branch: jobId={}, chapterId={}, bookId={}, branch={}, satisfied={}, pending={}",
+                key.jobId(),
+                key.chapterId(),
+                bookId,
+                branch,
+                satisfiedBranches(state),
+                pendingBranches(state)
+        );
+    }
+
+    private String satisfiedBranches(CompletionState state) {
+        StringBuilder builder = new StringBuilder("[");
+        appendBranch(builder, state.embeddingsCompletedEvent != null, "EMBEDDINGS_COMPLETED");
+        appendBranch(builder, state.bookIndividualsReducedEvent != null, "BOOK_INDIVIDUALS_REDUCED");
+        appendBranch(builder, state.bookLocationsReducedEvent != null, "BOOK_LOCATIONS_REDUCED");
+        builder.append("]");
+        return builder.toString();
+    }
+
+    private String pendingBranches(CompletionState state) {
+        StringBuilder builder = new StringBuilder("[");
+        appendBranch(builder, state.embeddingsCompletedEvent == null, "EMBEDDINGS_COMPLETED");
+        appendBranch(builder, state.bookIndividualsReducedEvent == null, "BOOK_INDIVIDUALS_REDUCED");
+        appendBranch(builder, state.bookLocationsReducedEvent == null, "BOOK_LOCATIONS_REDUCED");
+        builder.append("]");
+        return builder.toString();
+    }
+
+    private void appendBranch(StringBuilder builder, boolean include, String branch) {
+        if (!include) {
+            return;
+        }
+        if (builder.length() > 1) {
+            builder.append(", ");
+        }
+        builder.append(branch);
     }
 
     private static final class CompletionState {

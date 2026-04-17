@@ -34,16 +34,45 @@ public class ChapterIndividualResolutionHandler {
         UUID chapterId = (UUID) eventBean.getPropertyValue("chapterId");
         UUID jobId = (UUID) eventBean.getPropertyValue("jobId");
         UUID bookId = (UUID) eventBean.getPropertyValue("bookId");
-        log.info("[CHAPTER_INDIVIDUAL_RESOLUTION] Starting automatic resolution for chapter={}", chapterId);
-        ChapterIndividualResolutionResponse response = chapterIndividualResolutionService.resolveChapter(chapterId);
-        eventPublisher.publishEvent(new ChapterIndividualsResolvedEvent(
-                this,
-                jobId,
-                chapterId,
-                bookId,
-                response.isProcessed(),
-                response.getMentionCount(),
-                response.getChapterIndividualCount()
-        ));
+
+        log.info("[CHAPTER_INDIVIDUAL_RESOLUTION] Started: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId);
+
+        try {
+            ChapterIndividualResolutionResponse response = chapterIndividualResolutionService.resolveChapter(chapterId);
+
+            if (response.isProcessed()) {
+                log.info(
+                        "[CHAPTER_INDIVIDUAL_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterIndividualCount={}",
+                        jobId,
+                        chapterId,
+                        bookId,
+                        response.getMentionCount(),
+                        response.getChapterIndividualCount()
+                );
+            } else {
+                log.warn(
+                        "[CHAPTER_INDIVIDUAL_RESOLUTION] Skipped: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterIndividualCount={}, reason={}",
+                        jobId,
+                        chapterId,
+                        bookId,
+                        response.getMentionCount(),
+                        response.getChapterIndividualCount(),
+                        response.getMessage()
+                );
+            }
+
+            eventPublisher.publishEvent(new ChapterIndividualsResolvedEvent(
+                    this,
+                    jobId,
+                    chapterId,
+                    bookId,
+                    response.isProcessed(),
+                    response.getMentionCount(),
+                    response.getChapterIndividualCount()
+            ));
+        } catch (Exception e) {
+            log.error("[CHAPTER_INDIVIDUAL_RESOLUTION] Failed: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId, e);
+            throw e;
+        }
     }
 }
