@@ -9,6 +9,6 @@ This directory now contains only the versioned material that has not yet been fu
 
 ## Guidance
 
-- Prefer `docs/development/current/` for the current system
+- Prefer top-level canonical docs plus `docs/planning/` and `docs/brainstorm/` for active work
 - Prefer `docs/archive/versions/` for superseded milestone archaeology
 - Do not add new milestone folders here unless explicitly needed

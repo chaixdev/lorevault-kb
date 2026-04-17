@@ -11,7 +11,7 @@ We need a reliable, automated source of truth for the LoreVault API surface so c
 - `/docs/architecture/02-functional-viewpoint.md` (CQRS patterns and command/query segregation)
 - `/docs/api/specifications/rest-api-specification.md` (current hand-maintained spec)
 - `/lorevault-api/src/main/java/com/lorevault/api/web/` (current controllers and route structure)
-- `/docs/development/current/SPEC_DOCUMENTATION_GUIDELINES.md` (documentation standards)
+- `/docs/rules/spec-documentation-guidelines.md` (documentation standards)
 
 ## Problem
 

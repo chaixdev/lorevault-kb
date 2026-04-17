@@ -266,4 +266,3 @@ These emerged from the review but were not resolved:
 - [Oracle raw analysis](oracle_raw.md) — unedited Oracle reasoning
 - `docs/concepts/` — original concept docs under review
 - `docs/PROJECT-STATUS.md` — current implementation state
-- `docs/development/current/refactor-roadmap.md` — active refactor continuity

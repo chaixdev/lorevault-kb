@@ -186,7 +186,6 @@ This pattern does **not** cover:
 - `individual-resolution-ladder.md`
 - `ingestion-pipeline.md`
 - `../adr/008-define-ingestion-completion-across-parallel-branches.md`
-- `../development/current/refactor-roadmap.md`
 - `../brainstorm/entity-pipelines/location-extraction-proposal-april-2026.md`
 
 ## Key Code References

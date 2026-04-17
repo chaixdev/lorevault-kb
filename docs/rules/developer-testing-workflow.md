@@ -8,6 +8,13 @@
 - keep the fast loop cheap
 - prefer behavior-preserving changes backed by tests
 
+## Philosophy
+
+- keep the default loop fast
+- use broader verification deliberately before meaningful structural changes land
+- prefer tests that reflect real behavior over tests that preserve stale abstractions
+- treat architecture tests as a deliberate guardrail, not part of the default loop while the system is still evolving
+
 ## Broader Checks
 
 - `mvn verify -P integration-tests` before meaningful backend changes land
@@ -22,6 +29,32 @@
 - prefer deterministic fixtures
 - do not preserve stale abstractions just to satisfy old test structure
 
-Primary sources:
-- `../development/current/testing/developer-testing-workflow.md`
-- `../development/current/testing/testing-strategy-v2-concise.md`
+## Running Individual Tests
+
+- single class: `mvn -Dtest=ClassNameTest test`
+- single method: `mvn -Dtest=ClassNameTest#methodName test`
+- add `-DtrimStackTrace=true` when you want shorter failure output
+
+## Reports
+
+- JaCoCo: `lorevault-api/target/site/jacoco/index.html`
+- PIT: `lorevault-api/target/pit-reports/index.html`
+- Surefire reports: `lorevault-api/target/surefire-reports/`
+- Failsafe reports: `lorevault-api/target/failsafe-reports/`
+
+## Running The App For Manual Testing
+
+Preferred local run command:
+
+```bash
+./scripts/dev-api.sh run
+```
+
+Background workflow:
+
+```bash
+./scripts/dev-api.sh start
+./scripts/dev-api.sh logs
+```
+
+If you are not using the helper script, make sure the environment variables referenced by `lorevault-api/src/main/resources/application.yml` are available.

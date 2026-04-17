@@ -76,17 +76,16 @@ All 4 decisions from the original modulith plan are resolved. No architectural d
 ## Canonical Entry Points
 
 - `docs/architecture/README.md`
-- `docs/development/current/`
-- `docs/development/current/refactor-roadmap.md`
-- `docs/development/current/m2-m4-implementation-plan.md`
+- `docs/planning/README.md`
+- `docs/rules/development-workflow.md`
 - `docs/patterns/README.md`
 - `docs/patterns/individual-resolution-ladder.md`
 - `docs/patterns/location-resolution-ladder.md`
 - `docs/adr/README.md`
 - `docs/concepts/README.md`
 - `docs/rules/README.md`
-- `docs/development/research/spring-ai-keep-vs-drop-analysis.md`
+- `docs/brainstorm/README.md`
 
 ## Historical / Transitional Notes
 
-Documentation taxonomy cleanup is in progress. Historical material largely lives in `docs/archive/`, but canonical guidance is still being promoted into `docs/adr/`, `docs/patterns/`, `docs/concepts/`, and `docs/rules/`.
+Documentation taxonomy cleanup is in progress. Historical material largely lives in `docs/archive/`, while active work now centers on `docs/planning/`, `docs/brainstorm/`, and the top-level canonical docs.

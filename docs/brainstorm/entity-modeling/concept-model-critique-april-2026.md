@@ -278,8 +278,5 @@ The architecture should stay simple enough for one person to reason about and ma
 
 - `docs/concepts/` — the concept docs reviewed here
 - `docs/PROJECT-STATUS.md` — current implementation state
-- `docs/development/current/refactor-roadmap.md` — active refactor continuity
-- `docs/development/current/data-model/schemas/claims.schema.json` — three-bin claim schema
-
 
 

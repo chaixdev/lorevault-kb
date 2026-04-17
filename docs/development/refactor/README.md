@@ -6,7 +6,7 @@ The historical refactor planning set has moved to:
 
 For active refactor continuity, use:
 
-- `docs/development/current/refactor-roadmap.md`
+- `docs/planning/README.md`
 
 For durable architectural decisions, use:
 

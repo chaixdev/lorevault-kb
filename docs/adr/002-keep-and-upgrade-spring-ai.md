@@ -15,4 +15,4 @@ LoreVault keeps Spring AI and upgrades from `1.0.0` to `1.1.4`.
 
 ## Notes
 
-Detailed migration analysis lives in `docs/development/research/spring-ai-keep-vs-drop-analysis.md`.
+The keep-and-upgrade decision was based on migration analysis performed during the documentation refactor and Spring AI upgrade work.

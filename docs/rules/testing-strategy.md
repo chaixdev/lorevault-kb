@@ -17,6 +17,24 @@ LoreVault relies on a mixed testing approach:
 - run architecture tests deliberately while the codebase continues to evolve
 - preserve behavior first when refactoring
 
+## Current Test Shape
+
+LoreVault currently mixes:
+
+- domain tests
+- service tests
+- persistence and integration tests
+- targeted infrastructure tests
+- on-demand architecture tests
+
+The active direction is simpler than the older ports-and-adapters testing shape: test business behavior directly, then validate real wiring where it matters.
+
+## Test Categories
+
+- `@Tag("integration")` — real infrastructure or Spring wiring
+- `@Tag("architecture")` — ArchUnit tests, excluded by default
+- untagged/default tests — the normal fast loop
+
 ## Commands That Matter
 
 - fast loop: `mvn test`
@@ -27,6 +45,20 @@ LoreVault relies on a mixed testing approach:
 
 The durable rule is that refactors must preserve behavior and keep the full pipeline testable end to end.
 
-Primary references:
-- `../development/current/testing/testing-strategy-v2-concise.md`
-- `../development/current/testing/developer-testing-workflow.md`
+## Tooling Notes
+
+- Testcontainers reuse is enabled in test resources for faster integration runs
+- JUnit 5 class-level parallelism is enabled
+- Surefire uses practical fork/reuse settings for local development
+
+## Transitional Reality
+
+Some tests and docs still reflect older architectural assumptions.
+
+Treat those as historical residue rather than the target model.
+
+The target model is:
+
+- simpler code
+- direct tests for direct code
+- integration tests where the system boundary is real

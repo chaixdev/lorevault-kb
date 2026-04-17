@@ -10,6 +10,12 @@ Patterns explain important areas of the current system that are implemented acro
 - explaining multi-file or cross-layer behavior
 - preserving high-level structure without forcing readers to reverse-engineer the codebase
 
+Some pattern docs are lightweight overviews.
+
+Others need to be more implementation-ready and procedural.
+
+When a pattern doc needs that deeper level of workflow/state/integration detail, follow the quality bar in `../rules/spec-documentation-guidelines.md`.
+
 ## Patterns Are Not For
 
 - architectural fork-in-the-road decisions that belong in `../adr/`

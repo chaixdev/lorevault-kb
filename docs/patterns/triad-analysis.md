@@ -129,6 +129,4 @@ The triad analysis pattern is focused on temporal inference and does not cover:
 
 ## Primary References
 
-- `../development/current/processes/triad-orchestration.md`
-- `../development/current/processes/scene-detection-specification.md`
 - `../adr/004-keep-the-event-driven-ingestion-pipeline.md`

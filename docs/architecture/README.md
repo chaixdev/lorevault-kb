@@ -14,7 +14,7 @@ The architecture is designed to be robust, scalable, and maintainable, leveragin
 2. **Hybrid AI Architecture**: Local Gemma 3B for cost-effective pre-processing + External LLMs for complex reasoning
 3. **Asynchronous Processing**: Non-blocking ingestion with background processing pipelines
 4. **Container-First Deployment**: Docker-based deployment for consistency and scalability
-5. **Service Consolidation**: Focused business services (not micro-services) - see [Service Design Principles](../development/current/architecture/service-design-principles.md)
+5. **Service Consolidation**: Focused business services (not micro-services) - see [Service Design Principles](../rules/service-design-principles.md)
 
 ## Architectural Viewpoints
 
@@ -34,7 +34,7 @@ Details the runtime functional elements, their responsibilities, and interaction
 **Stakeholders:** Data architects, developers, database administrators  
 **Concerns:** Data structure, storage strategy, information lifecycle
 
-Describes the data architecture, including Neo4j schema design, vector storage, and information processing flow. References detailed data model specifications in `../development/current/data-model/`.
+Describes the data architecture, including Neo4j schema design, vector storage, and information processing flow.
 
 ### [4. Concurrency Viewpoint](./04-concurrency-viewpoint.md)
 **Stakeholders:** Performance engineers, developers, system administrators  
@@ -68,8 +68,6 @@ Details the deployment strategy, containerization approach, and infrastructure r
 
 - [Project Summary](../project_summary.md) - High-level project goals and scope
 - [API Specifications](../api/) - REST API documentation and collections
-- [Data Model](../development/current/data-model/) - Neo4j schema and entity relationships
-- [Process Specifications](../development/current/processes/) - Business workflow documentation
 - [Concepts](../concepts/README.md) - Durable conceptual models that influence architecture without claiming full implementation parity
 - [Rules](../rules/README.md) - Contributor and documentation guidance
 
@@ -79,7 +77,7 @@ Details the deployment strategy, containerization approach, and infrastructure r
 
 ### Folder Boundaries
 - **Root level**: Architectural viewpoints following ISO/IEC/IEEE 42010 standard
-- **Do not add**: API documentation (go to `../api/`), detailed data schemas (go to `../development/current/data-model/schemas/`)
+- **Do not add**: API documentation (go to `../api/`), detailed data schemas in ad hoc locations
 
 ### When Updating Architecture Documentation
 - **Viewpoint changes**: Update relevant viewpoint files, maintain cross-references
@@ -87,7 +85,7 @@ Details the deployment strategy, containerization approach, and infrastructure r
 - **Architectural decisions**: Document rationale and trade-offs clearly
 
 ### Cross-Reference Requirements
-- **Link to specifications**: Use `../api/specifications/`, `../development/current/data-model/`, `../development/current/processes/` paths
+- **Link to specifications**: Prefer canonical homes first; avoid linking to archived supporting material from active docs
 - **Maintain viewpoint consistency**: Ensure changes cascade to related viewpoints
 - **Update navigation**: Keep Quick Navigation section current
 

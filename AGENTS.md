@@ -11,18 +11,15 @@ Use it for command selection, documentation routing, and local development workf
 - Main runnable module: `lorevault-api`
 - Graph database: Neo4j via `docker-compose.yml`
 - Living documentation: `docs/`
-- Temporary agent working memory: `.agent-notes/`
 
 ## Source of truth
 
 When checking status or roadmap, prefer these files in this order:
 
 1. `docs/PROJECT-STATUS.md` — current progress snapshot
-2. `docs/development/current/refactor-roadmap.md` — broad roadmap
-3. `docs/development/current/` — current system docs
+2. `docs/planning/README.md` — bounded future work and parked planning context
+3. `docs/rules/development-workflow.md` — default repo workflow for brainstorm, implementation, and promotion
 4. `docs/archive/` — archaeology only
-
-Do not treat `.agent-notes/` as canonical documentation.
 
 ## Build and test commands
 
@@ -161,15 +158,19 @@ Example:
 ## Agent workflow expectations
 
 - Prefer existing scripts over ad hoc replacements
-- Prefer `mvn` commands already documented in `docs/development/current/testing/developer-testing-workflow.md`
+- Prefer `mvn` commands already documented in `docs/rules/developer-testing-workflow.md`
 - Prefer small, focused changes over broad refactors unless explicitly asked
 - When documenting current behavior, verify against code/config, not only README prose
 - When status and roadmap disagree, treat `docs/PROJECT-STATUS.md` as the progress snapshot
+- Follow `docs/rules/development-workflow.md` as the default repo workflow
 
 ## When adding new docs
 
-- Put current, durable documentation under `docs/development/current/`, `docs/patterns/`, or `docs/adr/`
-- Put temporary exploration or ticket notes under `.agent-notes/`
+- Put current, durable documentation in the top-level canonical docs whose meaning matches the content (`docs/adr/`, `docs/patterns/`, `docs/rules/`, `docs/concepts/`, etc.)
+- Put exploratory proposals and solution-space analysis under `docs/brainstorm/`
+- Put bounded future work and parked items under `docs/planning/`
+- Put keepable investigation notes, parked issues, and lightweight tracking docs under `docs/` in the folder whose meaning matches the document's purpose
+- Put truly throwaway scratch material outside the repository (for example, system temp), not in tracked repo docs
 - Put historical or superseded material in `docs/archive/`
 
 ## Do not assume

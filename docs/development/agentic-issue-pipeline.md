@@ -107,7 +107,7 @@ Agents can query for work: "Show me `ai/task` issues with `status/ready`"
 
 **Body**:
 ```markdown
-Context source: https://github.com/chaixdev/lorevault-kb/blob/main/docs/development/testing/testing-strategy-v2-concise.md#L216
+Context source: https://github.com/chaixdev/lorevault-kb/blob/main/docs/rules/testing-strategy.md
 
 Section: Testing Strategy / Test Development Guidelines / Developer Checklist
 

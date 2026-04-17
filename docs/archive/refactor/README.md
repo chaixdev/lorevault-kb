@@ -1,7 +1,7 @@
 # LoreVault Refactor Documents
 
 **Status:** Transitional historical area  
-**Canonical roadmap:** `../../development/current/refactor-roadmap.md`
+**Canonical roadmap:** `../../planning/README.md`
 
 This directory now primarily contains historical refactor plans, execution logs, and completed ticket material.
 
@@ -9,8 +9,8 @@ Use this directory for archaeology, not for the current source of truth.
 
 ## Current guidance
 
-- Start with `../../development/current/refactor-roadmap.md`
-- Use `../../development/research/spring-ai-keep-vs-drop-analysis.md` for the Spring AI decision
+- Start with `../../planning/README.md`
+- Use `../../adr/002-keep-and-upgrade-spring-ai.md` for the Spring AI decision
 - Use `../../adr/` for durable architectural decisions
 
 ## Historical contents
@@ -136,8 +136,8 @@ Each phase builds on the previous and can be independently validated:
 ## 📚 Supporting Documentation
 
 ### Architecture Guidelines (Updated)
-- [Service Design Principles](../../development/current/architecture/service-design-principles.md) - Guidelines to prevent future over-segmentation
-- [Testing Strategy](../../development/current/testing/testing-strategy-v2-concise.md) - Updated with consolidation guidance
+- [Service Design Principles](../../rules/service-design-principles.md) - Guidelines to prevent future over-segmentation
+- [Testing Strategy](../../rules/testing-strategy.md) - Updated with consolidation guidance
 
 ### Development Process (Updated)  
 - [LLM Development Plan](../../../.github/instructions/LLM_DEVELOPMENT_PLAN.md) - Includes service consolidation guidance

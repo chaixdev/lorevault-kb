@@ -6,7 +6,6 @@
 - [Entity-Event-Claim-model.md](Entity-Event-Claim-model.md) — four-bin claim model, vocabulary catalogs, confidence formula, projection edges, output schemas, and the Claim DSL (CDSL)
 - [model_and_CDSL.md](model_and_CDSL.md) — consolidated playbook covering the same model and CDSL from a slightly different angle
 - [core-domain-model-and-graph-process-restructured.md](core-domain-model-and-graph-process-restructured.md) — end-to-end domain model including entity taxonomy, ingestion pipeline, claim extraction, confidence aggregation, and spoiler-aware querying
-- [`../development/current/data-model/schemas/claims.schema.json`](../development/current/data-model/schemas/claims.schema.json)
 
 ## Why This Exists
 

@@ -1,35 +1,18 @@
-# Development Documentation
+# Development Documentation (Transitional)
 
-This section contains the system's active technical documentation.
+This directory is now a transitional holdover.
 
-## Current Sources of Truth
+Active documentation has moved to the top-level docs taxonomy:
 
-- **`current/`** — living documentation of the current system
-- **`research/`** — active deep-dive research still relevant to current decisions
+- `../planning/` for bounded future work
+- `../brainstorm/` for proposals and exploratory research
+- `../adr/`, `../patterns/`, `../rules/`, and `../concepts/` for accepted current truth
 
-## Current Focus Areas
+Historical material from the old `current/` and `research/` trees has been archived under `../archive/development/`.
 
-- data model: `current/data-model/`
-- process specs: `current/processes/`
-- testing: `current/testing/`
-- configuration: `current/configuration/`
+## Remaining Transitional Areas
 
-## Transitional Material
+- `refactor/` — redirect and archaeology material for older refactor documentation
+- `versions/` — transitional version-scoped material that has not yet been fully retired or archived
 
-Two older documentation groups still exist here during the documentation refactor:
-
-- `refactor/` — redirect stubs pointing to archived refactor material
-- `versions/` — redirect stubs pointing to archived milestone material
-
-These directories are now thin transition layers. Historical content has largely moved into `docs/archive/`.
-
-## Guidance
-
-- put new current-state docs under `current/`
-- keep durable research under `research/`
-- avoid creating new version-scoped planning trees unless explicitly needed
-- prefer `docs/adr/` for durable architectural decisions
-- prefer `docs/patterns/` for reusable present-state mechanism guidance
-- prefer `docs/concepts/` for durable conceptual models that are not honest as current implementation docs
-- prefer `docs/rules/` for contributor guidance and durable conventions
-- prefer `docs/brainstorm/` for future-facing proposals and exploratory sketches
+Do not add new active documentation under `docs/development/`.

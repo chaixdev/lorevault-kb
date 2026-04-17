@@ -89,8 +89,8 @@ These guides focus on **consistency principles** for adding new endpoints rather
 - **~~collections/~~**: Removed (replaced by auto-generated OpenAPI)
 
 ### Cross-Reference Requirements
-- **Data models**: Reference `../development/current/data-model/` for entity specifications
-- **Processes**: Reference `../development/current/processes/` for workflow documentation  
+- **Data models**: Reference canonical data-model or pattern docs when available rather than archived implementation notes
+- **Processes**: Reference canonical pattern docs when available rather than archived workflow notes  
 - **Architecture**: Reference `../architecture/` for system design
 - **Conceptual models**: Reference `../concepts/` when API behavior depends on preserved domain concepts rather than current implementation details
 - **Contributor guidance**: Reference `../rules/` for durable conventions rather than restating repo-wide rules locally

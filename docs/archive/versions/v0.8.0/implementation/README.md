@@ -24,5 +24,4 @@ For understanding v0.8.0 implementation details:
 
 - **Testing patterns**: See `testing/testing-strategy-v2-concise.md`
 - **Architecture**: See `../../architecture/` documentation
-- **Current data model**: See `../../../../development/current/data-model/` for evolved schemas
-- **Current processes**: See `../../../../development/current/processes/` for current specifications
+- **Historical supporting material**: See `../../../../archive/development/current/` for archived detail that was not promoted into the active taxonomy

@@ -388,9 +388,9 @@ Mark as **DEFERRED** with note "Blocked by event-driven refactor (v0.10.0 milest
 
 - **Entity-Claim Model:** `docs/development/versions/v0.8.0/research/Entity-Event-Claim-model.md`
 - **Existing Event Plan:** `docs/development/refactor/event-driven-architecture-plan.md` (service consolidation context)
-- **Scene Detection:** `docs/development/current/processes/scene-detection-specification.md`
-- **Triad Orchestration:** `docs/development/current/processes/triad-orchestration.md`
-- **Testing Strategy:** `docs/development/current/testing/testing-strategy-v2-concise.md`
+- **Scene Detection:** see current ingestion and scene-detection pattern docs for active guidance
+- **Triad Orchestration:** see current triad-analysis and ingestion pattern docs for active guidance
+- **Testing Strategy:** `docs/rules/testing-strategy.md`
 
 ## Sign-off
 

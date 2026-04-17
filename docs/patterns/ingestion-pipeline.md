@@ -154,7 +154,4 @@ To support safe event re-delivery and manual restarts, each handler verifies its
 - **Content hierarchy** — The management of Universes, Series, and Books is the responsibility of the `LibraryService`.
 
 ### Primary References
-- `../development/current/processes/scene-detection-specification.md`
-- `../development/current/processes/triad-orchestration.md`
 - `../adr/004-keep-the-event-driven-ingestion-pipeline.md`
-- `../development/current/data-model/ingestion-job-and-status.md`

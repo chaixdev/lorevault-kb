@@ -138,5 +138,4 @@ Those remain future improvements after baseline safety and throughput.
 
 - `ingestion-pipeline.md`
 - `triad-analysis.md`
-- `../development/current/processes/scene-detection-specification.md`
 - `../brainstorm/scene-detection-context-budget-and-segmentation-spec-april-2026.md` (proposal history)

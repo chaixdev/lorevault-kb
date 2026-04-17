@@ -8,7 +8,8 @@ Read these first:
 - **[Architecture Overview](architecture/README.md)** — stakeholder-facing system viewpoints
 - **[Architecture Decisions](adr/README.md)** — accepted decisions made at real architectural forks
 - **[Pattern Library](patterns/README.md)** — present-state mechanism docs for important multi-file areas
-- **[Refactor Roadmap](development/current/refactor-roadmap.md)** — active continuity for ongoing structural work
+- **[Development Workflow](rules/development-workflow.md)** — the default brainstorm → implement → promote loop for this repository
+- **[Planning](planning/README.md)** — bounded future work, parked items, and ticket-like planning context
 
 ## Documentation Taxonomy
 
@@ -19,12 +20,11 @@ Read these first:
 - **`patterns/`** — current implementation mechanisms that are hard to infer from code alone
 - **`concepts/`** — durable conceptual models worth preserving even when implementation diverges
 - **`rules/`** — coding, documentation, and hygiene guidance
-- **`development/current/`** — current detailed specs, data-model docs, and active continuity docs that have not yet been promoted into a smaller permanent home
+- **`planning/`** — outstanding future work, parked investigations, and bounded scopes written in a ticket-like but solution-neutral style
 
 ### Exploratory / Future-Facing Documentation
 
 - **`brainstorm/`** — proposals, sketches, and future-facing explorations that are valuable but not current truth
-- **`development/research/`** — active research that still informs current decisions and may later become ADRs, patterns, or concepts
 
 ### Historical Documentation
 
@@ -41,7 +41,7 @@ Documentation migration is **in progress**.
 The current repository still contains a mix of:
 
 - canonical current docs
-- older `development/` holdovers
+- older `development/` holdovers likely to be migrated or removed
 - historical refactor and version material already archived
 - conceptual work that still needs a better permanent home
 
@@ -76,6 +76,13 @@ The immediate goal of this migration is to make the directory meanings obvious a
 - it is a proposal, sketch, or option space
 - it may eventually turn into a concept, ADR, or pattern
 
+### Use `planning/` when
+
+- the work is worth tracking but not yet implemented
+- the item should read like a lightweight ticket
+- the document should capture product context, technical context, scope, and constraints
+- the solution should remain open until the brainstorm and implementation cycle converges
+
 ### Use `rules/` when
 
 - the document sets coding or documentation conventions
@@ -90,10 +97,8 @@ The immediate goal of this migration is to make the directory meanings obvious a
 
 ## Navigation
 
-- **Current system understanding**: `development/current/`
-- **Data-model specifics**: `development/current/data-model/`
-- **Current process specs**: `development/current/processes/`
-- **Current configuration docs**: `development/current/configuration/`
+- **Planning and parked work**: `planning/`
+- **Exploration and proposals**: `brainstorm/`
 - **Durable conceptual models**: `concepts/`
 - **Contributor guidance**: `rules/`
 - **Current implementation patterns**: `patterns/`
@@ -108,11 +113,13 @@ Put material in canonical `docs/` only if it is:
 - honest about whether it describes the present, a concept, or a proposal
 - placed in the folder whose meaning matches the document's purpose
 
-Use `.agent-notes/` for:
+Keep material in `docs/` when you want it to survive the current session.
 
-- exploratory analysis
-- ticket-specific investigation
-- review artifacts
-- temporary migration trackers and working memory
+Examples include:
 
-`.agent-notes/` is not canonical documentation.
+- parked bug investigations
+- lightweight work tracking
+- review notes worth preserving
+- exploratory analysis that may inform later implementation or canonical docs
+
+Use out-of-repo scratch space for truly throwaway working material.

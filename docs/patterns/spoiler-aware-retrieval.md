@@ -78,5 +78,3 @@ The `RagService.validateAndConvertFilters()` method enforces hierarchy validatio
 
 ### Primary References
 - `../adr/006-spoiler-aware-search-design.md`
-- `../development/current/data-model/content-hierarchy-integration.md`
-

@@ -33,6 +33,4 @@ This pattern is about how LoreVault structures LLM responses.
 It is not itself the full orchestration story; triad orchestration, status emission, and persistence observability are related but separate mechanisms.
 
 Primary references:
-- `../development/research/spring-ai-keep-vs-drop-analysis.md`
 - `../adr/005-move-structured-output-from-xml-to-json.md`
-- `../development/current/processes/triad-orchestration.md`

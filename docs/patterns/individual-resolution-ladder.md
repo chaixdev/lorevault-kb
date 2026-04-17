@@ -209,9 +209,7 @@ This pattern does **not** cover:
 ## Primary References
 
 - `ingestion-pipeline.md`
-- `../development/current/refactor-roadmap.md`
 - `../brainstorm/individual-resolution/individual-resolution-proposal-april-2026.md` (proposal history + implementation notes)
-- `../development/current/processes/scene-detection-specification.md`
 
 ## Key Code References
 
