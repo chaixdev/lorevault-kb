@@ -1,18 +1,15 @@
 package com.lorevault.api.ingestion;
 
-import lombok.Getter;
-import org.springframework.context.ApplicationEvent;
 import java.util.UUID;
 
-@Getter
-public class ChapterIngestionEvent extends ApplicationEvent {
-    private final UUID jobId;
-    private final UUID chapterId;
-    
+public class ChapterIngestionEvent extends IngestionEvent {
+
     public ChapterIngestionEvent(Object source, UUID jobId, UUID chapterId) {
-        super(source);
-        this.jobId = jobId;
-        this.chapterId = chapterId;
+        super(source, jobId, chapterId);
     }
 
+    @Override
+    public String getEventType() {
+        return "CHAPTER_INGESTION_STARTED";
+    }
 }
