@@ -137,7 +137,7 @@ Each phase builds on the previous and can be independently validated:
 
 ### Architecture Guidelines (Updated)
 - [Service Design Principles](../../rules/service-design-principles.md) - Guidelines to prevent future over-segmentation
-- [Testing Strategy](../../rules/testing-strategy.md) - Updated with consolidation guidance
+- [Testing Strategy](../../patterns/testing-strategy.md) - Updated with consolidation guidance
 
 ### Development Process (Updated)  
 - [LLM Development Plan](../../../.github/instructions/LLM_DEVELOPMENT_PLAN.md) - Includes service consolidation guidance

@@ -390,7 +390,7 @@ Mark as **DEFERRED** with note "Blocked by event-driven refactor (v0.10.0 milest
 - **Existing Event Plan:** `docs/development/refactor/event-driven-architecture-plan.md` (service consolidation context)
 - **Scene Detection:** see current ingestion and scene-detection pattern docs for active guidance
 - **Triad Orchestration:** see current triad-analysis and ingestion pattern docs for active guidance
-- **Testing Strategy:** `docs/rules/testing-strategy.md`
+- **Testing Strategy:** `docs/patterns/testing-strategy.md`
 
 ## Sign-off
 

@@ -73,7 +73,7 @@ The LoreVault testing transformation has successfully completed its core objecti
 ## Related Documentation
 
 ### Strategy & Planning
-- [Testing Strategy](../../../../rules/testing-strategy.md) - Current canonical testing guidance
+- [Testing Strategy](../../../../patterns/testing-strategy.md) - Current canonical testing guidance
 - [Test Rewrite Plan](testing-rewrite-phase1/test-rewrite-plan.md) - Detailed implementation plan
 - [Test Rewrite Plan](testing-rewrite-phase1/test-rewrite-plan.md) - Historical transformation plan and approach
 

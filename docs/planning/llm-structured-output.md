@@ -1,4 +1,4 @@
-# LLM Structured Output Pattern
+# LLM Structured Output
 
 **Status:** Established
 

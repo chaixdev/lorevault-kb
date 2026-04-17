@@ -1,4 +1,4 @@
-# Testing Strategy Pattern
+# Testing Strategy
 
 **Status:** Established
 

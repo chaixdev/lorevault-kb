@@ -34,3 +34,5 @@ When a pattern doc needs that deeper level of workflow/state/integration detail,
 - [Spoiler-Aware Retrieval](spoiler-aware-retrieval.md) — publication-coordinate filtering on vector search
 - [RAG Retrieval Chain](rag-retrieval-chain.md) — retrieve-then-generate pipeline with citations
 - [CQRS Command-Query Separation](cqrs-command-query-separation.md) — structural split of write and read API paths
+- [LLM Structured Output](../planning/llm-structured-output.md) — typed LLM response binding and reduced ad hoc parsing
+- [Testing Strategy](testing-strategy.md) — present-state testing shape and profile usage model
