@@ -26,55 +26,79 @@ public class LibraryOptionsController {
     private final LibraryQueryService libraryQueryService;
 
     @GetMapping("/universes")
-    public String universeOptions(@RequestParam(value = "selected", required = false) UUID selectedUniverseId,
-                                  @RequestParam(value = "universeId", required = false) UUID universeId,
+    public String universeOptions(@RequestParam(value = "selected", required = false) String selectedUniverseId,
+                                  @RequestParam(value = "universeId", required = false) String universeId,
+                                  @RequestParam(value = "universeSelection", required = false) String universeSelection,
+                                  @RequestParam(value = "includeCreateOption", defaultValue = "false") boolean includeCreateOption,
                                   Model model) {
         List<UniverseOption> universes = libraryQueryService.listUniverses().stream()
                 .map(UniverseOption::from)
                 .toList();
-        UUID resolvedSelected = selectedUniverseId != null ? selectedUniverseId : universeId;
+        String resolvedSelected = firstNonBlank(selectedUniverseId, universeSelection, universeId);
         model.addAttribute("universes", universes);
-        model.addAttribute("selectedUniverseId", resolvedSelected);
+        model.addAttribute("selectedValue", resolvedSelected);
+        model.addAttribute("includeCreateOption", includeCreateOption);
         return "ui/options :: universeOptions";
     }
 
     @GetMapping("/series")
-    public String seriesOptions(@RequestParam(value = "universeId", required = false) UUID universeId,
-                                @RequestParam(value = "selected", required = false) UUID selectedSeriesId,
-                                @RequestParam(value = "seriesId", required = false) UUID seriesId,
+    public String seriesOptions(@RequestParam(value = "universeId", required = false) String universeId,
+                                @RequestParam(value = "universeSelection", required = false) String universeSelection,
+                                @RequestParam(value = "selected", required = false) String selectedSeriesId,
+                                @RequestParam(value = "seriesId", required = false) String seriesId,
+                                @RequestParam(value = "seriesSelection", required = false) String seriesSelection,
+                                @RequestParam(value = "includeCreateOption", defaultValue = "false") boolean includeCreateOption,
                                 Model model) {
-        log.info("[OPTIONS] Loading series options for universeId={}", universeId);
-        List<SeriesOption> series = universeId == null ? List.of() : libraryQueryService.listSeries(universeId).stream()
+        String resolvedUniverseSelection = firstNonBlank(universeSelection, universeId);
+        UUID resolvedUniverseId = parseUuid(resolvedUniverseSelection);
+        log.info("[OPTIONS] Loading series options for universeId={}", resolvedUniverseId);
+        List<SeriesOption> series = resolvedUniverseId == null ? List.of() : libraryQueryService.listSeries(resolvedUniverseId).stream()
                 .map(SeriesOption::from)
                 .toList();
-        log.info("[OPTIONS] Found {} series for universeId={}", series.size(), universeId);
-        UUID resolvedSelected = selectedSeriesId != null ? selectedSeriesId : seriesId;
+        log.info("[OPTIONS] Found {} series for universeId={}", series.size(), resolvedUniverseId);
+        String resolvedSelected = firstNonBlank(selectedSeriesId, seriesSelection, seriesId);
+        if (resolvedSelected != null && !NEW_SELECTION.equals(resolvedSelected) && parseUuid(resolvedSelected) == null) {
+            resolvedSelected = null;
+        }
         model.addAttribute("series", series);
-        model.addAttribute("selectedSeriesId", resolvedSelected);
+        model.addAttribute("selectedValue", resolvedSelected);
+        model.addAttribute("includeCreateOption", includeCreateOption);
         return "ui/options :: seriesOptions";
     }
 
     @GetMapping("/books")
-    public String bookOptions(@RequestParam(value = "universeId", required = false) UUID universeId,
-                              @RequestParam(value = "seriesId", required = false) UUID seriesId,
-                              @RequestParam(value = "selected", required = false) UUID selectedBookId,
-                              @RequestParam(value = "bookId", required = false) UUID bookId,
+    public String bookOptions(@RequestParam(value = "universeId", required = false) String universeId,
+                              @RequestParam(value = "universeSelection", required = false) String universeSelection,
+                              @RequestParam(value = "seriesId", required = false) String seriesId,
+                              @RequestParam(value = "seriesSelection", required = false) String seriesSelection,
+                              @RequestParam(value = "selected", required = false) String selectedBookId,
+                              @RequestParam(value = "bookId", required = false) String bookId,
+                              @RequestParam(value = "bookSelection", required = false) String bookSelection,
+                              @RequestParam(value = "includeCreateOption", defaultValue = "false") boolean includeCreateOption,
                               Model model) {
         List<BookOption> books;
-        if (seriesId != null) {
-            books = libraryQueryService.listBooksForSeries(seriesId).stream()
+        String resolvedUniverseSelection = firstNonBlank(universeSelection, universeId);
+        String resolvedSeriesSelection = firstNonBlank(seriesSelection, seriesId);
+        UUID resolvedSeriesId = parseUuid(resolvedSeriesSelection);
+        UUID resolvedUniverseId = parseUuid(resolvedUniverseSelection);
+        if (resolvedSeriesId != null) {
+            books = libraryQueryService.listBooksForSeries(resolvedSeriesId).stream()
                     .map(BookOption::from)
                     .toList();
-        } else if (universeId != null) {
-            books = libraryQueryService.listBooksForUniverse(universeId).stream()
+        } else if (resolvedUniverseId != null && (resolvedSeriesSelection == null || resolvedSeriesSelection.isBlank())) {
+            books = libraryQueryService.listBooksForUniverse(resolvedUniverseId).stream()
                     .map(BookOption::from)
                     .toList();
         } else {
             books = List.of();
         }
-        UUID resolvedSelected = selectedBookId != null ? selectedBookId : bookId;
+        String resolvedSelected = firstNonBlank(selectedBookId, bookSelection, bookId);
+        if (resolvedSelected != null && !NEW_SELECTION.equals(resolvedSelected) && parseUuid(resolvedSelected) == null) {
+            resolvedSelected = null;
+        }
         model.addAttribute("books", books);
-        model.addAttribute("selectedBookId", resolvedSelected);
+        model.addAttribute("selectedValue", resolvedSelected);
+        model.addAttribute("includeCreateOption", includeCreateOption);
         return "ui/options :: bookOptions";
     }
 
@@ -116,4 +140,26 @@ public class LibraryOptionsController {
             Integer sceneCount,
             String status
     ) {}
+
+    private static final String NEW_SELECTION = "__new__";
+
+    private UUID parseUuid(String value) {
+        if (value == null || value.isBlank() || NEW_SELECTION.equals(value)) {
+            return null;
+        }
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
 }

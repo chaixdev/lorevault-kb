@@ -2,28 +2,43 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <body>
 <th:block th:fragment="universeOptions">
-    <option value="" th:text="${universes == null || universes.isEmpty() ? 'No universes yet' : 'Select a universe'}"
-            th:selected="${selectedUniverseId == null}"></option>
+    <option value="" th:text="${universes == null || universes.isEmpty() ? 'Select or create a universe' : 'Select a universe'}"
+            th:selected="${selectedValue == null || selectedValue.isBlank()}"></option>
     <option th:each="universe : ${universes}"
             th:value="${universe.id}"
             th:text="${universe.name}"
-            th:selected="${selectedUniverseId != null and selectedUniverseId.equals(universe.id)}"></option>
+            th:selected="${selectedValue != null and selectedValue.equals(universe.id.toString())}"></option>
+    <option th:if="${includeCreateOption}"
+            value="__new__"
+            th:selected="${selectedValue != null and selectedValue.equals('__new__')}">
+        + New universe...
+    </option>
 </th:block>
 
 <th:block th:fragment="seriesOptions">
-    <option value="" th:selected="${selectedSeriesId == null}">Standalone book</option>
+    <option value="" th:selected="${selectedValue == null || selectedValue.isBlank()}">Standalone / no series</option>
     <option th:each="item : ${series}"
             th:value="${item.id}"
             th:text="${item.name}"
-            th:selected="${selectedSeriesId != null and selectedSeriesId.equals(item.id)}"></option>
+            th:selected="${selectedValue != null and selectedValue.equals(item.id.toString())}"></option>
+    <option th:if="${includeCreateOption}"
+            value="__new__"
+            th:selected="${selectedValue != null and selectedValue.equals('__new__')}">
+        + New series...
+    </option>
 </th:block>
 
 <th:block th:fragment="bookOptions">
-    <option value="" th:selected="${selectedBookId == null}">Select a book</option>
+    <option value="" th:selected="${selectedValue == null || selectedValue.isBlank()}">Select a book</option>
     <option th:each="book : ${books}"
             th:value="${book.id}"
             th:text="${book.label}"
-            th:selected="${selectedBookId != null and selectedBookId.equals(book.id)}"></option>
+            th:selected="${selectedValue != null and selectedValue.equals(book.id.toString())}"></option>
+    <option th:if="${includeCreateOption}"
+            value="__new__"
+            th:selected="${selectedValue != null and selectedValue.equals('__new__')}">
+        + New book...
+    </option>
 </th:block>
 </body>
 </html>
