@@ -17,62 +17,77 @@
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-slate-800">
                 <thead class="bg-gradient-to-r from-slate-900 to-slate-800/80">
-                    <tr class="text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                        <th class="px-4 py-3.5">Content</th>
-                        <th class="px-4 py-3.5">Location</th>
-                        <th class="px-4 py-3.5">Status</th>
-                        <th class="px-4 py-3.5">Progress</th>
-                        <th class="px-4 py-3.5">Timeline</th>
-                    </tr>
+                <tr class="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    <th class="px-3 py-2.5 w-10"></th>
+                    <th class="px-3 py-2.5">Run</th>
+                    <th class="px-3 py-2.5">Content</th>
+                    <th class="px-3 py-2.5">Location</th>
+                    <th class="px-3 py-2.5">Status</th>
+                    <th class="px-3 py-2.5">Progress</th>
+                    <th class="px-3 py-2.5">Primary</th>
+                </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800 bg-slate-900/40">
-                    <tr th:each="job : ${jobs}" class="transition hover:bg-slate-800/30">
-                        <!-- Content Column -->
-                        <td class="px-4 py-4">
-                            <div class="flex items-start gap-3">
-                                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
-                                    <svg class="h-5 w-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <th:block th:each="job : ${jobs}">
+                    <tr class="transition hover:bg-slate-800/30 cursor-pointer"
+                        th:id="|job-row-${job.jobId}|"
+                        th:attr="data-expand-url=@{/ui/jobs/{jobId}/expand(jobId=${job.jobId})},data-collapse-url=@{/ui/jobs/{jobId}/collapse(jobId=${job.jobId})}"
+                        th:hx-get="@{/ui/jobs/{jobId}/expand(jobId=${job.jobId})}"
+                        th:hx-target="@{|#job-expand-${job.jobId}|}"
+                        hx-swap="outerHTML"
+                        hx-trigger="click">
+                        <td class="px-3 py-3 align-middle">
+                            <button type="button"
+                                    class="job-toggle-button inline-flex h-6 w-6 items-center justify-center rounded border border-slate-700 bg-slate-800 text-slate-300 transition hover:border-slate-600 hover:bg-slate-700"
+                                    th:title="|Expand ${job.chapterTitle}|">
+                                <svg class="job-toggle-icon h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                        </td>
+
+                        <td class="px-3 py-3 align-top">
+                            <div class="space-y-1">
+                                <p class="font-mono text-[11px] text-slate-300" th:text="${#strings.abbreviate(job.jobId.toString(), 12)}"></p>
+                                <p class="text-[10px] uppercase tracking-wider text-slate-500">job</p>
+                            </div>
+                        </td>
+
+                        <td class="px-3 py-3 align-top max-w-[300px]">
+                            <div class="flex items-start gap-2.5">
+                                <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
+                                    <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                     </svg>
                                 </div>
                                 <div class="min-w-0">
-                                    <p class="font-medium text-white truncate" th:text="${job.chapterTitle}"></p>
-                                    <p class="mt-0.5 text-xs text-slate-400">
-                                        <span th:if="${job.chapterNumber != null}" th:text="'Chapter ' + ${job.chapterNumber}"></span>
+                                    <p class="font-medium text-white leading-5 line-clamp-2" th:text="${job.chapterTitle}" th:title="${job.chapterTitle}"></p>
+                                    <p class="mt-0.5 text-[11px] text-slate-400">
+                                        <span th:if="${job.chapterNumber != null}" th:text="'Ch ' + ${job.chapterNumber}"></span>
                                     </p>
                                 </div>
                             </div>
                         </td>
-                        
-                        <!-- Location Column -->
-                        <td class="px-4 py-4">
-                            <div class="space-y-1 text-sm">
-                                <p class="flex items-center gap-1.5 text-slate-200">
-                                    <svg class="h-3.5 w-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+                        <td class="px-3 py-3 align-top">
+                            <div class="space-y-1 text-[11px]">
+                                <p class="flex items-center gap-1 text-slate-200" th:title="${job.universe}">
+                                    <svg class="h-3 w-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
-                                    <span th:text="${job.universe != null ? job.universe : 'N/A'}"></span>
+                                    <span class="truncate" th:text="${job.universe != null ? job.universe : 'N/A'}"></span>
                                 </p>
-                                <p th:if="${job.series != null}" class="flex items-center gap-1.5 text-slate-400">
-                                    <svg class="h-3.5 w-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                                    </svg>
-                                    <span th:text="${job.series}"></span>
-                                </p>
-                                <p th:if="${job.bookNumber != null}" class="flex items-center gap-1.5 text-slate-500 text-xs">
-                                    Book #<span th:text="${job.bookNumber}"></span>
-                                </p>
+                                <p th:if="${job.series != null}" class="text-[10px] text-slate-500 truncate" th:text="${job.series}"></p>
                             </div>
                         </td>
-                        
-                        <!-- Status Column -->
-                        <td class="px-4 py-4">
+
+                        <td class="px-3 py-3 align-top">
                             <span th:with="statusName=${job.status?.name()}"
-                                  th:class="'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ' + 
-                                           (${statusName == 'COMPLETE'} ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 
-                                           (${statusName == 'FAILED'} ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 
-                                           (${statusName == 'PROCESSING'} ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 
-                                           'bg-amber-500/20 text-amber-300 border border-amber-500/30')))">
+                                  th:class="'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ' +
+                                            (${statusName == 'COMPLETE'} ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+                                            (${statusName == 'FAILED'} ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
+                                            (${statusName == 'PROCESSING'} ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                                            'bg-amber-500/20 text-amber-300 border border-amber-500/30')))">
                                 <span th:if="${statusName == 'COMPLETE'}" class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
                                 <span th:if="${statusName == 'FAILED'}" class="h-1.5 w-1.5 rounded-full bg-rose-400"></span>
                                 <span th:if="${statusName == 'PROCESSING'}" class="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse"></span>
@@ -80,49 +95,255 @@
                                 <span th:text="${job.status != null ? job.status.name() : 'UNKNOWN'}"></span>
                             </span>
                         </td>
-                        
-                        <!-- Progress Column -->
-                        <td class="px-4 py-4">
-                            <div class="flex items-center gap-3">
-                                <div class="h-2 flex-1 rounded-full bg-slate-800 overflow-hidden">
+
+                        <td class="px-3 py-3 align-top min-w-[110px]">
+                            <div class="flex items-center gap-2">
+                                <div class="h-1.5 flex-1 rounded-full bg-slate-800 overflow-hidden">
                                     <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
                                          th:style="${job.progress != null ? 'width:' + job.progress + '%' : 'width:0%'}"></div>
                                 </div>
-                                <span class="text-xs font-medium text-slate-300 w-10 text-right" 
+                                <span class="text-[11px] font-medium text-slate-300 w-10 text-right"
                                       th:text="${job.progress != null ? job.progress + '%' : '0%'}"></span>
                             </div>
                         </td>
-                        
-                        <!-- Timeline Column -->
-                        <td class="px-4 py-4">
-                            <div class="space-y-1 text-xs">
-                                <div class="flex items-center gap-1.5 text-slate-400">
-                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                    </svg>
-                                    <span th:text="${job.createdAt != null ? #temporals.format(job.createdAt, 'MMM dd, HH:mm') : 'N/A'}"></span>
-                                </div>
-                                <div th:if="${job.completedAt != null}" class="flex items-center gap-1.5 text-emerald-400">
-                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                    <span th:text="${#temporals.format(job.completedAt, 'MMM dd, HH:mm')}"></span>
-                                </div>
-                            </div>
+
+                        <td class="px-3 py-3 align-top text-right">
+                            <button type="button"
+                                    class="inline-flex items-center rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-300 transition hover:border-slate-600 hover:bg-slate-700 hover:text-white"
+                                    th:hx-get="@{/ui/jobs/{jobId}(jobId=${job.jobId})}"
+                                    hx-target="#jobs-table"
+                                    hx-swap="innerHTML"
+                                    hx-on:click="event.stopPropagation()">
+                                Inspect
+                            </button>
                         </td>
                     </tr>
+                    <tr th:id="|job-expand-${job.jobId}|" class="hidden"></tr>
+                </th:block>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <div th:if="${pagination != null && pagination.hasMore}" 
+    <div th:if="${pagination != null && pagination.hasMore}"
          class="text-center rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3">
         <p class="text-xs text-slate-500">
-            Showing the latest <span class="font-semibold text-slate-400" th:text="${pagination.limit}"></span> jobs. 
+            Showing the latest <span class="font-semibold text-slate-400" th:text="${pagination.limit}"></span> jobs.
             More results available from the API.
         </p>
     </div>
+</div>
+
+<tr th:fragment="jobCollapsedPlaceholder(jobId)" th:id="|job-expand-${jobId}|" class="hidden">
+    <script>
+        (() => {
+            const placeholderRow = document.currentScript.closest('tr');
+            const mainRow = placeholderRow.previousElementSibling;
+            if (!mainRow) return;
+            const button = mainRow.querySelector('.job-toggle-button');
+            const iconPath = mainRow.querySelector('.job-toggle-icon path');
+            mainRow.setAttribute('hx-get', mainRow.dataset.expandUrl);
+            button?.setAttribute('title', 'Expand row');
+            button?.classList.remove('border-emerald-500/30', 'bg-emerald-500/10', 'text-emerald-300');
+            iconPath?.setAttribute('d', 'M19 9l-7 7-7-7');
+            if (window.htmx) {
+                htmx.process(mainRow);
+            }
+        })();
+    </script>
+</tr>
+
+<tr th:fragment="jobExpandedRow(status)"
+    th:id="|job-expand-${status.jobId}|"
+    class="bg-slate-950/70 cursor-pointer"
+    th:hx-get="@{/ui/jobs/{jobId}/collapse(jobId=${status.jobId})}"
+    th:hx-target="@{|#job-expand-${status.jobId}|}"
+    hx-swap="outerHTML"
+    hx-trigger="click">
+    <td colspan="7" class="px-4 py-4">
+        <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-4 shadow-inner space-y-4">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">Expanded job detail</p>
+                    <p class="mt-1 font-mono text-[11px] text-slate-400" th:text="${status.jobId}"></p>
+                </div>
+            </div>
+
+            <div class="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+                <div class="space-y-4">
+                    <div class="grid gap-3 sm:grid-cols-3">
+                        <div class="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+                            <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">Status</p>
+                            <p class="mt-2 text-sm font-semibold text-white" th:text="${status.currentStatus != null ? status.currentStatus.name() : 'Unknown'}"></p>
+                        </div>
+                        <div class="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+                            <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">Created</p>
+                            <p class="mt-2 text-sm text-slate-200" th:text="${status.createdAt != null ? #temporals.format(status.createdAt, 'MMM dd, HH:mm:ss') : 'N/A'}"></p>
+                        </div>
+                        <div class="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+                            <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">Completed</p>
+                            <p class="mt-2 text-sm text-slate-200" th:text="${status.completedAt != null ? #temporals.format(status.completedAt, 'MMM dd, HH:mm:ss') : 'Still running'}"></p>
+                        </div>
+                    </div>
+
+                    <div th:if="${status.failureDetails != null}" class="rounded-lg border border-rose-500/30 bg-rose-500/10 p-4">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-rose-300">Failure</p>
+                        <p class="mt-2 text-sm text-rose-100" th:text="${status.failureDetails.message}"></p>
+                        <p class="mt-1 text-xs text-rose-200/70" th:text="${status.failureDetails.stage}"></p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Recent updates</p>
+                        <div class="space-y-2">
+                            <div th:if="${status.recentUpdates == null || status.recentUpdates.isEmpty()}"
+                                 class="rounded-lg border border-dashed border-slate-700 bg-slate-950/40 px-3 py-4 text-center text-xs text-slate-500">
+                                No status history available yet.
+                            </div>
+                            <div th:each="update : ${status.recentUpdates}" class="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2.5 text-xs text-slate-300">
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="font-semibold text-white" th:text="${update.status != null ? update.status.name() : 'UPDATE'}"></span>
+                                    <span class="text-slate-500" th:text="${update.timestamp != null ? #temporals.format(update.timestamp, 'HH:mm:ss') : '—'}"></span>
+                                </div>
+                                <p class="mt-1 text-slate-400" th:text="${update.description}"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="rounded-lg border border-slate-800 bg-slate-900/70 p-4">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Operator actions</p>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <button type="button"
+                                    class="inline-flex items-center rounded border border-slate-700 bg-slate-800 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-300 transition hover:border-slate-600 hover:bg-slate-700 hover:text-white"
+                                    th:hx-get="@{/ui/jobs/{jobId}(jobId=${status.jobId})}"
+                                    hx-target="#jobs-table"
+                                    hx-swap="innerHTML"
+                                    hx-on:click="event.stopPropagation()">
+                                Inspect view
+                            </button>
+                            <button type="button"
+                                    class="inline-flex items-center rounded border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-300 transition hover:bg-emerald-500/20"
+                                    th:if="${status.chapterId != null}"
+                                    th:hx-post="@{/ui/actions/chapters/{chapterId}/resolve-individuals(chapterId=${status.chapterId})}"
+                                    hx-target="#jobs-table"
+                                    hx-swap="innerHTML"
+                                    hx-on:click="event.stopPropagation()">
+                                Rebuild chapter individuals
+                            </button>
+                            <button type="button"
+                                    class="inline-flex items-center rounded border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-sky-300 transition hover:bg-sky-500/20"
+                                    th:if="${status.chapterId != null}"
+                                    th:hx-post="@{/ui/actions/chapters/{chapterId}/resolve-locations(chapterId=${status.chapterId})}"
+                                    hx-target="#jobs-table"
+                                    hx-swap="innerHTML"
+                                    hx-on:click="event.stopPropagation()">
+                                Rebuild chapter locations
+                            </button>
+                            <button type="button"
+                                    class="inline-flex items-center rounded border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-purple-300 transition hover:bg-purple-500/20"
+                                    th:if="${status.chapterId != null}"
+                                    th:hx-post="@{/ui/actions/books/{bookId}/resolve-locations(bookId=${status.bookId})}"
+                                    hx-target="#jobs-table"
+                                    hx-swap="innerHTML"
+                                    hx-on:click="event.stopPropagation()">
+                                Rebuild book locations
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg border border-slate-800 bg-slate-900/70 p-4">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Progress snapshot</p>
+                        <div class="mt-3 flex items-center gap-3">
+                            <div class="h-2 flex-1 rounded-full bg-slate-800 overflow-hidden">
+                                <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
+                                     th:style="${status.progressPercent != null ? 'width:' + status.progressPercent + '%' : 'width:0%'}"></div>
+                            </div>
+                            <span class="text-sm font-medium text-slate-200" th:text="${status.progressPercent != null ? status.progressPercent + '%' : '0%'}"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            (() => {
+                const expandedRow = document.currentScript.closest('tr');
+                const mainRow = expandedRow.previousElementSibling;
+                if (!mainRow) return;
+                const button = mainRow.querySelector('.job-toggle-button');
+                const iconPath = mainRow.querySelector('.job-toggle-icon path');
+                mainRow.setAttribute('hx-get', mainRow.dataset.collapseUrl);
+                button?.setAttribute('title', 'Collapse row');
+                button?.classList.add('border-emerald-500/30', 'bg-emerald-500/10', 'text-emerald-300');
+                iconPath?.setAttribute('d', 'M5 15l7-7 7 7');
+                if (window.htmx) {
+                    htmx.process(mainRow);
+                }
+            })();
+        </script>
+    </td>
+</tr>
+
+<div th:fragment="jobDetail(status)" class="space-y-4 rounded-xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl">
+    <div class="flex items-start justify-between gap-4">
+        <div>
+            <p class="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">Job detail</p>
+            <h4 class="mt-1 text-lg font-semibold text-white" th:text="${status.currentStatus != null ? status.currentStatus.name() : 'Unknown status'}"></h4>
+            <p class="mt-1 font-mono text-[11px] text-slate-400" th:text="${status.jobId}"></p>
+        </div>
+        <button type="button"
+                class="inline-flex items-center rounded border border-slate-700 bg-slate-800 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-300 transition hover:bg-slate-700"
+                th:hx-get="@{/ui/jobs}"
+                hx-target="#jobs-table"
+                hx-swap="innerHTML">
+            Back to list
+        </button>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-3">
+        <div class="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+            <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">Progress</p>
+            <p class="mt-2 text-2xl font-semibold text-white" th:text="${status.progressPercent != null ? status.progressPercent + '%' : '—'}"></p>
+        </div>
+        <div class="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+            <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">Created</p>
+            <p class="mt-2 text-sm text-slate-200" th:text="${status.createdAt != null ? #temporals.format(status.createdAt, 'MMM dd, HH:mm:ss') : 'N/A'}"></p>
+        </div>
+        <div class="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+            <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">Completed</p>
+            <p class="mt-2 text-sm text-slate-200" th:text="${status.completedAt != null ? #temporals.format(status.completedAt, 'MMM dd, HH:mm:ss') : 'Still running'}"></p>
+        </div>
+    </div>
+
+    <div th:if="${status.failureDetails != null}" class="rounded-lg border border-rose-500/30 bg-rose-500/10 p-4">
+        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-rose-300">Failure</p>
+        <p class="mt-2 text-sm text-rose-100" th:text="${status.failureDetails.message}"></p>
+        <p class="mt-1 text-xs text-rose-200/70" th:text="${status.failureDetails.stage}"></p>
+    </div>
+
+    <div class="space-y-3">
+        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Recent updates</p>
+        <div class="space-y-2">
+            <div th:if="${status.recentUpdates == null || status.recentUpdates.isEmpty()}"
+                 class="rounded-lg border border-dashed border-slate-700 bg-slate-950/40 px-3 py-4 text-center text-xs text-slate-500">
+                No status history available yet.
+            </div>
+            <div th:each="update : ${status.recentUpdates}" class="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2.5 text-xs text-slate-300">
+                <div class="flex items-center justify-between gap-3">
+                    <span class="font-semibold text-white" th:text="${update.status != null ? update.status.name() : 'UPDATE'}"></span>
+                    <span class="text-slate-500" th:text="${update.timestamp != null ? #temporals.format(update.timestamp, 'HH:mm:ss') : '—'}"></span>
+                </div>
+                <p class="mt-1 text-slate-400" th:text="${update.description}"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="actionToast(message, tone)"
+     class="rounded-lg border px-4 py-3 text-xs"
+     th:classappend="${tone == 'success'} ? ' border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : ' border-slate-700 bg-slate-900/70 text-slate-200'">
+    <p th:text="${message}"></p>
+    <script>htmx.trigger(document.body, 'refresh-jobs');</script>
 </div>
 </body>
 </html>
