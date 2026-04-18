@@ -3,17 +3,16 @@ package com.lorevault.api.timeline;
 import com.lorevault.api.ai.TriadAnalysisException;
 import com.lorevault.api.ai.TriadOrchestrationService;
 import com.lorevault.api.ingestion.IngestionFailure;
-import com.lorevault.api.ingestion.IngestionJob;
 import com.lorevault.api.ingestion.IngestionJobGraphRepository;
 import com.lorevault.api.ingestion.LlmCallRecord;
 import com.lorevault.api.ingestion.LlmCallRecordGraphRepository;
 import com.lorevault.api.ingestion.StatusRecord;
 import com.lorevault.api.ingestion.StatusRecordGraphRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Field;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +20,6 @@ import java.util.UUID;
 import java.util.Objects;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class TriadEdgePersistenceService {
 
@@ -29,6 +27,16 @@ public class TriadEdgePersistenceService {
     private final IngestionJobGraphRepository ingestionJobGraphRepository;
     private final StatusRecordGraphRepository statusRecordGraphRepository;
     private final LlmCallRecordGraphRepository llmCallRecordGraphRepository;
+
+    public TriadEdgePersistenceService(TemporalEdgeWriteRepository temporalEdgeWriteRepository,
+                                       IngestionJobGraphRepository ingestionJobGraphRepository,
+                                       StatusRecordGraphRepository statusRecordGraphRepository,
+                                       LlmCallRecordGraphRepository llmCallRecordGraphRepository) {
+        this.temporalEdgeWriteRepository = temporalEdgeWriteRepository;
+        this.ingestionJobGraphRepository = ingestionJobGraphRepository;
+        this.statusRecordGraphRepository = statusRecordGraphRepository;
+        this.llmCallRecordGraphRepository = llmCallRecordGraphRepository;
+    }
 
     @Transactional
     public void applyTriadAnalysesPostPersistence(UUID chapterId,
@@ -71,9 +79,10 @@ public class TriadEdgePersistenceService {
                                              String evidence,
                                              String timelineMarker) {
         StatusRecord statusRecord = findRequiredTriadStatus(jobId, currentSceneIndex);
-        LlmCallRecord callRecord = findRequiredTriadCall(jobId, statusRecord.getId());
+        UUID statusRecordId = readUuidField(statusRecord, "id");
+        LlmCallRecord callRecord = findRequiredTriadCall(jobId, statusRecordId);
 
-        if (callRecord.getResponseBody() == null || Boolean.TRUE.equals(callRecord.getTruncated())) {
+        if (readStringField(callRecord, "responseBody") == null || Boolean.TRUE.equals(readBooleanField(callRecord, "truncated"))) {
             throw triadArtifactFailure(
                     "TRIAD_ARTIFACT_UNRECOVERABLE",
                     "Triad structured output is missing or truncated for scene index " + currentSceneIndex,
@@ -83,18 +92,21 @@ public class TriadEdgePersistenceService {
             );
         }
 
+        String normalizedIncomingType = normalizeTemporalType(type);
         String existingType = temporalEdgeWriteRepository.findTemporalRelationBetween(from, to);
-        if (existingType != null && !existingType.isBlank() && !existingType.equals(type)) {
+        String normalizedExistingType = normalizeTemporalType(existingType);
+        if (normalizedExistingType != null && !normalizedExistingType.isBlank() && !normalizedExistingType.equals(normalizedIncomingType)) {
             temporalEdgeWriteRepository.upsertAmbiguousRelation(
                     from,
                     to,
                     "inferred",
-                    buildAmbiguityPayload(existingType, type, certainty, evidence, timelineMarker, statusRecord, callRecord),
+                    buildAmbiguityPayload(existingType, normalizedExistingType, type, normalizedIncomingType,
+                            certainty, evidence, timelineMarker, statusRecord, callRecord),
                     evidence,
                     asString(jobId),
                     asString(chapterId),
-                    asString(statusRecord.getId()),
-                    asString(callRecord.getId())
+                    asString(statusRecordId),
+                    asString(readUuidField(callRecord, "id"))
             );
             return;
         }
@@ -102,7 +114,7 @@ public class TriadEdgePersistenceService {
         temporalEdgeWriteRepository.upsertTemporalEdge(
                 from,
                 to,
-                type,
+                normalizedIncomingType,
                 certainty,
                 mapCertaintyToWeight(certainty),
                 "inferred",
@@ -118,7 +130,7 @@ public class TriadEdgePersistenceService {
             return null;
         }
         return ingestionJobGraphRepository.findFirstByChapterIdOrderByCreatedAtDesc(chapterId)
-                .map(IngestionJob::getId)
+                .map(job -> readUuidField(job, "id"))
                 .orElse(null);
     }
 
@@ -135,9 +147,9 @@ public class TriadEdgePersistenceService {
 
         String sceneIndexKey = currentSceneIndex.toString();
         return statusRecordGraphRepository.findTriadStatusesForJob(jobId).stream()
-                .filter(status -> status != null && status.getProperties() != null)
+                .filter(status -> status != null && readStringMapField(status, "properties") != null)
                 .filter(status -> {
-                    String idx = status.getProperties().get("currentSceneIndex");
+                    String idx = readStringMapField(status, "properties").get("currentSceneIndex");
                     return Objects.equals(idx, sceneIndexKey);
                 })
                 .findFirst()
@@ -181,8 +193,8 @@ public class TriadEdgePersistenceService {
                 .exceptionType(TriadAnalysisException.class.getSimpleName())
                 .stage("SCENE_TRIAD_ANALYSIS")
                 .detail("currentSceneIndex", currentSceneIndex)
-                .detail("statusRecordId", statusRecord != null ? statusRecord.getId() : null)
-                .detail("llmCallRecordId", callRecord != null ? callRecord.getId() : null);
+                .detail("statusRecordId", statusRecord != null ? readUuidField(statusRecord, "id") : null)
+                .detail("llmCallRecordId", callRecord != null ? readUuidField(callRecord, "id") : null);
         return new TriadAnalysisException(builder.build());
     }
 
@@ -198,19 +210,23 @@ public class TriadEdgePersistenceService {
             if (!sb.isEmpty()) sb.append(" | ");
             sb.append("timelineMarker=").append(timelineMarker);
         }
-        if (statusRecord != null && statusRecord.getId() != null) {
+        UUID statusRecordId = statusRecord == null ? null : readUuidField(statusRecord, "id");
+        if (statusRecordId != null) {
             if (!sb.isEmpty()) sb.append(" | ");
-            sb.append("statusRecordId=").append(statusRecord.getId());
+            sb.append("statusRecordId=").append(statusRecordId);
         }
-        if (callRecord != null && callRecord.getId() != null) {
+        UUID llmCallRecordId = callRecord == null ? null : readUuidField(callRecord, "id");
+        if (llmCallRecordId != null) {
             if (!sb.isEmpty()) sb.append(" | ");
-            sb.append("llmCallRecordId=").append(callRecord.getId());
+            sb.append("llmCallRecordId=").append(llmCallRecordId);
         }
         return sb.toString();
     }
 
     private String buildAmbiguityPayload(String existingType,
+                                         String normalizedExistingType,
                                          String incomingType,
+                                         String normalizedIncomingType,
                                          String incomingCertainty,
                                          String evidence,
                                          String timelineMarker,
@@ -218,12 +234,14 @@ public class TriadEdgePersistenceService {
                                          LlmCallRecord callRecord) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("existingType", existingType);
+        payload.put("normalizedExistingType", normalizedExistingType);
         payload.put("incomingType", incomingType);
+        payload.put("normalizedIncomingType", normalizedIncomingType);
         payload.put("incomingCertainty", incomingCertainty);
         payload.put("evidence", evidence);
         payload.put("timelineMarker", timelineMarker);
-        payload.put("statusRecordId", statusRecord != null ? statusRecord.getId() : null);
-        payload.put("llmCallRecordId", callRecord != null ? callRecord.getId() : null);
+        payload.put("statusRecordId", statusRecord != null ? readUuidField(statusRecord, "id") : null);
+        payload.put("llmCallRecordId", callRecord != null ? readUuidField(callRecord, "id") : null);
         return payload.toString();
     }
 
@@ -240,5 +258,72 @@ public class TriadEdgePersistenceService {
             case "Heuristic" -> 0.5d;
             default -> 0.5d;
         };
+    }
+
+    private String normalizeTemporalType(String type) {
+        if (type == null) {
+            return null;
+        }
+
+        String trimmed = type.trim();
+        if (trimmed.isEmpty()) {
+            return trimmed;
+        }
+
+        String base = trimmed.toLowerCase().replace("r:temporal.", "");
+        return switch (base) {
+            case "meets" -> "R:temporal.before";
+            case "met_by" -> "R:temporal.after";
+            case "before", "after", "overlaps", "overlapped_by", "during", "contains",
+                    "starts", "started_by", "finishes", "finished_by", "equals" -> "R:temporal." + base;
+            default -> trimmed;
+        };
+    }
+
+    private UUID readUuidField(Object target, String fieldName) {
+        Object value = readField(target, fieldName);
+        return value instanceof UUID uuid ? uuid : null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> readStringMapField(Object target, String fieldName) {
+        Object value = readField(target, fieldName);
+        return value instanceof Map<?, ?> map ? (Map<String, String>) map : null;
+    }
+
+    private String readStringField(Object target, String fieldName) {
+        Object value = readField(target, fieldName);
+        return value == null ? null : value.toString();
+    }
+
+    private Boolean readBooleanField(Object target, String fieldName) {
+        Object value = readField(target, fieldName);
+        return value instanceof Boolean bool ? bool : null;
+    }
+
+    private Object readField(Object target, String fieldName) {
+        if (target == null) {
+            return null;
+        }
+
+        try {
+            Field field = findField(target.getClass(), fieldName);
+            field.setAccessible(true);
+            return field.get(target);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Unable to read field '" + fieldName + "' from " + target.getClass().getName(), e);
+        }
+    }
+
+    private Field findField(Class<?> type, String fieldName) throws NoSuchFieldException {
+        Class<?> current = type;
+        while (current != null) {
+            try {
+                return current.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException ignored) {
+                current = current.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(fieldName);
     }
 }
