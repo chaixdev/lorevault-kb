@@ -17,13 +17,18 @@ public class AsyncConfig {
     /**
      * Custom thread pool for ingestion processing.
      * This ensures that async operations don't block the main HTTP thread pool.
+     *
+     * Current product stance: we do not support concurrent chapter uploads within the same
+     * narrative universe. Keep this executor single-threaded for now so ingestion follow-up
+     * work remains serialized. A more targeted concurrency model may still be needed later,
+     * but that design work is explicitly deferred.
      */
     @Bean(name = "ingestionTaskExecutor")
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(2);           // Minimum threads
-        executor.setMaxPoolSize(10);           // Maximum threads
-        executor.setQueueCapacity(25);         // Queue size before creating new threads
+        executor.setCorePoolSize(1);           // Intentionally single-threaded while concurrent uploads are unsupported
+        executor.setMaxPoolSize(1);            // Preserve serialized follow-up processing within this deferred model
+        executor.setQueueCapacity(100);        // Prefer queueing over parallelism until finer-grained concurrency is designed
         executor.setThreadNamePrefix("ingestion-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(60);
