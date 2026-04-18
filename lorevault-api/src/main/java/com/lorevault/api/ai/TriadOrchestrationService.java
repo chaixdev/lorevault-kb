@@ -8,14 +8,17 @@ import com.lorevault.api.timeline.TriadRelationInverter;
 import com.lorevault.api.ingestion.IngestionJobService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -25,6 +28,13 @@ import java.util.UUID;
 public class TriadOrchestrationService {
 
     private static final Logger log = LoggerFactory.getLogger(TriadOrchestrationService.class);
+    private static final Set<String> ALLOWED_TRIAD_RELATIONS = Set.of(
+            "R:temporal.before",
+            "R:temporal.after",
+            "R:temporal.overlaps",
+            "R:temporal.contains",
+            "R:temporal.equals"
+    );
 
     public record TriadRelation(String temporalType, String certainty, String evidence) {}
 
@@ -141,36 +151,36 @@ public class TriadOrchestrationService {
                     vars,
                     TriadStructuredResult.class
             );
-            validateTriadResult(parsed, t, statusProps);
+            TriadStructuredResult normalized = validateAndNormalizeTriadResult(parsed, t, statusProps);
 
-            String inv = parsed.previousToCurrent() != null
-                    ? TriadRelationInverter.invertPrevToCurr(parsed.previousToCurrent().temporalType())
+            String inv = normalized.previousToCurrent() != null
+                    ? TriadRelationInverter.invertPrevToCurr(normalized.previousToCurrent().temporalType())
                     : null;
 
             analyses.add(new TriadAnalysis(
                     t.previous() != null ? t.previous().getSceneIndex() : null,
                     t.current().getSceneIndex(),
                     t.next() != null ? t.next().getSceneIndex() : null,
-                    parsed.timelineMarker(),
-                    parsed.previousToCurrent() != null ? parsed.previousToCurrent().temporalType() : null,
-                    parsed.previousToCurrent() != null ? parsed.previousToCurrent().certainty() : null,
-                    parsed.previousToCurrent() != null ? parsed.previousToCurrent().evidence() : null,
-                    parsed.currentToNext() != null ? parsed.currentToNext().temporalType() : null,
-                    parsed.currentToNext() != null ? parsed.currentToNext().certainty() : null,
-                    parsed.currentToNext() != null ? parsed.currentToNext().evidence() : null,
+                    normalized.timelineMarker(),
+                    normalized.previousToCurrent() != null ? normalized.previousToCurrent().temporalType() : null,
+                    normalized.previousToCurrent() != null ? normalized.previousToCurrent().certainty() : null,
+                    normalized.previousToCurrent() != null ? normalized.previousToCurrent().evidence() : null,
+                    normalized.currentToNext() != null ? normalized.currentToNext().temporalType() : null,
+                    normalized.currentToNext() != null ? normalized.currentToNext().certainty() : null,
+                    normalized.currentToNext() != null ? normalized.currentToNext().evidence() : null,
                     inv
             ));
 
             int sceneIndex = t.current().getSceneIndex() == null ? -1 : t.current().getSceneIndex();
             if (sceneIndex >= 0) {
-                List<TriadIndividualExtraction> triadIndividuals = normalizeIndividuals(parsed);
+                List<TriadIndividualExtraction> triadIndividuals = normalizeIndividuals(normalized);
                 if (!triadIndividuals.isEmpty()) {
                     extractedIndividualsBySceneIndex
                             .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
                             .addAll(triadIndividuals);
                 }
 
-                List<TriadLocationExtraction> triadLocations = normalizeLocations(parsed);
+                List<TriadLocationExtraction> triadLocations = normalizeLocations(normalized);
                 if (!triadLocations.isEmpty()) {
                     extractedLocationsBySceneIndex
                             .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
@@ -245,25 +255,35 @@ public class TriadOrchestrationService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private void validateTriadResult(TriadStructuredResult parsed,
-                                     TriadBuilderService.SceneTriad triad,
-                                     Map<String, Object> statusProps) {
+    private TriadStructuredResult validateAndNormalizeTriadResult(TriadStructuredResult parsed,
+                                                                  TriadBuilderService.SceneTriad triad,
+                                                                  Map<String, Object> statusProps) {
         if (parsed == null) {
             throw triadFailure("TRIAD_RESPONSE_MISSING", "Triad analysis returned no structured result", triad, statusProps, null);
         }
 
+        TriadRelation previousToCurrent = null;
+        TriadRelation currentToNext = null;
+
         if (triad.previous() != null) {
-            validateRelation("previousToCurrent", parsed.previousToCurrent(), triad, statusProps);
+            previousToCurrent = validateAndNormalizeRelation("previousToCurrent", parsed.previousToCurrent(), triad, statusProps);
         }
         if (triad.next() != null) {
-            validateRelation("currentToNext", parsed.currentToNext(), triad, statusProps);
+            currentToNext = validateAndNormalizeRelation("currentToNext", parsed.currentToNext(), triad, statusProps);
         }
+
+        return new TriadStructuredResult(
+                parsed.timelineMarker(),
+                previousToCurrent,
+                currentToNext,
+                parsed.currentSceneEntities()
+        );
     }
 
-    private void validateRelation(String relationName,
-                                  TriadRelation relation,
-                                  TriadBuilderService.SceneTriad triad,
-                                  Map<String, Object> statusProps) {
+    private TriadRelation validateAndNormalizeRelation(String relationName,
+                                                       TriadRelation relation,
+                                                       TriadBuilderService.SceneTriad triad,
+                                                       Map<String, Object> statusProps) {
         if (relation == null) {
             throw triadFailure("TRIAD_RELATION_MISSING",
                     "Triad analysis omitted required relation '" + relationName + "'",
@@ -287,6 +307,44 @@ public class TriadOrchestrationService {
                     statusProps,
                     relationName);
         }
+
+        String normalizedTemporalType = normalizeTemporalType(relation.temporalType());
+        if (!ALLOWED_TRIAD_RELATIONS.contains(normalizedTemporalType)) {
+            throw triadFailure("TRIAD_RELATION_TYPE_INVALID",
+                    "Triad analysis returned unsupported temporalType '" + relation.temporalType() + "'",
+                    triad,
+                    withInvalidTemporalType(statusProps, relation.temporalType(), normalizedTemporalType),
+                    relationName);
+        }
+
+        return new TriadRelation(
+                normalizedTemporalType,
+                relation.certainty().trim(),
+                normalizeText(relation.evidence())
+        );
+    }
+
+    private Map<String, Object> withInvalidTemporalType(Map<String, Object> statusProps,
+                                                        String rawTemporalType,
+                                                        String normalizedTemporalType) {
+        Map<String, Object> failureProps = new LinkedHashMap<>(statusProps);
+        failureProps.put("rawTemporalType", rawTemporalType);
+        failureProps.put("normalizedTemporalType", normalizedTemporalType);
+        failureProps.put("allowedTemporalTypes", String.join(", ", new LinkedHashSet<>(ALLOWED_TRIAD_RELATIONS)));
+        return failureProps;
+    }
+
+    private String normalizeTemporalType(String temporalType) {
+        String trimmed = temporalType.trim();
+        String base = trimmed.toLowerCase().replace("r:temporal.", "");
+        return switch (base) {
+            case "before", "meets" -> "R:temporal.before";
+            case "after", "met_by" -> "R:temporal.after";
+            case "overlaps" -> "R:temporal.overlaps";
+            case "contains", "during" -> "R:temporal.contains";
+            case "equals" -> "R:temporal.equals";
+            default -> trimmed;
+        };
     }
 
     private TriadAnalysisException triadFailure(String code,
@@ -346,7 +404,7 @@ public class TriadOrchestrationService {
         if (scene == null) {
             return "";
         }
-        Object value = new BeanWrapperImpl(scene).getPropertyValue("contextSummary");
+        Object value = readField(scene, "contextSummary");
         String summary = value == null ? null : value.toString();
         return summary == null ? "" : summary;
     }
@@ -355,11 +413,33 @@ public class TriadOrchestrationService {
         if (chapter == null) {
             return null;
         }
-        Object value = new BeanWrapperImpl(chapter).getPropertyValue("rawText");
+        Object value = readField(chapter, "rawText");
         return value == null ? null : value.toString();
     }
 
     private String textOrEmpty(String v) {
         return v == null ? "" : v;
+    }
+
+    private Object readField(Object target, String fieldName) {
+        try {
+            Field field = findField(target.getClass(), fieldName);
+            field.setAccessible(true);
+            return field.get(target);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Unable to read field '" + fieldName + "' from " + target.getClass().getName(), e);
+        }
+    }
+
+    private Field findField(Class<?> type, String fieldName) throws NoSuchFieldException {
+        Class<?> current = type;
+        while (current != null) {
+            try {
+                return current.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException ignored) {
+                current = current.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(fieldName);
     }
 }

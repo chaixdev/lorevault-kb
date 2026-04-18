@@ -4,7 +4,6 @@ import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
 import com.lorevault.api.ingestion.IngestionStatus;
 import com.lorevault.api.ingestion.IngestionJobService;
-import com.lorevault.api.ai.TriadAnalysisException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,9 +12,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -75,7 +74,6 @@ class TriadOrchestrationServiceTest {
     @Test
     @DisplayName("Should create status record before each triad LLM call with proper metadata")
     void shouldCreateStatusRecordBeforeEachTriadLlmCall() {
-        // Arrange
         Chapter testChapter = createTestChapter();
         List<TriadBuilderService.SceneTriad> triads = createTestTriads();
         
@@ -87,14 +85,10 @@ class TriadOrchestrationServiceTest {
         when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
-        // Act
         List<TriadOrchestrationService.TriadAnalysis> result = 
             triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
 
-        // Assert
         assertThat(result).hasSize(2);
-
-        // Verify status updates were called for each triad
         verify(ingestionJobService, times(2)).updateJobStatus(
             jobIdCaptor.capture(),
             statusCaptor.capture(),
@@ -107,7 +101,6 @@ class TriadOrchestrationServiceTest {
         List<String> capturedDescriptions = descriptionCaptor.getAllValues();
         List<Map<String, Object>> capturedProperties = propertiesCaptor.getAllValues();
 
-        // Verify first triad status record
         assertThat(capturedJobIds.get(0)).isEqualTo(testJobId);
         assertThat(capturedStatuses.get(0)).isEqualTo(IngestionStatus.SCENE_TRIAD_ANALYSIS);
         assertThat(capturedDescriptions.get(0)).isEqualTo("Triad analysis for scenes [prev, curr, next]");
@@ -118,7 +111,6 @@ class TriadOrchestrationServiceTest {
         assertThat(firstTriadProps).containsEntry("currentSceneIndex", 0);
         assertThat(firstTriadProps).containsEntry("nextSceneIndex", 1);
 
-        // Verify second triad status record
         assertThat(capturedJobIds.get(1)).isEqualTo(testJobId);
         assertThat(capturedStatuses.get(1)).isEqualTo(IngestionStatus.SCENE_TRIAD_ANALYSIS);
         assertThat(capturedDescriptions.get(1)).isEqualTo("Triad analysis for scenes [prev, curr, next]");
@@ -133,15 +125,12 @@ class TriadOrchestrationServiceTest {
     @Test
     @DisplayName("Should handle empty triads list gracefully")
     void shouldHandleEmptyTriadsListGracefully() {
-        // Arrange
         Chapter testChapter = createTestChapter();
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(List.of());
 
-        // Act
         List<TriadOrchestrationService.TriadAnalysis> result = 
             triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
 
-        // Assert
         assertThat(result).isEmpty();
         verify(ingestionJobService, never()).updateJobStatus(any(), any(), any(), any());
         verify(sceneDetectionClient, never()).detectSceneAnalysisTriad(any(), any(), any(), any());
@@ -150,7 +139,6 @@ class TriadOrchestrationServiceTest {
     @Test
     @DisplayName("Should call SceneDetectionClient after creating status record")
     void shouldCallSceneDetectionClientAfterCreatingStatusRecord() {
-        // Arrange
         Chapter testChapter = createTestChapter();
         List<TriadBuilderService.SceneTriad> triads = List.of(createSingleTriad());
         
@@ -162,10 +150,8 @@ class TriadOrchestrationServiceTest {
         when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
-        // Act
         triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
 
-        // Assert - verify order: status update first, then LLM call
         var inOrder = inOrder(ingestionJobService, sceneDetectionClient);
         inOrder.verify(ingestionJobService).updateJobStatus(any(), any(), any(), any());
         inOrder.verify(sceneDetectionClient).detectSceneAnalysisTriad(
@@ -179,7 +165,6 @@ class TriadOrchestrationServiceTest {
     @Test
     @DisplayName("Should include proper user variables for triad LLM call")
     void shouldIncludeProperUserVariablesForTriadLlmCall() {
-        // Arrange
         Chapter testChapter = createTestChapterWithText();
         List<TriadBuilderService.SceneTriad> triads = List.of(createSingleTriad());
         
@@ -191,14 +176,11 @@ class TriadOrchestrationServiceTest {
         when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
-        // Capture the user variables passed to the LLM client
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> userVarsCaptor = ArgumentCaptor.forClass(Map.class);
 
-        // Act
         triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
 
-        // Assert
         verify(sceneDetectionClient).detectSceneAnalysisTriad(
                 eq(testJobId),
                 eq("mock system prompt"),
@@ -227,7 +209,7 @@ class TriadOrchestrationServiceTest {
 
         TriadOrchestrationService.TriadStructuredResult invalid =
                 new TriadOrchestrationService.TriadStructuredResult("marker", null,
-                        new TriadOrchestrationService.TriadRelation("MEETS", "Explicit", "evidence"));
+                        new TriadOrchestrationService.TriadRelation("BEFORE", "Explicit", "evidence"));
 
         when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
                 .thenReturn(invalid);
@@ -237,19 +219,73 @@ class TriadOrchestrationServiceTest {
                 .hasMessageContaining("omitted required relation 'previousToCurrent'");
     }
 
+    @Test
+    @DisplayName("Should normalize legacy meets relation to canonical before")
+    void shouldNormalizeLegacyMeetsRelationToCanonicalBefore() {
+        Chapter testChapter = createTestChapter();
+        List<TriadBuilderService.SceneTriad> triads = List.of(createTriadWithPreviousAndCurrent());
+
+        PromptTemplate mockTemplate = mock(PromptTemplate.class);
+        when(promptRepository.get("scene-analysis")).thenReturn(mockTemplate);
+        when(mockTemplate.render(any())).thenReturn("mock system prompt");
+        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+
+        TriadOrchestrationService.TriadStructuredResult legacy =
+                new TriadOrchestrationService.TriadStructuredResult(
+                        "marker",
+                        new TriadOrchestrationService.TriadRelation("R:temporal.meets", "Explicit", "evidence"),
+                        null
+                );
+
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+                .thenReturn(legacy);
+
+        List<TriadOrchestrationService.TriadAnalysis> result =
+                triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
+
+        assertThat(result).singleElement().satisfies(analysis -> {
+            assertThat(analysis.prevToCurrType()).isEqualTo("R:temporal.before");
+            assertThat(analysis.currVsPrevInverted()).isEqualTo("R:temporal.after");
+        });
+    }
+
+    @Test
+    @DisplayName("Should fail when relation type is outside ADR010 practical vocabulary")
+    void shouldFailWhenRelationTypeIsOutsideAdr010PracticalVocabulary() {
+        Chapter testChapter = createTestChapter();
+        List<TriadBuilderService.SceneTriad> triads = List.of(createTriadWithPreviousAndCurrent());
+
+        PromptTemplate mockTemplate = mock(PromptTemplate.class);
+        when(promptRepository.get("scene-analysis")).thenReturn(mockTemplate);
+        when(mockTemplate.render(any())).thenReturn("mock system prompt");
+        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+
+        TriadOrchestrationService.TriadStructuredResult invalid =
+                new TriadOrchestrationService.TriadStructuredResult(
+                        "marker",
+                        new TriadOrchestrationService.TriadRelation("IMMEDIATE_SUCCESSION", "Explicit", "evidence"),
+                        null
+                );
+
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+                .thenReturn(invalid);
+
+        assertThatThrownBy(() -> triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter))
+                .isInstanceOf(TriadAnalysisException.class)
+                .hasMessageContaining("unsupported temporalType 'IMMEDIATE_SUCCESSION'");
+    }
+
     private Chapter createTestChapter() {
-        Chapter chapter = new Chapter();
-        BeanWrapperImpl chapterBean = new BeanWrapperImpl(chapter);
-        chapterBean.setPropertyValue("id", testChapterId);
-        chapterBean.setPropertyValue("rawText", "Sample chapter text for testing purposes.");
+        Chapter chapter = instantiateWithoutConstructor(Chapter.class);
+        setField(chapter, "id", testChapterId);
+        setField(chapter, "rawText", "Sample chapter text for testing purposes.");
         return chapter;
     }
 
     private Chapter createTestChapterWithText() {
-        Chapter chapter = new Chapter();
-        BeanWrapperImpl chapterBean = new BeanWrapperImpl(chapter);
-        chapterBean.setPropertyValue("id", testChapterId);
-        chapterBean.setPropertyValue("rawText", "This is scene one text. This is scene two text. This is scene three text.");
+        Chapter chapter = instantiateWithoutConstructor(Chapter.class);
+        setField(chapter, "id", testChapterId);
+        setField(chapter, "rawText", "This is scene one text. This is scene two text. This is scene three text.");
         return chapter;
     }
 
@@ -295,10 +331,10 @@ class TriadOrchestrationServiceTest {
 
     private TriadOrchestrationService.TriadStructuredResult createMockTriadResult() {
         TriadOrchestrationService.TriadRelation mockPrevToCurr = new TriadOrchestrationService.TriadRelation(
-            "IMMEDIATE_SUCCESSION", "HIGH", "Scene transition analysis"
+            "R:temporal.before", "Explicit", "Scene transition analysis"
         );
         TriadOrchestrationService.TriadRelation mockCurrToNext = new TriadOrchestrationService.TriadRelation(
-            "CONCURRENT", "MEDIUM", "Overlapping events"
+            "R:temporal.overlaps", "StronglyImplied", "Overlapping events"
         );
         
         return new TriadOrchestrationService.TriadStructuredResult(
@@ -306,5 +342,38 @@ class TriadOrchestrationServiceTest {
             mockPrevToCurr,
             mockCurrToNext
         );
+    }
+
+    private <T> T instantiateWithoutConstructor(Class<T> type) {
+        try {
+            var unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
+            var unsafe = (sun.misc.Unsafe) unsafeField.get(null);
+            return type.cast(unsafe.allocateInstance(type));
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private void setField(Object target, String fieldName, Object value) {
+        try {
+            Field field = findField(target.getClass(), fieldName);
+            field.setAccessible(true);
+            field.set(target, value);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private Field findField(Class<?> type, String fieldName) throws NoSuchFieldException {
+        Class<?> current = type;
+        while (current != null) {
+            try {
+                return current.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException ignored) {
+                current = current.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(fieldName);
     }
 }

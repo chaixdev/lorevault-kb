@@ -7,8 +7,7 @@ For each triplet of scenes (previous, current, next), analyze and output the tem
 - Relationship between Scene 'current' and Scene 'next'
 
 **Temporal Relationship Types: (use these exact canonical keys)**
-- R:temporal.before      // X happens strictly before Y (gap allowed)
-- R:temporal.meets       // X immediately precedes Y (no gap)
+- R:temporal.before      // X happens before Y
 - R:temporal.overlaps    // X and Y overlap (X starts first or they overlap without containment)
 - R:temporal.contains    // X completely contains Y (X starts earlier and ends later)
 - R:temporal.equals      // X and Y occur at exactly the same timespan
@@ -17,7 +16,6 @@ For each triplet of scenes (previous, current, next), analyze and output the tem
 - `Explicit` - Relationship directly stated in text
 - `StronglyImplied` - Logically necessary from described events
 - `WeaklyImplied` - Plausible interpretation of available evidence
-- `Heuristic` - Best guess based on narrative adjacency only
 
 **entities**
 for the current scene, extract Entities that have importance to the scene and are relevant to the action. 
@@ -43,9 +41,8 @@ Entity Categories — definitions (for <scene_entities>)
   - Include: “Vulcan” (species), “Captaincy”, “Prime Directive”.
   - Exclude: concrete actors (→ Individual), concrete places (→ Location).
 
-- Event: a temporal occurrence (battles, meetings, journeys, ceremonies).
-  - Include: “First Contact on Vega”, “Council Vote”.
-  - Note: Scenes themselves function as events; list sub-events only if clearly named.
+- Event: a temporal occurrence, anything that can serve as a timeline marker (battles, meetings, journeys, ceremonies).
+  - Include: “first contact on vega”, “Council Vote”, "The Winter War",
 
 **Output Format:**
 ```xml
@@ -56,14 +53,14 @@ Entity Categories — definitions (for <scene_entities>)
   <relationships>
     <!-- Omit this block if 'previous' scene is absent -->
     <previous_to_current>
-      <temporal_type>Choose one of: R:temporal.before | R:temporal.meets | R:temporal.overlaps | R:temporal.contains | R:temporal.equals</temporal_type>
+      <temporal_type>Choose one of: R:temporal.before | R:temporal.after | R:temporal.overlaps | R:temporal.contains | R:temporal.equals</temporal_type>
       <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied | Heuristic</certainty>
       <evidence>≤120 chars, verbatim or tight paraphrase grounding the relation</evidence>
     </previous_to_current>
 
     <!-- Omit this block if 'next' scene is absent -->
     <current_to_next>
-      <temporal_type>Choose one of: R:temporal.before | R:temporal.meets | R:temporal.overlaps | R:temporal.contains | R:temporal.equals</temporal_type>
+      <temporal_type>Choose one of: R:temporal.before | R:temporal.after | R:temporal.overlaps | R:temporal.contains | R:temporal.equals</temporal_type>
       <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied | Heuristic</certainty>
       <evidence>≤120 chars, verbatim or tight paraphrase grounding the relation</evidence>
     </current_to_next>
@@ -113,8 +110,8 @@ Entity Categories — definitions (for <scene_entities>)
         <name></name>
         <event_type>e.g. 'meeting' or 'era'</event_type>
         <!-- temporal_type in relation to the scene-->
-        <temporal_type>Choose one of: R:temporal.before | R:temporal.meets | R:temporal.overlaps | R:temporal.contains | R:temporal.equals</temporal_type>
-        <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied | Heuristic</certainty>
+         <temporal_type>Choose one of: R:temporal.before | R:temporal.after | R:temporal.overlaps | R:temporal.contains | R:temporal.equals</temporal_type>
+        <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied </certainty>
         <evidence>≤120 chars, verbatim or tight paraphrase grounding the relation</evidence>
       </event>
     </events>
@@ -124,5 +121,4 @@ Entity Categories — definitions (for <scene_entities>)
 
 **Analysis Guidelines:**
 - Base relationships on textual evidence, not assumptions
-- When in doubt between similar relationships (e.g., `meets` vs `overlaps`), choose the more specific one if evidence supports it
 - Pay special attention to time markers, character continuity, and environmental changes
