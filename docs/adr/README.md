@@ -40,3 +40,4 @@ If the decision is later replaced, the ADR should remain as history and point to
 - [007 - Adopt scoped identity ladder](007-adopt-scoped-identity-ladder.md)
 - [008 - Define ingestion completion across parallel branches](008-define-ingestion-completion-across-parallel-branches.md)
 - [009 - Structured logging philosophy](009-structured-logging-philosophy.md)
+- [010 - Practical Allen relation usage](010-practical-allen-relation-usage.md)
