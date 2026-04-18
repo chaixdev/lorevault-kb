@@ -14,7 +14,7 @@ import java.util.UUID;
 public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID> {
 
     /**
-     * Create default MEETS edges between consecutive scenes within each chapter of a book.
+     * Create default NEXT_IN_READING_ORDER edges between consecutive scenes within each chapter of a book.
      * Idempotent via MERGE. Applies to all chapters belonging to the given book.
      *
      * @param bookId The book ID to create edges for
@@ -36,7 +36,7 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
     int mergeInChapterDefaultEdges(@Param("bookId") UUID bookId);
 
     /**
-     * Create default MEETS edges across adjacent chapters within a book.
+     * Create default NEXT_IN_READING_ORDER edges across adjacent chapters within a book.
      * Links the last scene of chapter N to the first scene of chapter N+1.
      * Idempotent via MERGE. Processes all adjacent pairs in the given book.
      *

@@ -14,14 +14,16 @@ public interface SceneGraphRepository extends Neo4jRepository<Scene, UUID> {
     @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene) DETACH DELETE s")
     void deleteByChapterId(UUID chapterId);
 
-    @Query("MATCH (a:Scene {id: $fromId})-[r:MEETS]->(b:Scene {id: $toId}) RETURN count(r)")
+    @Deprecated(since = "April 2026", forRemoval = false)
+    @Query("MATCH (a:Scene {id: $fromId})-[r:NEXT_IN_READING_ORDER]->(b:Scene {id: $toId}) RETURN count(r)")
     long countMeetsBetween(UUID fromId, UUID toId);
 
+    @Deprecated(since = "April 2026", forRemoval = false)
     @Query("""
             MATCH (a:Scene {id: $fromId})
             WITH a
             MATCH (b:Scene {id: $toId})
-            MERGE (a)-[:MEETS]->(b)
+            MERGE (a)-[:NEXT_IN_READING_ORDER]->(b)
             """)
     void createMeetsBetween(UUID fromId, UUID toId);
 

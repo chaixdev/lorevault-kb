@@ -357,8 +357,8 @@ public class FakeContentRepositories {
             if (removed != null) removed.forEach(s -> scenesById.remove(s.getId()));
         }
 
-        @Override public long countMeetsBetween(UUID fromId, UUID toId) { return 0; }
-        @Override public void createMeetsBetween(UUID fromId, UUID toId) { }
+        @Override public long countMeetsBetween(UUID fromId, UUID toId) { return countNextInReadingOrderBetween(fromId, toId); }
+        @Override public void createMeetsBetween(UUID fromId, UUID toId) { createNextInReadingOrderBetween(fromId, toId); }
         @Override public long countNextInReadingOrderBetween(UUID fromId, UUID toId) { return 0; }
         @Override public void createNextInReadingOrderBetween(UUID fromId, UUID toId) { }
         @Override public void linkChunkToScene(UUID sceneId, UUID chunkId, Integer chunkIndex) { }
