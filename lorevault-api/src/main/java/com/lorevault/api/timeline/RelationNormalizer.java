@@ -3,7 +3,7 @@ package com.lorevault.api.timeline;
 import java.util.Objects;
 
 /**
- * Utility to normalize all 13 Allen interval relations to the canonical 7 with forward orientation.
+ * Utility to normalize Allen interval relations to LoreVault's practical canonical subset with forward orientation.
  *
  * "Forward" orientation means (A -> B) expresses the returned canonical relation from subject A to object B.
  * If the input relation denotes the inverse direction (e.g., AFTER), the normalizer flips orientation
@@ -27,8 +27,8 @@ public final class RelationNormalizer {
             case BEFORE:      return new Normalized(CanonicalRelation.BEFORE, false);
             case AFTER:       return new Normalized(CanonicalRelation.BEFORE, true);  // flip
 
-            case MEETS:       return new Normalized(CanonicalRelation.MEETS, false);
-            case MET_BY:      return new Normalized(CanonicalRelation.MEETS, true);
+            case MEETS:       return new Normalized(CanonicalRelation.BEFORE, false);
+            case MET_BY:      return new Normalized(CanonicalRelation.BEFORE, true);
 
             case OVERLAPS:    return new Normalized(CanonicalRelation.OVERLAPS, false);
             case OVERLAPPED_BY:return new Normalized(CanonicalRelation.OVERLAPS, true);

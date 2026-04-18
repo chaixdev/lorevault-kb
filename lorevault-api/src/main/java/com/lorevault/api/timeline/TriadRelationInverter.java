@@ -2,7 +2,7 @@ package com.lorevault.api.timeline;
 
 /**
  * Invert relation expressed as prev -> curr into curr vs prev label string.
- * Maps the 5 canonical relations per LV-085-0.
+ * Maps the practical inferred relations used by LoreVault.
  */
 public final class TriadRelationInverter {
     private TriadRelationInverter() {}
@@ -18,9 +18,12 @@ public final class TriadRelationInverter {
         String base = key.replace("r:temporal.", "");
         return switch (base) {
             case "before" -> "R:temporal.after";
-            case "meets" -> "R:temporal.met_by";
+            case "after" -> "R:temporal.before";
+            case "meets" -> "R:temporal.after";
+            case "met_by" -> "R:temporal.before";
             case "overlaps" -> "R:temporal.overlapped_by";
             case "contains" -> "R:temporal.during";
+            case "during" -> "R:temporal.contains";
             case "equals" -> "R:temporal.equals";
             default -> null;
         };

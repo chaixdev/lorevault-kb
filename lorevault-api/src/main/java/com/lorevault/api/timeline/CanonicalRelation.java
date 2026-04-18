@@ -6,6 +6,7 @@ package com.lorevault.api.timeline;
  */
 public enum CanonicalRelation {
     BEFORE,
+    @Deprecated(since = "April 2026", forRemoval = false)
     MEETS,
     OVERLAPS,
     STARTS,
