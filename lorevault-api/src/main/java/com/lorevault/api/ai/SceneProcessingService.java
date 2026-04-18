@@ -109,6 +109,9 @@ public class SceneProcessingService {
             scene.setStartCharacterOffset(s.startCharacterOffset());
             scene.setEndCharacterOffset(s.endCharacterOffset());
             scene.setContextSummary(s.contextSummary());
+            scene.setChronology(s.chronology());
+            scene.setChronologyCertainty(s.chronologyCertainty());
+            scene.setChronologyMarker(s.chronologyMarker());
 
             LinkedHashSet<String> labels = new LinkedHashSet<>();
             labels.add(Scene.EVENT_LABEL);
@@ -257,7 +260,12 @@ public class SceneProcessingService {
                             result.sceneIndex(),
                             startPos,
                             endPos,
-                            result.contextSummary()));
+                            result.contextSummary(),
+                            result.chronology(),
+                            result.chronologyCertainty(),
+                            result.chronologyMarker(),
+                            false,
+                            false));
                     log.debug("Localized scene {}: start={}, end={}, length={}",
                             result.sceneIndex(), startPos, endPos, endPos - startPos);
                 } else {

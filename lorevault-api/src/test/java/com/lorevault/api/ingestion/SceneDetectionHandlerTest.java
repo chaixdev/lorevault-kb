@@ -8,6 +8,7 @@ import com.lorevault.api.content.SceneGraphRepository;
 import com.lorevault.api.ai.SceneDetectionService;
 import com.lorevault.api.ai.SceneProcessingService;
 import com.lorevault.api.timeline.DefaultTemporalEdgeService;
+import com.lorevault.api.timeline.TriadEdgePersistenceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -43,6 +44,7 @@ class SceneDetectionHandlerTest {
     @Mock private LocationPersistenceService locationPersistenceService;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private DefaultTemporalEdgeService defaultTemporalEdgeService;
+    @Mock private TriadEdgePersistenceService triadEdgePersistenceService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
@@ -88,7 +90,7 @@ class SceneDetectionHandlerTest {
             when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
             when(sceneDetectionService.detectScenesInText(jobId, chapterId, (String) new BeanWrapperImpl(testChapter).getPropertyValue("rawText"))).thenReturn(
-                    new SceneDetectionService.SceneDetectionOutcome(sceneCoords, List.of(), List.of())
+                    new SceneDetectionService.SceneDetectionOutcome(sceneCoords, List.of(), List.of(), List.of())
             );
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
 
@@ -101,6 +103,7 @@ class SceneDetectionHandlerTest {
             verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, List.of());
             verify(locationPersistenceService).persistExtractedLocations(persistedScenes, List.of());
             verify(defaultTemporalEdgeService).createAllDefaults(bookId);
+            verify(triadEdgePersistenceService).applyTriadAnalysesPostPersistence(eq(chapterId), eq(List.of()), anyMap());
 
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
@@ -125,13 +128,14 @@ class SceneDetectionHandlerTest {
             when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
             when(sceneDetectionService.detectScenesInText(jobId, chapterId, (String) new BeanWrapperImpl(testChapter).getPropertyValue("rawText")))
-                    .thenReturn(new SceneDetectionService.SceneDetectionOutcome(sceneCoords, extractions, locationExtractions));
+                    .thenReturn(new SceneDetectionService.SceneDetectionOutcome(sceneCoords, List.of(), extractions, locationExtractions));
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
 
             handler.handleChapterIngestion(testEvent);
 
             verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, extractions);
             verify(locationPersistenceService).persistExtractedLocations(persistedScenes, locationExtractions);
+            verify(triadEdgePersistenceService).applyTriadAnalysesPostPersistence(eq(chapterId), eq(List.of()), anyMap());
             verify(eventPublisher).publishEvent(any(ScenesDetectedEvent.class));
             InOrder inOrder = inOrder(individualPersistenceService, locationPersistenceService, eventPublisher);
             inOrder.verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, extractions);
@@ -155,6 +159,7 @@ class SceneDetectionHandlerTest {
             verify(sceneProcessingService, never()).persistDetectedScenes(any(), any());
             verify(individualPersistenceService, never()).persistExtractedIndividuals(any(), any());
             verify(locationPersistenceService, never()).persistExtractedLocations(any(), any());
+            verify(triadEdgePersistenceService, never()).applyTriadAnalysesPostPersistence(any(), any(), anyMap());
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());

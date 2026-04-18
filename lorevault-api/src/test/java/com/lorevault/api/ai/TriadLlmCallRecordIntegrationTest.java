@@ -94,9 +94,9 @@ class TriadLlmCallRecordIntegrationTest {
 
         Map<String, Object> triadProps = Map.of(
             "triadIndex", 0,
-            "prevSceneId", scene1Id,
-            "currentSceneId", scene2Id,
-            "nextSceneId", scene3Id
+                "prevSceneIndex", 0,
+                "currentSceneIndex", 1,
+                "nextSceneIndex", 2
         );
 
         ingestionJobService.updateJobStatus(
@@ -155,9 +155,9 @@ class TriadLlmCallRecordIntegrationTest {
             .orElseThrow();
 
         assertThat(triadStatusRecord.getProperties()).containsEntry("triadIndex", "0");
-        assertThat(triadStatusRecord.getProperties()).containsEntry("prevSceneId", scene1Id.toString());
-        assertThat(triadStatusRecord.getProperties()).containsEntry("currentSceneId", scene2Id.toString());
-        assertThat(triadStatusRecord.getProperties()).containsEntry("nextSceneId", scene3Id.toString());
+        assertThat(triadStatusRecord.getProperties()).containsEntry("prevSceneIndex", "0");
+        assertThat(triadStatusRecord.getProperties()).containsEntry("currentSceneIndex", "1");
+        assertThat(triadStatusRecord.getProperties()).containsEntry("nextSceneIndex", "2");
         assertThat(triadStatusRecord.getStepDescription()).isEqualTo("Triad analysis for scenes [prev, curr, next]");
     }
 
@@ -175,7 +175,7 @@ class TriadLlmCallRecordIntegrationTest {
             testJobId,
             IngestionStatus.SCENE_TRIAD_ANALYSIS,
             "Triad analysis for scenes [prev, curr, next]",
-            Map.of("triadIndex", 0, "prevSceneId", scene1Id, "currentSceneId", scene2Id, "nextSceneId", scene3Id)
+        Map.of("triadIndex", 0, "prevSceneIndex", 0, "currentSceneIndex", 1, "nextSceneIndex", 2)
         );
 
         IngestionJob job1 = jobRepo.findById(testJobId).orElseThrow();
@@ -184,9 +184,9 @@ class TriadLlmCallRecordIntegrationTest {
         // Second triad
         Map<String, Object> secondTriadProps = new java.util.HashMap<>();
         secondTriadProps.put("triadIndex", 1);
-        secondTriadProps.put("prevSceneId", scene2Id);
-        secondTriadProps.put("currentSceneId", scene3Id);
-        secondTriadProps.put("nextSceneId", null);
+        secondTriadProps.put("prevSceneIndex", 1);
+        secondTriadProps.put("currentSceneIndex", 2);
+        secondTriadProps.put("nextSceneIndex", null);
 
         ingestionJobService.updateJobStatus(
             testJobId,
@@ -232,15 +232,15 @@ class TriadLlmCallRecordIntegrationTest {
     @DisplayName("Should persist triad metadata in status properties for query and debugging")
     void shouldPersistTriadMetadataInStatusProperties() {
         // Arrange
-        UUID prevSceneId = UUID.randomUUID();
-        UUID currSceneId = UUID.randomUUID();
-        UUID nextSceneId = UUID.randomUUID();
+        int prevSceneIndex = 9;
+        int currSceneIndex = 10;
+        int nextSceneIndex = 11;
 
         Map<String, Object> triadMetadata = Map.of(
             "triadIndex", 2,
-            "prevSceneId", prevSceneId,
-            "currentSceneId", currSceneId,
-            "nextSceneId", nextSceneId
+                "prevSceneIndex", prevSceneIndex,
+                "currentSceneIndex", currSceneIndex,
+                "nextSceneIndex", nextSceneIndex
         );
 
         // Act
@@ -260,18 +260,18 @@ class TriadLlmCallRecordIntegrationTest {
 
         assertThat(triadStatus.getProperties())
             .containsEntry("triadIndex", "2")
-            .containsEntry("prevSceneId", prevSceneId.toString())
-            .containsEntry("currentSceneId", currSceneId.toString())
-            .containsEntry("nextSceneId", nextSceneId.toString());
+                .containsEntry("prevSceneIndex", String.valueOf(prevSceneIndex))
+                .containsEntry("currentSceneIndex", String.valueOf(currSceneIndex))
+                .containsEntry("nextSceneIndex", String.valueOf(nextSceneIndex));
 
         // Verify the specific scene IDs can be extracted for debugging/analysis
-        String retrievedPrevId = triadStatus.getProperties().get("prevSceneId");
-        String retrievedCurrId = triadStatus.getProperties().get("currentSceneId");
-        String retrievedNextId = triadStatus.getProperties().get("nextSceneId");
+        String retrievedPrev = triadStatus.getProperties().get("prevSceneIndex");
+        String retrievedCurr = triadStatus.getProperties().get("currentSceneIndex");
+        String retrievedNext = triadStatus.getProperties().get("nextSceneIndex");
 
-        assertThat(retrievedPrevId).isEqualTo(prevSceneId.toString());
-        assertThat(retrievedCurrId).isEqualTo(currSceneId.toString());
-        assertThat(retrievedNextId).isEqualTo(nextSceneId.toString());
+        assertThat(retrievedPrev).isEqualTo(String.valueOf(prevSceneIndex));
+        assertThat(retrievedCurr).isEqualTo(String.valueOf(currSceneIndex));
+        assertThat(retrievedNext).isEqualTo(String.valueOf(nextSceneIndex));
     }
 
     private LlmCallRecord createTriadLlmCallRecord(UUID statusRecordId) {

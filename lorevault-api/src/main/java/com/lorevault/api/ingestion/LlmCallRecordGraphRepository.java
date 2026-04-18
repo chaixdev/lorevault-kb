@@ -25,6 +25,16 @@ public interface LlmCallRecordGraphRepository extends Neo4jRepository<LlmCallRec
     """)
     List<LlmCallRecord> findByJobIdAndStep(UUID jobId, String step);
 
+    @Query("""
+    MATCH (r:LlmCallRecord {jobId: $jobId, step: $step, statusRecordId: $statusRecordId})
+    OPTIONAL MATCH (r)-[:OF_JOB]->(j:IngestionJob)
+    OPTIONAL MATCH (r)-[:OF_STATUS]->(s:StatusRecord)
+    RETURN r, j AS job, s AS status
+    ORDER BY r.createdAt DESC
+    LIMIT 1
+    """)
+    java.util.Optional<LlmCallRecord> findLatestByJobStepAndStatusRecord(UUID jobId, String step, UUID statusRecordId);
+
     /**
      * Existence checks via Cypher are more reliable than relying on SDN relationship hydration,
      * especially when custom projections/queries are involved. These queries are used by tests to

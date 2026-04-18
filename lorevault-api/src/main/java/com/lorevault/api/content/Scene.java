@@ -54,6 +54,21 @@ public class Scene implements Event {
     private String contextSummary;
 
     /**
+     * Temporal relationship hint extracted during scene analysis.
+     */
+    private String chronology;
+
+    /**
+     * Certainty for chronology hint extracted during scene analysis.
+     */
+    private String chronologyCertainty;
+
+    /**
+     * Verbatim temporal marker extracted during scene analysis.
+     */
+    private String chronologyMarker;
+
+    /**
      * Zero-indexed character position where this scene starts in the chapter text
      */
     @Property("startOffset")
@@ -93,6 +108,9 @@ public class Scene implements Event {
                  Long startCharacterOffset,
                  Long endCharacterOffset,
                  String contextSummary,
+                 String chronology,
+                 String chronologyCertainty,
+                 String chronologyMarker,
                  String text,
                  UUID chapterId,
                  List<String> labels,
@@ -105,6 +123,9 @@ public class Scene implements Event {
         this.startCharacterOffset = startCharacterOffset;
         this.endCharacterOffset = endCharacterOffset;
         this.contextSummary = contextSummary;
+        this.chronology = chronology;
+        this.chronologyCertainty = chronologyCertainty;
+        this.chronologyMarker = chronologyMarker;
         this.text = text;
         this.chapterId = chapterId;
         this.labels = labels == null ? new ArrayList<>(List.of(EVENT_LABEL)) : labels;
@@ -112,6 +133,22 @@ public class Scene implements Event {
         this.updatedAt = updatedAt;
         this.chunks = chunks == null ? new ArrayList<>() : chunks;
         this.chapter = chapter;
+    }
+
+    public Scene(UUID id,
+                 Integer sceneIndex,
+                 Long startCharacterOffset,
+                 Long endCharacterOffset,
+                 String contextSummary,
+                 String text,
+                 UUID chapterId,
+                 List<String> labels,
+                 LocalDateTime createdAt,
+                 LocalDateTime updatedAt,
+                 List<Chunk> chunks,
+                 Chapter chapter) {
+        this(id, sceneIndex, startCharacterOffset, endCharacterOffset, contextSummary,
+                null, null, null, text, chapterId, labels, createdAt, updatedAt, chunks, chapter);
     }
 
     // =====================================

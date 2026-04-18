@@ -7,6 +7,7 @@ import com.lorevault.api.content.SceneGraphRepository;
 import com.lorevault.api.ai.SceneDetectionService;
 import com.lorevault.api.ai.SceneProcessingService;
 import com.lorevault.api.timeline.DefaultTemporalEdgeService;
+import com.lorevault.api.timeline.TriadEdgePersistenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanWrapperImpl;
@@ -17,7 +18,9 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Handler for scene detection stage of the ingestion pipeline.
@@ -44,6 +47,7 @@ public class SceneDetectionHandler {
     private final IndividualPersistenceService individualPersistenceService;
     private final LocationPersistenceService locationPersistenceService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
+    private final TriadEdgePersistenceService triadEdgePersistenceService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
 
@@ -56,6 +60,7 @@ public class SceneDetectionHandler {
             LocationPersistenceService locationPersistenceService,
             IngestionJobService ingestionJobService,
             DefaultTemporalEdgeService defaultTemporalEdgeService,
+            TriadEdgePersistenceService triadEdgePersistenceService,
             ApplicationEventPublisher eventPublisher
     ) {
         this.chapterRepo = chapterRepo;
@@ -65,6 +70,7 @@ public class SceneDetectionHandler {
         this.individualPersistenceService = individualPersistenceService;
         this.locationPersistenceService = locationPersistenceService;
         this.defaultTemporalEdgeService = defaultTemporalEdgeService;
+        this.triadEdgePersistenceService = triadEdgePersistenceService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
@@ -102,7 +108,8 @@ public class SceneDetectionHandler {
             }
 
             // Detect and persist new scenes
-            List<Scene> scenes = detectAndPersistScenes(jobId, chapterId);
+            DetectionPersistenceOutcome outcome = detectAndPersistScenes(jobId, chapterId);
+            List<Scene> scenes = outcome.persistedScenes();
             
             if (scenes.isEmpty()) {
                 log.warn("[SCENE_DETECTION] No scenes detected for chapter {}", chapterId);
@@ -111,6 +118,19 @@ public class SceneDetectionHandler {
             // Create default temporal edges
             log.info("[SCENE_DETECTION] Creating default temporal edges for book {}", bookId);
             defaultTemporalEdgeService.createAllDefaults(bookId);
+
+            Map<Integer, UUID> sceneIndexToId = scenes.stream()
+                    .filter(scene -> scene.getSceneIndex() != null)
+                    .collect(Collectors.toMap(
+                            scene -> scene.getSceneIndex(),
+                            scene -> scene.getEventId(),
+                            (UUID left, UUID right) -> left
+                    ));
+            triadEdgePersistenceService.applyTriadAnalysesPostPersistence(
+                    chapterId,
+                    outcome.triadAnalyses(),
+                    sceneIndexToId
+            );
             
                     stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
                     String.format("Detected %d semantic scenes from chapter text", scenes.size()));
@@ -123,7 +143,7 @@ public class SceneDetectionHandler {
         );
     }
 
-    private List<Scene> detectAndPersistScenes(UUID jobId, UUID chapterId) {
+    private DetectionPersistenceOutcome detectAndPersistScenes(UUID jobId, UUID chapterId) {
         log.info("[SCENE_DETECTION] Detecting scenes for chapter {}", chapterId);
 
         Chapter chapter = chapterRepo.findById(chapterId)
@@ -132,7 +152,7 @@ public class SceneDetectionHandler {
         String chapterText = readStringProperty(chapter, "rawText");
         if (chapterText == null || chapterText.trim().isEmpty()) {
             log.warn("[SCENE_DETECTION] Chapter {} has no text content", chapterId);
-            return List.of();
+            return new DetectionPersistenceOutcome(List.of(), List.of());
         }
 
         // Use AI to detect scenes (passing jobId for status tracking)
@@ -141,7 +161,7 @@ public class SceneDetectionHandler {
 
         if (scenesWithCoords.isEmpty()) {
             log.info("[SCENE_DETECTION] No scenes detected for chapter {}", chapterId);
-            return List.of();
+            return new DetectionPersistenceOutcome(List.of(), detectionOutcome.triadAnalyses());
         }
 
         // Persist detected scenes
@@ -154,8 +174,13 @@ public class SceneDetectionHandler {
                 persistedScenes,
                 detectionOutcome.sceneLocationExtractions()
         );
-        return persistedScenes;
+        return new DetectionPersistenceOutcome(persistedScenes, detectionOutcome.triadAnalyses());
     }
+
+    private record DetectionPersistenceOutcome(
+            List<Scene> persistedScenes,
+            List<com.lorevault.api.ai.TriadOrchestrationService.TriadAnalysis> triadAnalyses
+    ) {}
 
     private void emitScenesDetected(UUID jobId, UUID chapterId, UUID bookId, List<Scene> scenes) {
         List<UUID> sceneIds = scenes.stream().map(Scene::getEventId).toList();

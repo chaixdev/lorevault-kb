@@ -50,8 +50,8 @@ class EventOrderingServiceTest {
 
         when(sceneRepo.findByChapterId(chapterId)).thenReturn(List.of(s0, s1, s2));
         when(temporalReadRepo.findChapterEventEdges(chapterId)).thenReturn(List.of(
-                edge(s0.getId(), s1.getId()),
-                edge(s1.getId(), s2.getId())
+                edge(s0.getEventId(), s1.getEventId()),
+                edge(s1.getEventId(), s2.getEventId())
         ));
 
         List<Scene> out = service.orderChapterEvents(chapterId);
@@ -69,8 +69,8 @@ class EventOrderingServiceTest {
         when(sceneRepo.findByChapterId(chapterId)).thenReturn(List.of(a, b, c));
         // c before a, a before b → c, a, b
         when(temporalReadRepo.findChapterEventEdges(chapterId)).thenReturn(List.of(
-                edge(c.getId(), a.getId()),
-                edge(a.getId(), b.getId())
+                edge(c.getEventId(), a.getEventId()),
+                edge(a.getEventId(), b.getEventId())
         ));
 
         List<Scene> out = service.orderChapterEvents(chapterId);
@@ -108,7 +108,7 @@ class EventOrderingServiceTest {
 
         when(sceneRepo.findByChapterId(c1)).thenReturn(List.of(c1s0, c1s1));
         when(temporalReadRepo.findChapterEventEdges(c1)).thenReturn(List.of(
-                edge(c1s0.getId(), c1s1.getId())
+                edge(c1s0.getEventId(), c1s1.getEventId())
         ));
 
         when(sceneRepo.findByChapterId(c2)).thenReturn(List.of(c2s0));

@@ -19,13 +19,14 @@ public class EventOrderingService {
     private final TemporalReadRepository temporalReadRepo;
 
     /**
-     * Order events within a chapter using precedence edges first, then sceneIndex and UUID as stable tie-breakers.
+     * Order events within a chapter using TEMPORAL precedence edges first,
+     * then sceneIndex and UUID as stable tie-breakers.
      */
     public List<Scene> orderChapterEvents(UUID chapterId) {
         List<Scene> scenes = new ArrayList<>(sceneRepo.findByChapterId(chapterId));
         if (scenes.isEmpty()) return List.of();
 
-        Map<UUID, Scene> byId = scenes.stream().collect(Collectors.toMap(Scene::getId, s -> s));
+        Map<UUID, Scene> byId = scenes.stream().collect(Collectors.toMap(Scene::getEventId, s -> s));
         Map<UUID, List<UUID>> adj = new HashMap<>();
         Map<UUID, Integer> indeg = new HashMap<>();
         byId.keySet().forEach(id -> { adj.put(id, new ArrayList<>()); indeg.put(id, 0); });

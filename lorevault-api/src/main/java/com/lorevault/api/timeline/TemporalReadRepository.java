@@ -9,7 +9,7 @@ import java.util.UUID;
 
 /**
  * Read-only repository for retrieving precedence edges between events.
- * We treat [:MEETS] and [:TEMPORAL] as precedence constraints (earlier -> later).
+ * Only [:TEMPORAL] edges are treated as temporal precedence constraints.
  */
 public interface TemporalReadRepository extends Repository<Scene, UUID> {
 
@@ -22,7 +22,7 @@ public interface TemporalReadRepository extends Repository<Scene, UUID> {
         MATCH (c:Chapter {id: $chapterId})
         MATCH (c)-[:HAS_SCENE]->(s1:Scene:Event)
         MATCH (c)-[:HAS_SCENE]->(s2:Scene:Event)
-        MATCH (s1)-[:MEETS|TEMPORAL]->(s2)
+        MATCH (s1)-[:TEMPORAL]->(s2)
         RETURN s1.id AS fromId, s2.id AS toId
         """
     )

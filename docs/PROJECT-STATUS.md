@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
-**Last Updated:** April 2026  
-**Status:** Active — M1/M2/M3/M4 complete; spoiler-aware search, budgeted scene detection, and scoped Individual plus Location resolution shipped  
+**Last Updated:** April 17, 2026  
+**Status:** Active — M1/M2/M3/M4 complete; entity-aware Q&A, unified SSE job feed, and operator UI slices shipped  
 **Primary Direction:** Simplify architecture, preserve mechanical sympathy, reduce indirection
 
 ## What LoreVault Is
@@ -21,6 +21,9 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
   - `IndividualMention -> ChapterIndividual -> BookIndividual`
   - `LocationMention -> ChapterLocation -> BookLocation`
 - Ingestion completion is coordinated across required post-scene branches: embedding completion, book-level Individual reduction, and book-level Location reduction
+- Query routing now distinguishes direct entity lookup from broader narrative Q&A, with entity-aware RAG grounded in scene-level individual and location context
+- SSE job streaming is live at `/api/query/jobs/stream`, with keepalives and normalized status-update payloads for ingestion lifecycle events
+- A basic operator UI is present under the Thymeleaf `ui/` surface: hierarchical library selection, batch chapter upload, live job visibility, operator actions, and a minimal query panel
 
 ## What Is Done
 
@@ -37,23 +40,25 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Scoped Location resolution shipped** — Triad extraction now persists `LocationMention` evidence per scene, automatic chapter-level resolution groups mentions into `ChapterLocation`, and automatic book-level reduction links those chapter locations into thin `BookLocation` nodes
 - **Coordinated ingestion completion shipped** — `IngestionCompletedEvent` is now emitted only after all required branches triggered from `ScenesDetectedEvent` finish: `ChunksCreatedEvent -> EmbeddingsCompletedEvent`, `ChapterIndividualsResolvedEvent -> BookIndividualsReducedEvent`, and `ChapterLocationsResolvedEvent -> BookLocationsReducedEvent`
 - **Ingestion hardening shipped** — recent follow-up fixes standardized embeddings on 3072 dimensions, persisted `chunkIndex` on `HAS_CHUNK` relationships for deterministic ordering, tightened scene-localization retry behavior when too many scenes are dropped, and removed cartesian-product warning patterns from graph-link queries
+- **Entity-aware Q&A shipped** — query handling now classifies questions into at least two lanes: direct entity lookup through Cypher templates and narrative Q&A through vector-seeded graph expansion; search and RAG responses include scene-level individual and location context for better grounding
+- **Unified SSE diagnostics feed shipped** — ingestion job updates now stream via `SseEmitter` from `/api/query/jobs/stream`, with normalized event payloads, keepalive comments, and chapter-ingestion event alignment for the live feed
+- **Basic operator UI shipped** — the Thymeleaf operator console now supports hierarchical universe/series/book selection, batch chapter upload, live job refresh plus SSE event console, expandable job details, operator re-resolution actions, and a minimal RAG query panel
+- **Async ingestion lifecycle logging shipped** — ingestion completion coordination and downstream reduction handlers now emit more detailed async lifecycle logging to improve operator/debug visibility
 
 ## What Is Next
 
-M1–M4 are complete. The architecture is now a flat, feature-oriented modulith with direct Spring AI integration and no port/adapter indirection. Recent feature work has shifted from structural cleanup to ingestion quality and retrieval correctness.
+M1–M4 are complete. The architecture is now a flat, feature-oriented modulith with direct Spring AI integration and no port/adapter indirection. Recent feature work has shifted from structural cleanup to product-facing operator surfaces, ingestion observability, and retrieval correctness.
 
 Current focus:
-- Clarify the near-term execution plan as iterative product-facing slices rather than one large next tranche
+- Harden the newly shipped operator-facing ingestion/query slice and continue expanding entity-aware retrieval beyond the first two entity lanes
 
 Near-term execution slices:
-1. **Entity-aware Q&A improvements**
-   - Improve query behavior against at least two entity types instead of building a character-only vertical
-2. **Unified SSE diagnostics feed**
-   - Add a normalized live stream for job progress, warnings, failures, and completion notifications
-3. **Basic UI for chapter upload + SSE status visibility**
-   - Build a minimal user-facing/operator-facing surface that can ingest chapters and watch progress in real time
-4. **Additional entity types**
-   - Extend beyond individuals and locations once the first entity-aware product slice proves the pattern
+1**Operator UI deepening**
+   - Turn the current shell into a more complete operator surface with richer query workflows, better action feedback, and tighter integration with ingestion diagnostics
+2**Ingestion reliability follow-up**
+   - Resolve remaining cases where ingestion state can stick in intermediate states and keep event/status reporting mechanically aligned
+3**Explore and research NLP tools** to improve entity extraction, both ingestion and q&a side.
+   - 
 
 Broader planned directions remain intact after these slices:
 - Broader entity extraction (Collectives and later claims)

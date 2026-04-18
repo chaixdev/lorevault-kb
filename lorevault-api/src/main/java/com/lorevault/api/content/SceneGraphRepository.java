@@ -25,6 +25,17 @@ public interface SceneGraphRepository extends Neo4jRepository<Scene, UUID> {
             """)
     void createMeetsBetween(UUID fromId, UUID toId);
 
+    @Query("MATCH (a:Scene {id: $fromId})-[r:NEXT_IN_READING_ORDER]->(b:Scene {id: $toId}) RETURN count(r)")
+    long countNextInReadingOrderBetween(UUID fromId, UUID toId);
+
+    @Query("""
+            MATCH (a:Scene {id: $fromId})
+            WITH a
+            MATCH (b:Scene {id: $toId})
+            MERGE (a)-[:NEXT_IN_READING_ORDER]->(b)
+            """)
+    void createNextInReadingOrderBetween(UUID fromId, UUID toId);
+
     @Query("""
             MATCH (s:Scene {id: $sceneId})
             WITH s

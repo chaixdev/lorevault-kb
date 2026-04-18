@@ -39,6 +39,7 @@ When a brainstorm becomes stable enough, either:
 
 ### Scene detection
 
+- [Scene temporal linking solution design proposal — April 2026](scene-detection/scene-temporal-linking-solution-design-proposal-april-2026.md) — implementation-ready V1 design for post-persistence scene temporal linking, triad artifact recovery, structural adjacency separation, and ambiguity handling
 - [Scene detection context budget and segmentation spec — April 2026](scene-detection/scene-detection-context-budget-and-segmentation-spec-april-2026.md) — chapter segmentation context budgeting, segmented processing fallback, and implementation notes
 - [Scene detection naming analysis — April 2026](scene-detection/scene-detection-naming-analysis-april-2026.md) — rationale for renaming the old stage terminology before it hardened further; recommends `chapter segmentation` and `scene analysis`
 
@@ -57,4 +58,4 @@ When a brainstorm becomes stable enough, either:
 ### DevX and operator tooling
 
 - [Operator dashboard and admin API brainstorm — April 2026](devx/2026-04-16_operator-dashboard-and-admin-api-brainstorm.md) — exploratory direction for the operator dashboard: timeline-based job visibility, SSE-backed status updates, selective stage reset/retrigger actions, and scoping the current API surface under an admin namespace while the end-user API remains undecided
-- [Python question-understanding tooling research — April 2026](query/python-question-understanding/2026-04-16_python-question-understanding-tooling-research.md) — practicality-first survey of Python NLP tooling for LoreVault query understanding, focused on integration feasibility, shortlist recommendations, and first experiments
+- [Python question-understanding tooling research — April 2026](nlp/2026-04-16_python-question-understanding-tooling-research.md) — practicality-first survey of Python NLP tooling for LoreVault query understanding, focused on integration feasibility, shortlist recommendations, and first experiments

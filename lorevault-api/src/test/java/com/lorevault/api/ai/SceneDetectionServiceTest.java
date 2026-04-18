@@ -1,6 +1,5 @@
 package com.lorevault.api.ai;
 
-import com.lorevault.api.timeline.TriadEdgePersistenceService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,8 +30,6 @@ class SceneDetectionServiceTest {
     private LlmRetryStrategy llmRetryStrategy;
     @Mock
     private TriadOrchestrationService triadOrchestrationService;
-    @Mock
-    private TriadEdgePersistenceService triadEdgePersistenceService;
 
     @InjectMocks
     private SceneDetectionService sceneDetectionService;
@@ -65,6 +62,7 @@ class SceneDetectionServiceTest {
         assertThat(scenes.get(0).potentialSplitSceneStart()).isFalse();
         assertThat(scenes.get(1).potentialSplitSceneStart()).isTrue();
         assertThat(scenes.get(1).potentialSplitSceneEnd()).isFalse();
+        assertThat(outcome.triadAnalyses()).isEmpty();
         assertThat(outcome.sceneIndividualExtractions()).isEmpty();
 
         verify(sceneDetectionClient, times(2)).detectChapterSegmentation(eq(jobId), any(String.class));
@@ -96,6 +94,7 @@ class SceneDetectionServiceTest {
         assertThat(scenes).hasSize(1);
         assertThat(scenes.get(0).potentialSplitSceneStart()).isFalse();
         assertThat(scenes.get(0).potentialSplitSceneEnd()).isFalse();
+        assertThat(outcome.triadAnalyses()).isEmpty();
         assertThat(outcome.sceneIndividualExtractions()).isEmpty();
         verify(sceneDetectionClient, times(1)).detectChapterSegmentation(eq(jobId), eq(chapterText));
     }

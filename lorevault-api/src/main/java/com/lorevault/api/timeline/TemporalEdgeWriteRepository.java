@@ -28,15 +28,10 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
             WITH c, collect(s) AS scenes
             UNWIND range(0, size(scenes) - 2) AS i
             WITH scenes[i] AS earlier, scenes[i + 1] AS later
-            // Guard: skip if adding earlier->later would introduce a cycle via TEMPORAL edges
             WITH earlier, later
-            WHERE NOT EXISTS { MATCH (later)-[:TEMPORAL*1..50]->(earlier) }
-            MERGE (earlier)-[t:TEMPORAL]->(later)
-            SET t.temporalRelation = 'R:temporal.meets',
-                t.certainty = 'Heuristic',
-                t.weight = 0.5,
-                t.source = coalesce(t.source, 'default-ordering')
-            RETURN count(t)
+            MERGE (earlier)-[a:NEXT_IN_READING_ORDER]->(later)
+            SET a.source = coalesce(a.source, 'default-ordering')
+            RETURN count(a)
             """)
     int mergeInChapterDefaultEdges(@Param("bookId") UUID bookId);
 
@@ -67,15 +62,10 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
             WITH lastScene, head(collect(s2)) AS firstScene
             
             WHERE lastScene IS NOT NULL AND firstScene IS NOT NULL
-            // Guard: skip if adding lastScene->firstScene would introduce a cycle via TEMPORAL edges
             WITH lastScene, firstScene
-            WHERE NOT EXISTS { MATCH (firstScene)-[:TEMPORAL*1..500]->(lastScene) }
-            MERGE (lastScene)-[t:TEMPORAL]->(firstScene)
-            SET t.temporalRelation = 'R:temporal.meets',
-                t.certainty = 'Heuristic',
-                t.weight = 0.5,
-                t.source = coalesce(t.source, 'default-ordering')
-            RETURN count(t)
+            MERGE (lastScene)-[a:NEXT_IN_READING_ORDER]->(firstScene)
+            SET a.source = coalesce(a.source, 'default-ordering')
+            RETURN count(a)
             """)
     int mergeCrossChapterDefaultEdge(@Param("bookId") UUID bookId);
 
@@ -86,8 +76,8 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
      * @return Number of temporal edges originating from scenes in this chapter
      */
     @Query("""
-    MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene)-[t:TEMPORAL]->()
-        RETURN count(t)
+    MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(s:Scene)-[a:NEXT_IN_READING_ORDER]->()
+        RETURN count(a)
         """)
     int countTemporalEdgesFromChapter(@Param("chapterId") UUID chapterId);
 
@@ -164,5 +154,44 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
             @Param("evidenceStart") Long evidenceStart,
             @Param("evidenceEnd") Long evidenceEnd,
             @Param("evidenceChunkId") UUID evidenceChunkId
+    );
+
+    @Query("""
+        MATCH (a:Scene {id: $fromId})
+        MATCH (b:Scene {id: $toId})
+        OPTIONAL MATCH (a)-[t:TEMPORAL]->(b)
+        RETURN t.temporalRelation
+        LIMIT 1
+        """)
+    String findTemporalRelationBetween(
+            @Param("fromId") UUID fromId,
+            @Param("toId") UUID toId
+    );
+
+    @Query("""
+        MATCH (a:Scene {id: $fromId})
+        MATCH (b:Scene {id: $toId})
+        MERGE (a)-[r:AMBIGUOUS_RELATION]->(b)
+        SET r.provenance = coalesce($provenance, 'inferred'),
+            r.ambiguous = true,
+            r.payload = coalesce($payload, ''),
+            r.evidenceSnippet = coalesce($evidenceSnippet, ''),
+            r.jobId = coalesce($jobId, ''),
+            r.chapterId = coalesce($chapterId, ''),
+            r.statusRecordId = coalesce($statusRecordId, ''),
+            r.llmCallRecordId = coalesce($llmCallRecordId, ''),
+            r.updatedAt = timestamp()
+        RETURN id(r)
+        """)
+    Long upsertAmbiguousRelation(
+            @Param("fromId") UUID fromId,
+            @Param("toId") UUID toId,
+            @Param("provenance") String provenance,
+            @Param("payload") String payload,
+            @Param("evidenceSnippet") String evidenceSnippet,
+            @Param("jobId") String jobId,
+            @Param("chapterId") String chapterId,
+            @Param("statusRecordId") String statusRecordId,
+            @Param("llmCallRecordId") String llmCallRecordId
     );
 }

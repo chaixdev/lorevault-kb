@@ -4,7 +4,6 @@ import com.lorevault.api.ai.LlmRetryStrategy.LlmRetryConfig;
 import com.lorevault.api.ai.LlmRetryStrategy.LlmRetryResult;
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
-import com.lorevault.api.timeline.TriadEdgePersistenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanWrapperImpl;
@@ -23,7 +22,7 @@ import java.util.ArrayList;
  * - LLM calls via SceneDetectionClient
  * - XML parsing and coordinate localization via SceneProcessingService
  * - Retry handling with status updates
- * - Triad analysis for temporal relationships
+ * - Triad analysis artifact generation (temporal linking runs post-persistence)
  */
 @Service
 public class SceneDetectionService {
@@ -31,6 +30,7 @@ public class SceneDetectionService {
     private static final Logger log = LoggerFactory.getLogger(SceneDetectionService.class);
     public record SceneDetectionOutcome(
             List<SceneWithCoordinates> scenes,
+            List<TriadOrchestrationService.TriadAnalysis> triadAnalyses,
             List<TriadOrchestrationService.TriadSceneIndividualExtraction> sceneIndividualExtractions,
             List<TriadOrchestrationService.TriadSceneLocationExtraction> sceneLocationExtractions
     ) {}
@@ -39,18 +39,15 @@ public class SceneDetectionService {
     private final SceneProcessingService sceneProcessingService;
     private final LlmRetryStrategy llmRetryStrategy;
     private final TriadOrchestrationService triadOrchestrationService;
-    private final TriadEdgePersistenceService triadEdgePersistenceService;
 
     public SceneDetectionService(SceneDetectionClient sceneDetectionClient,
                                  SceneProcessingService sceneProcessingService,
                                  LlmRetryStrategy llmRetryStrategy,
-                                 TriadOrchestrationService triadOrchestrationService,
-                                 TriadEdgePersistenceService triadEdgePersistenceService) {
+                                 TriadOrchestrationService triadOrchestrationService) {
         this.sceneDetectionClient = sceneDetectionClient;
         this.sceneProcessingService = sceneProcessingService;
         this.llmRetryStrategy = llmRetryStrategy;
         this.triadOrchestrationService = triadOrchestrationService;
-        this.triadEdgePersistenceService = triadEdgePersistenceService;
     }
 
     /**
@@ -66,7 +63,7 @@ public class SceneDetectionService {
         // Handle null or empty text gracefully
         if (chapterText == null || chapterText.trim().isEmpty()) {
             log.warn("Chapter {} has no text content for scene detection", chapterId);
-            return new SceneDetectionOutcome(Collections.emptyList(), List.of(), List.of());
+            return new SceneDetectionOutcome(Collections.emptyList(), List.of(), List.of(), List.of());
         }
         
         log.info("Starting scene detection with retry for chapter {} (job {}, length={} chars)", 
@@ -121,7 +118,7 @@ public class SceneDetectionService {
     }
 
     /**
-     * Perform the complete scene detection pipeline (segmentation + triad-based analysis + parsing + localization)
+     * Perform chapter segmentation and coordinate localization.
      */
     private SceneDetectionOutcome performFullSceneDetection(UUID jobId, UUID chapterId, String chapterText) {
         try {
@@ -152,35 +149,31 @@ public class SceneDetectionService {
                 throw new RuntimeException("Scene coordinate localization returned empty results");
             }
 
-            // Triad scene analysis: analyze prev/curr/next scene triads and persist TEMPORAL edges
-            log.info("Triad scene analysis: starting for job {} chapter {}", jobId, chapterId);
-            Chapter chapter = Chapter.createWithReferences(
-                    null, null, null, null, null, chapterText, null
-            );
+            // Triad scene analysis happens here only to produce reusable structured output artifacts.
+            // Durable temporal linking is intentionally deferred to post-persistence stage.
+            Chapter chapter = Chapter.createWithReferences(null, null, null, null, null, chapterText, null);
             new BeanWrapperImpl(chapter).setPropertyValue("id", chapterId);
-            
-            // Convert SceneWithCoordinates to Scene objects temporarily for triad analysis
-            // (without persisting - that will happen later in the ingestion pipeline)
             var tempScenes = scenes.stream().map(s -> {
                 String sceneText = null;
-                if (chapterText != null) {
-                    try {
-                        int start = (int) s.startCharacterOffset();
-                        int end = (int) s.endCharacterOffset();
-                        if (start >= 0 && end <= chapterText.length() && start < end) {
-                            sceneText = chapterText.substring(start, end);
-                        }
-                    } catch (Exception e) {
-                        log.debug("Failed to extract scene text for triad analysis: {}", e.getMessage());
+                try {
+                    int start = (int) s.startCharacterOffset();
+                    int end = (int) s.endCharacterOffset();
+                    if (start >= 0 && end <= chapterText.length() && start < end) {
+                        sceneText = chapterText.substring(start, end);
                     }
+                } catch (Exception e) {
+                    log.debug("Failed to extract scene text for triad analysis: {}", e.getMessage());
                 }
 
-                Scene scene = new Scene(
+                return new Scene(
                         UUID.randomUUID(),
                         s.sceneIndex(),
                         s.startCharacterOffset(),
                         s.endCharacterOffset(),
                         s.contextSummary(),
+                        s.chronology(),
+                        s.chronologyCertainty(),
+                        s.chronologyMarker(),
                         sceneText,
                         chapterId,
                         null,
@@ -189,23 +182,19 @@ public class SceneDetectionService {
                         null,
                         null
                 );
-                return scene;
             }).toList();
-            
-            // Add scenes to chapter for triad analysis (in-memory only)
+
             for (var scene : tempScenes) {
                 chapter.addExistingScene(scene);
             }
 
-            // Run triad orchestration with populated chapter
-            log.info("Scene analysis (triad): starting for job {} chapter {}", jobId, chapterId);
             var triadOutcome = triadOrchestrationService.analyzeChapterTriadsWithIndividuals(jobId, chapter);
-            triadEdgePersistenceService.applyTriadAnalyses(triadOutcome.triadAnalyses());
 
-            log.debug("Successfully completed triad-based scene detection pipeline: {} scenes detected, {} triad analyses completed", 
-                     scenes.size(), triadOutcome.triadAnalyses().size());
+            log.debug("Successfully completed scene segmentation/localization pipeline: {} scenes detected, {} triads analyzed",
+                    scenes.size(), triadOutcome.triadAnalyses().size());
             return new SceneDetectionOutcome(
                     scenes,
+                    triadOutcome.triadAnalyses(),
                     triadOutcome.sceneIndividualExtractions(),
                     triadOutcome.sceneLocationExtractions()
             );
@@ -245,6 +234,9 @@ public class SceneDetectionService {
                         segment.startOffset() + localScene.startCharacterOffset(),
                         segment.startOffset() + localScene.endCharacterOffset(),
                         localScene.contextSummary(),
+                        localScene.chronology(),
+                        localScene.chronologyCertainty(),
+                        localScene.chronologyMarker(),
                         potentialSplitStart,
                         potentialSplitEnd
                 ));
@@ -267,6 +259,9 @@ public class SceneDetectionService {
                     scene.startCharacterOffset(),
                     scene.endCharacterOffset(),
                     scene.contextSummary(),
+                    scene.chronology(),
+                    scene.chronologyCertainty(),
+                    scene.chronologyMarker(),
                     scene.potentialSplitSceneStart(),
                     scene.potentialSplitSceneEnd()
             ));

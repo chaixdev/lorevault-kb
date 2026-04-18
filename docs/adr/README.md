@@ -35,7 +35,7 @@ If the decision is later replaced, the ADR should remain as history and point to
 - [002 - Keep and upgrade Spring AI](002-keep-and-upgrade-spring-ai.md)
 - [003 - Prefer direct services over ports and mappers](003-prefer-direct-services-over-ports-and-mappers.md)
 - [004 - Keep the event-driven ingestion pipeline](004-keep-the-event-driven-ingestion-pipeline.md)
-- [005 - Move structured output from XML to JSON](005-move-structured-output-from-xml-to-json.md)
+- DEPRECATED: [005 - Move structured output from XML to JSON](005-move-structured-output-from-xml-to-json.md) NOT ADOPTED. IT AINT BROKE,DONT FIX IT.
 - [006 - Spoiler-aware search design](006-spoiler-aware-search-design.md)
 - [007 - Adopt scoped identity ladder](007-adopt-scoped-identity-ladder.md)
 - [008 - Define ingestion completion across parallel branches](008-define-ingestion-completion-across-parallel-branches.md)

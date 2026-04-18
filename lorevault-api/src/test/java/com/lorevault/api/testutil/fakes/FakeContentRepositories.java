@@ -359,6 +359,8 @@ public class FakeContentRepositories {
 
         @Override public long countMeetsBetween(UUID fromId, UUID toId) { return 0; }
         @Override public void createMeetsBetween(UUID fromId, UUID toId) { }
+        @Override public long countNextInReadingOrderBetween(UUID fromId, UUID toId) { return 0; }
+        @Override public void createNextInReadingOrderBetween(UUID fromId, UUID toId) { }
         @Override public void linkChunkToScene(UUID sceneId, UUID chunkId, Integer chunkIndex) { }
         @Override public void linkSceneToChapter(UUID chapterId, UUID sceneId) { }
 

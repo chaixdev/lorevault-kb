@@ -66,9 +66,9 @@ public class TriadOrchestrationService {
     public record TriadSceneLocationExtraction(int sceneIndex, List<TriadLocationExtraction> locations) {}
 
     public record TriadAnalysis(
-            UUID previousSceneId,
-            UUID currentSceneId,
-            UUID nextSceneId,
+            Integer previousSceneIndex,
+            Integer currentSceneIndex,
+            Integer nextSceneIndex,
             String timelineMarker,
             String prevToCurrType,
             String prevToCurrCertainty,
@@ -122,12 +122,12 @@ public class TriadOrchestrationService {
 
             Map<String, Object> statusProps = new HashMap<>();
             statusProps.put("triadIndex", triadIndex++);
-            statusProps.put("prevSceneId", t.previous() != null ? t.previous().getEventId() : null);
-            statusProps.put("currentSceneId", t.current().getEventId());
-            statusProps.put("nextSceneId", t.next() != null ? t.next().getEventId() : null);
+            statusProps.put("prevSceneIndex", t.previous() != null ? t.previous().getSceneIndex() : null);
+            statusProps.put("currentSceneIndex", t.current().getSceneIndex());
+            statusProps.put("nextSceneIndex", t.next() != null ? t.next().getSceneIndex() : null);
 
-            log.debug("TriadOrchestrator: emitting status SCENE_TRIAD_ANALYSIS for triadIndex={} prev={} curr={} next={}",
-                    statusProps.get("triadIndex"), statusProps.get("prevSceneId"), statusProps.get("currentSceneId"), statusProps.get("nextSceneId"));
+            log.debug("TriadOrchestrator: emitting status SCENE_TRIAD_ANALYSIS for triadIndex={} prevIdx={} currIdx={} nextIdx={}",
+                    statusProps.get("triadIndex"), statusProps.get("prevSceneIndex"), statusProps.get("currentSceneIndex"), statusProps.get("nextSceneIndex"));
             ingestionJobService.updateJobStatus(
                     jobId,
                     IngestionStatus.SCENE_TRIAD_ANALYSIS,
@@ -148,9 +148,9 @@ public class TriadOrchestrationService {
                     : null;
 
             analyses.add(new TriadAnalysis(
-                    t.previous() != null ? t.previous().getEventId() : null,
-                    t.current().getEventId(),
-                    t.next() != null ? t.next().getEventId() : null,
+                    t.previous() != null ? t.previous().getSceneIndex() : null,
+                    t.current().getSceneIndex(),
+                    t.next() != null ? t.next().getSceneIndex() : null,
                     parsed.timelineMarker(),
                     parsed.previousToCurrent() != null ? parsed.previousToCurrent().temporalType() : null,
                     parsed.previousToCurrent() != null ? parsed.previousToCurrent().certainty() : null,

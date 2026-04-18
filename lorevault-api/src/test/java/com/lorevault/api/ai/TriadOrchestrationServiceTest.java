@@ -4,6 +4,7 @@ import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
 import com.lorevault.api.ingestion.IngestionStatus;
 import com.lorevault.api.ingestion.IngestionJobService;
+import com.lorevault.api.ai.TriadAnalysisException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -112,9 +114,9 @@ class TriadOrchestrationServiceTest {
         
         Map<String, Object> firstTriadProps = capturedProperties.get(0);
         assertThat(firstTriadProps).containsEntry("triadIndex", 0);
-        assertThat(firstTriadProps).containsEntry("prevSceneId", null);
-        assertThat(firstTriadProps).containsEntry("currentSceneId", scene1Id);
-        assertThat(firstTriadProps).containsEntry("nextSceneId", scene2Id);
+        assertThat(firstTriadProps).containsEntry("prevSceneIndex", null);
+        assertThat(firstTriadProps).containsEntry("currentSceneIndex", 0);
+        assertThat(firstTriadProps).containsEntry("nextSceneIndex", 1);
 
         // Verify second triad status record
         assertThat(capturedJobIds.get(1)).isEqualTo(testJobId);
@@ -123,9 +125,9 @@ class TriadOrchestrationServiceTest {
         
         Map<String, Object> secondTriadProps = capturedProperties.get(1);
         assertThat(secondTriadProps).containsEntry("triadIndex", 1);
-        assertThat(secondTriadProps).containsEntry("prevSceneId", scene1Id);
-        assertThat(secondTriadProps).containsEntry("currentSceneId", scene2Id);
-        assertThat(secondTriadProps).containsEntry("nextSceneId", scene3Id);
+        assertThat(secondTriadProps).containsEntry("prevSceneIndex", 0);
+        assertThat(secondTriadProps).containsEntry("currentSceneIndex", 1);
+        assertThat(secondTriadProps).containsEntry("nextSceneIndex", 2);
     }
 
     @Test
@@ -212,6 +214,29 @@ class TriadOrchestrationServiceTest {
         );
     }
 
+    @Test
+    @DisplayName("Should fail when required previousToCurrent relation is missing")
+    void shouldFailWhenPreviousToCurrentRelationMissing() {
+        Chapter testChapter = createTestChapter();
+        List<TriadBuilderService.SceneTriad> triads = List.of(createTriadWithPreviousAndCurrent());
+
+        PromptTemplate mockTemplate = mock(PromptTemplate.class);
+        when(promptRepository.get("scene-analysis")).thenReturn(mockTemplate);
+        when(mockTemplate.render(any())).thenReturn("mock system prompt");
+        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+
+        TriadOrchestrationService.TriadStructuredResult invalid =
+                new TriadOrchestrationService.TriadStructuredResult("marker", null,
+                        new TriadOrchestrationService.TriadRelation("MEETS", "Explicit", "evidence"));
+
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+                .thenReturn(invalid);
+
+        assertThatThrownBy(() -> triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter))
+                .isInstanceOf(TriadAnalysisException.class)
+                .hasMessageContaining("omitted required relation 'previousToCurrent'");
+    }
+
     private Chapter createTestChapter() {
         Chapter chapter = new Chapter();
         BeanWrapperImpl chapterBean = new BeanWrapperImpl(chapter);
@@ -243,6 +268,12 @@ class TriadOrchestrationServiceTest {
         Scene scene1 = createScene(scene1Id, 0, 0L, 20L);
         Scene scene2 = createScene(scene2Id, 1, 21L, 40L);
         return new TriadBuilderService.SceneTriad(null, scene1, scene2);
+    }
+
+    private TriadBuilderService.SceneTriad createTriadWithPreviousAndCurrent() {
+        Scene scene0 = createScene(scene1Id, 0, 0L, 20L);
+        Scene scene1 = createScene(scene2Id, 1, 21L, 40L);
+        return new TriadBuilderService.SceneTriad(scene0, scene1, null);
     }
 
     private Scene createScene(UUID id, int index, Long start, Long end) {
