@@ -1,6 +1,5 @@
 package com.lorevault.api.ingestion;
 
-import com.lorevault.api.ingestion.StatusRecord;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 
@@ -24,11 +23,9 @@ public interface StatusRecordGraphRepository extends Neo4jRepository<StatusRecor
 
     @Query("""
             MATCH (s:StatusRecord {jobId: $jobId, status: 'SCENE_TRIAD_ANALYSIS'})
-            WHERE s.prop_currentSceneIndex = $sceneIndex
             RETURN s
             ORDER BY s.timestamp DESC
-            LIMIT 1
             """)
-    java.util.Optional<StatusRecord> findLatestTriadStatusForSceneIndex(UUID jobId, String sceneIndex);
+    List<StatusRecord> findTriadStatusesForJob(UUID jobId);
 
 }

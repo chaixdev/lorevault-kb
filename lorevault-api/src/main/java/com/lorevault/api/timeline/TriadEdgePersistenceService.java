@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -132,8 +133,14 @@ public class TriadEdgePersistenceService {
             );
         }
 
-        return statusRecordGraphRepository
-                .findLatestTriadStatusForSceneIndex(jobId, currentSceneIndex.toString())
+        String sceneIndexKey = currentSceneIndex.toString();
+        return statusRecordGraphRepository.findTriadStatusesForJob(jobId).stream()
+                .filter(status -> status != null && status.getProperties() != null)
+                .filter(status -> {
+                    String idx = status.getProperties().get("currentSceneIndex");
+                    return Objects.equals(idx, sceneIndexKey);
+                })
+                .findFirst()
                 .orElseThrow(() -> triadArtifactFailure(
                         "TRIAD_STATUS_MISSING",
                         "Missing SCENE_TRIAD_ANALYSIS status for scene index " + currentSceneIndex,
