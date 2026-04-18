@@ -1,6 +1,6 @@
 # LLM Structured Output
 
-**Status:** Established
+**Status:** deferred
 
 LoreVault prefers typed structured output over ad hoc parsing or schema-light free text.
 
@@ -31,6 +31,3 @@ The durable pattern is:
 This pattern is about how LoreVault structures LLM responses.
 
 It is not itself the full orchestration story; triad orchestration, status emission, and persistence observability are related but separate mechanisms.
-
-Primary references:
-- `../adr/005-move-structured-output-from-xml-to-json.md`
