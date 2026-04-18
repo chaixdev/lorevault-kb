@@ -16,8 +16,13 @@ class TriadRelationInverterTest {
     }
 
     @Test
-    void mapsMeetsToMetBy() {
-        assertThat(TriadRelationInverter.invertPrevToCurr("R:temporal.meets")).isEqualTo("R:temporal.met_by");
+    void mapsAfterToBefore() {
+        assertThat(TriadRelationInverter.invertPrevToCurr("R:temporal.after")).isEqualTo("R:temporal.before");
+    }
+
+    @Test
+    void mapsMeetsToAfter() {
+        assertThat(TriadRelationInverter.invertPrevToCurr("R:temporal.meets")).isEqualTo("R:temporal.after");
     }
 
     @Test
@@ -31,12 +36,17 @@ class TriadRelationInverterTest {
     }
 
     @Test
+    void mapsDuringToContains() {
+        assertThat(TriadRelationInverter.invertPrevToCurr("R:temporal.during")).isEqualTo("R:temporal.contains");
+    }
+
+    @Test
     void mapsEqualsToEquals() {
         assertThat(TriadRelationInverter.invertPrevToCurr("R:temporal.equals")).isEqualTo("R:temporal.equals");
     }
 
     @Test
     void unknownYieldsNull() {
-        assertThat(TriadRelationInverter.invertPrevToCurr("R:temporal.after")).isNull();
+        assertThat(TriadRelationInverter.invertPrevToCurr("R:temporal.unknown")).isNull();
     }
 }

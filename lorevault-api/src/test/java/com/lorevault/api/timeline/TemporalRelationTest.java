@@ -59,7 +59,8 @@ class TemporalRelationTest {
     @Test
     @Tag("unit")
     void meets_relation_exists_for_default_edges() {
-        // MEETS is specifically used for default consecutive scene relationships
+        // MEETS remains in the vocabulary for completeness, but is deprecated for inferred use.
         assertEquals("MEETS", TemporalRelation.MEETS.name());
+        assertTrue(TemporalRelation.MEETS.getDeclaringClass().isEnum());
     }
 }

@@ -23,11 +23,11 @@ class RelationNormalizerTest {
     @Tag("unit")
     void normalizes_meets_met_by() {
         var n1 = RelationNormalizer.normalize(TemporalRelation.MEETS);
-        assertEquals(CanonicalRelation.MEETS, n1.relation());
+        assertEquals(CanonicalRelation.BEFORE, n1.relation());
         assertFalse(n1.flipped());
 
         var n2 = RelationNormalizer.normalize(TemporalRelation.MET_BY);
-        assertEquals(CanonicalRelation.MEETS, n2.relation());
+        assertEquals(CanonicalRelation.BEFORE, n2.relation());
         assertTrue(n2.flipped());
     }
 
