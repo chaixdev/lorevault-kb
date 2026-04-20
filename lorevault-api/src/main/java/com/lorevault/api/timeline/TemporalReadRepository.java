@@ -28,6 +28,25 @@ public interface TemporalReadRepository extends Repository<Scene, UUID> {
     )
     List<TemporalEdgePair> findChapterEventEdges(UUID chapterId);
 
+    /**
+     * Return (fromId, toId) pairs for precedence edges between scene events in all chapters
+     * up to and including the requested chapter number for a book.
+     */
+    @Query(
+        """
+        MATCH (b:Book {id: $bookId})
+        MATCH (c:Chapter)-[:IN_BOOK]->(b)
+        WHERE c.chapterNumber <= $uptoChapterNumber
+        MATCH (c)-[:HAS_SCENE]->(s:Scene:Event)
+        WITH collect(DISTINCT s) AS scopedScenes
+        UNWIND scopedScenes AS s1
+        MATCH (s1)-[:TEMPORAL]->(s2:Scene:Event)
+        WHERE s2 IN scopedScenes
+        RETURN DISTINCT s1.id AS fromId, s2.id AS toId
+        """
+    )
+    List<TemporalEdgePair> findBookEventEdgesUpToChapter(UUID bookId, int uptoChapterNumber);
+
     interface TemporalEdgePair {
         UUID getFromId();
         UUID getToId();

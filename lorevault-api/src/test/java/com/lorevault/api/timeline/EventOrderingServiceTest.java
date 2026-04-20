@@ -1,6 +1,5 @@
 package com.lorevault.api.timeline;
 
-import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
 import com.lorevault.api.content.ChapterReadRepository;
 import com.lorevault.api.content.SceneGraphRepository;
@@ -26,11 +25,43 @@ class EventOrderingServiceTest {
     private final EventOrderingService service = new EventOrderingService(sceneRepo, chapterReadRepo, temporalReadRepo);
 
     private Scene scene(UUID id, int sceneIndex) {
-        Scene s = new Scene();
-        s.setId(id);
-        s.setSceneIndex(sceneIndex);
-        s.setChapter(new Chapter());
-        return s;
+        return new Scene(
+                id,
+                sceneIndex,
+                0L,
+                1L,
+                "ctx",
+                null,
+                null,
+                null,
+                "text",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    private Scene scene(UUID id, UUID chapterId, int sceneIndex) {
+        return new Scene(
+                id,
+                sceneIndex,
+                0L,
+                1L,
+                "ctx",
+                null,
+                null,
+                null,
+                "text",
+                chapterId,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
     }
 
     private static TemporalEdgePair edge(UUID from, UUID to) {
@@ -94,27 +125,49 @@ class EventOrderingServiceTest {
     }
 
     @Test
-    @DisplayName("Book up to N → concatenate per-chapter ordered sequences")
-    void bookConcatenateChapters() {
+    @DisplayName("Book up to N without cross-chapter edges → preserves chapter order fallback")
+    void bookPreservesChapterOrderFallback() {
         UUID bookId = UUID.randomUUID();
         UUID c1 = UUID.randomUUID();
         UUID c2 = UUID.randomUUID();
 
         when(chapterReadRepo.findChapterIdsUpTo(bookId, 2)).thenReturn(List.of(c1, c2));
 
-        Scene c1s0 = scene(UUID.randomUUID(), 0);
-        Scene c1s1 = scene(UUID.randomUUID(), 1);
-        Scene c2s0 = scene(UUID.randomUUID(), 0);
+        Scene c1s0 = scene(UUID.randomUUID(), c1, 0);
+        Scene c1s1 = scene(UUID.randomUUID(), c1, 1);
+        Scene c2s0 = scene(UUID.randomUUID(), c2, 0);
 
         when(sceneRepo.findByChapterId(c1)).thenReturn(List.of(c1s0, c1s1));
-        when(temporalReadRepo.findChapterEventEdges(c1)).thenReturn(List.of(
+        when(sceneRepo.findByChapterId(c2)).thenReturn(List.of(c2s0));
+        when(temporalReadRepo.findBookEventEdgesUpToChapter(bookId, 2)).thenReturn(List.of(
                 edge(c1s0.getEventId(), c1s1.getEventId())
         ));
 
-        when(sceneRepo.findByChapterId(c2)).thenReturn(List.of(c2s0));
-        when(temporalReadRepo.findChapterEventEdges(c2)).thenReturn(List.of());
-
         List<Scene> out = service.orderBookEventsUpToChapter(bookId, 2);
         assertThat(out).containsExactly(c1s0, c1s1, c2s0);
+    }
+
+    @Test
+    @DisplayName("Book up to N with cross-chapter edge → uses one temporal graph across chapters")
+    void bookUsesCrossChapterTemporalEdges() {
+        UUID bookId = UUID.randomUUID();
+        UUID c1 = UUID.randomUUID();
+        UUID c2 = UUID.randomUUID();
+
+        when(chapterReadRepo.findChapterIdsUpTo(bookId, 2)).thenReturn(List.of(c1, c2));
+
+        Scene c1s0 = scene(UUID.randomUUID(), c1, 0);
+        Scene c1s1 = scene(UUID.randomUUID(), c1, 1);
+        Scene c2s0 = scene(UUID.randomUUID(), c2, 0);
+
+        when(sceneRepo.findByChapterId(c1)).thenReturn(List.of(c1s0, c1s1));
+        when(sceneRepo.findByChapterId(c2)).thenReturn(List.of(c2s0));
+        when(temporalReadRepo.findBookEventEdgesUpToChapter(bookId, 2)).thenReturn(List.of(
+                edge(c1s0.getEventId(), c1s1.getEventId()),
+                edge(c2s0.getEventId(), c1s1.getEventId())
+        ));
+
+        List<Scene> out = service.orderBookEventsUpToChapter(bookId, 2);
+        assertThat(out).containsExactly(c1s0, c2s0, c1s1);
     }
 }
