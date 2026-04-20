@@ -43,71 +43,9 @@ LoreVault also needs one consistent rule for how directed relations are interpre
   - prompt-facing extraction vocabulary
   - internal canonical runtime/storage vocabulary
 
-## Direction Semantics
+## Canonical Operational References
 
-For any directed temporal relation `A -> B`, the relation is interpreted as the relation of **A relative to B**.
+This ADR records **why** these temporal choices were made. Use the following docs for current operational guidance:
 
-Examples:
-
-- `A -> B : BEFORE` = A happens before B
-- `A -> B : AFTER` = A happens after B
-- `A -> B : DURING` = A happens during B
-- `A -> B : CONTAINS` = A contains B
-- `A -> B : OVERLAPS` = A overlaps B
-
-This rule applies equally to scene-scene, event-scene, and other temporal pairings.
-
-## Canonical Normalization
-
-LoreVault stores one canonical polarity per inverse pair.
-
-That means:
-
-- inverse relations are normalized by flipping endpoints
-- the graph stores one durable temporal fact, not both direct and inverse mirror forms
-
-Canonical storage should therefore prefer one member of each inverse pair, for example:
-
-- `BEFORE` over `AFTER`
-- `DURING` over `CONTAINS`
-- `OVERLAPS` over `OVERLAPPED_BY`
-- `STARTS` over `STARTED_BY`
-- `FINISHES` over `FINISHED_BY`
-
-The exact canonical member is less important than applying the rule consistently.
-
-For current LoreVault practical inferred usage, the canonical durable storage target is:
-
-- `R:temporal.before`
-- `R:temporal.overlaps`
-- `R:temporal.during`
-- `R:temporal.starts`
-- `R:temporal.finishes`
-
-and inverse forms (`after`, `contains`, `overlapped_by`, `started_by`, `finished_by`) are normalized by endpoint flip before persistence.
-
-## Prompt Vocabulary vs Runtime Vocabulary
-
-LoreVault distinguishes two vocabularies:
-
-1. **Prompt-facing extraction vocabulary**
-   - may include pair-local inverse descriptors such as `before/after` and `during/contains`
-   - exists to make the LLM's reasoning task clearer
-
-2. **Runtime/storage vocabulary**
-   - must be canonicalized before persistence
-   - must not mix both polarities of the same inverse pair as separate durable truths
-
-Prompt labels are therefore extraction syntax, not the final storage contract.
-
-## Relation Usage (Practical Inferred Policy)
-
-| Relation | Inverse | Inferred policy |
-|---|---|---|
-| `BEFORE` | `AFTER` | Preferred for coarse precedence |
-| `OVERLAPS` | `OVERLAPPED_BY` | Allowed as weak concurrency/default fallback |
-| `DURING` | `CONTAINS` | Allowed when enclosure evidence is strong |
-| `STARTS` | `STARTED_BY` | Selective use only with strong boundary evidence |
-| `FINISHES` | `FINISHED_BY` | Selective use only with strong boundary evidence |
-| `MEETS` | `MET_BY` | Deprecated for inferred use |
-| `EQUALS` | — | Deprecated for inferred use |
+- `../rules/temporal-relation-semantics.md` — normative contributor/operator interpretation rules
+- `../patterns/graph-shape-specification.md` — present-state graph shape and modeling/readability patterns

@@ -31,6 +31,7 @@ When a pattern doc needs that deeper level of workflow/state/integration detail,
 - [Ingestion Observability](ingestion-job-observability.md) — append-only StatusRecord chain and LLM call logging
 - [Triad Analysis](triad-analysis.md) — three-scene sliding window for relationship extraction
 - [Scene Detection Budgeted Segmentation](scene-detection-budgeted-segmentation.md) — chapter-segmentation context budget guard with deterministic split fallback and split-risk labels
+- [Graph Shape Specification](graph-shape-specification.md) — canonical present-state graph shape and direction-reading semantics for structural, temporal, and evidence relations
 - [Spoiler-Aware Retrieval](spoiler-aware-retrieval.md) — publication-coordinate filtering on vector search
 - [RAG Retrieval Chain](rag-retrieval-chain.md) — retrieve-then-generate pipeline with citations
 - [CQRS Command-Query Separation](cqrs-command-query-separation.md) — structural split of write and read API paths

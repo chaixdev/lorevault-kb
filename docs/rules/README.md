@@ -29,3 +29,4 @@ Rules should be short, opinionated, and easy to apply repeatedly.
 - [Developer testing workflow](developer-testing-workflow.md)
 - [CI test profiles](ci-test-profiles.md)
 - [Logging philosophy](logging-philosophy.md)
+- [Temporal relation semantics](temporal-relation-semantics.md)
