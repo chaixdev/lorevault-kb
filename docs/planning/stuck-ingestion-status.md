@@ -1,12 +1,12 @@
 # Stuck ingestion status sometimes remains in an intermediate state
 
-**Status:** PARKED
+**Status:** PARKED - mitigation shipped, revisit if the issue reappears
 
 ## Summary
 
 Ingestion jobs sometimes stop making progress while the UI and persisted job state still show an intermediate status rather than a terminal failure.
 
-The problem is intermittent and currently difficult to reproduce reliably, so the investigation is being parked until it becomes relevant again or enough evidence accumulates.
+The problem is intermittent and currently difficult to reproduce reliably. A focused mitigation has now been shipped for the strongest concrete failure path found so far, but the broader investigation remains parked unless the issue reappears or better evidence accumulates.
 
 ## Problem
 
@@ -48,6 +48,7 @@ Related operational visibility work has already been added in this session:
 - Preserve the current investigation findings so they can be resumed later.
 - Capture the most plausible failure modes and where to look next.
 - Keep enough context to avoid redoing the same exploratory work from scratch.
+- Record the shipped mitigation so future investigation can distinguish old evidence from still-open behavior.
 
 ## Out of Scope
 
@@ -64,20 +65,38 @@ Related operational visibility work has already been added in this session:
 
 ### Strongest hypotheses found so far
 
-1. **Status persistence / current-status divergence**
+1. **Embedding completion tracking dead zone**
+   - `EmbeddingHandler.completeIngestion(...)` previously wrapped completion tracking in a local `try/catch` and swallowed exceptions.
+   - If embeddings were generated successfully but completion tracking failed before `EmbeddingsCompletedEvent` was published, the branch could finish without notifying `IngestionCompletionCoordinator` and without emitting `IngestionFailedEvent`.
+   - That created a plausible path to jobs remaining in `EMBEDDING_CHUNKS` or another intermediate state.
+
+2. **Status persistence / current-status divergence**
    - `StatusRecord` history and the `currentStatus` pointer may diverge.
    - A job may have historical evidence of failure or stalled work while still pointing at an older intermediate status.
 
-2. **Failure path not persisting terminal status cleanly**
+3. **Failure path not persisting terminal status cleanly**
    - A terminal failure may not always produce the expected `FAILED` update.
    - Suspected hotspots included `updateJobStatus(...)` and current-status swapping behavior.
 
-3. **Async last-writer-wins race**
+4. **Async last-writer-wins race**
    - Multiple async handlers using separate transactions may overwrite or outpace each other in a way that leaves stale visible status.
 
-4. **Overlapping or duplicate job behavior**
+5. **Overlapping or duplicate job behavior**
    - Active-job checks appear read-based rather than an obviously atomic guard.
    - That leaves open the possibility of overlapping work confusing visible status.
+
+## Mitigation Shipped Since Parking
+
+The strongest concrete failure path above has now been mitigated.
+
+- `EmbeddingHandler.completeIngestion(...)` no longer swallows completion-tracking exceptions.
+- If completion tracking now fails after embeddings are generated, the exception bubbles back to `PipelineStageSupport`.
+- That means the existing failure path emits `IngestionFailedEvent` and marks the job `FAILED` instead of leaving it in an intermediate state with no terminal signal.
+- Regression tests were added around both:
+  - `EmbeddingHandler` success vs. completion-tracking failure behavior
+  - `PipelineStageSupport` failure-event / failed-status behavior
+
+This mitigation is intentionally narrow: it addresses the strongest observed dead zone without claiming that every intermittent stuck-status report is now explained or impossible.
 
 ### Things already ruled in / clarified
 
@@ -92,16 +111,16 @@ Related operational visibility work has already been added in this session:
 
 ## Open Questions
 
-- Under exactly what failure path does the job fail to land in `FAILED`?
-- Is the dominant problem status-history persistence, current-status pointer maintenance, or async branch coordination?
+- If the issue reappears, does it still involve missing terminal status writes after the embedding dead-zone mitigation?
+- Is the dominant remaining problem status-history persistence, current-status pointer maintenance, or async branch coordination?
 - Can duplicate or overlapping jobs for the same chapter contribute to the visible inconsistency?
 - Should terminal-state writes be hardened further in the presence of downstream async failures?
 
 ## Success Criteria
 
-- We can reproduce the problem with enough evidence to distinguish retry-in-progress from true stuck state.
-- We can identify whether the bug is caused by state persistence divergence, async race conditions, or overlapping work.
-- We have enough evidence to implement a focused fix rather than broad speculative hardening.
+- We can tell whether the shipped embedding mitigation removed the originally strongest failure path.
+- If the problem reappears, we can reproduce it with enough evidence to distinguish retry-in-progress from true stuck state.
+- We can identify whether the remaining bug is caused by state persistence divergence, async race conditions, or overlapping work.
 
 ## Links
 
