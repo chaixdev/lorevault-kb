@@ -23,7 +23,7 @@ import java.util.UUID;
  * Handler for embedding generation and completion stage of the ingestion pipeline.
  * 
  * Listens to: ChunksCreatedEvent
- * Emits: IngestionCompletedEvent (on success) or IngestionFailedEvent (on failure)
+ * Emits: EmbeddingsCompletedEvent (on success) or IngestionFailedEvent (on failure)
  * 
  * Responsibilities:
  * - Generate vector embeddings for all chunks in the chapter
@@ -104,36 +104,29 @@ public class EmbeddingHandler {
     private void completeIngestion(UUID jobId, UUID chapterId, int embeddedCount) {
         log.info("[COMPLETION] Processing for job={}, chapter={}", jobId, chapterId);
         
-        try {
-            // Gather statistics
-            int sceneCount = sceneRepo.findByChapterId(chapterId).size();
-            int via = chunkRepo.countByChapterIdViaScenes(chapterId);
-            int chunkCount = via > 0 ? via : chunkRepo.countByChapterId(chapterId);
-            
-            // Get chapter length for job completion
-            Chapter chapter = chapterRepo.findById(chapterId)
-                    .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
-            String rawText = (String) new BeanWrapperImpl(chapter).getPropertyValue("rawText");
-            int chapterLength = rawText != null ? rawText.length() : 0;
-            
-            log.info("[COMPLETION] Embedding branch finished for job {}: {} scenes, {} chunks, {} embeddings", 
-                    jobId, sceneCount, chunkCount, embeddedCount);
-            
-            eventPublisher.publishEvent(new EmbeddingsCompletedEvent(
-                    this,
-                    jobId,
-                    chapterId,
-                    sceneCount,
-                    chunkCount,
-                    embeddedCount,
-                    chapterLength
-            ));
-            
-        } catch (Exception e) {
-            log.error("[COMPLETION] Failed for job={}, chapter={}: {}", 
-                    jobId, chapterId, e.getMessage(), e);
-            // Don't emit failure - the work is done, just completion tracking failed
-        }
+        // Gather statistics
+        int sceneCount = sceneRepo.findByChapterId(chapterId).size();
+        int via = chunkRepo.countByChapterIdViaScenes(chapterId);
+        int chunkCount = via > 0 ? via : chunkRepo.countByChapterId(chapterId);
+
+        // Get chapter length for job completion
+        Chapter chapter = chapterRepo.findById(chapterId)
+                .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
+        String rawText = (String) new BeanWrapperImpl(chapter).getPropertyValue("rawText");
+        int chapterLength = rawText != null ? rawText.length() : 0;
+
+        log.info("[COMPLETION] Embedding branch finished for job {}: {} scenes, {} chunks, {} embeddings",
+                jobId, sceneCount, chunkCount, embeddedCount);
+
+        eventPublisher.publishEvent(new EmbeddingsCompletedEvent(
+                this,
+                jobId,
+                chapterId,
+                sceneCount,
+                chunkCount,
+                embeddedCount,
+                chapterLength
+        ));
     }
 
     private boolean isRetryableError(Exception e) {
