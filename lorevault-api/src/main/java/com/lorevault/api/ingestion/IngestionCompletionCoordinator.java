@@ -2,7 +2,6 @@ package com.lorevault.api.ingestion;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.lang.reflect.Field;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,17 +35,17 @@ public class IngestionCompletionCoordinator {
     @EventListener
     public void handleEmbeddingsCompleted(EmbeddingsCompletedEvent event) {
         CompletionKey key = new CompletionKey(
-                readUuidField(event, "jobId"),
-                readUuidField(event, "chapterId")
+                event.getJobId(),
+                event.getChapterId()
         );
         logBranchArrival(
                 "EMBEDDINGS_COMPLETED",
                 key,
                 null,
-                "totalScenes=" + readField(event, "totalScenes", Integer.class)
-                        + ", totalChunks=" + readField(event, "totalChunks", Integer.class)
-                        + ", totalEmbeddings=" + readField(event, "totalEmbeddings", Integer.class)
-                        + ", chapterLength=" + readField(event, "chapterLength", Integer.class)
+                "totalScenes=" + event.getTotalScenes()
+                        + ", totalChunks=" + event.getTotalChunks()
+                        + ", totalEmbeddings=" + event.getTotalEmbeddings()
+                        + ", chapterLength=" + event.getChapterLength()
         );
 
         completionStates.compute(key, (ignored, current) -> {
@@ -64,16 +63,16 @@ public class IngestionCompletionCoordinator {
     @EventListener
     public void handleBookIndividualsReduced(BookIndividualsReducedEvent event) {
         CompletionKey key = new CompletionKey(
-                readUuidField(event, "jobId"),
-                readUuidField(event, "chapterId")
+                event.getJobId(),
+                event.getChapterId()
         );
         logBranchArrival(
                 "BOOK_INDIVIDUALS_REDUCED",
                 key,
-                readUuidField(event, "bookId"),
-                "processed=" + readField(event, "processed", Boolean.class)
-                        + ", chapterIndividualCount=" + readField(event, "chapterIndividualCount", Integer.class)
-                        + ", bookIndividualCount=" + readField(event, "bookIndividualCount", Integer.class)
+                event.getBookId(),
+                "processed=" + event.isProcessed()
+                        + ", chapterIndividualCount=" + event.getChapterIndividualCount()
+                        + ", bookIndividualCount=" + event.getBookIndividualCount()
         );
 
         completionStates.compute(key, (ignored, current) -> {
@@ -91,16 +90,16 @@ public class IngestionCompletionCoordinator {
     @EventListener
     public void handleBookLocationsReduced(BookLocationsReducedEvent event) {
         CompletionKey key = new CompletionKey(
-                readUuidField(event, "jobId"),
-                readUuidField(event, "chapterId")
+                event.getJobId(),
+                event.getChapterId()
         );
         logBranchArrival(
                 "BOOK_LOCATIONS_REDUCED",
                 key,
-                readUuidField(event, "bookId"),
-                "processed=" + readField(event, "processed", Boolean.class)
-                        + ", chapterLocationCount=" + readField(event, "chapterLocationCount", Integer.class)
-                        + ", bookLocationCount=" + readField(event, "bookLocationCount", Integer.class)
+                event.getBookId(),
+                "processed=" + event.isProcessed()
+                        + ", chapterLocationCount=" + event.getChapterLocationCount()
+                        + ", bookLocationCount=" + event.getBookLocationCount()
         );
 
         completionStates.compute(key, (ignored, current) -> {
@@ -127,8 +126,8 @@ public class IngestionCompletionCoordinator {
             UUID chapterId = key.chapterId();
             EmbeddingsCompletedEvent embeddingsEvent = state.embeddingsCompletedEvent;
             UUID bookId = state.bookIndividualsReducedEvent != null
-                    ? readUuidField(state.bookIndividualsReducedEvent, "bookId")
-                    : state.bookLocationsReducedEvent != null ? readUuidField(state.bookLocationsReducedEvent, "bookId") : null;
+                    ? state.bookIndividualsReducedEvent.getBookId()
+                    : state.bookLocationsReducedEvent != null ? state.bookLocationsReducedEvent.getBookId() : null;
 
             log.info(
                     "[INGESTION_COMPLETION] Ready to complete: jobId={}, chapterId={}, bookId={}, satisfied={}, pending=[]",
@@ -139,9 +138,9 @@ public class IngestionCompletionCoordinator {
             );
 
             jobRepo.findById(jobId).ifPresent(job -> {
-                StatusRecord currentStatus = readField(job, "currentStatus", StatusRecord.class);
+                StatusRecord currentStatus = job.getCurrentStatus();
                 if (currentStatus != null
-                        && readField(currentStatus, "status", IngestionStatus.class) == IngestionStatus.FAILED) {
+                        && currentStatus.getStatus() == IngestionStatus.FAILED) {
                     log.warn(
                             "[INGESTION_COMPLETION] Skipping completion for failed job: jobId={}, chapterId={}, bookId={}, satisfied={}, pending=[]",
                             jobId,
@@ -152,23 +151,23 @@ public class IngestionCompletionCoordinator {
                     return;
                 }
 
-                ingestionJobService.completeJob(job, chapterId, readField(embeddingsEvent, "chapterLength", Integer.class));
+                ingestionJobService.completeJob(job, chapterId, embeddingsEvent.getChapterLength());
                 eventPublisher.publishEvent(new IngestionCompletedEvent(
                         this,
                         jobId,
                         chapterId,
-                        readField(embeddingsEvent, "totalScenes", Integer.class),
-                        readField(embeddingsEvent, "totalChunks", Integer.class),
-                        readField(embeddingsEvent, "totalEmbeddings", Integer.class)
+                        embeddingsEvent.getTotalScenes(),
+                        embeddingsEvent.getTotalChunks(),
+                        embeddingsEvent.getTotalEmbeddings()
                 ));
                 log.info(
                         "[INGESTION_COMPLETION] Completed: jobId={}, chapterId={}, bookId={}, totalScenes={}, totalChunks={}, totalEmbeddings={}",
                         jobId,
                         chapterId,
                         bookId,
-                        readField(embeddingsEvent, "totalScenes", Integer.class),
-                        readField(embeddingsEvent, "totalChunks", Integer.class),
-                        readField(embeddingsEvent, "totalEmbeddings", Integer.class)
+                        embeddingsEvent.getTotalScenes(),
+                        embeddingsEvent.getTotalChunks(),
+                        embeddingsEvent.getTotalEmbeddings()
                 );
             });
 
@@ -178,37 +177,6 @@ public class IngestionCompletionCoordinator {
     }
 
     private record CompletionKey(UUID jobId, UUID chapterId) {
-    }
-
-    private UUID readUuidField(Object target, String fieldName) {
-        return readField(target, fieldName, UUID.class);
-    }
-
-    private <T> T readField(Object target, String fieldName, Class<T> type) {
-        Field field = findField(target.getClass(), fieldName);
-        if (field == null) {
-            throw new IllegalArgumentException("Field '" + fieldName + "' not found on " + target.getClass().getName());
-        }
-
-        try {
-            field.setAccessible(true);
-            Object value = field.get(target);
-            return type.cast(value);
-        } catch (IllegalAccessException e) {
-            throw new IllegalStateException("Unable to read field '" + fieldName + "' on " + target.getClass().getName(), e);
-        }
-    }
-
-    private Field findField(Class<?> type, String fieldName) {
-        Class<?> current = type;
-        while (current != null) {
-            try {
-                return current.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException ignored) {
-                current = current.getSuperclass();
-            }
-        }
-        return null;
     }
 
     private void logBranchArrival(String branch, CompletionKey key, UUID bookId, String details) {
@@ -229,8 +197,8 @@ public class IngestionCompletionCoordinator {
         }
 
         UUID bookId = state.bookIndividualsReducedEvent != null
-                ? readUuidField(state.bookIndividualsReducedEvent, "bookId")
-                : state.bookLocationsReducedEvent != null ? readUuidField(state.bookLocationsReducedEvent, "bookId") : null;
+                ? state.bookIndividualsReducedEvent.getBookId()
+                : state.bookLocationsReducedEvent != null ? state.bookLocationsReducedEvent.getBookId() : null;
 
         log.info(
                 "[INGESTION_COMPLETION] Waiting after branch: jobId={}, chapterId={}, bookId={}, branch={}, satisfied={}, pending={}",

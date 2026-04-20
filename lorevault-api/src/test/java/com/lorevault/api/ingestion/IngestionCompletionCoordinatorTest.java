@@ -7,7 +7,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.UUID;
 
@@ -38,8 +37,8 @@ class IngestionCompletionCoordinatorTest {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         IngestionJob job = new IngestionJob();
-        ReflectionTestUtils.setField(job, "id", jobId);
-        ReflectionTestUtils.setField(job, "chapterId", chapterId);
+        job.setId(jobId);
+        job.setChapterId(chapterId);
 
         when(jobRepo.findById(jobId)).thenReturn(java.util.Optional.of(job));
 
@@ -63,12 +62,12 @@ class IngestionCompletionCoordinatorTest {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         IngestionJob job = new IngestionJob();
-        ReflectionTestUtils.setField(job, "id", jobId);
-        ReflectionTestUtils.setField(job, "chapterId", chapterId);
+        job.setId(jobId);
+        job.setChapterId(chapterId);
 
         StatusRecord failedStatus = new StatusRecord();
-        ReflectionTestUtils.setField(failedStatus, "status", IngestionStatus.FAILED);
-        ReflectionTestUtils.setField(job, "currentStatus", failedStatus);
+        failedStatus.setStatus(IngestionStatus.FAILED);
+        job.setCurrentStatus(failedStatus);
 
         when(jobRepo.findById(jobId)).thenReturn(java.util.Optional.of(job));
 
