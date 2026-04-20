@@ -6,11 +6,18 @@ For each triplet of scenes (previous, current, next), analyze and output the tem
 - Relationship between Scene 'previous' and Scene 'current'
 - Relationship between Scene 'current' and Scene 'next'
 
-**Temporal Relationship Types: (use these exact canonical keys)**
+**Temporal Relationship Types: (use these exact extraction keys)**
 - R:temporal.before      // X happens before Y
+- R:temporal.after       // X happens after Y
 - R:temporal.overlaps    // X and Y overlap (X starts first or they overlap without containment)
 - R:temporal.contains    // X completely contains Y (X starts earlier and ends later)
-- R:temporal.equals      // X and Y occur at exactly the same timespan
+- R:temporal.during      // X completely falls within Y
+
+**Containment Rule (important):**
+- Use `R:temporal.contains` only when the text strongly supports full enclosure: one interval is already underway, the other happens inside it, and the enclosing interval clearly continues afterward.
+- If the evidence only shows interruption, coexistence, simultaneity, "while/as/meanwhile", or that one event happened during an ongoing situation without clear end-boundary evidence, use `R:temporal.overlaps` instead.
+- Use `R:temporal.during` / `R:temporal.contains` only when the text supports full enclosure, not just general concurrency.
+- If the text supports concurrency but does not clearly support enclosure, use `R:temporal.overlaps`.
 
 **Certainty Levels:**
 - `Explicit` - Relationship directly stated in text
@@ -53,16 +60,16 @@ Entity Categories — definitions (for <scene_entities>)
   <relationships>
     <!-- Omit this block if 'previous' scene is absent -->
     <previous_to_current>
-      <temporal_type>Choose one of: R:temporal.before | R:temporal.after | R:temporal.overlaps | R:temporal.contains | R:temporal.equals</temporal_type>
-      <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied | Heuristic</certainty>
-      <evidence>≤120 chars, verbatim or tight paraphrase grounding the relation</evidence>
+      <temporal_type>Choose one of: R:temporal.before | R:temporal.after | R:temporal.overlaps | R:temporal.contains | R:temporal.during</temporal_type>
+      <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied </certainty>
+      <evidence>≤180 chars, verbatim or tight paraphrase grounding the relation</evidence>
     </previous_to_current>
 
     <!-- Omit this block if 'next' scene is absent -->
     <current_to_next>
-      <temporal_type>Choose one of: R:temporal.before | R:temporal.after | R:temporal.overlaps | R:temporal.contains | R:temporal.equals</temporal_type>
-      <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied | Heuristic</certainty>
-      <evidence>≤120 chars, verbatim or tight paraphrase grounding the relation</evidence>
+      <temporal_type>Choose one of: R:temporal.before | R:temporal.after | R:temporal.overlaps | R:temporal.contains | R:temporal.during</temporal_type>
+      <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied </certainty>
+      <evidence>≤180 chars, verbatim or tight paraphrase grounding the relation</evidence>
     </current_to_next>
   </relationships>
   <current_scene_entities>
@@ -110,9 +117,9 @@ Entity Categories — definitions (for <scene_entities>)
         <name></name>
         <event_type>e.g. 'meeting' or 'era'</event_type>
         <!-- temporal_type in relation to the scene-->
-         <temporal_type>Choose one of: R:temporal.before | R:temporal.after | R:temporal.overlaps | R:temporal.contains | R:temporal.equals</temporal_type>
+         <temporal_type>Choose one of: R:temporal.before | R:temporal.after | R:temporal.overlaps | R:temporal.contains | R:temporal.during</temporal_type>
         <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied </certainty>
-        <evidence>≤120 chars, verbatim or tight paraphrase grounding the relation</evidence>
+        <evidence>≤180 chars, verbatim or tight paraphrase grounding the relation</evidence>
       </event>
     </events>
   </current_scene_entities>
@@ -122,3 +129,5 @@ Entity Categories — definitions (for <scene_entities>)
 **Analysis Guidelines:**
 - Base relationships on textual evidence, not assumptions
 - Pay special attention to time markers, character continuity, and environmental changes
+- For `contains` and `during`, require evidence that supports both boundaries of enclosure, not just that one thing happened during another ongoing situation
+- Interruptions usually imply `during` unless the enclosing interval is clearly shown to stop after the interruption event, in which case it is `after`.

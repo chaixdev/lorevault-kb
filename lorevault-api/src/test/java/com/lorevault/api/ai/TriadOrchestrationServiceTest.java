@@ -250,6 +250,36 @@ class TriadOrchestrationServiceTest {
     }
 
     @Test
+    @DisplayName("Should preserve during as distinct relation in practical vocabulary")
+    void shouldPreserveDuringAsDistinctRelation() {
+        Chapter testChapter = createTestChapter();
+        List<TriadBuilderService.SceneTriad> triads = List.of(createTriadWithPreviousAndCurrent());
+
+        PromptTemplate mockTemplate = mock(PromptTemplate.class);
+        when(promptRepository.get("scene-analysis")).thenReturn(mockTemplate);
+        when(mockTemplate.render(any())).thenReturn("mock system prompt");
+        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+
+        TriadOrchestrationService.TriadStructuredResult parsed =
+                new TriadOrchestrationService.TriadStructuredResult(
+                        "marker",
+                        new TriadOrchestrationService.TriadRelation("R:temporal.during", "Explicit", "evidence"),
+                        null
+                );
+
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+                .thenReturn(parsed);
+
+        List<TriadOrchestrationService.TriadAnalysis> result =
+                triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
+
+        assertThat(result).singleElement().satisfies(analysis -> {
+            assertThat(analysis.prevToCurrType()).isEqualTo("R:temporal.during");
+            assertThat(analysis.currVsPrevInverted()).isEqualTo("R:temporal.contains");
+        });
+    }
+
+    @Test
     @DisplayName("Should fail when relation type is outside ADR010 practical vocabulary")
     void shouldFailWhenRelationTypeIsOutsideAdr010PracticalVocabulary() {
         Chapter testChapter = createTestChapter();
@@ -273,6 +303,36 @@ class TriadOrchestrationServiceTest {
         assertThatThrownBy(() -> triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter))
                 .isInstanceOf(TriadAnalysisException.class)
                 .hasMessageContaining("unsupported temporalType 'IMMEDIATE_SUCCESSION'");
+    }
+
+    @Test
+    @DisplayName("Should coarsen legacy equals relation to overlaps")
+    void shouldCoarsenLegacyEqualsRelationToOverlaps() {
+        Chapter testChapter = createTestChapter();
+        List<TriadBuilderService.SceneTriad> triads = List.of(createTriadWithPreviousAndCurrent());
+
+        PromptTemplate mockTemplate = mock(PromptTemplate.class);
+        when(promptRepository.get("scene-analysis")).thenReturn(mockTemplate);
+        when(mockTemplate.render(any())).thenReturn("mock system prompt");
+        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+
+        TriadOrchestrationService.TriadStructuredResult legacy =
+                new TriadOrchestrationService.TriadStructuredResult(
+                        "marker",
+                        new TriadOrchestrationService.TriadRelation("R:temporal.equals", "Explicit", "same moment legacy output"),
+                        null
+                );
+
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+                .thenReturn(legacy);
+
+        List<TriadOrchestrationService.TriadAnalysis> result =
+                triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
+
+        assertThat(result).singleElement().satisfies(analysis -> {
+            assertThat(analysis.prevToCurrType()).isEqualTo("R:temporal.overlaps");
+            assertThat(analysis.currVsPrevInverted()).isEqualTo("R:temporal.overlapped_by");
+        });
     }
 
     private Chapter createTestChapter() {
