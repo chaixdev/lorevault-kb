@@ -5,8 +5,8 @@ import com.lorevault.api.ingestion.BookLocationReductionService;
 import com.lorevault.api.support.BookLocationResolutionResponse;
 import com.lorevault.api.support.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,20 +19,12 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/command/ingest")
 @Tag(name = "Ingestion", description = "Content ingestion operations")
+@Slf4j
+@RequiredArgsConstructor
 public class BookLocationResolutionCommandController {
-
-    private static final Logger log = LoggerFactory.getLogger(BookLocationResolutionCommandController.class);
 
     private final BookGraphRepository bookGraphRepository;
     private final BookLocationReductionService bookLocationReductionService;
-
-    public BookLocationResolutionCommandController(
-            BookGraphRepository bookGraphRepository,
-            BookLocationReductionService bookLocationReductionService
-    ) {
-        this.bookGraphRepository = bookGraphRepository;
-        this.bookLocationReductionService = bookLocationReductionService;
-    }
 
     @PostMapping("/books/{bookId}/resolve-locations")
     public ResponseEntity<?> resolveBookLocations(@PathVariable String bookId) {

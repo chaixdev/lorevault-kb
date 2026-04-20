@@ -5,8 +5,8 @@ import com.lorevault.api.ingestion.ChapterLocationResolutionService;
 import com.lorevault.api.support.ChapterLocationResolutionResponse;
 import com.lorevault.api.support.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,20 +19,12 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/command/ingest")
 @Tag(name = "Ingestion", description = "Content ingestion operations")
+@Slf4j
+@RequiredArgsConstructor
 public class ChapterLocationResolutionCommandController {
-
-    private static final Logger log = LoggerFactory.getLogger(ChapterLocationResolutionCommandController.class);
 
     private final ChapterGraphRepository chapterGraphRepository;
     private final ChapterLocationResolutionService chapterLocationResolutionService;
-
-    public ChapterLocationResolutionCommandController(
-            ChapterGraphRepository chapterGraphRepository,
-            ChapterLocationResolutionService chapterLocationResolutionService
-    ) {
-        this.chapterGraphRepository = chapterGraphRepository;
-        this.chapterLocationResolutionService = chapterLocationResolutionService;
-    }
 
     @PostMapping("/chapters/{chapterId}/resolve-locations")
     public ResponseEntity<?> resolveChapterLocations(@PathVariable String chapterId) {
