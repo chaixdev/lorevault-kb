@@ -3,7 +3,8 @@
 **Last Updated:** April 20, 2026  
 **Reviewed Through Commit:** `40dcf98`  
 **Status:** Active — core ingestion and retrieval slices are stable enough to iterate on event extraction and aggregation  
-**Primary Direction:** Expand event extraction, aggregation, and downstream event-aware retrieval while continuing targeted ingestion hardening
+**Functional Goals:** Expand event extraction, aggregation, and downstream event-aware retrieval while continuing targeted ingestion hardening  
+**Technical Goals:** Guard the architecture while modularizing the codebase into separate `core` and `web` Maven modules
 
 ## What LoreVault Is
 
