@@ -6,6 +6,8 @@ import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.embedding.EmbeddingRequest;
+import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
@@ -23,7 +25,6 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.lang.reflect.Method;
 
 @Service
 @RequiredArgsConstructor
@@ -43,8 +44,11 @@ public class EmbeddingService {
     @Value("${lorevault.ai.models.embedding.model:}")
     private String configuredEmbeddingModelId = "";
 
+    private volatile String runtimeResolvedModelId = "";
+
     public void setBatchSize(int batchSize) { this.batchSize = batchSize; }
     public void setEmbeddingDim(int embeddingDim) { this.embeddingDim = embeddingDim; }
+    public void setConfiguredEmbeddingModelId(String configuredEmbeddingModelId) { this.configuredEmbeddingModelId = configuredEmbeddingModelId; }
 
     // =====================================
     // Public API
@@ -332,9 +336,10 @@ public class EmbeddingService {
             int end = Math.min(i + effectiveBatchSize, texts.size());
             List<String> batch = texts.subList(i, end);
             Instant batchStart = Instant.now();
-            List<float[]> embeddedFloat = embeddingModel.embed(batch);
-            List<double[]> embedded = embeddedFloat.stream()
-                    .map(this::toDoubleArray)
+            EmbeddingResponse response = embeddingModel.call(new EmbeddingRequest(batch, null));
+            rememberRuntimeModelId(response);
+            List<double[]> embedded = response.getResults().stream()
+                    .map(embedding -> toDoubleArray(embedding.getOutput()))
                     .toList();
             long batchMs = Duration.between(batchStart, Instant.now()).toMillis();
             all.addAll(embedded);
@@ -345,6 +350,16 @@ public class EmbeddingService {
         long totalMs = Duration.between(start, Instant.now()).toMillis();
         log.debug("[Embeddings] batchEmbed completed vectors={} totalMs={} avgPerVecMs={}", all.size(), totalMs, all.isEmpty() ? 0 : (double) totalMs / all.size());
         return all;
+    }
+
+    private void rememberRuntimeModelId(EmbeddingResponse response) {
+        if (response == null || response.getMetadata() == null) {
+            return;
+        }
+        String modelId = response.getMetadata().getModel();
+        if (modelId != null && !modelId.isBlank()) {
+            runtimeResolvedModelId = modelId;
+        }
     }
 
     private String preview(double[] vec) {
@@ -375,9 +390,8 @@ public class EmbeddingService {
             return configuredEmbeddingModelId;
         }
 
-        String reflectiveModelId = tryResolveModelIdReflectively();
-        if (reflectiveModelId != null && !reflectiveModelId.isBlank()) {
-            return reflectiveModelId;
+        if (runtimeResolvedModelId != null && !runtimeResolvedModelId.isBlank()) {
+            return runtimeResolvedModelId;
         }
 
         String className = embeddingModel.getClass().getName();
@@ -386,18 +400,6 @@ public class EmbeddingService {
             return "openai-compatible-embedding";
         }
         return className;
-    }
-
-    private String tryResolveModelIdReflectively() {
-        try {
-            Method getModelId = embeddingModel.getClass().getMethod("getModelId");
-            Object result = getModelId.invoke(embeddingModel);
-            if (result instanceof String modelId) {
-                return modelId;
-            }
-        } catch (ReflectiveOperationException ignored) {
-        }
-        return null;
     }
 
     // =====================================

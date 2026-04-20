@@ -29,6 +29,7 @@ class EmbeddingServiceTest {
         var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);
+        svc.setConfiguredEmbeddingModelId("fake-model");
 
         UUID chapterId = UUID.randomUUID();
         // Only chapter exists, no chunks
@@ -49,6 +50,7 @@ class EmbeddingServiceTest {
         var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);
+        svc.setConfiguredEmbeddingModelId("fake-model");
 
         UUID chapterId = UUID.randomUUID();
     Chapter chapter = new Chapter();
@@ -103,6 +105,34 @@ class EmbeddingServiceTest {
         assertThat(c1.getEmbeddingHash()).isEqualTo(expectedHash1);
         assertThat(c3.getEmbedding()).isNotNull();
         assertThat(c3.getEmbeddingHash()).isEqualTo(expectedHash3);
+    }
+
+    @Test
+    @DisplayName("should use embedding response metadata model when config is unset")
+    void shouldUseEmbeddingResponseMetadataModelWhenConfigUnset() throws Exception {
+        FakeContentRepositories repo = new FakeContentRepositories();
+        var embed = new FakeEmbeddingModel("metadata-model", 8);
+        var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
+        svc.setEmbeddingDim(8);
+        svc.setBatchSize(8);
+
+        UUID chapterId = UUID.randomUUID();
+        Chapter chapter = new Chapter();
+        chapter.setId(chapterId);
+        chapter.setRawText("abcdefghijklmnopqrstuvwxyz");
+        repo.createChapter(chapter);
+
+        Chunk chunk = new Chunk();
+        chunk.setId(UUID.randomUUID());
+        chunk.setStartCharInChapter(0);
+        chunk.setEndCharInChapter(10);
+        chunk.setContentHash("hash-meta");
+        repo.addChunksToChapter(chapterId, List.of(chunk));
+
+        int updated = svc.generateEmbeddingsForChapter(chapterId);
+
+        assertThat(updated).isEqualTo(1);
+        assertThat(chunk.getEmbeddingHash()).isEqualTo(sha256("metadata-model:" + chunk.getContentHash()));
     }
 
     private static String sha256(String s) throws Exception {

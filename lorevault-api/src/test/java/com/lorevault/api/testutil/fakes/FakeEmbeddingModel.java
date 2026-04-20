@@ -5,6 +5,7 @@ import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingRequest;
 import org.springframework.ai.embedding.EmbeddingResponse;
+import org.springframework.ai.embedding.EmbeddingResponseMetadata;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +32,9 @@ public class FakeEmbeddingModel implements EmbeddingModel {
             float[] vector = embed(instructions.get(i));
             embeddings.add(new Embedding(vector, i));
         }
-        return new EmbeddingResponse(embeddings);
+        EmbeddingResponseMetadata metadata = new EmbeddingResponseMetadata();
+        metadata.setModel(modelId);
+        return new EmbeddingResponse(embeddings, metadata);
     }
 
     @Override
