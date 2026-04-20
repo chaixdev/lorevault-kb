@@ -22,7 +22,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.neo4j.DataNeo4jTest;
 import org.springframework.context.ApplicationEventPublisher;
@@ -121,13 +120,15 @@ class IndividualResolutionIT {
                 .thenReturn(outcomeWithRepeatedNyx());
 
         SubmitChapterResponse response = ingestionService.submitChapter(request);
-        UUID jobId = readUuidProperty(response, "jobId");
-        UUID chapterId = readUuidProperty(response, "chapterId");
+        UUID jobId = response.getJobId();
+        UUID chapterId = response.getChapterId();
 
         sceneDetectionHandler.handleChapterIngestion(new ChapterIngestionEvent(this, jobId, chapterId));
 
         ChapterIndividualResolutionResponse resolutionResponse = chapterIndividualResolutionService.resolveChapter(chapterId);
-        BookIndividualResolutionResponse bookResolutionResponse = bookIndividualReductionService.resolveBook(readUuidProperty(chapterRepo.findById(chapterId).orElseThrow(), "bookId"));
+        BookIndividualResolutionResponse bookResolutionResponse = bookIndividualReductionService.resolveBook(
+                chapterRepo.findById(chapterId).orElseThrow().getBookId()
+        );
 
         assertThat(chapterRepo.findById(chapterId)).isPresent();
         assertThat(resolutionResponse.isProcessed()).isTrue();
@@ -144,7 +145,7 @@ class IndividualResolutionIT {
         assertThat(countChapterIndividualsForName(chapterId, "nyx")).isEqualTo(1L);
         assertThat(countMentionRefsForName(chapterId, "nyx")).isEqualTo(2L);
         assertThat(countChapterIndividualsForName(chapterId, "orion")).isEqualTo(1L);
-        assertThat(countBookIndividualsForName(readUuidProperty(chapterRepo.findById(chapterId).orElseThrow(), "bookId"), "nyx")).isEqualTo(1L);
+        assertThat(countBookIndividualsForName(chapterRepo.findById(chapterId).orElseThrow().getBookId(), "nyx")).isEqualTo(1L);
         assertThat(loadChapterIndividualProjection(chapterId, "nyx"))
                 .containsEntry("displayName", "Nyx")
                 .containsEntry("mentionCount", 2L);
@@ -170,7 +171,7 @@ class IndividualResolutionIT {
         UUID chapterIdOne = ingestAndResolveChapter(chapterOne);
         UUID chapterIdTwo = ingestAndResolveChapter(chapterTwo);
         UUID chapterIdThree = ingestAndResolveChapter(chapterThree);
-        UUID bookId = readUuidProperty(chapterRepo.findById(chapterIdOne).orElseThrow(), "bookId");
+        UUID bookId = chapterRepo.findById(chapterIdOne).orElseThrow().getBookId();
 
         BookIndividualResolutionResponse bookResolutionResponse = bookIndividualReductionService.resolveBook(bookId);
 
@@ -193,14 +194,14 @@ class IndividualResolutionIT {
                 0,
                 "The Deathworlders"
         );
-        new BeanWrapperImpl(book).setPropertyValue("id", UUID.nameUUIDFromBytes("Deathworlders".getBytes()));
+        book.setId(UUID.nameUUIDFromBytes("Deathworlders".getBytes()));
         bookRepo.save(book);
     }
 
     private UUID ingestAndResolveChapter(SubmitChapterRequest request) {
         SubmitChapterResponse response = ingestionService.submitChapter(request);
-        UUID jobId = readUuidProperty(response, "jobId");
-        UUID chapterId = readUuidProperty(response, "chapterId");
+        UUID jobId = response.getJobId();
+        UUID chapterId = response.getChapterId();
 
         sceneDetectionHandler.handleChapterIngestion(new ChapterIngestionEvent(this, jobId, chapterId));
         ChapterIndividualResolutionResponse resolutionResponse = chapterIndividualResolutionService.resolveChapter(chapterId);
@@ -211,11 +212,10 @@ class IndividualResolutionIT {
 
     private SubmitChapterRequest createSubmitChapterRequest(int chapterNumber, String chapterTitle, String chapterText) {
         SubmitChapterRequest request = new SubmitChapterRequest();
-        BeanWrapperImpl wrapper = new BeanWrapperImpl(request);
-        wrapper.setPropertyValue("bookId", UUID.nameUUIDFromBytes("Deathworlders".getBytes()));
-        wrapper.setPropertyValue("chapterNumber", chapterNumber);
-        wrapper.setPropertyValue("chapterTitle", chapterTitle);
-        wrapper.setPropertyValue("chapterText", chapterText);
+        request.setBookId(UUID.nameUUIDFromBytes("Deathworlders".getBytes()));
+        request.setChapterNumber(chapterNumber);
+        request.setChapterTitle(chapterTitle);
+        request.setChapterText(chapterText);
         return request;
     }
 
@@ -331,9 +331,5 @@ class IndividualResolutionIT {
 
         assertThat(row).isPresent();
         return row.orElseThrow();
-    }
-
-    private UUID readUuidProperty(Object bean, String propertyName) {
-        return (UUID) new BeanWrapperImpl(bean).getPropertyValue(propertyName);
     }
 }
