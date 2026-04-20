@@ -1,8 +1,9 @@
 package com.lorevault.api.ai;
 
+import com.lorevault.api.config.LoreVaultContentProperties;
 import com.lorevault.api.content.Chunk;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -12,30 +13,52 @@ import java.util.regex.Pattern;
 
 /**
  * Service for deterministic text chunking implementing the LoreVault text-chunking specification.
- * Uses a decision gate approach: text ≤ 5000 chars creates a single chunk,
- * text > 5000 chars applies sentence-aware sliding window with 15% overlap.
- * Implements overlapping chunks to prevent information loss at boundaries.
+ * Uses a decision gate approach: text ≤ threshold creates a single chunk,
+ * text > threshold applies boundary-aware sliding window with overlap.
  */
 @Service
-@Slf4j
 public class TextChunkingService {
 
-    private static final Pattern SENTENCE_PATTERN = Pattern.compile("[.!?]+\\s+");
-    
-    @Value("${lorevault.chunking.decision-threshold:5000}")
-    private int decisionThreshold;
-    
-    @Value("${lorevault.chunking.target-size:3000}")
-    private int targetChunkSize;
-    
-    @Value("${lorevault.chunking.overlap-percentage:15}")
-    private int overlapPercentage;
-    
-    @Value("${lorevault.chunking.min-chunk-size:2000}")
-    private int minChunkSize;
-    
-    @Value("${lorevault.chunking.max-chunk-size:4000}")
-    private int maxChunkSize;
+    private static final Logger log = LoggerFactory.getLogger(TextChunkingService.class);
+
+    private static final Pattern SENTENCE_PATTERN = Pattern.compile("[.!?…]+[\"'”’)]*\\s+");
+    private static final Pattern PARAGRAPH_BREAK_PATTERN = Pattern.compile("\\n\\s*\\n");
+    private static final Pattern DIALOGUE_TURN_PATTERN = Pattern.compile("(?:\\n\\s*[\"“'‘-]|[\"“'‘][A-Z])");
+
+    private static final int DEFAULT_DECISION_THRESHOLD = 1500;
+    private static final int DEFAULT_TARGET_CHUNK_SIZE = 800;
+    private static final int DEFAULT_MIN_CHUNK_SIZE = 400;
+    private static final int DEFAULT_MAX_CHUNK_SIZE = 1200;
+    private static final int DEFAULT_OVERLAP_PERCENTAGE = 25;
+
+    private static final int PARAGRAPH_WEIGHT = 100;
+    private static final int SENTENCE_WEIGHT = 40;
+    private static final int DIALOGUE_WEIGHT = 25;
+    private static final int DISTANCE_PENALTY_DIVISOR = 10;
+
+    private final int decisionThreshold;
+    private final int targetChunkSize;
+    private final int minChunkSize;
+    private final int maxChunkSize;
+    private final int overlapSize;
+
+    public TextChunkingService(LoreVaultContentProperties contentProperties) {
+        LoreVaultContentProperties.ChunkingProperties chunking = contentProperties.chunking();
+        Integer configuredTarget = chunking.targetSize();
+        Integer configuredDecision = chunking.decisionThreshold();
+        Integer configuredMin = chunking.minChunkSize();
+        Integer configuredMax = chunking.maxChunkSize();
+        Integer configuredOverlapPercentage = chunking.overlapPercentage();
+
+        this.targetChunkSize = configuredTarget != null ? configuredTarget : DEFAULT_TARGET_CHUNK_SIZE;
+        this.decisionThreshold = configuredDecision != null ? configuredDecision : DEFAULT_DECISION_THRESHOLD;
+        this.minChunkSize = configuredMin != null ? configuredMin : DEFAULT_MIN_CHUNK_SIZE;
+        this.maxChunkSize = configuredMax != null ? configuredMax : DEFAULT_MAX_CHUNK_SIZE;
+        int overlapPercentage = configuredOverlapPercentage != null
+            ? configuredOverlapPercentage
+            : DEFAULT_OVERLAP_PERCENTAGE;
+        this.overlapSize = Math.max(0, (int) Math.round(this.targetChunkSize * (overlapPercentage / 100.0)));
+    }
 
     /**
      * Split text into overlapping chunks using specification-compliant decision gate approach.
@@ -69,18 +92,18 @@ public class TextChunkingService {
     }
 
     /**
-     * Apply sentence-aware sliding window algorithm for multi-chunk subdivision.
+     * Apply boundary-aware sliding window algorithm for multi-chunk subdivision.
      * Implements Stage 4B from the text-chunking specification.
      */
     private List<Chunk> applySentenceAwareSlidingWindow(String text) {
         List<Chunk> chunks = new ArrayList<>();
-        List<Integer> sentenceEnds = findSentenceEnds(text);
+        List<BoundaryCandidate> boundaryCandidates = findBoundaryCandidates(text);
         
         int currentStart = 0;
         int chunkNumber = 1;
         
         while (currentStart < text.length()) {
-            ChunkBoundary boundary = findOptimalChunkBoundary(text, currentStart, sentenceEnds);
+            ChunkBoundary boundary = findOptimalChunkBoundary(text, currentStart, boundaryCandidates);
             
             String chunkContent = text.substring(boundary.startChar, boundary.endChar);
             Chunk chunk = createChunk(chunkNumber, boundary.startChar, boundary.endChar, chunkContent);
@@ -122,13 +145,19 @@ public class TextChunkingService {
      * Create a chunk entity with the given parameters
      */
     private Chunk createChunk(int chunkNumber, int startChar, int endChar, String content) {
-        Chunk chunk = new Chunk();
-        // Note: chapterId will be set by the calling service
-        chunk.setChunkNumberInChapter(chunkNumber);
-        chunk.setStartCharInChapter(startChar);
-        chunk.setEndCharInChapter(endChar);
-        chunk.setText(content); // Store the actual chunk text for embedding independence
-        return chunk;
+        return new Chunk(
+            null,
+            chunkNumber,
+            startChar,
+            endChar,
+            null,
+            content,
+            null,
+            null,
+            null,
+            null,
+            null
+        );
     }
 
     /**
@@ -145,20 +174,37 @@ public class TextChunkingService {
     }
 
     /**
-     * Find sentence ending positions in the text
+     * Find boundary candidates in descending preference order: paragraph, sentence, dialogue.
      */
-    private List<Integer> findSentenceEnds(String text) {
-        List<Integer> sentenceEnds = new ArrayList<>();
-        Matcher matcher = SENTENCE_PATTERN.matcher(text);
-        
-        while (matcher.find()) {
-            sentenceEnds.add(matcher.end());
+    private List<BoundaryCandidate> findBoundaryCandidates(String text) {
+        List<BoundaryCandidate> boundaries = new ArrayList<>();
+
+        Matcher paragraphMatcher = PARAGRAPH_BREAK_PATTERN.matcher(text);
+        while (paragraphMatcher.find()) {
+            boundaries.add(new BoundaryCandidate(paragraphMatcher.end(), PARAGRAPH_WEIGHT, BoundaryType.PARAGRAPH));
         }
-        
-        // Add text end as final sentence boundary
-        sentenceEnds.add(text.length());
-        
-        return sentenceEnds;
+
+        Matcher sentenceMatcher = SENTENCE_PATTERN.matcher(text);
+        while (sentenceMatcher.find()) {
+            boundaries.add(new BoundaryCandidate(sentenceMatcher.end(), SENTENCE_WEIGHT, BoundaryType.SENTENCE));
+        }
+
+        Matcher dialogueMatcher = DIALOGUE_TURN_PATTERN.matcher(text);
+        while (dialogueMatcher.find()) {
+            boundaries.add(new BoundaryCandidate(dialogueMatcher.start(), DIALOGUE_WEIGHT, BoundaryType.DIALOGUE));
+        }
+
+        boundaries.add(new BoundaryCandidate(text.length(), Integer.MIN_VALUE, BoundaryType.END));
+        return boundaries;
+    }
+
+    private record BoundaryCandidate(int position, int weight, BoundaryType type) {}
+
+    private enum BoundaryType {
+        PARAGRAPH,
+        SENTENCE,
+        DIALOGUE,
+        END
     }
 
     private static class ChunkBoundary {
@@ -174,18 +220,14 @@ public class TextChunkingService {
     }
 
     /**
-     * Find optimal chunk boundary that respects sentence boundaries and specification sizing.
-     * Creates chunks in the 2000-4000 character range with 15% sentence-aware overlap.
+     * Find optimal chunk boundary that respects detected boundaries and specification sizing.
      */
-    private ChunkBoundary findOptimalChunkBoundary(String text, int start, List<Integer> sentenceEnds) {
+    private ChunkBoundary findOptimalChunkBoundary(String text, int start, List<BoundaryCandidate> candidates) {
         // Calculate target end position from start
         int targetEnd = start + targetChunkSize;
         
-        // Find the best sentence boundary near the target end
-        int bestEnd = findBestSentenceEnd(sentenceEnds, start, targetEnd, text.length());
-        
-        // Calculate overlap size for next chunk start
-        int overlapSize = (int) (targetChunkSize * (overlapPercentage / 100.0));
+        // Find the best boundary near the target end
+        int bestEnd = findBestBoundary(candidates, start, targetEnd, text.length());
         
         // Calculate next start position with overlap, but ensure progress
         int nextStart = Math.max(start + minChunkSize, bestEnd - overlapSize);
@@ -194,38 +236,41 @@ public class TextChunkingService {
     }
 
     /**
-     * Find the best sentence ending position that creates chunks within specification range.
-     * Prefers chunks closer to target size while respecting sentence boundaries.
+     * Find the best boundary position that creates chunks within specification range.
+     * Prefers stronger boundary types and chunks closer to target size.
      */
-    private int findBestSentenceEnd(List<Integer> sentenceEnds, int start, int targetEnd, int textLength) {
+    private int findBestBoundary(List<BoundaryCandidate> candidates, int start, int targetEnd, int textLength) {
         int bestEnd = targetEnd;
-        int minDistance = Integer.MAX_VALUE;
+        int bestScore = Integer.MIN_VALUE;
         
-        for (int sentenceEnd : sentenceEnds) {
-            if (sentenceEnd <= start) continue;
-            if (sentenceEnd > textLength) break;
+        for (BoundaryCandidate candidate : candidates) {
+            int boundary = candidate.position();
+            if (boundary <= start) continue;
+            if (boundary > textLength) break;
             
-            int chunkSize = sentenceEnd - start;
+            int chunkSize = boundary - start;
             
-            // Only consider sentence ends that create chunks within our size constraints
+            // Only consider boundaries that create chunks within our size constraints
             if (chunkSize >= minChunkSize && chunkSize <= maxChunkSize) {
-                int distance = Math.abs(sentenceEnd - targetEnd);
+                int distance = Math.abs(boundary - targetEnd);
+                int score = candidate.weight() - (distance / DISTANCE_PENALTY_DIVISOR);
                 
-                // Prefer larger chunks (closer to target) when distances are equal
-                if (distance < minDistance || 
-                    (distance == minDistance && chunkSize > (bestEnd - start))) {
-                    bestEnd = sentenceEnd;
-                    minDistance = distance;
+                // Prefer stronger boundary types and closer distances; break ties with larger chunk
+                if (score > bestScore || 
+                    (score == bestScore && chunkSize > (bestEnd - start))) {
+                    bestEnd = boundary;
+                    bestScore = score;
                 }
             }
         }
         
-        // If no suitable sentence boundary found, use target end but ensure minimum size
+        // If no suitable boundary found, use target end but ensure minimum size
         if (bestEnd == targetEnd && (targetEnd - start) < minChunkSize) {
-            // Find the first sentence end that gives us minimum size
-            for (int sentenceEnd : sentenceEnds) {
-                if (sentenceEnd > start && (sentenceEnd - start) >= minChunkSize) {
-                    bestEnd = Math.min(sentenceEnd, textLength);
+            // Find the first boundary that gives us minimum size
+            for (BoundaryCandidate candidate : candidates) {
+                int boundary = candidate.position();
+                if (boundary > start && (boundary - start) >= minChunkSize) {
+                    bestEnd = Math.min(boundary, textLength);
                     break;
                 }
             }

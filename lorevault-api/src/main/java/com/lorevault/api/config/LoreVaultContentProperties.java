@@ -20,18 +20,30 @@ public record LoreVaultContentProperties(
      * Configuration for text chunking operations.
      */
     public record ChunkingProperties(
+        Integer decisionThreshold,
         Integer targetSize,
-        Integer overlapSize,
+        Integer overlapPercentage,
+        Integer minChunkSize,
+        Integer maxChunkSize,
         String strategy,
         SentenceSplitterProperties sentenceSplitter
     ) {
         public ChunkingProperties {
             // Apply defaults
-            if (targetSize == null) {
-                targetSize = 1000;
+            if (decisionThreshold == null) {
+                decisionThreshold = 1500;
             }
-            if (overlapSize == null) {
-                overlapSize = 200;
+            if (targetSize == null) {
+                targetSize = 800;
+            }
+            if (overlapPercentage == null) {
+                overlapPercentage = 25;
+            }
+            if (minChunkSize == null) {
+                minChunkSize = 400;
+            }
+            if (maxChunkSize == null) {
+                maxChunkSize = 1200;
             }
             if (strategy == null) {
                 strategy = "sentence-aware";
