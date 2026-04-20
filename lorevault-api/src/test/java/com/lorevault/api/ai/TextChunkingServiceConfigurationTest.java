@@ -3,6 +3,7 @@ package com.lorevault.api.ai;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
@@ -13,11 +14,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest
 @TestPropertySource(properties = {
-    "lorevault.chunking.target-size=800",
-    "lorevault.chunking.overlap-percentage=25",
-    "lorevault.chunking.min-chunk-size=400", 
-    "lorevault.chunking.max-chunk-size=1200",
-    "lorevault.chunking.decision-threshold=1600"
+    "lorevault.content.chunking.target-size=800",
+    "lorevault.content.chunking.overlap-percentage=25",
+    "lorevault.content.chunking.min-chunk-size=400", 
+    "lorevault.content.chunking.max-chunk-size=1200",
+    "lorevault.content.chunking.decision-threshold=1600"
 })
 @DisplayName("TextChunkingService Configuration")
 class TextChunkingServiceConfigurationTest {
@@ -45,7 +46,10 @@ class TextChunkingServiceConfigurationTest {
         
         for (int i = 0; i < chunks.size(); i++) {
             var chunk = chunks.get(i);
-            int chunkLength = chunk.getEndCharInChapter() - chunk.getStartCharInChapter();
+            BeanWrapperImpl chunkBean = new BeanWrapperImpl(chunk);
+            int chunkStart = (Integer) chunkBean.getPropertyValue("startCharInChapter");
+            int chunkEnd = (Integer) chunkBean.getPropertyValue("endCharInChapter");
+            int chunkLength = chunkEnd - chunkStart;
             
             // Chunks should be in the 400-1200 character range (min-max)
             assertThat(chunkLength)
@@ -55,7 +59,8 @@ class TextChunkingServiceConfigurationTest {
             // For chunks that aren't the last one, verify overlap exists
             if (i < chunks.size() - 1) {
                 var nextChunk = chunks.get(i + 1);
-                int overlapAmount = chunk.getEndCharInChapter() - nextChunk.getStartCharInChapter();
+                BeanWrapperImpl nextChunkBean = new BeanWrapperImpl(nextChunk);
+                int overlapAmount = chunkEnd - (Integer) nextChunkBean.getPropertyValue("startCharInChapter");
                 
                 // Should have overlap (next chunk starts before current chunk ends)
                 assertThat(overlapAmount)
@@ -75,9 +80,12 @@ class TextChunkingServiceConfigurationTest {
         System.out.println("   Number of chunks: " + chunks.size());
         for (int i = 0; i < chunks.size(); i++) {
             var chunk = chunks.get(i);
-            int chunkLength = chunk.getEndCharInChapter() - chunk.getStartCharInChapter();
+            BeanWrapperImpl chunkBean = new BeanWrapperImpl(chunk);
+            int chunkStart = (Integer) chunkBean.getPropertyValue("startCharInChapter");
+            int chunkEnd = (Integer) chunkBean.getPropertyValue("endCharInChapter");
+            int chunkLength = chunkEnd - chunkStart;
             System.out.println("   Chunk " + (i + 1) + ": " + chunkLength + " chars (pos " + 
-                             chunk.getStartCharInChapter() + "-" + chunk.getEndCharInChapter() + ")");
+                             chunkStart + "-" + chunkEnd + ")");
         }
     }
 
@@ -92,8 +100,9 @@ class TextChunkingServiceConfigurationTest {
         assertThat(chunks).hasSize(1);
         
         var chunk = chunks.get(0);
-        assertThat(chunk.getStartCharInChapter()).isEqualTo(0);
-        assertThat(chunk.getEndCharInChapter()).isEqualTo(smallText.length());
-        assertThat(chunk.getText()).isEqualTo(smallText);
+        BeanWrapperImpl chunkBean = new BeanWrapperImpl(chunk);
+        assertThat((Integer) chunkBean.getPropertyValue("startCharInChapter")).isEqualTo(0);
+        assertThat((Integer) chunkBean.getPropertyValue("endCharInChapter")).isEqualTo(smallText.length());
+        assertThat((String) chunkBean.getPropertyValue("text")).isEqualTo(smallText);
     }
 }

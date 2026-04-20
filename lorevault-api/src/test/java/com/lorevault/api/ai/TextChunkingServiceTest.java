@@ -1,10 +1,10 @@
 package com.lorevault.api.ai;
 
+import com.lorevault.api.config.LoreVaultContentProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
-import java.lang.reflect.Field;
+import org.springframework.beans.BeanWrapperImpl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -14,32 +14,23 @@ class TextChunkingServiceTest {
 
     @Test
     @DisplayName("should return single chunk when below threshold")
-    void shouldReturnSingleChunkWhenBelowThreshold() throws Exception {
-        TextChunkingService svc = new TextChunkingService();
-        set(svc, "decisionThreshold", 5000);
-        set(svc, "targetChunkSize", 3000);
-        set(svc, "overlapPercentage", 15);
-        set(svc, "minChunkSize", 2000);
-        set(svc, "maxChunkSize", 4000);
+    void shouldReturnSingleChunkWhenBelowThreshold() {
+        TextChunkingService svc = createService(5000, 3000, 15, 2000, 4000);
 
         String text = "Short paragraph. Still short. End.";
 
         var chunks = svc.extractChunks(text);
         assertThat(chunks).hasSize(1);
-        assertThat(chunks.getFirst().getStartCharInChapter()).isEqualTo(0);
-        assertThat(chunks.getFirst().getEndCharInChapter()).isEqualTo(text.length());
-        assertThat(chunks.getFirst().getText()).isEqualTo(text.trim());
+        BeanWrapperImpl chunkBean = new BeanWrapperImpl(chunks.getFirst());
+        assertThat((Integer) chunkBean.getPropertyValue("startCharInChapter")).isEqualTo(0);
+        assertThat((Integer) chunkBean.getPropertyValue("endCharInChapter")).isEqualTo(text.length());
+        assertThat((String) chunkBean.getPropertyValue("text")).isEqualTo(text.trim());
     }
 
     @Test
     @DisplayName("should create multiple chunks for long text with overlap")
-    void shouldCreateMultipleChunksForLongText() throws Exception {
-        TextChunkingService svc = new TextChunkingService();
-        set(svc, "decisionThreshold", 200);
-        set(svc, "targetChunkSize", 120);
-        set(svc, "overlapPercentage", 15);
-        set(svc, "minChunkSize", 80);
-        set(svc, "maxChunkSize", 160);
+    void shouldCreateMultipleChunksForLongText() {
+        TextChunkingService svc = createService(200, 120, 15, 80, 160);
 
         String sentence = "This is a sentence that ends here. ";
         StringBuilder sb = new StringBuilder();
@@ -52,19 +43,38 @@ class TextChunkingServiceTest {
         int prevEnd = -1;
         for (int i = 0; i < chunks.size(); i++) {
             var c = chunks.get(i);
-            assertThat(c.getChunkNumberInChapter()).isEqualTo(i + 1);
-            assertThat(c.getEndCharInChapter()).isGreaterThan(c.getStartCharInChapter());
+            BeanWrapperImpl chunkBean = new BeanWrapperImpl(c);
+            int chunkNumber = (Integer) chunkBean.getPropertyValue("chunkNumberInChapter");
+            int start = (Integer) chunkBean.getPropertyValue("startCharInChapter");
+            int end = (Integer) chunkBean.getPropertyValue("endCharInChapter");
+            assertThat(chunkNumber).isEqualTo(i + 1);
+            assertThat(end).isGreaterThan(start);
             if (i > 0) {
-                assertThat(c.getStartCharInChapter()).isLessThan(c.getEndCharInChapter());
-                assertThat(c.getStartCharInChapter()).isLessThan(prevEnd);
+                assertThat(start).isLessThan(end);
+                assertThat(start).isLessThan(prevEnd);
             }
-            prevEnd = c.getEndCharInChapter();
+            prevEnd = end;
         }
     }
 
-    private static void set(Object target, String fieldName, Object value) throws Exception {
-        Field f = TextChunkingService.class.getDeclaredField(fieldName);
-        f.setAccessible(true);
-        f.set(target, value);
+    private static TextChunkingService createService(
+            int decisionThreshold,
+            int targetSize,
+            int overlapPercentage,
+            int minChunkSize,
+            int maxChunkSize
+    ) {
+        LoreVaultContentProperties.ChunkingProperties chunkingProperties =
+                new LoreVaultContentProperties.ChunkingProperties(
+                        decisionThreshold,
+                        targetSize,
+                        overlapPercentage,
+                        minChunkSize,
+                        maxChunkSize,
+                        "sentence-aware",
+                        new LoreVaultContentProperties.SentenceSplitterProperties(300, true)
+                );
+        LoreVaultContentProperties properties = new LoreVaultContentProperties(chunkingProperties);
+        return new TextChunkingService(properties);
     }
 }
