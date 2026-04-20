@@ -126,7 +126,8 @@
                             Ask a quick validation question against the current graph.
                         </div>
                     </div>
-                    <form th:hx-post="@{/ui/query/ask/rag}"
+                    <form id="operator-qa-form"
+                          th:hx-post="@{/ui/query/ask/rag}"
                           hx-target="#qa-results"
                           hx-swap="innerHTML"
                           class="border-t border-slate-800 p-3 space-y-2">
@@ -135,6 +136,16 @@
                                placeholder="Query the lore graph..."
                                class="w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-white placeholder-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40">
                         <input type="hidden" name="topK" value="5">
+                        <div class="space-y-1">
+                            <label for="qa-mode" class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Mode</label>
+                            <select id="qa-mode"
+                                    class="w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40">
+                                <option value="vector">Vector retrieval</option>
+                                <option value="rag" selected>RAG baseline</option>
+                                <option value="graph-aware">Graph-aware</option>
+                                <option value="hybrid">Hybrid RRF</option>
+                            </select>
+                        </div>
                         <button type="submit"
                                 class="inline-flex w-full items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] font-semibold text-emerald-300 transition hover:bg-emerald-500/20">
                             Ask
@@ -244,6 +255,16 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            const qaForm = document.querySelector('#operator-qa-form');
+            const qaModeSelect = document.querySelector('#qa-mode');
+
+            if (qaForm && qaModeSelect) {
+                qaForm.addEventListener('submit', () => {
+                    const mode = qaModeSelect.value || 'rag';
+                    qaForm.setAttribute('hx-post', `/ui/query/ask/${mode}`);
+                });
+            }
+
             document.body.addEventListener('refresh-universes', () => {
                 document.querySelectorAll('[data-universe-options]')?.forEach(select => {
                     htmx.trigger(select, 'refresh');
