@@ -6,12 +6,11 @@ import com.lorevault.api.ingestion.IngestionFailure;
 import com.lorevault.api.ingestion.IngestionStatus;
 import com.lorevault.api.timeline.TriadRelationInverter;
 import com.lorevault.api.ingestion.IngestionJobService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.stereotype.Service;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.HashMap;
@@ -25,9 +24,10 @@ import java.util.UUID;
  * Orchestrates triad-based scene analysis end-to-end, fully in-memory.
  */
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class TriadOrchestrationService {
 
-    private static final Logger log = LoggerFactory.getLogger(TriadOrchestrationService.class);
     private static final Set<String> ALLOWED_TRIAD_RELATIONS = Set.of(
             "R:temporal.before",
             "R:temporal.after",
@@ -126,16 +126,6 @@ public class TriadOrchestrationService {
     private final SceneDetectionClient sceneDetectionClient;
     private final PromptRepository promptRepository;
     private final IngestionJobService ingestionJobService;
-
-    public TriadOrchestrationService(TriadBuilderService triadBuilder,
-                                     SceneDetectionClient sceneDetectionClient,
-                                     PromptRepository promptRepository,
-                                     IngestionJobService ingestionJobService) {
-        this.triadBuilder = triadBuilder;
-        this.sceneDetectionClient = sceneDetectionClient;
-        this.promptRepository = promptRepository;
-        this.ingestionJobService = ingestionJobService;
-    }
 
     /**
      * Analyze scene triads and return normalized results.
@@ -467,8 +457,7 @@ public class TriadOrchestrationService {
         if (scene == null) {
             return "";
         }
-        Object value = readField(scene, "contextSummary");
-        String summary = value == null ? null : value.toString();
+        String summary = scene.getContextSummary();
         return summary == null ? "" : summary;
     }
 
@@ -476,33 +465,10 @@ public class TriadOrchestrationService {
         if (chapter == null) {
             return null;
         }
-        Object value = readField(chapter, "rawText");
-        return value == null ? null : value.toString();
+        return chapter.getRawText();
     }
 
     private String textOrEmpty(String v) {
         return v == null ? "" : v;
-    }
-
-    private Object readField(Object target, String fieldName) {
-        try {
-            Field field = findField(target.getClass(), fieldName);
-            field.setAccessible(true);
-            return field.get(target);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Unable to read field '" + fieldName + "' from " + target.getClass().getName(), e);
-        }
-    }
-
-    private Field findField(Class<?> type, String fieldName) throws NoSuchFieldException {
-        Class<?> current = type;
-        while (current != null) {
-            try {
-                return current.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException ignored) {
-                current = current.getSuperclass();
-            }
-        }
-        throw new NoSuchFieldException(fieldName);
     }
 }

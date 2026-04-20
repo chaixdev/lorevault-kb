@@ -14,7 +14,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -336,16 +335,16 @@ class TriadOrchestrationServiceTest {
     }
 
     private Chapter createTestChapter() {
-        Chapter chapter = instantiateWithoutConstructor(Chapter.class);
-        setField(chapter, "id", testChapterId);
-        setField(chapter, "rawText", "Sample chapter text for testing purposes.");
+        Chapter chapter = new Chapter();
+        chapter.setId(testChapterId);
+        chapter.setRawText("Sample chapter text for testing purposes.");
         return chapter;
     }
 
     private Chapter createTestChapterWithText() {
-        Chapter chapter = instantiateWithoutConstructor(Chapter.class);
-        setField(chapter, "id", testChapterId);
-        setField(chapter, "rawText", "This is scene one text. This is scene two text. This is scene three text.");
+        Chapter chapter = new Chapter();
+        chapter.setId(testChapterId);
+        chapter.setRawText("This is scene one text. This is scene two text. This is scene three text.");
         return chapter;
     }
 
@@ -404,36 +403,4 @@ class TriadOrchestrationServiceTest {
         );
     }
 
-    private <T> T instantiateWithoutConstructor(Class<T> type) {
-        try {
-            var unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-            unsafeField.setAccessible(true);
-            var unsafe = (sun.misc.Unsafe) unsafeField.get(null);
-            return type.cast(unsafe.allocateInstance(type));
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    private void setField(Object target, String fieldName, Object value) {
-        try {
-            Field field = findField(target.getClass(), fieldName);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    private Field findField(Class<?> type, String fieldName) throws NoSuchFieldException {
-        Class<?> current = type;
-        while (current != null) {
-            try {
-                return current.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException ignored) {
-                current = current.getSuperclass();
-            }
-        }
-        throw new NoSuchFieldException(fieldName);
-    }
 }
