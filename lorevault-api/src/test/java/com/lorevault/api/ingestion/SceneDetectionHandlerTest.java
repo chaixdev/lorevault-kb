@@ -19,7 +19,6 @@ import org.mockito.InjectMocks;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Collections;
@@ -64,10 +63,9 @@ class SceneDetectionHandlerTest {
         bookId = UUID.randomUUID();
 
         testChapter = new Chapter();
-        BeanWrapperImpl chapterBean = new BeanWrapperImpl(testChapter);
-        chapterBean.setPropertyValue("id", chapterId);
-        chapterBean.setPropertyValue("bookId", bookId);
-        chapterBean.setPropertyValue("rawText", "Test chapter content for scene detection.");
+        testChapter.setId(chapterId);
+        testChapter.setBookId(bookId);
+        testChapter.setRawText("Test chapter content for scene detection.");
 
         testEvent = new ChapterIngestionEvent(this, jobId, chapterId);
     }
@@ -111,11 +109,10 @@ class SceneDetectionHandlerTest {
             verify(eventPublisher).publishEvent(eventCaptor.capture());
             
             ScenesDetectedEvent emittedEvent = eventCaptor.getValue();
-            BeanWrapperImpl eventBean = new BeanWrapperImpl(emittedEvent);
-            assertThat(eventBean.getPropertyValue("jobId")).isEqualTo(jobId);
-            assertThat(eventBean.getPropertyValue("chapterId")).isEqualTo(chapterId);
-            assertThat(eventBean.getPropertyValue("bookId")).isEqualTo(bookId);
-            assertThat((List<?>) eventBean.getPropertyValue("sceneIds")).hasSize(2);
+            assertThat(emittedEvent.getJobId()).isEqualTo(jobId);
+            assertThat(emittedEvent.getChapterId()).isEqualTo(chapterId);
+            assertThat(emittedEvent.getBookId()).isEqualTo(bookId);
+            assertThat(emittedEvent.getSceneIds()).hasSize(2);
         }
 
         @Test
@@ -181,7 +178,7 @@ class SceneDetectionHandlerTest {
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
-            assertThat((List<?>) new BeanWrapperImpl(eventCaptor.getValue()).getPropertyValue("sceneIds")).hasSize(2);
+            assertThat(eventCaptor.getValue().getSceneIds()).hasSize(2);
         }
     }
 
@@ -206,10 +203,9 @@ class SceneDetectionHandlerTest {
             verify(eventPublisher).publishEvent(eventCaptor.capture());
             
             IngestionFailedEvent failedEvent = eventCaptor.getValue();
-            BeanWrapperImpl failedBean = new BeanWrapperImpl(failedEvent);
-            assertThat(failedBean.getPropertyValue("jobId")).isEqualTo(jobId);
-            assertThat(failedBean.getPropertyValue("failedStage")).isEqualTo("SCENE_DETECTION");
-            assertThat(failedBean.getPropertyValue("retryable")).isEqualTo(true); // LLM errors are retryable
+            assertThat(failedEvent.getJobId()).isEqualTo(jobId);
+            assertThat(failedEvent.getFailedStage()).isEqualTo("SCENE_DETECTION");
+            assertThat(failedEvent.isRetryable()).isEqualTo(true); // LLM errors are retryable
 
             verify(ingestionJobService).updateJobStatus(eq(jobId), eq(IngestionStatus.FAILED), anyString(), any());
             verify(eventPublisher, never()).publishEvent(any(ScenesDetectedEvent.class));
@@ -228,7 +224,7 @@ class SceneDetectionHandlerTest {
             ArgumentCaptor<IngestionFailedEvent> eventCaptor = ArgumentCaptor.forClass(IngestionFailedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
             
-            assertThat(new BeanWrapperImpl(eventCaptor.getValue()).getPropertyValue("failedStage")).isEqualTo("SCENE_DETECTION");
+            assertThat(eventCaptor.getValue().getFailedStage()).isEqualTo("SCENE_DETECTION");
         }
 
         @Test
@@ -245,7 +241,7 @@ class SceneDetectionHandlerTest {
             // Then
             ArgumentCaptor<IngestionFailedEvent> eventCaptor = ArgumentCaptor.forClass(IngestionFailedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
-            assertThat(new BeanWrapperImpl(eventCaptor.getValue()).getPropertyValue("failedStage")).isEqualTo("SCENE_DETECTION");
+            assertThat(eventCaptor.getValue().getFailedStage()).isEqualTo("SCENE_DETECTION");
         }
     }
 
@@ -257,7 +253,7 @@ class SceneDetectionHandlerTest {
         @DisplayName("Should handle empty chapter text")
         void handleChapterPersisted_emptyText_emitsEventWithZeroScenes() {
             // Given
-            new BeanWrapperImpl(testChapter).setPropertyValue("rawText", "");
+            testChapter.setRawText("");
             when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
 
@@ -271,14 +267,14 @@ class SceneDetectionHandlerTest {
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
-            assertThat((List<?>) new BeanWrapperImpl(eventCaptor.getValue()).getPropertyValue("sceneIds")).isEmpty();
+            assertThat(eventCaptor.getValue().getSceneIds()).isEmpty();
         }
 
         @Test
         @DisplayName("Should handle null chapter text")
         void handleChapterPersisted_nullText_emitsEventWithZeroScenes() {
             // Given
-            new BeanWrapperImpl(testChapter).setPropertyValue("rawText", null);
+            testChapter.setRawText(null);
             when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
 
@@ -288,7 +284,7 @@ class SceneDetectionHandlerTest {
             // Then
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
-            assertThat((List<?>) new BeanWrapperImpl(eventCaptor.getValue()).getPropertyValue("sceneIds")).isEmpty();
+            assertThat(eventCaptor.getValue().getSceneIds()).isEmpty();
         }
     }
 

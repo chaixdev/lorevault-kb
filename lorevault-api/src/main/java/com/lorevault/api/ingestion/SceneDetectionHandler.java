@@ -10,7 +10,6 @@ import com.lorevault.api.timeline.DefaultTemporalEdgeService;
 import com.lorevault.api.timeline.TriadEdgePersistenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -81,8 +80,8 @@ public class SceneDetectionHandler {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleChapterIngestion(ChapterIngestionEvent event) {
-        UUID jobId = readUuidProperty(event, "jobId");
-        UUID chapterId = readUuidProperty(event, "chapterId");
+        UUID jobId = event.getJobId();
+        UUID chapterId = event.getChapterId();
         
         log.info("[SCENE_DETECTION] Starting pipeline for job={}, chapter={}", jobId, chapterId);
         
@@ -96,7 +95,7 @@ public class SceneDetectionHandler {
             Chapter chapter = chapterRepo.findById(chapterId)
                     .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
             
-            UUID bookId = readUuidProperty(chapter, "bookId");
+            UUID bookId = chapter.getBookId();
             
                     stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
                     "Analyzing chapter text with AI to identify semantic scene boundaries");
@@ -147,10 +146,10 @@ public class SceneDetectionHandler {
     }
 
     private DetectionPersistenceOutcome detectAndPersistScenes(UUID jobId, Chapter chapter) {
-        UUID chapterId = readUuidProperty(chapter, "id");
+        UUID chapterId = chapter.getId();
         log.info("[SCENE_DETECTION] Detecting scenes for chapter {}", chapterId);
 
-        String chapterText = readStringProperty(chapter, "rawText");
+        String chapterText = chapter.getRawText();
         if (chapterText == null || chapterText.trim().isEmpty()) {
             log.warn("[SCENE_DETECTION] Chapter {} has no text content", chapterId);
             return new DetectionPersistenceOutcome(List.of(), List.of());
@@ -206,12 +205,4 @@ public class SceneDetectionHandler {
                 message.contains("rate limit"));
     }
 
-    private UUID readUuidProperty(Object target, String propertyName) {
-        return (UUID) new BeanWrapperImpl(target).getPropertyValue(propertyName);
-    }
-
-    private String readStringProperty(Object target, String propertyName) {
-        Object value = new BeanWrapperImpl(target).getPropertyValue(propertyName);
-        return value == null ? null : value.toString();
-    }
 }
