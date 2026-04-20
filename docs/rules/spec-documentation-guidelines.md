@@ -28,6 +28,7 @@ They are for detailed behavior and workflow description, not raw code and not br
 - framework-specific configuration details
 - architectural rationale that already belongs in ADRs or architecture viewpoints
 - historical material that belongs in the archive
+- guard against knowledge fragmentation
 
 ## Relationship To Pattern Docs
 
@@ -63,6 +64,7 @@ A good spec should be:
 - testable
 - explicit about edge cases and failure modes
 - aligned with existing architecture and terminology
+- own its knowledge area
 
 ## Why This Rule Exists
 

@@ -138,6 +138,141 @@ sequenceDiagram
   - `BookLocationsReducedEvent`
 - Only then is the job marked complete and `IngestionCompletedEvent` emitted.
 
+### Abstract Orchestration Model
+
+At an abstract level, the ingestion pipeline is best understood as a task graph connected by application events.
+
+- A handler performs one bounded task for a specific `(jobId, chapterId)` or `(jobId, bookId)` scope.
+- On success, that handler emits one domain-level pipeline event describing what is now durably true enough for downstream work to begin.
+- Downstream handlers subscribe to that event and start their own bounded tasks asynchronously after the publishing transaction commits.
+- Failure is not modeled as an alternate success path. Instead, failures emit `IngestionFailedEvent` and terminate the affected branch.
+
+This means the pipeline is not a single long-running transaction and not a scheduler timeline. It is a causal event chain where each emitted event unlocks the next unit of work.
+
+### Task -> Event -> Trigger Matrix
+
+| Completed task | Success event emitted | Downstream task(s) triggered |
+|---|---|---|
+| Chapter submission and job creation (`IngestionService`) | `ChapterIngestionEvent` | Scene detection (`SceneDetectionHandler`) |
+| Scene detection, scene persistence, temporal-edge materialization, scene-local evidence persistence (`SceneDetectionHandler`) | `ScenesDetectedEvent` | Chunk creation (`ChunkingHandler`), chapter individual resolution (`ChapterIndividualResolutionHandler`), chapter location resolution (`ChapterLocationResolutionHandler`) |
+| Chunk creation and persistence (`ChunkingHandler`) | `ChunksCreatedEvent` | Embedding generation (`EmbeddingHandler`) |
+| Embedding generation (`EmbeddingHandler`) | `EmbeddingsCompletedEvent` | Completion coordination state update (`IngestionCompletionCoordinator`) |
+| Chapter-level individual resolution (`ChapterIndividualResolutionHandler`) | `ChapterIndividualsResolvedEvent` | Book-level individual reduction (`BookIndividualReductionHandler`) |
+| Book-level individual reduction (`BookIndividualReductionHandler`) | `BookIndividualsReducedEvent` | Completion coordination state update (`IngestionCompletionCoordinator`) |
+| Chapter-level location resolution (`ChapterLocationResolutionHandler`) | `ChapterLocationsResolvedEvent` | Book-level location reduction (`BookLocationReductionHandler`) |
+| Book-level location reduction (`BookLocationReductionHandler`) | `BookLocationsReducedEvent` | Completion coordination state update (`IngestionCompletionCoordinator`) |
+| Completion preconditions satisfied for the job/chapter (`IngestionCompletionCoordinator`) | `IngestionCompletedEvent` | Terminal success notification / downstream consumers |
+| Any stage fails (`PipelineStageSupport`) | `IngestionFailedEvent` | Terminal failure notification / downstream consumers |
+
+### Event Semantics By Boundary
+
+The important contract is not just that an event was emitted, but what downstream handlers are allowed to assume when they receive it.
+
+**`ChapterIngestionEvent`**
+- Means the ingestion job and chapter already exist and the initial submission transaction committed.
+- Allows async pipeline work to begin against durable identifiers.
+
+**`ScenesDetectedEvent`**
+- Means scenes for the chapter are durably persisted and can be referenced by stable scene IDs.
+- Also means scene-level temporal materialization and scene-local evidence persistence have already happened far enough for downstream chunking and entity-resolution branches to trust the scene graph.
+- This is the main fan-out point in the pipeline.
+
+**`ChunksCreatedEvent`**
+- Means chunk nodes and scene-to-chunk links exist.
+- Allows embedding generation to treat chunk persistence as complete for that chapter.
+
+**`ChapterIndividualsResolvedEvent` / `ChapterLocationsResolvedEvent`**
+- Mean the chapter-scoped reduction pass is complete for that evidence type.
+- Allow the corresponding book-scoped reduction step to rebuild the book-level aggregate.
+
+**`BookIndividualsReducedEvent` / `BookLocationsReducedEvent` / `EmbeddingsCompletedEvent`**
+- Mean one of the required post-scene branches has finished.
+- Do not individually complete the ingestion job.
+- Instead, they contribute to the completion barrier tracked by `IngestionCompletionCoordinator`.
+
+**`IngestionCompletedEvent`**
+- Means all required branches for the chapter have finished and the job can be treated as terminally successful.
+
+**`IngestionFailedEvent`**
+- Means the current stage failed and the job was transitioned to a terminal failed state with structured failure details.
+- It is a terminal branch outcome, not a retry command.
+
+### Fan-out and Join Shape
+
+The runtime shape is:
+
+1. **Single entry** at chapter submission.
+2. **Single first worker** for scene detection.
+3. **Fan-out** after `ScenesDetectedEvent` into:
+   - chunk/embedding branch
+   - individual resolution branch
+   - location resolution branch
+4. **Join** inside `IngestionCompletionCoordinator`, which waits for the required terminal branch events.
+5. **Single terminal outcome**, either `IngestionCompletedEvent` or `IngestionFailedEvent`.
+
+This join is intentionally event-based rather than call-stack-based. No branch directly calls another branch's service to declare the whole job complete.
+
+### Concurrency and Timing View
+
+The following Mermaid Gantt is an illustrative runtime view of how the async branches overlap after scene detection completes.
+
+- It is not a scheduling guarantee.
+- It does not imply fixed durations.
+- It exists to make fan-out, concurrency, and join behavior easier to reason about.
+
+```mermaid
+gantt
+    title "Illustrative ingestion concurrency view"
+    dateFormat X
+    axisFormat "%L"
+
+    section "Entry"
+    "Chapter submission" :done, submit, 0, 1
+    "Scene detection and scene persistence" :active, scenes, after submit, 4
+
+    section "Fan-out after ScenesDetectedEvent"
+    "Chunk creation" :chunks, after scenes, 2
+    "Chapter individual resolution" :chapterIndividuals, after scenes, 3
+    "Chapter location resolution" :chapterLocations, after scenes, 3
+
+    section "Downstream branch work"
+    "Embedding generation" :embeddings, after chunks, 3
+    "Book individual reduction" :bookIndividuals, after chapterIndividuals, 2
+    "Book location reduction" :bookLocations, after chapterLocations, 2
+
+    section "Join"
+    "Completion coordination" :join, after embeddings, 1
+    "Completion coordination waits for individual branch" :milestone, after bookIndividuals, 0
+    "Completion coordination waits for location branch" :milestone, after bookLocations, 0
+    "Ingestion completed" :milestone, complete, after join, 0
+```
+
+Read this diagram as:
+
+- scene detection is the first substantial worker stage
+- `ScenesDetectedEvent` creates the main parallel fan-out
+- chunking, chapter individual resolution, and chapter location resolution can overlap
+- embedding generation depends on chunking only
+- book-level reductions depend on their corresponding chapter-level reductions only
+- overall completion still waits for all required terminal branch events, even if one branch finished much earlier than the others
+
+This view is especially useful for reasoning about:
+
+- where concurrency actually begins
+- which stages are serial dependencies versus parallel siblings
+- where a stalled branch prevents `IngestionCompletedEvent`
+- which stages are likely long poles in end-to-end latency
+
+### What This Pattern Deliberately Abstracts Away
+
+This document describes the orchestration contract, not every internal sub-step.
+
+- The internal triad window logic and temporal relation classification stay in the Triad Analysis Pattern.
+- The append-only status model and LLM call correlation stay in the Observability Pattern.
+- Per-service heuristics such as segmentation fallback, coordinate localization, or reduction internals are intentionally summarized here rather than exhaustively specified.
+
+The goal of this document is to make the causal event graph legible: which task runs, which event it emits, and which downstream tasks that event unlocks.
+
 ### Failure Handling
 The `PipelineStageSupport.runStage()` utility wraps every stage in a try-catch block to provide uniform error management. When a failure occurs, the system emits an `IngestionFailedEvent` and updates the job status to `FAILED`. This update includes a structured `IngestionFailure` object containing the error type, message, and diagnostic properties.
 

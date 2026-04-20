@@ -2,7 +2,7 @@
 
 This directory contains present-state mechanism documentation.
 
-Patterns explain important areas of the current system that are implemented across multiple files or layers and are not easy to reconstruct from code at a glance.
+Patterns explain important areas of the current system that are implemented across multiple files or layers and are not easy to reconstruct from code at a glance. any addition in this folder must take special care to guard against fragmented knowledge.
 
 ## Patterns Are For
 
@@ -15,6 +15,7 @@ Some pattern docs are lightweight overviews.
 Others need to be more implementation-ready and procedural.
 
 When a pattern doc needs that deeper level of workflow/state/integration detail, follow the quality bar in `../rules/spec-documentation-guidelines.md`.
+
 
 ## Patterns Are Not For
 
