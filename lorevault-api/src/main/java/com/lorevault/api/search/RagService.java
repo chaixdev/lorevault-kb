@@ -14,8 +14,8 @@ import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchFilters;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
 import com.lorevault.api.ai.PromptRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,9 +44,9 @@ import java.util.stream.IntStream;
  * </ul>
  */
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class RagService {
-
-    private static final Logger log = LoggerFactory.getLogger(RagService.class);
 
     private final SemanticSearchService semanticSearchService;
     private final PromptRepository promptRepository;
@@ -72,24 +72,6 @@ public class RagService {
 
     @Value("${lorevault.search.hybrid.rrf-k:60}")
     private int hybridRrfK;
-
-    public RagService(
-            SemanticSearchService semanticSearchService,
-            PromptRepository promptRepository,
-            ChunkGraphRepository chunkRepo,
-            ChapterGraphRepository chapterRepo,
-            QuestionIntentClassifier intentClassifier,
-            CypherTemplateRegistry templateRegistry,
-            @Qualifier("nlpBig") ChatClient chatClient
-    ) {
-        this.semanticSearchService = semanticSearchService;
-        this.promptRepository = promptRepository;
-        this.chunkRepo = chunkRepo;
-        this.chapterRepo = chapterRepo;
-        this.intentClassifier = intentClassifier;
-        this.templateRegistry = templateRegistry;
-        this.chatClient = chatClient;
-    }
 
     // -------------------------------------------------------------------------
     // Public entry point
