@@ -8,8 +8,8 @@ import com.lorevault.api.search.RagService;
 import com.lorevault.api.search.SemanticSearchService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,13 +19,18 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/api/query")
-@RequiredArgsConstructor
-@Slf4j
 @Tag(name = "Query", description = "Content search and Q&A operations")
 public class AskController {
 
+    private static final Logger log = LoggerFactory.getLogger(AskController.class);
+
     private final SemanticSearchService semanticSearchService;
     private final RagService ragService;
+
+    public AskController(SemanticSearchService semanticSearchService, RagService ragService) {
+        this.semanticSearchService = semanticSearchService;
+        this.ragService = ragService;
+    }
 
     /**
      * Vector-only QA: returns top chunks with scores for evolution comparison.
@@ -48,8 +53,7 @@ public class AskController {
     }
 
     /**
-     * RAG QA: will retrieve chunks and synthesize an answer with citations.
-     * Placeholder endpoint to establish API surface; will be implemented in v0.8.0.
+     * Baseline RAG QA: vector retrieval across corpus + generated answer.
      */
     @PostMapping("/ask/rag")
     public ResponseEntity<AskResponse> askRag(@Valid @RequestBody AskRequest request) {
@@ -57,7 +61,7 @@ public class AskController {
                 request.getQuestion(), request.getTopK());
 
         try {
-            AskResponse response = ragService.ask(request);
+            AskResponse response = ragService.askRagBaseline(request);
             log.info("RAG completed: answer length={} chars, citations={} in {}ms", 
                     response.getAnswer().length(), 
                     response.getCitations().size(),
@@ -67,6 +71,53 @@ public class AskController {
             
         } catch (Exception e) {
             log.error("RAG failed for question '{}': {}", request.getQuestion(), e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Graph-aware QA endpoint for routed entity lookup + narrative fallback.
+     */
+    @PostMapping("/ask/graph-aware")
+    public ResponseEntity<AskResponse> askGraphAware(@Valid @RequestBody AskRequest request) {
+        log.info("Graph-aware QA request: question='{}', topK={}",
+                request.getQuestion(), request.getTopK());
+
+        try {
+            AskResponse response = ragService.askGraphAware(request);
+            log.info("Graph-aware QA completed: answer length={} chars, citations={} in {}ms",
+                    response.getAnswer().length(),
+                    response.getCitations().size(),
+                    response.getMetadata().getProcessingTimeMs());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Graph-aware QA failed for question '{}': {}", request.getQuestion(), e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Hybrid QA endpoint for side-by-side retrieval strategy comparison.
+     * Runs parallel vector + graph retrieval with deduplicated RRF fusion.
+     */
+    @PostMapping("/ask/hybrid")
+    public ResponseEntity<AskResponse> askHybrid(@Valid @RequestBody AskRequest request) {
+        log.info("Hybrid QA request: question='{}', topK={}",
+                request.getQuestion(), request.getTopK());
+
+        try {
+            AskResponse response = ragService.askHybrid(request);
+            log.info("Hybrid QA completed: answer length={} chars, citations={} in {}ms",
+                    response.getAnswer().length(),
+                    response.getCitations().size(),
+                    response.getMetadata().getProcessingTimeMs());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Hybrid QA failed for question '{}': {}", request.getQuestion(), e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

@@ -121,18 +121,18 @@ class AskControllerWebMvcTest {
         request.setTopK(3);
 
         UUID chunkId = UUID.fromString("00000000-0000-0000-0000-000000000002");
-        PublicationCoordinates coordinates = new PublicationCoordinates(
-                "Test Universe", 
-                "Test Series", 
-                "Test Book", 
-                "Test Chapter", 
-                1, 
-                1);
+        PublicationCoordinates coordinates = new PublicationCoordinates();
+        coordinates.setUniverse("Test Universe");
+        coordinates.setSeries("Test Series");
+        coordinates.setBookTitle("Test Book");
+        coordinates.setChapterTitle("Test Chapter");
+        coordinates.setBookNumber(1);
+        coordinates.setChapterNumber(1);
         CitationDto citation = CitationDto.of(chunkId, 0.91, "wizard of middle-earth", coordinates);
         AskMetadata metadata = AskMetadata.of("who is gandalf?", 3, 1, 25, "test-model");
         AskResponse response = AskResponse.of("Gandalf is a wizard.", List.of(citation), metadata);
 
-        Mockito.when(ragService.ask(any())).thenReturn(response);
+        Mockito.when(ragService.askRagBaseline(any())).thenReturn(response);
 
         // Act + Assert
         mockMvc.perform(post("/api/query/ask/rag")
@@ -156,7 +156,7 @@ class AskControllerWebMvcTest {
         request.setQuestion("who is gandalf?");
         request.setTopK(3);
 
-        Mockito.when(ragService.ask(any())).thenThrow(new RuntimeException("boom"));
+        Mockito.when(ragService.askRagBaseline(any())).thenThrow(new RuntimeException("boom"));
 
         // Act + Assert
         mockMvc.perform(post("/api/query/ask/rag")
@@ -177,5 +177,97 @@ class AskControllerWebMvcTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(bad)))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void askHybrid_success_returnsAnswerAndCitations() throws Exception {
+        // Arrange
+        AskRequest request = new AskRequest();
+        request.setQuestion("who is vin?");
+        request.setTopK(3);
+
+        UUID chunkId = UUID.fromString("00000000-0000-0000-0000-000000000003");
+        PublicationCoordinates coordinates = new PublicationCoordinates();
+        coordinates.setUniverse("Test Universe");
+        coordinates.setSeries("Test Series");
+        coordinates.setBookTitle("Test Book");
+        coordinates.setChapterTitle("Test Chapter");
+        coordinates.setBookNumber(1);
+        coordinates.setChapterNumber(1);
+        CitationDto citation = CitationDto.of(chunkId, 0.028, "vin appears in both branches", coordinates);
+        AskMetadata metadata = AskMetadata.of("who is vin?", 6, 3, 33, "test-model");
+        AskResponse response = AskResponse.of("Vin appears in both vector and graph evidence.", List.of(citation), metadata);
+
+        Mockito.when(ragService.askHybrid(any())).thenReturn(response);
+
+        // Act + Assert
+        mockMvc.perform(post("/api/query/ask/hybrid")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.answer", containsString("vector and graph")))
+            .andExpect(jsonPath("$.citations", hasSize(1)))
+            .andExpect(jsonPath("$.citations[0].chunkId", is(chunkId.toString())))
+            .andExpect(jsonPath("$.metadata.question", is("who is vin?")))
+            .andExpect(jsonPath("$.metadata.chunksRetrieved", is(6)))
+            .andExpect(jsonPath("$.metadata.chunksUsed", is(3)));
+    }
+
+    @Test
+    void askHybrid_serviceThrows_returns500() throws Exception {
+        AskRequest request = new AskRequest();
+        request.setQuestion("who is vin?");
+        request.setTopK(3);
+
+        Mockito.when(ragService.askHybrid(any())).thenThrow(new RuntimeException("boom"));
+
+        mockMvc.perform(post("/api/query/ask/hybrid")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void askGraphAware_success_returnsAnswerAndCitations() throws Exception {
+        AskRequest request = new AskRequest();
+        request.setQuestion("who is kelsier?");
+        request.setTopK(3);
+
+        UUID chunkId = UUID.fromString("00000000-0000-0000-0000-000000000004");
+        PublicationCoordinates coordinates = new PublicationCoordinates();
+        coordinates.setUniverse("Test Universe");
+        coordinates.setSeries("Test Series");
+        coordinates.setBookTitle("Test Book");
+        coordinates.setChapterTitle("Test Chapter");
+        coordinates.setBookNumber(1);
+        coordinates.setChapterNumber(1);
+        CitationDto citation = CitationDto.of(chunkId, 0.73, "kelsier leads the crew", coordinates);
+        AskMetadata metadata = AskMetadata.of("who is kelsier?", 4, 2, 31, "test-model");
+        AskResponse response = AskResponse.of("Kelsier is the Survivor of Hathsin.", List.of(citation), metadata);
+
+        Mockito.when(ragService.askGraphAware(any())).thenReturn(response);
+
+        mockMvc.perform(post("/api/query/ask/graph-aware")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.answer", containsString("Survivor")))
+                .andExpect(jsonPath("$.citations", hasSize(1)))
+                .andExpect(jsonPath("$.citations[0].chunkId", is(chunkId.toString())))
+                .andExpect(jsonPath("$.metadata.question", is("who is kelsier?")));
+    }
+
+    @Test
+    void askGraphAware_serviceThrows_returns500() throws Exception {
+        AskRequest request = new AskRequest();
+        request.setQuestion("who is kelsier?");
+        request.setTopK(3);
+
+        Mockito.when(ragService.askGraphAware(any())).thenThrow(new RuntimeException("boom"));
+
+        mockMvc.perform(post("/api/query/ask/graph-aware")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
     }
 }
