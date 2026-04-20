@@ -9,7 +9,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.BeanWrapperImpl;
 
 import java.util.List;
 import java.util.UUID;
@@ -207,11 +206,10 @@ class SceneDetectionServiceTest {
         String chapterText = "Short text.";
 
         Chapter chapter = new Chapter();
-        BeanWrapperImpl chapterBean = new BeanWrapperImpl(chapter);
-        chapterBean.setPropertyValue("id", chapterId);
-        chapterBean.setPropertyValue("bookId", bookId);
-        chapterBean.setPropertyValue("chapterNumber", 3);
-        chapterBean.setPropertyValue("rawText", chapterText);
+        chapter.setId(chapterId);
+        chapter.setBookId(bookId);
+        chapter.setChapterNumber(3);
+        chapter.setRawText(chapterText);
 
         SceneDetectionClient.SegmentationBudgetCheck admission = new SceneDetectionClient.SegmentationBudgetCheck(
                 "nlp-small", 128000, 89600, 10, 10, 20, true
@@ -231,10 +229,10 @@ class SceneDetectionServiceTest {
         ArgumentCaptor<Chapter> chapterCaptor = ArgumentCaptor.forClass(Chapter.class);
         verify(triadOrchestrationService).analyzeChapterTriadsWithIndividuals(eq(jobId), chapterCaptor.capture());
 
-        BeanWrapperImpl capturedChapter = new BeanWrapperImpl(chapterCaptor.getValue());
-        assertThat(capturedChapter.getPropertyValue("id")).isEqualTo(chapterId);
-        assertThat(capturedChapter.getPropertyValue("bookId")).isEqualTo(bookId);
-        assertThat(capturedChapter.getPropertyValue("chapterNumber")).isEqualTo(3);
-        assertThat(capturedChapter.getPropertyValue("rawText")).isEqualTo(chapterText);
+        Chapter capturedChapter = chapterCaptor.getValue();
+        assertThat(capturedChapter.getId()).isEqualTo(chapterId);
+        assertThat(capturedChapter.getBookId()).isEqualTo(bookId);
+        assertThat(capturedChapter.getChapterNumber()).isEqualTo(3);
+        assertThat(capturedChapter.getRawText()).isEqualTo(chapterText);
     }
 }

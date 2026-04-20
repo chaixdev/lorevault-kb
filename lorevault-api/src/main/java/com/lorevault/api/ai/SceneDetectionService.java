@@ -4,9 +4,8 @@ import com.lorevault.api.ai.LlmRetryStrategy.LlmRetryConfig;
 import com.lorevault.api.ai.LlmRetryStrategy.LlmRetryResult;
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanWrapperImpl;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -25,9 +24,10 @@ import java.util.ArrayList;
  * - Triad analysis artifact generation (temporal linking runs post-persistence)
  */
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class SceneDetectionService {
 
-    private static final Logger log = LoggerFactory.getLogger(SceneDetectionService.class);
     public record SceneDetectionOutcome(
             List<SceneWithCoordinates> scenes,
             List<TriadOrchestrationService.TriadAnalysis> triadAnalyses,
@@ -49,16 +49,6 @@ public class SceneDetectionService {
     private final SceneProcessingService sceneProcessingService;
     private final LlmRetryStrategy llmRetryStrategy;
     private final TriadOrchestrationService triadOrchestrationService;
-
-    public SceneDetectionService(SceneDetectionClient sceneDetectionClient,
-                                 SceneProcessingService sceneProcessingService,
-                                 LlmRetryStrategy llmRetryStrategy,
-                                 TriadOrchestrationService triadOrchestrationService) {
-        this.sceneDetectionClient = sceneDetectionClient;
-        this.sceneProcessingService = sceneProcessingService;
-        this.llmRetryStrategy = llmRetryStrategy;
-        this.triadOrchestrationService = triadOrchestrationService;
-    }
 
     /**
      * Detect semantic scenes within chapter text using AI.
@@ -92,8 +82,8 @@ public class SceneDetectionService {
             throw new IllegalArgumentException("chapter must not be null");
         }
 
-        UUID chapterId = readUuidProperty(chapter, "id");
-        String chapterText = readStringProperty(chapter, "rawText");
+        UUID chapterId = chapter.getId();
+        String chapterText = chapter.getRawText();
         if (chapterText == null || chapterText.trim().isEmpty()) {
             log.warn("Chapter {} has no text content for scene detection", chapterId);
             return new SceneDetectionOutcome(Collections.emptyList(), List.of(), List.of(), List.of());
@@ -247,39 +237,24 @@ public class SceneDetectionService {
 
     private Chapter createTriadAnalysisChapter(UUID chapterId, String chapterText, Chapter chapterMetadata) {
         Chapter chapter = new Chapter();
-        BeanWrapperImpl chapterBean = new BeanWrapperImpl(chapter);
-        chapterBean.setPropertyValue("id", chapterId);
-        chapterBean.setPropertyValue("rawText", chapterText);
+        chapter.setId(chapterId);
+        chapter.setRawText(chapterText);
 
         if (chapterMetadata != null) {
-            copyProperty(chapterMetadata, chapterBean, "bookId");
-            copyProperty(chapterMetadata, chapterBean, "universeId");
-            copyProperty(chapterMetadata, chapterBean, "seriesId");
-            copyProperty(chapterMetadata, chapterBean, "universe");
-            copyProperty(chapterMetadata, chapterBean, "series");
-            copyProperty(chapterMetadata, chapterBean, "bookTitle");
-            copyProperty(chapterMetadata, chapterBean, "bookNumber");
-            copyProperty(chapterMetadata, chapterBean, "chapterNumber");
-            copyProperty(chapterMetadata, chapterBean, "chapterTitle");
-            copyProperty(chapterMetadata, chapterBean, "contentHash");
-            copyProperty(chapterMetadata, chapterBean, "coordinates");
+            chapter.setBookId(chapterMetadata.getBookId());
+            chapter.setUniverseId(chapterMetadata.getUniverseId());
+            chapter.setSeriesId(chapterMetadata.getSeriesId());
+            chapter.setUniverse(chapterMetadata.getUniverse());
+            chapter.setSeries(chapterMetadata.getSeries());
+            chapter.setBookTitle(chapterMetadata.getBookTitle());
+            chapter.setBookNumber(chapterMetadata.getBookNumber());
+            chapter.setChapterNumber(chapterMetadata.getChapterNumber());
+            chapter.setChapterTitle(chapterMetadata.getChapterTitle());
+            chapter.setContentHash(chapterMetadata.getContentHash());
+            chapter.setCoordinates(chapterMetadata.getCoordinates());
         }
 
         return chapter;
-    }
-
-    private void copyProperty(Object source, BeanWrapperImpl target, String propertyName) {
-        Object value = new BeanWrapperImpl(source).getPropertyValue(propertyName);
-        target.setPropertyValue(propertyName, value);
-    }
-
-    private UUID readUuidProperty(Object target, String propertyName) {
-        return (UUID) new BeanWrapperImpl(target).getPropertyValue(propertyName);
-    }
-
-    private String readStringProperty(Object target, String propertyName) {
-        Object value = new BeanWrapperImpl(target).getPropertyValue(propertyName);
-        return value == null ? null : value.toString();
     }
 
     private List<SceneWithCoordinates> processSegments(UUID jobId, List<SegmentWindow> segments) {
