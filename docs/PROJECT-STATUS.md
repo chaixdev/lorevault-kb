@@ -1,8 +1,9 @@
 # LoreVault Project Status
 
-**Last Updated:** April 17, 2026  
-**Status:** Active — M1/M2/M3/M4 complete; entity-aware Q&A, unified SSE job feed, and operator UI slices shipped  
-**Primary Direction:** Simplify architecture, preserve mechanical sympathy, reduce indirection
+**Last Updated:** April 20, 2026  
+**Reviewed Through Commit:** `40dcf98`  
+**Status:** Active — core ingestion and retrieval slices are stable enough to iterate on event extraction and aggregation  
+**Primary Direction:** Expand event extraction, aggregation, and downstream event-aware retrieval while continuing targeted ingestion hardening
 
 ## What LoreVault Is
 
@@ -20,10 +21,13 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Scoped entity resolution is now active for two lanes:
   - `IndividualMention -> ChapterIndividual -> BookIndividual`
   - `LocationMention -> ChapterLocation -> BookLocation`
+- Stage-1 event extraction now persists event-mention evidence as groundwork for a future event-resolution lane
 - Ingestion completion is coordinated across required post-scene branches: embedding completion, book-level Individual reduction, and book-level Location reduction
 - Query routing now distinguishes direct entity lookup from broader narrative Q&A, with entity-aware RAG grounded in scene-level individual and location context
+- Retrieval now supports baseline, graph-aware, and hybrid modes, with reciprocal-rank-fusion-style hybrid composition available through the ask surface and operator UI
+- Temporal relation handling now uses a practical canonical vocabulary, and scene temporal linking preserves cross-chapter signals through both materialization and read-time ordering
 - SSE job streaming is live at `/api/query/jobs/stream`, with keepalives and normalized status-update payloads for ingestion lifecycle events
-- A basic operator UI is present under the Thymeleaf `ui/` surface: hierarchical library selection, batch chapter upload, live job visibility, operator actions, and a minimal query panel
+- A basic operator UI is present under the Thymeleaf `ui/` surface: hierarchical library selection, batch chapter upload, live job visibility, operator actions, a query panel, and retrieval-mode selection
 
 ## What Is Done
 
@@ -44,21 +48,27 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Unified SSE diagnostics feed shipped** — ingestion job updates now stream via `SseEmitter` from `/api/query/jobs/stream`, with normalized event payloads, keepalive comments, and chapter-ingestion event alignment for the live feed
 - **Basic operator UI shipped** — the Thymeleaf operator console now supports hierarchical universe/series/book selection, batch chapter upload, live job refresh plus SSE event console, expandable job details, operator re-resolution actions, and a minimal RAG query panel
 - **Async ingestion lifecycle logging shipped** — ingestion completion coordination and downstream reduction handlers now emit more detailed async lifecycle logging to improve operator/debug visibility
+- **Graph-aware and hybrid retrieval shipped** — RAG retrieval now supports baseline, graph-aware, and hybrid modes; the ask surface was split accordingly and the operator UI now exposes a mode selector for retrieval strategy comparison
+- **Event extraction groundwork shipped** — stage-1 scene analysis now persists event-mention evidence so event-oriented extraction has a durable foothold in the ingestion pipeline
+- **Practical temporal semantics and scene temporal linking shipped** — temporal relation handling now uses a canonical practical vocabulary, triad-edge persistence is normalized, cross-chapter scene context is preserved during temporal analysis, and book-level ordering can now use cross-chapter temporal edges instead of chapter-local concatenation alone
+- **Recent ingestion/runtime hardening shipped** — recent fixes serialized follow-up execution for stability, avoided fragile triad-status property lookups, aligned chunking with content-property configuration, and kept temporal-edge persistence mechanically consistent
 
 ## What Is Next
 
-M1–M4 are complete. The architecture is now a flat, feature-oriented modulith with direct Spring AI integration and no port/adapter indirection. Recent feature work has shifted from structural cleanup to product-facing operator surfaces, ingestion observability, and retrieval correctness.
+M1–M4 are complete. The architecture is now a flat, feature-oriented modulith with direct Spring AI integration and no port/adapter indirection. Recent work has shifted from structural cleanup to operator-facing product slices, retrieval-mode expansion, timeline correctness, and ingestion/runtime hardening.
 
 Current focus:
-- Harden the newly shipped operator-facing ingestion/query slice and continue expanding entity-aware retrieval beyond the first two entity lanes
+- Iterate on event extraction and event aggregation while preserving ingestion reliability and retrieval grounding
 
 Near-term execution slices:
-1**Operator UI deepening**
-   - Turn the current shell into a more complete operator surface with richer query workflows, better action feedback, and tighter integration with ingestion diagnostics
-2**Ingestion reliability follow-up**
-   - Resolve remaining cases where ingestion state can stick in intermediate states and keep event/status reporting mechanically aligned
-3**Explore and research NLP tools** to improve entity extraction, both ingestion and q&a side.
-   - 
+1. **Event extraction iteration**
+   - Build on the current EventMention groundwork with better extraction quality, stronger boundaries, and clearer durable semantics for event evidence captured during ingestion
+2. **Event aggregation and graph shaping**
+   - Define and implement the next aggregation layer that groups extracted event evidence into more useful chapter/book-level structures without overcommitting to premature ontology complexity
+3. **Ingestion reliability follow-up**
+   - Resolve remaining cases where ingestion state can stick in intermediate states, especially around async completion signaling and status persistence alignment
+4. **Retrieval and timeline quality follow-up**
+   - Continue validating temporal-linking behavior and explore how event-aware retrieval should interact with existing baseline, graph-aware, and hybrid modes
 
 Broader planned directions remain intact after these slices:
 - Broader entity extraction (Collectives and later claims)
