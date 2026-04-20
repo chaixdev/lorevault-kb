@@ -237,6 +237,11 @@ public class FakeContentRepositories {
         }
 
         @Override
+        public List<Chunk> findBySceneId(UUID sceneId) {
+            return chunksById.values().stream().toList();
+        }
+
+        @Override
         public boolean existsForChapterViaScenes(UUID chapterId) {
             return existsForChapter(chapterId);
         }

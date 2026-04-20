@@ -146,6 +146,11 @@ lorevault:
   search:
     provider: neo4j  # Options: neo4j (default), memory
     oversample-multiplier: 3  # topK * multiplier candidates fetched before spoiler filtering
+    hybrid:
+      enabled: false
+      rag-only: true
+      branch-n: 20
+      rrf-k: 60
     snippet:
       # Maximum characters per snippet returned from search, used in RAG context.
       # With smaller 800-char chunks, we can return full chunks instead of snippets.

@@ -34,6 +34,9 @@ public interface ChunkGraphRepository extends Neo4jRepository<Chunk, UUID> {
     @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(ch:Chunk) RETURN count(ch)")
     int countByChapterIdViaScenes(UUID chapterId);
 
+    @Query("MATCH (:Scene {id: $sceneId})-[:HAS_CHUNK]->(ch:Chunk) RETURN ch ORDER BY ch.chunkNumberInChapter")
+    List<Chunk> findBySceneId(UUID sceneId);
+
     @Query("MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(ch:Chunk) DETACH DELETE ch")
     void deleteByChapterIdViaScenes(UUID chapterId);
 

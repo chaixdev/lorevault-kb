@@ -433,5 +433,80 @@ class RagServiceTest {
             assertThat(response.getAnswer()).isEqualTo("Vin is a Mistborn who appears in 47 chapters.");
             verify(semanticSearchService, never()).search(any());
         }
+
+        @Test
+        void shouldUseHybridRrfFusionForNarrativeQaWhenEnabled() {
+            // Arrange
+            ReflectionTestUtils.setField(ragService, "hybridEnabled", true);
+            ReflectionTestUtils.setField(ragService, "hybridRagOnly", true);
+            ReflectionTestUtils.setField(ragService, "hybridBranchN", 20);
+            ReflectionTestUtils.setField(ragService, "hybridRrfK", 60);
+
+            when(intentClassifier.classify(any())).thenReturn(QuestionIntent.NARRATIVE_QA);
+            when(chatClient.prompt()).thenReturn(requestSpec);
+            when(requestSpec.system(any(String.class))).thenReturn(systemSpec);
+            when(systemSpec.user(any(String.class))).thenReturn(requestSpec);
+            when(requestSpec.call()).thenReturn(callSpec);
+            when(callSpec.content()).thenReturn("Vin appears in both graph and vector evidence.");
+            when(mockPromptRepository.get("rag-answer-generation"))
+                    .thenReturn(new PromptTemplate("You are a helpful assistant."));
+
+            AskDtos.AskRequest request = new AskDtos.AskRequest();
+            request.setQuestion("Who is Vin?");
+            request.setTopK(2);
+
+            UUID sharedChunkId = UUID.randomUUID();
+            UUID chapterId = UUID.randomUUID();
+            UUID sceneId = UUID.randomUUID();
+
+            SemanticSearchDtos.SearchResultDto vectorResult = SemanticSearchDtos.SearchResultDto.of(
+                    sharedChunkId,
+                    0.91,
+                    "Vector evidence",
+                    chapterId,
+                    1,
+                    1,
+                    sceneId,
+                    "Vector scene summary",
+                    List.of("Vin"),
+                    List.of("Luthadel")
+            );
+
+            when(semanticSearchService.search(any(SemanticSearchDtos.SemanticSearchRequest.class)))
+                    .thenReturn(searchResponseOf(List.of(vectorResult)));
+
+            CypherTemplateRegistry.EntityLookupResult graphScene =
+                    new CypherTemplateRegistry.EntityLookupResult(
+                            "individual-scenes",
+                            "Vin",
+                            "vin",
+                            null,
+                            null,
+                            1,
+                            1,
+                            sceneId.toString(),
+                            "Graph scene summary",
+                            1,
+                            1);
+            when(templateRegistry.execute(any(), any(), any())).thenReturn(List.of(graphScene));
+
+            Chunk graphChunk = new Chunk();
+            graphChunk.setId(sharedChunkId);
+            graphChunk.setText("Graph evidence");
+            when(chunkRepo.findBySceneId(sceneId)).thenReturn(List.of(graphChunk));
+            when(chunkRepo.findById(sharedChunkId)).thenReturn(Optional.of(graphChunk));
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.empty());
+
+            // Act
+            AskDtos.AskResponse response = ragService.ask(request);
+
+            // Assert
+            assertThat(response).isNotNull();
+            assertThat(response.getAnswer()).isEqualTo("Vin appears in both graph and vector evidence.");
+            assertThat(response.getCitations()).hasSize(1); // deduped by chunkId
+            assertThat(response.getCitations().get(0).getChunkId()).isEqualTo(sharedChunkId);
+            assertThat(response.getMetadata().getChunksRetrieved()).isEqualTo(1);
+            assertThat(response.getMetadata().getChunksUsed()).isEqualTo(1);
+        }
     }
 }

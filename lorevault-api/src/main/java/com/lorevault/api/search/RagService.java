@@ -14,17 +14,21 @@ import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchFilters;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
 import com.lorevault.api.ai.PromptRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
 
 /**
@@ -40,9 +44,9 @@ import java.util.stream.IntStream;
  * </ul>
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class RagService {
+
+    private static final Logger log = LoggerFactory.getLogger(RagService.class);
 
     private final SemanticSearchService semanticSearchService;
     private final PromptRepository promptRepository;
@@ -56,6 +60,36 @@ public class RagService {
 
     @Value("${lorevault.ai.models.nlp-big.model:llama-3.1-70b-versatile}")
     private String modelId;
+
+    @Value("${lorevault.search.hybrid.enabled:false}")
+    private boolean hybridEnabled;
+
+    @Value("${lorevault.search.hybrid.rag-only:true}")
+    private boolean hybridRagOnly;
+
+    @Value("${lorevault.search.hybrid.branch-n:20}")
+    private int hybridBranchN;
+
+    @Value("${lorevault.search.hybrid.rrf-k:60}")
+    private int hybridRrfK;
+
+    public RagService(
+            SemanticSearchService semanticSearchService,
+            PromptRepository promptRepository,
+            ChunkGraphRepository chunkRepo,
+            ChapterGraphRepository chapterRepo,
+            QuestionIntentClassifier intentClassifier,
+            CypherTemplateRegistry templateRegistry,
+            @Qualifier("nlpBig") ChatClient chatClient
+    ) {
+        this.semanticSearchService = semanticSearchService;
+        this.promptRepository = promptRepository;
+        this.chunkRepo = chunkRepo;
+        this.chapterRepo = chapterRepo;
+        this.intentClassifier = intentClassifier;
+        this.templateRegistry = templateRegistry;
+        this.chatClient = chatClient;
+    }
 
     // -------------------------------------------------------------------------
     // Public entry point
@@ -79,6 +113,31 @@ public class RagService {
             case ENTITY_LOOKUP -> handleEntityLookup(request, startTime);
             case NARRATIVE_QA, AMBIGUOUS -> handleNarrativeQa(request, startTime);
         };
+    }
+
+    /**
+     * Vector-only RAG baseline (no graph-template lane, no hybrid fusion).
+     */
+    public AskResponse askRagBaseline(AskRequest request) {
+        log.debug("RAG baseline request: question='{}', topK={}", request.getQuestion(), request.getTopK());
+        return handleNarrativeQaVectorOnly(request, System.currentTimeMillis());
+    }
+
+    /**
+     * Graph-aware routed QA path (entity template lane + narrative fallback).
+     */
+    public AskResponse askGraphAware(AskRequest request) {
+        log.debug("Graph-aware RAG request: question='{}', topK={}", request.getQuestion(), request.getTopK());
+        return ask(request);
+    }
+
+    /**
+     * Explicit hybrid endpoint entrypoint for A/B comparison.
+     * Always runs the hybrid narrative pipeline regardless of global hybrid toggle.
+     */
+    public AskResponse askHybrid(AskRequest request) {
+        log.debug("Hybrid RAG request: question='{}', topK={}", request.getQuestion(), request.getTopK());
+        return handleNarrativeQaHybrid(request, System.currentTimeMillis());
     }
 
     // -------------------------------------------------------------------------
@@ -187,6 +246,15 @@ public class RagService {
     // -------------------------------------------------------------------------
 
     private AskResponse handleNarrativeQa(AskRequest request, long startTime) {
+        if (isHybridEnabledForRag()) {
+            return handleNarrativeQaHybrid(request, startTime);
+        }
+
+        return handleNarrativeQaVectorOnly(request, startTime);
+    }
+
+    private AskResponse handleNarrativeQaVectorOnly(AskRequest request, long startTime) {
+
         // Step 1: Retrieve relevant chunks via semantic search
         SemanticSearchRequest searchRequest = buildSearchRequest(request);
         SemanticSearchResponse searchResponse = semanticSearchService.search(searchRequest);
@@ -223,6 +291,57 @@ public class RagService {
 
         log.debug("RAG completed in {}ms: answer length={}, citations={}",
                 processingTime, answer.length(), citations.size());
+
+        return AskResponse.of(answer, citations, metadata);
+    }
+
+    private AskResponse handleNarrativeQaHybrid(AskRequest request, long startTime) {
+        SemanticSearchRequest vectorSearchRequest = buildHybridVectorSearchRequest(request);
+
+        CompletableFuture<List<SearchResultDto>> vectorFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                return semanticSearchService.search(vectorSearchRequest).getResults();
+            } catch (Exception e) {
+                log.warn("Hybrid vector branch failed: {}", e.getMessage());
+                return List.of();
+            }
+        });
+
+        CompletableFuture<List<SearchResultDto>> graphFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                return runGraphBranch(request);
+            } catch (Exception e) {
+                log.warn("Hybrid graph branch failed: {}", e.getMessage());
+                return List.of();
+            }
+        });
+
+        List<SearchResultDto> vectorResults = vectorFuture.join();
+        List<SearchResultDto> graphResults = graphFuture.join();
+
+        List<SearchResultDto> fusedResults = fuseByRrf(vectorResults, graphResults, request.getTopK());
+
+        // Hybrid fused scores are rank-based and not compatible with cosine thresholds.
+        List<SearchResultDto> filteredResults = filterByThreshold(fusedResults, null);
+
+        if (filteredResults.isEmpty()) {
+            return buildNoEvidenceResponse(request, fusedResults.size(), startTime);
+        }
+
+        String context = buildContextFromEvidence(filteredResults);
+        String answer = generateAnswer(request.getQuestion(), context);
+
+        List<CitationDto> citations = filteredResults.stream()
+                .map(this::buildCitation)
+                .toList();
+
+        long processingTime = System.currentTimeMillis() - startTime;
+        AskMetadata metadata = AskMetadata.of(
+                request.getQuestion(),
+                fusedResults.size(),
+                filteredResults.size(),
+                processingTime,
+                modelId != null ? modelId : "unknown-model");
 
         return AskResponse.of(answer, citations, metadata);
     }
@@ -403,6 +522,18 @@ public class RagService {
     }
 
     private CitationDto buildCitation(SearchResultDto searchResult) {
+        if (searchResult.getChapterId() == null) {
+            com.lorevault.api.support.PublicationCoordinates fallbackCoords = new com.lorevault.api.support.PublicationCoordinates();
+            fallbackCoords.setBookNumber(searchResult.getBookNumber());
+            fallbackCoords.setChapterNumber(searchResult.getChapterNumber());
+
+            return CitationDto.of(
+                    searchResult.getChunkId(),
+                    searchResult.getScore(),
+                    searchResult.getSnippet(),
+                    fallbackCoords);
+        }
+
         Optional<Chapter> chapterOpt = chapterRepo.findById(searchResult.getChapterId());
 
         if (chapterOpt.isPresent()) {
@@ -438,5 +569,189 @@ public class RagService {
                     searchResult.getSnippet(),
                     fallbackCoords);
         }
+    }
+
+    private boolean isHybridEnabledForRag() {
+        return hybridEnabled && hybridRagOnly;
+    }
+
+    private SemanticSearchRequest buildHybridVectorSearchRequest(AskRequest request) {
+        SemanticSearchRequest searchRequest = buildSearchRequest(request);
+        int branchTopN = Math.max(hybridBranchN, request.getTopK() != null ? request.getTopK() : 5);
+        searchRequest.setTopK(branchTopN);
+        return searchRequest;
+    }
+
+    private List<SearchResultDto> runGraphBranch(AskRequest request) {
+        String subject = extractSubjectName(request.getQuestion());
+        if (subject == null || subject.isBlank()) {
+            return List.of();
+        }
+
+        List<CypherTemplateRegistry.EntityLookupResult> entityScenes = templateRegistry.execute(
+                "individual-scenes",
+                Map.of("normalizedName", subject.toLowerCase().trim()),
+                request.getVisibility());
+
+        if (entityScenes.isEmpty()) {
+            return List.of();
+        }
+
+        List<SearchResultDto> graphCandidates = new ArrayList<>();
+        for (CypherTemplateRegistry.EntityLookupResult sceneResult : entityScenes) {
+            if (sceneResult.sceneId() == null) {
+                continue;
+            }
+
+            try {
+                UUID sceneId = UUID.fromString(sceneResult.sceneId());
+                List<Chunk> sceneChunks = chunkRepo.findBySceneId(sceneId);
+                for (Chunk chunk : sceneChunks) {
+                    if (chunk.getId() == null) {
+                        continue;
+                    }
+
+                    graphCandidates.add(SearchResultDto.of(
+                            chunk.getId(),
+                            1.0,
+                            chunk.getText(),
+                            null,
+                            sceneResult.bookNumber(),
+                            sceneResult.chapterNumber(),
+                            sceneId,
+                            sceneResult.sceneSummary(),
+                            sceneResult.displayName() == null ? List.of() : List.of(sceneResult.displayName()),
+                            List.of()));
+                }
+            } catch (IllegalArgumentException ignored) {
+                log.debug("Skipping graph candidate with invalid sceneId: {}", sceneResult.sceneId());
+            }
+        }
+
+        return graphCandidates.stream().limit(Math.max(hybridBranchN, 1)).toList();
+    }
+
+    private List<SearchResultDto> fuseByRrf(List<SearchResultDto> vectorResults,
+                                            List<SearchResultDto> graphResults,
+                                            Integer finalTopK) {
+        record Aggregate(
+                SearchResultDto dto,
+                double fusedScore,
+                int branchCount,
+                int bestRank,
+                int vectorRank
+        ) {}
+
+        Map<UUID, SearchResultDto> mergedByChunk = new java.util.HashMap<>();
+        Map<UUID, Double> fusedScores = new java.util.HashMap<>();
+        Map<UUID, Integer> branchCounts = new java.util.HashMap<>();
+        Map<UUID, Integer> bestRanks = new java.util.HashMap<>();
+        Map<UUID, Integer> vectorRanks = new java.util.HashMap<>();
+
+        applyRrfBranch(vectorResults, mergedByChunk, fusedScores, branchCounts, bestRanks, vectorRanks, true);
+        applyRrfBranch(graphResults, mergedByChunk, fusedScores, branchCounts, bestRanks, vectorRanks, false);
+
+        List<Aggregate> aggregates = fusedScores.entrySet().stream()
+                .map(entry -> {
+                    UUID chunkId = entry.getKey();
+                    return new Aggregate(
+                            mergedByChunk.get(chunkId),
+                            entry.getValue(),
+                            branchCounts.getOrDefault(chunkId, 0),
+                            bestRanks.getOrDefault(chunkId, Integer.MAX_VALUE),
+                            vectorRanks.getOrDefault(chunkId, Integer.MAX_VALUE));
+                })
+                .toList();
+
+        int maxResults = Math.max(finalTopK != null ? finalTopK : 5, 1);
+
+        Comparator<Aggregate> rankingComparator = Comparator
+                .comparingDouble(Aggregate::fusedScore).reversed()
+                .thenComparing(Comparator.comparingInt(Aggregate::branchCount).reversed())
+                .thenComparingInt(Aggregate::bestRank)
+                .thenComparingInt(Aggregate::vectorRank)
+                .thenComparing((Aggregate aggregate) -> aggregate.dto().getChunkId().toString());
+
+        return aggregates.stream()
+                .sorted(rankingComparator)
+                .map(aggregate -> SearchResultDto.of(
+                        aggregate.dto().getChunkId(),
+                        aggregate.fusedScore(),
+                        aggregate.dto().getSnippet(),
+                        aggregate.dto().getChapterId(),
+                        aggregate.dto().getBookNumber(),
+                        aggregate.dto().getChapterNumber(),
+                        aggregate.dto().getSceneId(),
+                        aggregate.dto().getSceneSummary(),
+                        aggregate.dto().getIndividualsPresent(),
+                        aggregate.dto().getLocationsPresent()))
+                .limit(maxResults)
+                .toList();
+    }
+
+    private void applyRrfBranch(List<SearchResultDto> branchResults,
+                                Map<UUID, SearchResultDto> mergedByChunk,
+                                Map<UUID, Double> fusedScores,
+                                Map<UUID, Integer> branchCounts,
+                                Map<UUID, Integer> bestRanks,
+                                Map<UUID, Integer> vectorRanks,
+                                boolean vectorBranch) {
+        for (int i = 0; i < branchResults.size(); i++) {
+            SearchResultDto candidate = branchResults.get(i);
+            UUID chunkId = candidate.getChunkId();
+            if (chunkId == null) {
+                continue;
+            }
+
+            int rank = i + 1;
+            double contribution = 1.0 / (Math.max(hybridRrfK, 1) + rank);
+
+            mergedByChunk.merge(chunkId, candidate, this::mergeCandidate);
+            fusedScores.merge(chunkId, contribution, Double::sum);
+            branchCounts.merge(chunkId, 1, Integer::sum);
+            bestRanks.merge(chunkId, rank, Math::min);
+            if (vectorBranch) {
+                vectorRanks.merge(chunkId, rank, Math::min);
+            }
+        }
+    }
+
+    private SearchResultDto mergeCandidate(SearchResultDto left, SearchResultDto right) {
+        String snippet = left.getSnippet();
+        if ((snippet == null || snippet.isBlank()) && right.getSnippet() != null) {
+            snippet = right.getSnippet();
+        }
+
+        UUID chapterId = left.getChapterId() != null ? left.getChapterId() : right.getChapterId();
+        Integer bookNumber = left.getBookNumber() != null ? left.getBookNumber() : right.getBookNumber();
+        Integer chapterNumber = left.getChapterNumber() != null ? left.getChapterNumber() : right.getChapterNumber();
+        UUID sceneId = left.getSceneId() != null ? left.getSceneId() : right.getSceneId();
+        String sceneSummary = left.getSceneSummary() != null ? left.getSceneSummary() : right.getSceneSummary();
+
+        List<String> individuals = mergeList(left.getIndividualsPresent(), right.getIndividualsPresent());
+        List<String> locations = mergeList(left.getLocationsPresent(), right.getLocationsPresent());
+
+        return SearchResultDto.of(
+                left.getChunkId(),
+                left.getScore(),
+                snippet,
+                chapterId,
+                bookNumber,
+                chapterNumber,
+                sceneId,
+                sceneSummary,
+                individuals,
+                locations);
+    }
+
+    private List<String> mergeList(List<String> first, List<String> second) {
+        LinkedHashSet<String> merged = new LinkedHashSet<>();
+        if (first != null) {
+            merged.addAll(first);
+        }
+        if (second != null) {
+            merged.addAll(second);
+        }
+        return merged.stream().toList();
     }
 }
