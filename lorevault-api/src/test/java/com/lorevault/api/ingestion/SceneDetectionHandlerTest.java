@@ -90,7 +90,7 @@ class SceneDetectionHandlerTest {
 
             when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(sceneDetectionService.detectScenesInText(jobId, chapterId, (String) new BeanWrapperImpl(testChapter).getPropertyValue("rawText"))).thenReturn(
+            when(sceneDetectionService.detectScenesInChapter(jobId, testChapter)).thenReturn(
                     new SceneDetectionService.SceneDetectionOutcome(sceneCoords, List.of(), List.of(), List.of())
             );
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
@@ -99,7 +99,7 @@ class SceneDetectionHandlerTest {
             handler.handleChapterIngestion(testEvent);
 
             // Then
-            verify(sceneDetectionService).detectScenesInText(jobId, chapterId, (String) new BeanWrapperImpl(testChapter).getPropertyValue("rawText"));
+            verify(sceneDetectionService).detectScenesInChapter(jobId, testChapter);
             verify(sceneProcessingService).persistDetectedScenes(chapterId, sceneCoords);
             verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, List.of());
             verify(locationPersistenceService).persistExtractedLocations(persistedScenes, List.of());
@@ -141,7 +141,7 @@ class SceneDetectionHandlerTest {
 
             when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(sceneDetectionService.detectScenesInText(jobId, chapterId, (String) new BeanWrapperImpl(testChapter).getPropertyValue("rawText")))
+            when(sceneDetectionService.detectScenesInChapter(jobId, testChapter))
                     .thenReturn(new SceneDetectionService.SceneDetectionOutcome(sceneCoords, List.of(), extractions, locationExtractions, eventExtractions));
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
 
@@ -171,12 +171,13 @@ class SceneDetectionHandlerTest {
             handler.handleChapterIngestion(testEvent);
 
             // Then
-            verify(sceneDetectionService, never()).detectScenesInText(any(), any(), anyString());
+            verify(sceneDetectionService, never()).detectScenesInChapter(any(), any());
             verify(sceneProcessingService, never()).persistDetectedScenes(any(), any());
             verify(individualPersistenceService, never()).persistExtractedIndividuals(any(), any());
             verify(locationPersistenceService, never()).persistExtractedLocations(any(), any());
             verify(eventPersistenceService, never()).persistExtractedEvents(any(), any());
             verify(triadEdgePersistenceService, never()).applyTriadAnalysesPostPersistence(any(), any(), anyMap());
+            verify(defaultTemporalEdgeService, never()).createAllDefaults(any());
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
@@ -194,7 +195,7 @@ class SceneDetectionHandlerTest {
             // Given
             when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
-            when(sceneDetectionService.detectScenesInText(any(), any(), anyString()))
+            when(sceneDetectionService.detectScenesInChapter(any(), any()))
                     .thenThrow(new RuntimeException("LLM API timeout"));
 
             // When
@@ -264,7 +265,7 @@ class SceneDetectionHandlerTest {
             handler.handleChapterIngestion(testEvent);
 
             // Then
-            verify(sceneDetectionService, never()).detectScenesInText(any(), any(), anyString());
+            verify(sceneDetectionService, never()).detectScenesInChapter(any(), any());
             verify(individualPersistenceService, never()).persistExtractedIndividuals(any(), any());
             verify(eventPersistenceService, never()).persistExtractedEvents(any(), any());
             

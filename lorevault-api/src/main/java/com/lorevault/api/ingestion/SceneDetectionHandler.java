@@ -111,7 +111,7 @@ public class SceneDetectionHandler {
             }
 
             // Detect and persist new scenes
-            DetectionPersistenceOutcome outcome = detectAndPersistScenes(jobId, chapterId);
+            DetectionPersistenceOutcome outcome = detectAndPersistScenes(jobId, chapter);
             List<Scene> scenes = outcome.persistedScenes();
             
             if (scenes.isEmpty()) {
@@ -146,11 +146,9 @@ public class SceneDetectionHandler {
         );
     }
 
-    private DetectionPersistenceOutcome detectAndPersistScenes(UUID jobId, UUID chapterId) {
+    private DetectionPersistenceOutcome detectAndPersistScenes(UUID jobId, Chapter chapter) {
+        UUID chapterId = readUuidProperty(chapter, "id");
         log.info("[SCENE_DETECTION] Detecting scenes for chapter {}", chapterId);
-
-        Chapter chapter = chapterRepo.findById(chapterId)
-                .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
 
         String chapterText = readStringProperty(chapter, "rawText");
         if (chapterText == null || chapterText.trim().isEmpty()) {
@@ -159,7 +157,7 @@ public class SceneDetectionHandler {
         }
 
         // Use AI to detect scenes (passing jobId for status tracking)
-        var detectionOutcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
+        var detectionOutcome = sceneDetectionService.detectScenesInChapter(jobId, chapter);
         var scenesWithCoords = detectionOutcome.scenes();
 
         if (scenesWithCoords.isEmpty()) {

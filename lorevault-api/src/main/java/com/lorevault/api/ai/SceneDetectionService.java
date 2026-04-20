@@ -80,7 +80,30 @@ public class SceneDetectionService {
                  chapterId, jobId, chapterText.length());
 
         try {
-            return detectScenesWithRetry(jobId, chapterId, chapterText);
+            return detectScenesWithRetry(jobId, chapterId, chapterText, null);
+        } catch (Exception e) {
+            log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage(), e);
+            throw new RuntimeException("Scene detection failed: " + e.getMessage(), e);
+        }
+    }
+
+    public SceneDetectionOutcome detectScenesInChapter(UUID jobId, Chapter chapter) {
+        if (chapter == null) {
+            throw new IllegalArgumentException("chapter must not be null");
+        }
+
+        UUID chapterId = readUuidProperty(chapter, "id");
+        String chapterText = readStringProperty(chapter, "rawText");
+        if (chapterText == null || chapterText.trim().isEmpty()) {
+            log.warn("Chapter {} has no text content for scene detection", chapterId);
+            return new SceneDetectionOutcome(Collections.emptyList(), List.of(), List.of(), List.of());
+        }
+
+        log.info("Starting scene detection with retry for chapter {} (job {}, length={} chars)",
+                chapterId, jobId, chapterText.length());
+
+        try {
+            return detectScenesWithRetry(jobId, chapterId, chapterText, chapter);
         } catch (Exception e) {
             log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage(), e);
             throw new RuntimeException("Scene detection failed: " + e.getMessage(), e);
@@ -90,7 +113,10 @@ public class SceneDetectionService {
     /**
      * Internal method: Detect scenes with retry logic and job status updates
      */
-    private SceneDetectionOutcome detectScenesWithRetry(UUID jobId, UUID chapterId, String chapterText) {
+    private SceneDetectionOutcome detectScenesWithRetry(UUID jobId,
+                                                        UUID chapterId,
+                                                        String chapterText,
+                                                        Chapter chapter) {
 
         // Configure retry strategy for scene detection
         LlmRetryConfig retryConfig = LlmRetryConfig.defaultConfig();
@@ -102,7 +128,7 @@ public class SceneDetectionService {
         LlmRetryResult<SceneDetectionOutcome> retryResult = llmRetryStrategy.executeWithRetry(
                 "Scene Detection",
                 retryConfig,
-                () -> performFullSceneDetection(jobId, chapterId, chapterText));
+                () -> performFullSceneDetection(jobId, chapterId, chapterText, chapter));
 
         if (retryResult.isSuccess()) {
         String successMsg = String.format("Chapter segmentation succeeded after %d/%d attempts in %d ms",
@@ -130,7 +156,10 @@ public class SceneDetectionService {
     /**
      * Perform chapter segmentation and coordinate localization.
      */
-    private SceneDetectionOutcome performFullSceneDetection(UUID jobId, UUID chapterId, String chapterText) {
+    private SceneDetectionOutcome performFullSceneDetection(UUID jobId,
+                                                            UUID chapterId,
+                                                            String chapterText,
+                                                            Chapter chapterMetadata) {
         try {
             // DEADLOCK RISK: do NOT call ingestionJobService.updateJobStatus() inside this method.
             // Outer tx (SceneDetectionHandler) holds a read-lock on IngestionJob; updateJobStatus
@@ -161,8 +190,7 @@ public class SceneDetectionService {
 
             // Triad scene analysis happens here only to produce reusable structured output artifacts.
             // Durable temporal linking is intentionally deferred to post-persistence stage.
-            Chapter chapter = Chapter.createWithReferences(null, null, null, null, null, chapterText, null);
-            new BeanWrapperImpl(chapter).setPropertyValue("id", chapterId);
+            Chapter chapter = createTriadAnalysisChapter(chapterId, chapterText, chapterMetadata);
             var tempScenes = scenes.stream().map(s -> {
                 String sceneText = null;
                 try {
@@ -215,6 +243,43 @@ public class SceneDetectionService {
             log.error("Triad-based scene detection pipeline failed: {}", e.getMessage(), e);
             throw e; // Re-throw to trigger retry
         }
+    }
+
+    private Chapter createTriadAnalysisChapter(UUID chapterId, String chapterText, Chapter chapterMetadata) {
+        Chapter chapter = new Chapter();
+        BeanWrapperImpl chapterBean = new BeanWrapperImpl(chapter);
+        chapterBean.setPropertyValue("id", chapterId);
+        chapterBean.setPropertyValue("rawText", chapterText);
+
+        if (chapterMetadata != null) {
+            copyProperty(chapterMetadata, chapterBean, "bookId");
+            copyProperty(chapterMetadata, chapterBean, "universeId");
+            copyProperty(chapterMetadata, chapterBean, "seriesId");
+            copyProperty(chapterMetadata, chapterBean, "universe");
+            copyProperty(chapterMetadata, chapterBean, "series");
+            copyProperty(chapterMetadata, chapterBean, "bookTitle");
+            copyProperty(chapterMetadata, chapterBean, "bookNumber");
+            copyProperty(chapterMetadata, chapterBean, "chapterNumber");
+            copyProperty(chapterMetadata, chapterBean, "chapterTitle");
+            copyProperty(chapterMetadata, chapterBean, "contentHash");
+            copyProperty(chapterMetadata, chapterBean, "coordinates");
+        }
+
+        return chapter;
+    }
+
+    private void copyProperty(Object source, BeanWrapperImpl target, String propertyName) {
+        Object value = new BeanWrapperImpl(source).getPropertyValue(propertyName);
+        target.setPropertyValue(propertyName, value);
+    }
+
+    private UUID readUuidProperty(Object target, String propertyName) {
+        return (UUID) new BeanWrapperImpl(target).getPropertyValue(propertyName);
+    }
+
+    private String readStringProperty(Object target, String propertyName) {
+        Object value = new BeanWrapperImpl(target).getPropertyValue(propertyName);
+        return value == null ? null : value.toString();
     }
 
     private List<SceneWithCoordinates> processSegments(UUID jobId, List<SegmentWindow> segments) {
