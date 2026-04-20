@@ -15,7 +15,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,26 +54,27 @@ class TriadEdgePersistenceServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = instantiateWithoutConstructor(TriadEdgePersistenceService.class);
-        setField(service, "temporalEdgeWriteRepository", temporalEdgeWriteRepository);
-        setField(service, "ingestionJobGraphRepository", ingestionJobGraphRepository);
-        setField(service, "statusRecordGraphRepository", statusRecordGraphRepository);
-        setField(service, "llmCallRecordGraphRepository", llmCallRecordGraphRepository);
+        service = new TriadEdgePersistenceService(
+                temporalEdgeWriteRepository,
+                ingestionJobGraphRepository,
+                statusRecordGraphRepository,
+                llmCallRecordGraphRepository
+        );
 
         IngestionJob job = new IngestionJob();
-        setField(job, "id", jobId);
+        job.setId(jobId);
 
         when(ingestionJobGraphRepository.findFirstByChapterIdOrderByCreatedAtDesc(chapterId))
                 .thenReturn(Optional.of(job));
 
         statusRecord = new StatusRecord();
-        setField(statusRecord, "id", statusRecordId);
-        setField(statusRecord, "properties", Map.of("currentSceneIndex", "1"));
+        statusRecord.setId(statusRecordId);
+        statusRecord.setProperties(Map.of("currentSceneIndex", "1"));
 
         callRecord = new LlmCallRecord();
-        setField(callRecord, "id", callRecordId);
-        setField(callRecord, "responseBody", "{\"ok\":true}");
-        setField(callRecord, "truncated", false);
+        callRecord.setId(callRecordId);
+        callRecord.setResponseBody("{\"ok\":true}");
+        callRecord.setTruncated(false);
 
         when(statusRecordGraphRepository.findTriadStatusesForJob(jobId))
                 .thenReturn(List.of(statusRecord));
@@ -300,36 +300,4 @@ class TriadEdgePersistenceServiceTest {
         );
     }
 
-    private void setField(Object target, String fieldName, Object value) {
-        try {
-            Field field = findField(target.getClass(), fieldName);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    private <T> T instantiateWithoutConstructor(Class<T> type) {
-        try {
-            var unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-            unsafeField.setAccessible(true);
-            var unsafe = (sun.misc.Unsafe) unsafeField.get(null);
-            return type.cast(unsafe.allocateInstance(type));
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    private Field findField(Class<?> type, String fieldName) throws NoSuchFieldException {
-        Class<?> current = type;
-        while (current != null) {
-            try {
-                return current.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException ignored) {
-                current = current.getSuperclass();
-            }
-        }
-        throw new NoSuchFieldException(fieldName);
-    }
 }

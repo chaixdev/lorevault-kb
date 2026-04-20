@@ -3,6 +3,7 @@ package com.lorevault.api.timeline;
 import com.lorevault.api.ai.TriadAnalysisException;
 import com.lorevault.api.ai.TriadOrchestrationService;
 import com.lorevault.api.ingestion.IngestionFailure;
+import com.lorevault.api.ingestion.IngestionJob;
 import com.lorevault.api.ingestion.IngestionJobGraphRepository;
 import com.lorevault.api.ingestion.LlmCallRecord;
 import com.lorevault.api.ingestion.LlmCallRecordGraphRepository;
@@ -12,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.lang.reflect.Field;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -79,10 +79,10 @@ public class TriadEdgePersistenceService {
                                              String evidence,
                                              String timelineMarker) {
         StatusRecord statusRecord = findRequiredTriadStatus(jobId, currentSceneIndex);
-        UUID statusRecordId = readUuidField(statusRecord, "id");
+        UUID statusRecordId = statusRecord.getId();
         LlmCallRecord callRecord = findRequiredTriadCall(jobId, statusRecordId);
 
-        if (readStringField(callRecord, "responseBody") == null || Boolean.TRUE.equals(readBooleanField(callRecord, "truncated"))) {
+        if (callRecord.getResponseBody() == null || Boolean.TRUE.equals(callRecord.getTruncated())) {
             throw triadArtifactFailure(
                     "TRIAD_ARTIFACT_UNRECOVERABLE",
                     "Triad structured output is missing or truncated for scene index " + currentSceneIndex,
@@ -107,7 +107,7 @@ public class TriadEdgePersistenceService {
                     asString(jobId),
                     asString(chapterId),
                     asString(statusRecordId),
-                    asString(readUuidField(callRecord, "id"))
+                    asString(callRecord.getId())
             );
             return;
         }
@@ -126,7 +126,7 @@ public class TriadEdgePersistenceService {
                     asString(jobId),
                     asString(chapterId),
                     asString(statusRecordId),
-                    asString(readUuidField(callRecord, "id"))
+                    asString(callRecord.getId())
             );
             return;
         }
@@ -168,7 +168,7 @@ public class TriadEdgePersistenceService {
             return null;
         }
         return ingestionJobGraphRepository.findFirstByChapterIdOrderByCreatedAtDesc(chapterId)
-                .map(job -> readUuidField(job, "id"))
+                .map(IngestionJob::getId)
                 .orElse(null);
     }
 
@@ -185,9 +185,9 @@ public class TriadEdgePersistenceService {
 
         String sceneIndexKey = currentSceneIndex.toString();
         return statusRecordGraphRepository.findTriadStatusesForJob(jobId).stream()
-                .filter(status -> status != null && readStringMapField(status, "properties") != null)
+                .filter(status -> status != null && status.getProperties() != null)
                 .filter(status -> {
-                    String idx = readStringMapField(status, "properties").get("currentSceneIndex");
+                    String idx = status.getProperties().get("currentSceneIndex");
                     return Objects.equals(idx, sceneIndexKey);
                 })
                 .findFirst()
@@ -231,8 +231,8 @@ public class TriadEdgePersistenceService {
                 .exceptionType(TriadAnalysisException.class.getSimpleName())
                 .stage("SCENE_TRIAD_ANALYSIS")
                 .detail("currentSceneIndex", currentSceneIndex)
-                .detail("statusRecordId", statusRecord != null ? readUuidField(statusRecord, "id") : null)
-                .detail("llmCallRecordId", callRecord != null ? readUuidField(callRecord, "id") : null);
+                .detail("statusRecordId", statusRecord != null ? statusRecord.getId() : null)
+                .detail("llmCallRecordId", callRecord != null ? callRecord.getId() : null);
         return new TriadAnalysisException(builder.build());
     }
 
@@ -248,12 +248,12 @@ public class TriadEdgePersistenceService {
             if (!sb.isEmpty()) sb.append(" | ");
             sb.append("timelineMarker=").append(timelineMarker);
         }
-        UUID statusRecordId = statusRecord == null ? null : readUuidField(statusRecord, "id");
+        UUID statusRecordId = statusRecord == null ? null : statusRecord.getId();
         if (statusRecordId != null) {
             if (!sb.isEmpty()) sb.append(" | ");
             sb.append("statusRecordId=").append(statusRecordId);
         }
-        UUID llmCallRecordId = callRecord == null ? null : readUuidField(callRecord, "id");
+        UUID llmCallRecordId = callRecord == null ? null : callRecord.getId();
         if (llmCallRecordId != null) {
             if (!sb.isEmpty()) sb.append(" | ");
             sb.append("llmCallRecordId=").append(llmCallRecordId);
@@ -278,8 +278,8 @@ public class TriadEdgePersistenceService {
         payload.put("incomingCertainty", incomingCertainty);
         payload.put("evidence", evidence);
         payload.put("timelineMarker", timelineMarker);
-        payload.put("statusRecordId", statusRecord != null ? readUuidField(statusRecord, "id") : null);
-        payload.put("llmCallRecordId", callRecord != null ? readUuidField(callRecord, "id") : null);
+        payload.put("statusRecordId", statusRecord != null ? statusRecord.getId() : null);
+        payload.put("llmCallRecordId", callRecord != null ? callRecord.getId() : null);
         return payload.toString();
     }
 
@@ -380,50 +380,4 @@ public class TriadEdgePersistenceService {
 
     private record ExistingCanonicalEdge(String originalType, String normalizedType, UUID fromId, UUID toId) {}
 
-    private UUID readUuidField(Object target, String fieldName) {
-        Object value = readField(target, fieldName);
-        return value instanceof UUID uuid ? uuid : null;
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, String> readStringMapField(Object target, String fieldName) {
-        Object value = readField(target, fieldName);
-        return value instanceof Map<?, ?> map ? (Map<String, String>) map : null;
-    }
-
-    private String readStringField(Object target, String fieldName) {
-        Object value = readField(target, fieldName);
-        return value == null ? null : value.toString();
-    }
-
-    private Boolean readBooleanField(Object target, String fieldName) {
-        Object value = readField(target, fieldName);
-        return value instanceof Boolean bool ? bool : null;
-    }
-
-    private Object readField(Object target, String fieldName) {
-        if (target == null) {
-            return null;
-        }
-
-        try {
-            Field field = findField(target.getClass(), fieldName);
-            field.setAccessible(true);
-            return field.get(target);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Unable to read field '" + fieldName + "' from " + target.getClass().getName(), e);
-        }
-    }
-
-    private Field findField(Class<?> type, String fieldName) throws NoSuchFieldException {
-        Class<?> current = type;
-        while (current != null) {
-            try {
-                return current.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException ignored) {
-                current = current.getSuperclass();
-            }
-        }
-        throw new NoSuchFieldException(fieldName);
-    }
 }
