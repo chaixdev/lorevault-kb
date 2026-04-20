@@ -62,9 +62,9 @@ class SceneDetectionClientTest {
                 promptRepository,
                 promptProperties,
                 modelProperties,
-                RetryTemplate.builder().maxAttempts(1).build(),
                 llmLog,
-                new ObjectMapper()
+                new ObjectMapper(),
+                RetryTemplate.builder().maxAttempts(1).build()
         );
     }
 

@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.config.LoreVaultPromptProperties;
 import com.lorevault.api.config.LoreVaultModelsProperties;
 import com.lorevault.api.ingestion.LlmCallLoggingService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -16,17 +18,15 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Client responsible for making AI calls for scene detection.
  * Supports both single-pass (legacy) and two-pass scene detection workflows.
  * Encapsulates the AI model configuration, prompt loading, and retry logic.
  */
 @Component
+@Slf4j
+@RequiredArgsConstructor
 public class SceneDetectionClient {
-    private static final Logger log = LoggerFactory.getLogger(SceneDetectionClient.class);
     
     private final ChatClient nlpSmallChatClient;
     private final ChatClient nlpBigChatClient;
@@ -43,25 +43,6 @@ public class SceneDetectionClient {
     private String nlpSmallModelId;
     @Value("${lorevault.ai.models.nlp-big.model:openai/gpt-oss-120b}")
     private String nlpBigModelId;
-
-    public SceneDetectionClient(
-            @Qualifier("nlpSmall") ChatClient nlpSmallChatClient,
-            @Qualifier("nlpBig") ChatClient nlpBigChatClient,
-            PromptRepository promptRepository,
-            LoreVaultPromptProperties promptProperties,
-            LoreVaultModelsProperties modelProperties,
-            @Qualifier("llmRetryTemplate") RetryTemplate retryTemplate,
-            LlmCallLoggingService llmLog,
-            ObjectMapper objectMapper) {
-        this.nlpSmallChatClient = nlpSmallChatClient;
-        this.nlpBigChatClient = nlpBigChatClient;
-        this.promptRepository = promptRepository;
-        this.promptProperties = promptProperties;
-        this.modelProperties = modelProperties;
-        this.retryTemplate = retryTemplate;
-        this.llmLog = llmLog;
-        this.objectMapper = objectMapper;
-    }
 
     private static final double SEGMENTATION_INPUT_BUDGET_RATIO = 0.70d;
 

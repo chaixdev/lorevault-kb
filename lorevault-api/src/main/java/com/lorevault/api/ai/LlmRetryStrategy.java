@@ -4,8 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
@@ -14,9 +13,8 @@ import org.springframework.stereotype.Component;
  * and response validation (parsing) failures.
  */
 @Component
+@Slf4j
 public class LlmRetryStrategy {
-
-    private static final Logger log = LoggerFactory.getLogger(LlmRetryStrategy.class);
     
     private static final Random random = new Random();
     
