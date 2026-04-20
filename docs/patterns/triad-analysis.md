@@ -4,7 +4,7 @@
 
 ## Design Philosophy
 
-Triad analysis exists to solve the problem of inferring temporal relationships between narrative scenes in LoreVault. Determining whether scenes happen before, after, overlap, meet, contain, or equal one another is a complex task that requires significant narrative context. A naive approach might attempt to analyze all scenes in a book simultaneously, but this does not scale and leads to poor results because the Large Language Model (LLM) loses focus when presented with too much information.
+Triad analysis exists to solve the problem of inferring temporal relationships between narrative scenes in LoreVault. Determining whether scenes happen before, after, overlap, or contain one another is a complex task that requires significant narrative context. A naive approach might attempt to analyze all scenes in a book simultaneously, but this does not scale and leads to poor results because the Large Language Model (LLM) loses focus when presented with too much information.
 
 The triad approach provides a sliding window of three scenes (previous, current, next) to the LLM. This focused context allows the model to concentrate on the immediate temporal transitions and overlaps between a specific scene and its neighbors. By providing the preceding and succeeding scenes, the system ensures that the LLM has the necessary narrative markers to identify continuity and temporal flow.
 
@@ -66,7 +66,7 @@ sequenceDiagram
 - `currentToNext: TriadRelation` — The temporal relationship from the current scene to the next scene.
 
 **TriadRelation**
-- `temporalType: String` — The specific Allen relation type, such as before, meets, overlaps, contains, or equals.
+- `temporalType: String` — The inferred temporal relation type used by the triad pipeline, currently before, after, overlaps, or contains. Legacy `meets`/`met_by` inputs coarsen to before/after; legacy `equals` inputs coarsen to overlaps.
 - `certainty: String` — The confidence level assigned by the LLM (Explicit, StronglyImplied, WeaklyImplied, or Heuristic).
 - `evidence: String` — The specific textual evidence or reasoning provided by the LLM for the relationship.
 
@@ -90,10 +90,15 @@ sequenceDiagram
 | prev to curr | curr vs prev (inverted) |
 |---|---|
 | before | after |
-| meets | met_by |
 | overlaps | overlapped_by |
 | contains | during |
-| equals | equals |
+
+## Practical Classification Rule for `contains`
+
+- `contains` / `during` is intentionally narrower than generic concurrency.
+- The triad pipeline should use `contains` only when the evidence supports full enclosure: one interval is already in progress, the nested interval occurs inside it, and the enclosing interval clearly continues afterward.
+- If the evidence only shows interruption, simultaneous action, or soft coexistence, the safer inferred label is `overlaps`.
+- When the model is uncertain between `contains` and `overlaps`, LoreVault prefers `overlaps` to avoid fake boundary precision.
 
 ## Cross-Chapter Resolution
 

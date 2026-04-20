@@ -38,6 +38,9 @@ Relationships
 Temporal Links (Edges)
 
 - temporalRelation: BEFORE | MEETS | OVERLAPS | DURING | STARTS | FINISHES | EQUALS
+  - Practical inferred use deprecates `MEETS` and `EQUALS`
+  - Structural adjacency should use `NEXT_IN_READING_ORDER`
+  - Legacy inferred `EQUALS` should be treated as a coarse overlap case unless manually justified
 - certainty: CertaintyLevel — { Explicit, StronglyImplied, WeaklyImplied, Heuristic }
 - weight: double — calibrated numeric (mapping table)
 - rationale: string — minimal quote/justification text
@@ -52,6 +55,7 @@ Provenance
 Enums
 
 - TemporalRelation = BEFORE | MEETS | OVERLAPS | DURING | STARTS | FINISHES | EQUALS
+  - `MEETS` and `EQUALS` remain in the conceptual vocabulary, but are deprecated for normal inferred use
 - CertaintyLevel = Explicit | StronglyImplied | WeaklyImplied | Heuristic
 - EventFlag = Flashback | ParallelPOV | Dream
 
@@ -60,10 +64,10 @@ Weight Mapping (initial)
 - Explicit → 0.95
 - StronglyImplied → 0.8
 - WeaklyImplied → 0.6
-- Heuristic → 0.5 (default for consecutive MEETS)
+- Heuristic → 0.5 (historical default for consecutive MEETS; current structural adjacency should not rely on Allen `MEETS`)
 
 Notes
 
-- Default link between consecutive scenes within a chapter is MEETS@Heuristic; upgrade via LLM when evidence
-- Create cross-chapter links (last of k → first of k+1) with MEETS@Heuristic; upgrade via LLM when confident
-- Edges should form a DAG for non-EQUALS relations; EQUALS merges may be deduped later
+- Historical implementations used MEETS@Heuristic between consecutive scenes; practical current guidance prefers `NEXT_IN_READING_ORDER` for structure and inferred temporal labels only when evidence supports them
+- Legacy inferred `EQUALS` should be reconsidered as `OVERLAPS` unless a manual or specialized workflow can justify exact shared boundaries
+- Edges should form a DAG for inferred temporal relations; deprecated inferred `EQUALS` should not be relied on as a normal durable case

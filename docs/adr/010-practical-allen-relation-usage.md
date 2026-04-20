@@ -3,121 +3,111 @@
 **Status:** Accepted  
 **Date:** April 2026
 
+## Context
+
+LoreVault infers temporal relations from narrative text, where interval boundaries are often incomplete or implicit.
+The full Allen relation set remains conceptually useful, but not all relations are equally reliable for inferred output.
+LoreVault also needs one consistent rule for how directed relations are interpreted, normalized, and persisted.
+
 ## Decision
 
-LoreVault keeps the full Allen interval relation set documented, but does **not** treat the entire set as equally useful for inferred narrative temporal modeling.
+1. `MEETS` / `MET_BY` are deprecated for inferred use.
+2. `EQUALS` is deprecated for inferred use.
+3. Structural adjacency uses `NEXT_IN_READING_ORDER`, not Allen relations.
+4. Coarse inferred precedence uses `BEFORE` / `AFTER`.
+5. `OVERLAPS` is compatible with `DURING` / `CONTAINS` for the same oriented pair; keep the more specific enclosure relation.
+6. `DURING` vs `CONTAINS` for the same oriented pair is contradictory and remains an ambiguity/conflict case.
+7. Legacy inferred `EQUALS` is treated as a coarse overlap case unless manually/specially justified.
+8. Directed relation semantics are always read from source to target: `A -> B` means “A happens before/after/during/contains/overlaps B”.
+9. LoreVault persists one canonical polarity per inverse pair and normalizes inverse forms by flipping endpoints.
+10. Prompt-facing extraction vocabulary may include inverse/local descriptors, but durable runtime/storage semantics must be canonicalized before persistence.
 
-In particular:
+## Rationale
 
-- `MEETS` and `MET_BY` are **deprecated for inferred use**
-- structural adjacency must use `NEXT_IN_READING_ORDER`, not an Allen relation
-- practical inferred precedence should prefer `BEFORE` / `AFTER`
-- the remaining Allen relations stay documented and available for selective use where narrative evidence actually supports them
+- `MEETS` and `EQUALS` imply precision that inferred narrative evidence usually cannot support.
+- `OVERLAPS` is often the correct weak-concurrency fallback when enclosure evidence is incomplete.
+- Treating `OVERLAPS` vs enclosure as hard conflict overproduces ambiguity without improving correctness.
+- `DURING` and `CONTAINS` assert opposite enclosure direction for one oriented pair and are true conflicts.
+- A graph should store one temporal fact once, not duplicate it in both direct and inverse forms.
+- Prompt ergonomics and storage ergonomics are different concerns: the model may reason in pair-local language, while the graph should preserve a single normalized truth.
 
-## Why
+## Consequences
 
-Allen algebra is theoretically precise, but LoreVault works on narrative evidence, not clock-perfect interval boundaries.
+- Inferred outputs should not emit `MEETS` / `MET_BY` / `EQUALS` as normal durable labels.
+- Existing `MEETS`-like inferred behavior should be interpreted as practical precedence (`BEFORE` / `AFTER`) or structure (`NEXT_IN_READING_ORDER`) depending on context.
+- Existing inferred `EQUALS` should be coarsened to overlap semantics unless explicitly curated.
+- Reconciliation logic should prefer `DURING`/`CONTAINS` over `OVERLAPS` when compatible, and still raise ambiguity for `DURING` vs `CONTAINS`.
+- All durable temporal semantics should be interpreted from source node to target node.
+- Inverse pairs are input/output conveniences, not separate persisted truths.
+- LoreVault must maintain a clear separation between:
+  - prompt-facing extraction vocabulary
+  - internal canonical runtime/storage vocabulary
 
-That creates a mismatch:
+## Direction Semantics
 
-- in theory, `MEETS` means one interval ends exactly when another begins, with no intervening moment
-- in practice, narrative text rarely justifies that level of precision
-- using `MEETS` as a normal inferred relation creates fake precision and compatibility noise, especially when `MEETS` and `BEFORE` both functionally mean “this happens earlier” in product use
+For any directed temporal relation `A -> B`, the relation is interpreted as the relation of **A relative to B**.
 
-LoreVault also needs a clean distinction between:
+Examples:
 
-- **reading-order adjacency**
-- **temporal inference**
+- `A -> B : BEFORE` = A happens before B
+- `A -> B : AFTER` = A happens after B
+- `A -> B : DURING` = A happens during B
+- `A -> B : CONTAINS` = A contains B
+- `A -> B : OVERLAPS` = A overlaps B
 
-Using `MEETS` for structural adjacency blurred those two ideas.
+This rule applies equally to scene-scene, event-scene, and other temporal pairings.
 
-## Options Considered
+## Canonical Normalization
 
-### 1. Keep the full Allen relation set as equally valid inferred output
+LoreVault stores one canonical polarity per inverse pair.
 
-Rejected.
+That means:
 
-This preserves theoretical completeness, but it overstates precision for narrative inference and makes `MEETS` vs `BEFORE` appear meaningfully different when they often are not in practice.
+- inverse relations are normalized by flipping endpoints
+- the graph stores one durable temporal fact, not both direct and inverse mirror forms
 
-### 2. Collapse the model to a much smaller precedence-only subset
+Canonical storage should therefore prefer one member of each inverse pair, for example:
 
-Rejected.
+- `BEFORE` over `AFTER`
+- `DURING` over `CONTAINS`
+- `OVERLAPS` over `OVERLAPPED_BY`
+- `STARTS` over `STARTED_BY`
+- `FINISHES` over `FINISHED_BY`
 
-This would remove too much expressive power. Relations such as `OVERLAPS`, `DURING`, and `CONTAINS` still matter for flashbacks, nested scenes/events, and extra-local temporal anchors.
+The exact canonical member is less important than applying the rule consistently.
 
-### 3. Keep the full set documented, but annotate practical usage and deprecate `MEETS` / `MET_BY` for inferred use
+For current LoreVault practical inferred usage, the canonical durable storage target is:
 
-Accepted.
+- `R:temporal.before`
+- `R:temporal.overlaps`
+- `R:temporal.during`
+- `R:temporal.starts`
+- `R:temporal.finishes`
 
-This keeps theoretical completeness visible while aligning the inferred model with what narrative evidence can honestly support.
+and inverse forms (`after`, `contains`, `overlapped_by`, `started_by`, `finished_by`) are normalized by endpoint flip before persistence.
 
-## Full Allen Relation Set and LoreVault Usage
+## Prompt Vocabulary vs Runtime Vocabulary
 
-LoreVault documents the full Allen interval family below.
+LoreVault distinguishes two vocabularies:
 
-### Preferred for practical inferred use
+1. **Prompt-facing extraction vocabulary**
+   - may include pair-local inverse descriptors such as `before/after` and `during/contains`
+   - exists to make the LLM's reasoning task clearer
 
-| Relation | Inverse | LoreVault stance | Notes |
-|---|---|---|---|
-| `BEFORE` | `AFTER` | Use | Preferred coarse precedence relation for inferred narrative ordering |
-| `OVERLAPS` | `OVERLAPPED_BY` | Use selectively | Useful when scenes/events are clearly concurrent or intercut |
-| `DURING` | `CONTAINS` | Use | Important for scene↔event, scene↔landmark, and event↔arc anchoring |
-| `STARTS` | `STARTED_BY` | Use selectively | Valid when evidence strongly supports shared start boundary |
-| `FINISHES` | `FINISHED_BY` | Use selectively | Valid when evidence strongly supports shared end boundary |
-| `EQUALS` | — | Use narrowly | Best reserved for strong equivalence or anchoring, not as a fallback |
+2. **Runtime/storage vocabulary**
+   - must be canonicalized before persistence
+   - must not mix both polarities of the same inverse pair as separate durable truths
 
-### Documented but deprecated for inferred use
+Prompt labels are therefore extraction syntax, not the final storage contract.
 
-| Relation | Inverse | LoreVault stance | Notes |
-|---|---|---|---|
-| `MEETS` | `MET_BY` | Deprecated for inferred use | Too fine-grained for normal narrative inference; replace structural use with `NEXT_IN_READING_ORDER`, and use `BEFORE` / `AFTER` for practical precedence |
+## Relation Usage (Practical Inferred Policy)
 
-## Practical Interpretation Rules
-
-### Structural adjacency is not temporal semantics
-
-If two scenes are neighbors in reading/publication order, the graph should say:
-
-- `(earlier)-[:NEXT_IN_READING_ORDER]->(later)`
-
-That relationship means only that the scenes are adjacent in the source narrative structure.
-
-It does **not** imply:
-
-- `MEETS`
-- `BEFORE`
-- any other Allen relation
-
-### Practical precedence should avoid fake precision
-
-When the system infers only that one scene or event precedes another, it should use:
-
-- `BEFORE`
-
-and not escalate to:
-
-- `MEETS`
-
-unless LoreVault later adopts a much stricter evidence standard for exact-boundary semantics.
-
-### Theoretical completeness remains documented
-
-The Allen family remains part of LoreVault's conceptual vocabulary.
-
-That matters because:
-
-- the concept docs still discuss interval reasoning in full Allen terms
-- future manual workflows, imports, or specialized modeling may still want the full family visible
-- extra-local temporal resolution may need richer relations than simple precedence
-
-Deprecating `MEETS` for inferred use is therefore a practical modeling choice, not a claim that Allen algebra is wrong.
-
-## Implications
-
-- `MEETS` / `MET_BY` should no longer be treated as normal inferred scene temporal outputs
-- compatibility/coarsening policy should treat `MEETS`-like prior behavior as a practical precedence case rather than as a separate durable inferred truth
-- any old heuristic use of `MEETS` should be reconsidered as either:
-  - `NEXT_IN_READING_ORDER` for structure, or
-  - `BEFORE` / `AFTER` for temporal inference
-- documentation and future implementation should explicitly distinguish structural adjacency from temporal comprehension
-- LoreVault retains a richer interval vocabulary for cases where the evidence actually supports it, especially around overlaps, containment, and extra-local anchor relationships
+| Relation | Inverse | Inferred policy |
+|---|---|---|
+| `BEFORE` | `AFTER` | Preferred for coarse precedence |
+| `OVERLAPS` | `OVERLAPPED_BY` | Allowed as weak concurrency/default fallback |
+| `DURING` | `CONTAINS` | Allowed when enclosure evidence is strong |
+| `STARTS` | `STARTED_BY` | Selective use only with strong boundary evidence |
+| `FINISHES` | `FINISHED_BY` | Selective use only with strong boundary evidence |
+| `MEETS` | `MET_BY` | Deprecated for inferred use |
+| `EQUALS` | — | Deprecated for inferred use |

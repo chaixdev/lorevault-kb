@@ -21,7 +21,7 @@
 - **Event**: A canonical happening (multi-granularity: micro ↔ scene-sized ↔ arc-level). Independent of scene boundaries; identified and curated in an Event Catalog (gazetteer).
 - **Landmark**: Absolute or canonical temporal anchors (dates, clock times, named historical moments, franchise-wide milestones).
 - **Arc**: A container event representing an extended storyline (war, journey, investigation). Arcs **contain** events and scenes.
-- **Edge**: A labeled relation with confidence and evidence. We use Allen interval relations (before/after, meets, overlaps, during/contains, equals, starts/finished_by, etc.) plus a light non-temporal `refers_to`.
+- **Edge**: A labeled relation with confidence and evidence. We use Allen interval relations conceptually (before/after, overlaps, during/contains, starts/finished_by, etc.) plus a light non-temporal `refers_to`. For practical inferred use, `meets/met_by` and `equals` are deprecated.
 
 ```mermaid
 classDiagram
@@ -56,10 +56,10 @@ classDiagram
   }
 
   Scene --> Scene : neighbor relations (triads)
-  Scene --> Event : during/starts/finishes/equals/before/after/refers_to
+Scene --> Event : during/starts/finishes/before/after/refers_to
   Event --> Event : explicit temporal/containment when named
-  Scene --> Landmark : equals/during (anchoring)
-  Event --> Landmark : equals/during (anchoring)
+Scene --> Landmark : during (anchoring)
+Event --> Landmark : during (anchoring)
   Arc o-- Event : contains
   Arc o-- Scene : contains
 ```
@@ -106,7 +106,7 @@ classDiagram
 
 - After triads, a background semantic pass reads each scene to identify **mentioned or depicted Events** and attaches **Scene ↔ Event** links:
 
-  - **Onstage** → typically `during` (or `starts/finishes/equals` when signaled).
+  - **Onstage** → typically `during` (or `starts/finishes` when signaled).
   - **Retrospective** → the Scene is **after** the Event.
   - **Prospective** → the Scene is **before** the Event.
   - **Aftermath/Reference** → `refers_to` (non-temporal) unless the text commits to time.
@@ -117,7 +117,7 @@ classDiagram
 ### 3.6 Landmark Attachment (Optional but Powerful)
 
 - A small, canonical set of **Landmarks** (dates, named battles, festival days) is maintained.
-- Scenes and Events may carry a single, most-specific **anchoring** attachment to a Landmark using `equals` or `during`.
+- Scenes and Events may carry a single, most-specific **anchoring** attachment to a Landmark using `during`.
 - Landmarks enable cross-book alignment without dense scene↔scene links.
 
 ### 3.7 Graph Assembly (Sparse, Acyclic, Auditable)
@@ -155,7 +155,7 @@ flowchart LR
 
 ## 4) Edge Semantics & Confidence
 
-- **Allen Relations** supported: `before/after`, `meets/met_by`, `overlaps/overlapped_by`, `during/contains`, `equals`, `starts/started_by`, `finishes/finished_by`.
+- **Allen Relations** supported conceptually: `before/after`, `overlaps/overlapped_by`, `during/contains`, `starts/started_by`, `finishes/finished_by`. For practical inferred use, `meets/met_by` and `equals` are deprecated.
 - **Non-temporal**: `refers_to` (mention without temporal commitment).
 - **Confidence Levels**: `Explicit` (verbatim connective or absolute marker), `StronglyImplied` (clear causal/clock evidence), `WeaklyImplied` (plausible but sparse), `Heuristic` (default fallback when evidence is minimal).
 - **Evidence**: short verbatim quotes (bounded length) that justify each edge; evidence aids audit and reviewer triage.
@@ -231,7 +231,7 @@ flowchart TD
 ```mermaid
 graph LR
   subgraph Scenes
-    S1[Scene 12] -- meets --> S2[Scene 13]
+    S1[Scene 12] -- before --> S2[Scene 13]
     S2 -- overlaps --> S3[Scene 14]
   end
 
