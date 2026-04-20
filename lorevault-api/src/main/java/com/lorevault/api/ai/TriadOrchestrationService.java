@@ -33,7 +33,7 @@ public class TriadOrchestrationService {
             "R:temporal.after",
             "R:temporal.overlaps",
             "R:temporal.contains",
-            "R:temporal.equals"
+            "R:temporal.during"
     );
 
     public record TriadRelation(String temporalType, String certainty, String evidence) {}
@@ -53,10 +53,26 @@ public class TriadOrchestrationService {
             String description
     ) {}
 
+    public record TriadEventExtraction(
+            String name,
+            String eventType,
+            String temporalType,
+            String certainty,
+            String evidence
+    ) {}
+
     public record TriadCurrentSceneEntities(
             List<TriadIndividualExtraction> individuals,
-            List<TriadLocationExtraction> locations
-    ) {}
+            List<TriadLocationExtraction> locations,
+            List<TriadEventExtraction> events
+    ) {
+        public TriadCurrentSceneEntities(
+                List<TriadIndividualExtraction> individuals,
+                List<TriadLocationExtraction> locations
+        ) {
+            this(individuals, locations, List.of());
+        }
+    }
 
     public record TriadStructuredResult(
             String timelineMarker,
@@ -75,6 +91,8 @@ public class TriadOrchestrationService {
 
     public record TriadSceneLocationExtraction(int sceneIndex, List<TriadLocationExtraction> locations) {}
 
+    public record TriadSceneEventExtraction(int sceneIndex, List<TriadEventExtraction> events) {}
+
     public record TriadAnalysis(
             Integer previousSceneIndex,
             Integer currentSceneIndex,
@@ -92,8 +110,17 @@ public class TriadOrchestrationService {
     public record TriadOutcome(
             List<TriadAnalysis> triadAnalyses,
             List<TriadSceneIndividualExtraction> sceneIndividualExtractions,
-            List<TriadSceneLocationExtraction> sceneLocationExtractions
-    ) {}
+            List<TriadSceneLocationExtraction> sceneLocationExtractions,
+            List<TriadSceneEventExtraction> sceneEventExtractions
+    ) {
+        public TriadOutcome(
+                List<TriadAnalysis> triadAnalyses,
+                List<TriadSceneIndividualExtraction> sceneIndividualExtractions,
+                List<TriadSceneLocationExtraction> sceneLocationExtractions
+        ) {
+            this(triadAnalyses, sceneIndividualExtractions, sceneLocationExtractions, List.of());
+        }
+    }
 
     private final TriadBuilderService triadBuilder;
     private final SceneDetectionClient sceneDetectionClient;
@@ -125,6 +152,7 @@ public class TriadOrchestrationService {
         List<TriadAnalysis> analyses = new ArrayList<>();
         Map<Integer, List<TriadIndividualExtraction>> extractedIndividualsBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadLocationExtraction>> extractedLocationsBySceneIndex = new HashMap<>();
+        Map<Integer, List<TriadEventExtraction>> extractedEventsBySceneIndex = new HashMap<>();
 
         int triadIndex = 0;
         for (TriadBuilderService.SceneTriad t : triads) {
@@ -186,6 +214,13 @@ public class TriadOrchestrationService {
                             .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
                             .addAll(triadLocations);
                 }
+
+                List<TriadEventExtraction> triadEvents = normalizeEvents(normalized);
+                if (!triadEvents.isEmpty()) {
+                    extractedEventsBySceneIndex
+                            .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
+                            .addAll(triadEvents);
+                }
             }
         }
 
@@ -199,7 +234,12 @@ public class TriadOrchestrationService {
                 .sorted(java.util.Comparator.comparingInt(TriadSceneLocationExtraction::sceneIndex))
                 .toList();
 
-        return new TriadOutcome(analyses, sceneExtractions, sceneLocationExtractions);
+        List<TriadSceneEventExtraction> sceneEventExtractions = extractedEventsBySceneIndex.entrySet().stream()
+                .map(e -> new TriadSceneEventExtraction(e.getKey(), List.copyOf(e.getValue())))
+                .sorted(java.util.Comparator.comparingInt(TriadSceneEventExtraction::sceneIndex))
+                .toList();
+
+        return new TriadOutcome(analyses, sceneExtractions, sceneLocationExtractions, sceneEventExtractions);
     }
 
     public List<TriadAnalysis> analyzeChapterTriads(UUID jobId, Chapter chapter) {
@@ -235,6 +275,28 @@ public class TriadOrchestrationService {
                         normalizeText(location.description())
                 ))
                 .toList();
+    }
+
+    private List<TriadEventExtraction> normalizeEvents(TriadStructuredResult parsed) {
+        if (parsed == null || parsed.currentSceneEntities() == null || parsed.currentSceneEntities().events() == null) {
+            return List.of();
+        }
+        return parsed.currentSceneEntities().events().stream()
+                .filter(event -> event != null)
+                .map(event -> new TriadEventExtraction(
+                        normalizeText(event.name()),
+                        normalizeText(event.eventType()),
+                        normalizeEventTemporalType(event.temporalType()),
+                        normalizeText(event.certainty()),
+                        normalizeText(event.evidence())
+                ))
+                .filter(event -> event.name() != null)
+                .toList();
+    }
+
+    private String normalizeEventTemporalType(String temporalType) {
+        String normalized = normalizeText(temporalType);
+        return normalized == null ? null : normalizeTemporalType(normalized);
     }
 
     private List<String> normalizeAliases(List<String> aliases) {
@@ -341,8 +403,9 @@ public class TriadOrchestrationService {
             case "before", "meets" -> "R:temporal.before";
             case "after", "met_by" -> "R:temporal.after";
             case "overlaps" -> "R:temporal.overlaps";
-            case "contains", "during" -> "R:temporal.contains";
-            case "equals" -> "R:temporal.equals";
+            case "contains" -> "R:temporal.contains";
+            case "during" -> "R:temporal.during";
+            case "equals" -> "R:temporal.overlaps";
             default -> trimmed;
         };
     }

@@ -42,6 +42,7 @@ class SceneDetectionHandlerTest {
     @Mock private SceneProcessingService sceneProcessingService;
     @Mock private IndividualPersistenceService individualPersistenceService;
     @Mock private LocationPersistenceService locationPersistenceService;
+    @Mock private EventPersistenceService eventPersistenceService;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private DefaultTemporalEdgeService defaultTemporalEdgeService;
     @Mock private TriadEdgePersistenceService triadEdgePersistenceService;
@@ -102,6 +103,7 @@ class SceneDetectionHandlerTest {
             verify(sceneProcessingService).persistDetectedScenes(chapterId, sceneCoords);
             verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, List.of());
             verify(locationPersistenceService).persistExtractedLocations(persistedScenes, List.of());
+            verify(eventPersistenceService).persistExtractedEvents(persistedScenes, List.of());
             verify(defaultTemporalEdgeService).createAllDefaults(bookId);
             verify(triadEdgePersistenceService).applyTriadAnalysesPostPersistence(eq(chapterId), eq(List.of()), anyMap());
 
@@ -124,22 +126,36 @@ class SceneDetectionHandlerTest {
             List<Scene> persistedScenes = List.of(scene);
             List<com.lorevault.api.ai.TriadOrchestrationService.TriadSceneIndividualExtraction> extractions = List.of();
             List<com.lorevault.api.ai.TriadOrchestrationService.TriadSceneLocationExtraction> locationExtractions = List.of();
+            List<com.lorevault.api.ai.TriadOrchestrationService.TriadSceneEventExtraction> eventExtractions = List.of(
+                    new com.lorevault.api.ai.TriadOrchestrationService.TriadSceneEventExtraction(
+                            0,
+                            List.of(new com.lorevault.api.ai.TriadOrchestrationService.TriadEventExtraction(
+                                    "The Winter War",
+                                    "war",
+                                    "R:temporal.before",
+                                    "Explicit",
+                                    "They still speak of the Winter War"
+                            ))
+                    )
+            );
 
             when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
             when(sceneDetectionService.detectScenesInText(jobId, chapterId, (String) new BeanWrapperImpl(testChapter).getPropertyValue("rawText")))
-                    .thenReturn(new SceneDetectionService.SceneDetectionOutcome(sceneCoords, List.of(), extractions, locationExtractions));
+                    .thenReturn(new SceneDetectionService.SceneDetectionOutcome(sceneCoords, List.of(), extractions, locationExtractions, eventExtractions));
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
 
             handler.handleChapterIngestion(testEvent);
 
             verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, extractions);
             verify(locationPersistenceService).persistExtractedLocations(persistedScenes, locationExtractions);
+            verify(eventPersistenceService).persistExtractedEvents(persistedScenes, eventExtractions);
             verify(triadEdgePersistenceService).applyTriadAnalysesPostPersistence(eq(chapterId), eq(List.of()), anyMap());
             verify(eventPublisher).publishEvent(any(ScenesDetectedEvent.class));
-            InOrder inOrder = inOrder(individualPersistenceService, locationPersistenceService, eventPublisher);
+            InOrder inOrder = inOrder(individualPersistenceService, locationPersistenceService, eventPersistenceService, eventPublisher);
             inOrder.verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, extractions);
             inOrder.verify(locationPersistenceService).persistExtractedLocations(persistedScenes, locationExtractions);
+            inOrder.verify(eventPersistenceService).persistExtractedEvents(persistedScenes, eventExtractions);
             inOrder.verify(eventPublisher).publishEvent(any(ScenesDetectedEvent.class));
         }
 
@@ -159,6 +175,7 @@ class SceneDetectionHandlerTest {
             verify(sceneProcessingService, never()).persistDetectedScenes(any(), any());
             verify(individualPersistenceService, never()).persistExtractedIndividuals(any(), any());
             verify(locationPersistenceService, never()).persistExtractedLocations(any(), any());
+            verify(eventPersistenceService, never()).persistExtractedEvents(any(), any());
             verify(triadEdgePersistenceService, never()).applyTriadAnalysesPostPersistence(any(), any(), anyMap());
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
@@ -249,6 +266,7 @@ class SceneDetectionHandlerTest {
             // Then
             verify(sceneDetectionService, never()).detectScenesInText(any(), any(), anyString());
             verify(individualPersistenceService, never()).persistExtractedIndividuals(any(), any());
+            verify(eventPersistenceService, never()).persistExtractedEvents(any(), any());
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());

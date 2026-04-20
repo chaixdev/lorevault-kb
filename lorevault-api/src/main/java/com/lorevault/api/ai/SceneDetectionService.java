@@ -32,8 +32,18 @@ public class SceneDetectionService {
             List<SceneWithCoordinates> scenes,
             List<TriadOrchestrationService.TriadAnalysis> triadAnalyses,
             List<TriadOrchestrationService.TriadSceneIndividualExtraction> sceneIndividualExtractions,
-            List<TriadOrchestrationService.TriadSceneLocationExtraction> sceneLocationExtractions
-    ) {}
+            List<TriadOrchestrationService.TriadSceneLocationExtraction> sceneLocationExtractions,
+            List<TriadOrchestrationService.TriadSceneEventExtraction> sceneEventExtractions
+    ) {
+        public SceneDetectionOutcome(
+                List<SceneWithCoordinates> scenes,
+                List<TriadOrchestrationService.TriadAnalysis> triadAnalyses,
+                List<TriadOrchestrationService.TriadSceneIndividualExtraction> sceneIndividualExtractions,
+                List<TriadOrchestrationService.TriadSceneLocationExtraction> sceneLocationExtractions
+        ) {
+            this(scenes, triadAnalyses, sceneIndividualExtractions, sceneLocationExtractions, List.of());
+        }
+    }
 
     private final SceneDetectionClient sceneDetectionClient;
     private final SceneProcessingService sceneProcessingService;
@@ -196,7 +206,8 @@ public class SceneDetectionService {
                     scenes,
                     triadOutcome.triadAnalyses(),
                     triadOutcome.sceneIndividualExtractions(),
-                    triadOutcome.sceneLocationExtractions()
+                    triadOutcome.sceneLocationExtractions(),
+                    triadOutcome.sceneEventExtractions()
             );
 
         } catch (Exception e) {

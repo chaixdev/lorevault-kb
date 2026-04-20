@@ -49,6 +49,7 @@ import static org.mockito.Mockito.when;
         SceneDetectionHandler.class,
         SceneProcessingService.class,
         IndividualPersistenceService.class,
+        EventPersistenceService.class,
         ChapterIndividualResolutionService.class,
         BookIndividualReductionService.class,
         DefaultTemporalEdgeService.class

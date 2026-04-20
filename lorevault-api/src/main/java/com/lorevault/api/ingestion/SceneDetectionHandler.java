@@ -46,6 +46,7 @@ public class SceneDetectionHandler {
     private final SceneProcessingService sceneProcessingService;
     private final IndividualPersistenceService individualPersistenceService;
     private final LocationPersistenceService locationPersistenceService;
+    private final EventPersistenceService eventPersistenceService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
     private final TriadEdgePersistenceService triadEdgePersistenceService;
     private final ApplicationEventPublisher eventPublisher;
@@ -58,6 +59,7 @@ public class SceneDetectionHandler {
             SceneProcessingService sceneProcessingService,
             IndividualPersistenceService individualPersistenceService,
             LocationPersistenceService locationPersistenceService,
+            EventPersistenceService eventPersistenceService,
             IngestionJobService ingestionJobService,
             DefaultTemporalEdgeService defaultTemporalEdgeService,
             TriadEdgePersistenceService triadEdgePersistenceService,
@@ -69,6 +71,7 @@ public class SceneDetectionHandler {
         this.sceneProcessingService = sceneProcessingService;
         this.individualPersistenceService = individualPersistenceService;
         this.locationPersistenceService = locationPersistenceService;
+        this.eventPersistenceService = eventPersistenceService;
         this.defaultTemporalEdgeService = defaultTemporalEdgeService;
         this.triadEdgePersistenceService = triadEdgePersistenceService;
         this.eventPublisher = eventPublisher;
@@ -173,6 +176,10 @@ public class SceneDetectionHandler {
         locationPersistenceService.persistExtractedLocations(
                 persistedScenes,
                 detectionOutcome.sceneLocationExtractions()
+        );
+        eventPersistenceService.persistExtractedEvents(
+                persistedScenes,
+                detectionOutcome.sceneEventExtractions()
         );
         return new DetectionPersistenceOutcome(persistedScenes, detectionOutcome.triadAnalyses());
     }
