@@ -8,7 +8,7 @@ public final class TriadRelationInverter {
     private TriadRelationInverter() {}
 
     /**
-     * @param prevToCurr one of R:temporal.before|meets|overlaps|contains|equals
+     * @param prevToCurr one of R:temporal.before|meets|overlaps|contains
      * @return inverted label for curr vs prev (e.g., before -> R:temporal.after)
      */
     public static String invertPrevToCurr(String prevToCurr) {
@@ -24,7 +24,6 @@ public final class TriadRelationInverter {
             case "overlaps" -> "R:temporal.overlapped_by";
             case "contains" -> "R:temporal.during";
             case "during" -> "R:temporal.contains";
-            case "equals" -> "R:temporal.equals";
             default -> null;
         };
     }

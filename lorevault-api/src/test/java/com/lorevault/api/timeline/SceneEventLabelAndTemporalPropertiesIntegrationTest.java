@@ -137,6 +137,87 @@ class SceneEventLabelAndTemporalPropertiesIntegrationTest {
         assertThat(edge.get("legacyConfidence")).isNull();
     }
 
+    @Test
+    void temporalUpsertShouldCollapseOppositeDirectionEdgeForSamePair() {
+        UUID chapterId = UUID.randomUUID();
+        UUID sceneA = UUID.randomUUID();
+        UUID sceneB = UUID.randomUUID();
+        createChapterAndScene(chapterId, sceneA, true);
+        createChapterAndScene(chapterId, sceneB, true);
+
+        neo4jClient.query("""
+                MATCH (s:Scene {id: $sceneId})
+                SET s.sceneIndex = $sceneIndex
+                """)
+                .bind(sceneA.toString()).to("sceneId")
+                .bind(0).to("sceneIndex")
+                .run();
+        neo4jClient.query("""
+                MATCH (s:Scene {id: $sceneId})
+                SET s.sceneIndex = $sceneIndex
+                """)
+                .bind(sceneB.toString()).to("sceneId")
+                .bind(1).to("sceneIndex")
+                .run();
+
+        // Simulate historical wrong-polarity duplicate persisted in reverse direction.
+        neo4jClient.query("""
+                MATCH (a:Scene {id: $aId})
+                MATCH (b:Scene {id: $bId})
+                CREATE (b)-[:TEMPORAL {
+                    temporalRelation: 'R:temporal.before',
+                    certainty: 'Explicit',
+                    weight: 0.7,
+                    source: 'legacy-test',
+                    rationale: 'legacy'
+                }]->(a)
+                """)
+                .bind(sceneA.toString()).to("aId")
+                .bind(sceneB.toString()).to("bId")
+                .run();
+
+        temporalEdgeWriteRepository.upsertTemporalEdge(
+                sceneA,
+                sceneB,
+                "R:temporal.before",
+                "Explicit",
+                0.95,
+                "test-suite",
+                "canonical evidence",
+                null,
+                null,
+                null
+        );
+
+        Long edgeCount = neo4jClient.query("""
+                MATCH (a:Scene {id: $aId})-[t:TEMPORAL]-(b:Scene {id: $bId})
+                RETURN count(t) AS edgeCount
+                """)
+                .bind(sceneA.toString()).to("aId")
+                .bind(sceneB.toString()).to("bId")
+                .fetchAs(Long.class)
+                .one()
+                .orElse(0L);
+
+        assertThat(edgeCount).isEqualTo(1L);
+
+        Map<String, Object> canonical = neo4jClient.query("""
+                MATCH (a:Scene {id: $aId})-[t:TEMPORAL]->(b:Scene {id: $bId})
+                RETURN t.temporalRelation AS temporalRelation,
+                       t.source AS source,
+                       t.rationale AS rationale
+                """)
+                .bind(sceneA.toString()).to("aId")
+                .bind(sceneB.toString()).to("bId")
+                .fetch()
+                .one()
+                .orElseThrow();
+
+        assertThat(canonical.get("temporalRelation")).isEqualTo("R:temporal.before");
+        assertThat(canonical.get("source")).isEqualTo("test-suite");
+        assertThat(canonical.get("rationale")).isEqualTo("canonical evidence");
+    }
+
     private void createChapterAndScene(UUID chapterId, UUID sceneId, boolean withEventLabel) {
         String createScene = withEventLabel
                 ? "CREATE (s:Scene:Event {id: $sceneId, chapterId: $chapterId, sceneIndex: 0, startOffset: 0, endOffset: 1, contextSummary: 'summary', text: 'text'})"

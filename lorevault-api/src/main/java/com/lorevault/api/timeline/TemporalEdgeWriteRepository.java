@@ -132,6 +132,12 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
     @Query("""
         MATCH (a:Scene {id: $fromId})
         MATCH (b:Scene {id: $toId})
+        OPTIONAL MATCH (a)-[existingForward:TEMPORAL]->(b)
+        DELETE existingForward
+        WITH a, b
+        OPTIONAL MATCH (b)-[existingReverse:TEMPORAL]->(a)
+        DELETE existingReverse
+        WITH a, b
         MERGE (a)-[t:TEMPORAL]->(b)
         SET t.temporalRelation = $type,
             t.certainty = $certainty,

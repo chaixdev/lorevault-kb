@@ -42,7 +42,7 @@ public final class RelationNormalizer {
             case FINISHES:    return new Normalized(CanonicalRelation.FINISHES, false);
             case FINISHED_BY: return new Normalized(CanonicalRelation.FINISHES, true);
 
-            case EQUALS:      return new Normalized(CanonicalRelation.EQUALS, false);
+            case EQUALS:      return new Normalized(CanonicalRelation.OVERLAPS, false);
             default:
                 // Should never happen if enum is exhaustive
                 throw new IllegalArgumentException("Unsupported temporal relation: " + relation);

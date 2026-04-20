@@ -63,4 +63,11 @@ class TemporalRelationTest {
         assertEquals("MEETS", TemporalRelation.MEETS.name());
         assertTrue(TemporalRelation.MEETS.getDeclaringClass().isEnum());
     }
+
+    @Test
+    @Tag("unit")
+    void equals_relation_exists_but_is_deprecated_for_inferred_use() {
+        assertEquals("EQUALS", TemporalRelation.EQUALS.name());
+        assertTrue(TemporalRelation.EQUALS.getDeclaringClass().isEnum());
+    }
 }

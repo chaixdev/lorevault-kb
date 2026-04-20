@@ -12,5 +12,6 @@ public enum CanonicalRelation {
     STARTS,
     DURING,
     FINISHES,
+    @Deprecated(since = "April 2026", forRemoval = false)
     EQUALS
 }

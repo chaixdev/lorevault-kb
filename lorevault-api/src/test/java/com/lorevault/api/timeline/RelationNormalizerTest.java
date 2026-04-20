@@ -83,7 +83,7 @@ class RelationNormalizerTest {
     @Tag("unit")
     void normalizes_equals() {
         var n1 = RelationNormalizer.normalize(TemporalRelation.EQUALS);
-        assertEquals(CanonicalRelation.EQUALS, n1.relation());
+        assertEquals(CanonicalRelation.OVERLAPS, n1.relation());
         assertFalse(n1.flipped());
     }
 }

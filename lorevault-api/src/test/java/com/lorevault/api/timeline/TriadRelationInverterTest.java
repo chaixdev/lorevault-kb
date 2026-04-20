@@ -41,8 +41,8 @@ class TriadRelationInverterTest {
     }
 
     @Test
-    void mapsEqualsToEquals() {
-        assertThat(TriadRelationInverter.invertPrevToCurr("R:temporal.equals")).isEqualTo("R:temporal.equals");
+    void equalsNoLongerInvertsAsInferredRelation() {
+        assertThat(TriadRelationInverter.invertPrevToCurr("R:temporal.equals")).isNull();
     }
 
     @Test

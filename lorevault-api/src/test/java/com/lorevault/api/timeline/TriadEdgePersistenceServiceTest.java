@@ -106,8 +106,10 @@ class TriadEdgePersistenceServiceTest {
     }
 
     @Test
-    void legacy_met_by_input_is_written_as_temporal_after() {
+    void legacy_met_by_input_is_canonicalized_to_before_with_flipped_endpoints() {
         when(temporalEdgeWriteRepository.findTemporalRelationBetween(scene0Id, scene1Id))
+                .thenReturn(null);
+        when(temporalEdgeWriteRepository.findTemporalRelationBetween(scene1Id, scene0Id))
                 .thenReturn(null);
 
         service.applyTriadAnalysesPostPersistence(
@@ -118,11 +120,11 @@ class TriadEdgePersistenceServiceTest {
 
         ArgumentCaptor<String> typeCaptor = ArgumentCaptor.forClass(String.class);
         verify(temporalEdgeWriteRepository).upsertTemporalEdge(
-                eq(scene0Id), eq(scene1Id),
+                eq(scene1Id), eq(scene0Id),
                 typeCaptor.capture(),
                 any(), any(), any(), any(), any(), any(), any()
         );
-        assertThat(typeCaptor.getValue()).isEqualTo("R:temporal.after");
+        assertThat(typeCaptor.getValue()).isEqualTo("R:temporal.before");
         verify(temporalEdgeWriteRepository, never()).upsertAmbiguousRelation(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
@@ -161,6 +163,125 @@ class TriadEdgePersistenceServiceTest {
                 any(), any(), any(), any(), any(), any(), any()
         );
         verify(temporalEdgeWriteRepository, never()).upsertTemporalEdge(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void overlap_existing_with_contains_incoming_prefers_during_without_ambiguity() {
+        when(temporalEdgeWriteRepository.findTemporalRelationBetween(scene0Id, scene1Id))
+                .thenReturn("R:temporal.overlaps");
+        when(temporalEdgeWriteRepository.findTemporalRelationBetween(scene1Id, scene0Id))
+                .thenReturn(null);
+
+        service.applyTriadAnalysesPostPersistence(
+                chapterId,
+                List.of(triad(0, 1, "R:temporal.contains")),
+                Map.of(0, scene0Id, 1, scene1Id)
+        );
+
+        verify(temporalEdgeWriteRepository).upsertTemporalEdge(
+                eq(scene1Id), eq(scene0Id),
+                eq("R:temporal.during"),
+                any(), any(), any(), any(), any(), any(), any()
+        );
+        verify(temporalEdgeWriteRepository, never()).upsertAmbiguousRelation(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void overlap_existing_with_during_incoming_prefers_during_without_ambiguity() {
+        when(temporalEdgeWriteRepository.findTemporalRelationBetween(scene0Id, scene1Id))
+                .thenReturn("R:temporal.overlaps");
+
+        service.applyTriadAnalysesPostPersistence(
+                chapterId,
+                List.of(triad(0, 1, "R:temporal.during")),
+                Map.of(0, scene0Id, 1, scene1Id)
+        );
+
+        verify(temporalEdgeWriteRepository).upsertTemporalEdge(
+                eq(scene0Id), eq(scene1Id),
+                eq("R:temporal.during"),
+                any(), any(), any(), any(), any(), any(), any()
+        );
+        verify(temporalEdgeWriteRepository, never()).upsertAmbiguousRelation(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void reverse_contains_existing_with_overlap_incoming_keeps_canonical_during_without_ambiguity() {
+        when(temporalEdgeWriteRepository.findTemporalRelationBetween(scene0Id, scene1Id))
+                .thenReturn(null);
+        when(temporalEdgeWriteRepository.findTemporalRelationBetween(scene1Id, scene0Id))
+                .thenReturn("R:temporal.contains");
+
+        service.applyTriadAnalysesPostPersistence(
+                chapterId,
+                List.of(triad(0, 1, "R:temporal.overlaps")),
+                Map.of(0, scene0Id, 1, scene1Id)
+        );
+
+        verify(temporalEdgeWriteRepository).upsertTemporalEdge(
+                eq(scene0Id), eq(scene1Id),
+                eq("R:temporal.during"),
+                any(), any(), any(), any(), any(), any(), any()
+        );
+        verify(temporalEdgeWriteRepository, never()).upsertAmbiguousRelation(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void canonical_during_and_contains_for_same_oriented_pair_still_create_ambiguity() {
+        when(temporalEdgeWriteRepository.findTemporalRelationBetween(scene0Id, scene1Id))
+                .thenReturn("R:temporal.during");
+
+        service.applyTriadAnalysesPostPersistence(
+                chapterId,
+                List.of(triad(0, 1, "R:temporal.contains")),
+                Map.of(0, scene0Id, 1, scene1Id)
+        );
+
+        verify(temporalEdgeWriteRepository).upsertAmbiguousRelation(
+                eq(scene0Id), eq(scene1Id),
+                any(), any(), any(), any(), any(), any(), any()
+        );
+        verify(temporalEdgeWriteRepository, never()).upsertTemporalEdge(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void canonicalization_flips_contains_to_reverse_during_edge() {
+        when(temporalEdgeWriteRepository.findTemporalRelationBetween(scene0Id, scene1Id))
+                .thenReturn(null);
+        when(temporalEdgeWriteRepository.findTemporalRelationBetween(scene1Id, scene0Id))
+                .thenReturn(null);
+
+        service.applyTriadAnalysesPostPersistence(
+                chapterId,
+                List.of(triad(0, 1, "R:temporal.contains")),
+                Map.of(0, scene0Id, 1, scene1Id)
+        );
+
+        verify(temporalEdgeWriteRepository).upsertTemporalEdge(
+                eq(scene1Id), eq(scene0Id),
+                eq("R:temporal.during"),
+                any(), any(), any(), any(), any(), any(), any()
+        );
+    }
+
+    @Test
+    void canonicalization_flips_after_to_reverse_before_edge() {
+        when(temporalEdgeWriteRepository.findTemporalRelationBetween(scene0Id, scene1Id))
+                .thenReturn(null);
+        when(temporalEdgeWriteRepository.findTemporalRelationBetween(scene1Id, scene0Id))
+                .thenReturn(null);
+
+        service.applyTriadAnalysesPostPersistence(
+                chapterId,
+                List.of(triad(0, 1, "R:temporal.after")),
+                Map.of(0, scene0Id, 1, scene1Id)
+        );
+
+        verify(temporalEdgeWriteRepository).upsertTemporalEdge(
+                eq(scene1Id), eq(scene0Id),
+                eq("R:temporal.before"),
+                any(), any(), any(), any(), any(), any(), any()
+        );
     }
 
     private TriadOrchestrationService.TriadAnalysis triad(int prevIndex, int currIndex, String type) {

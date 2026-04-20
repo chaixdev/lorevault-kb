@@ -92,15 +92,16 @@ public class TriadEdgePersistenceService {
             );
         }
 
-        String normalizedIncomingType = normalizeTemporalType(type);
-        String existingType = temporalEdgeWriteRepository.findTemporalRelationBetween(from, to);
-        String normalizedExistingType = normalizeTemporalType(existingType);
-        if (normalizedExistingType != null && !normalizedExistingType.isBlank() && !normalizedExistingType.equals(normalizedIncomingType)) {
+        String normalizedIncomingRawType = normalizeTemporalType(type);
+        String existingDirectType = temporalEdgeWriteRepository.findTemporalRelationBetween(from, to);
+        String normalizedExistingDirectType = normalizeTemporalType(existingDirectType);
+
+        if (isDirectEnclosureContradiction(normalizedExistingDirectType, normalizedIncomingRawType)) {
             temporalEdgeWriteRepository.upsertAmbiguousRelation(
                     from,
                     to,
                     "inferred",
-                    buildAmbiguityPayload(existingType, normalizedExistingType, type, normalizedIncomingType,
+                    buildAmbiguityPayload(existingDirectType, normalizedExistingDirectType, type, normalizedIncomingRawType,
                             certainty, evidence, timelineMarker, statusRecord, callRecord),
                     evidence,
                     asString(jobId),
@@ -111,10 +112,31 @@ public class TriadEdgePersistenceService {
             return;
         }
 
+        CanonicalTemporalRelation incoming = normalizeToCanonical(from, to, type);
+        ExistingCanonicalEdge existing = findExistingCanonicalEdge(incoming.fromId(), incoming.toId());
+        String reconciledType = reconcileTemporalType(existing.normalizedType(), incoming.type());
+        if (existing.normalizedType() != null && !existing.normalizedType().isBlank() && reconciledType == null) {
+            temporalEdgeWriteRepository.upsertAmbiguousRelation(
+                    incoming.fromId(),
+                    incoming.toId(),
+                    "inferred",
+                    buildAmbiguityPayload(existing.originalType(), existing.normalizedType(), type, incoming.type(),
+                            certainty, evidence, timelineMarker, statusRecord, callRecord),
+                    evidence,
+                    asString(jobId),
+                    asString(chapterId),
+                    asString(statusRecordId),
+                    asString(readUuidField(callRecord, "id"))
+            );
+            return;
+        }
+
+        String typeToPersist = reconciledType != null ? reconciledType : incoming.type();
+
         temporalEdgeWriteRepository.upsertTemporalEdge(
-                from,
-                to,
-                normalizedIncomingType,
+                incoming.fromId(),
+                incoming.toId(),
+                typeToPersist,
                 certainty,
                 mapCertaintyToWeight(certainty),
                 "inferred",
@@ -123,6 +145,22 @@ public class TriadEdgePersistenceService {
                 null,
                 null
         );
+    }
+
+    private ExistingCanonicalEdge findExistingCanonicalEdge(UUID fromId, UUID toId) {
+        String directType = temporalEdgeWriteRepository.findTemporalRelationBetween(fromId, toId);
+        if (directType != null && !directType.isBlank()) {
+            CanonicalTemporalRelation normalizedDirect = normalizeToCanonical(fromId, toId, directType);
+            return new ExistingCanonicalEdge(directType, normalizedDirect.type(), normalizedDirect.fromId(), normalizedDirect.toId());
+        }
+
+        String reverseType = temporalEdgeWriteRepository.findTemporalRelationBetween(toId, fromId);
+        if (reverseType != null && !reverseType.isBlank()) {
+            CanonicalTemporalRelation normalizedReverse = normalizeToCanonical(toId, fromId, reverseType);
+            return new ExistingCanonicalEdge(reverseType, normalizedReverse.type(), normalizedReverse.fromId(), normalizedReverse.toId());
+        }
+
+        return new ExistingCanonicalEdge(null, null, fromId, toId);
     }
 
     private UUID resolveLatestJobId(UUID chapterId) {
@@ -260,6 +298,26 @@ public class TriadEdgePersistenceService {
         };
     }
 
+    private CanonicalTemporalRelation normalizeToCanonical(UUID fromId, UUID toId, String type) {
+        if (type == null) {
+            return new CanonicalTemporalRelation(fromId, toId, null);
+        }
+
+        String normalized = normalizeTemporalType(type);
+        if (normalized == null || normalized.isBlank()) {
+            return new CanonicalTemporalRelation(fromId, toId, normalized);
+        }
+
+        return switch (normalized) {
+            case "R:temporal.after" -> new CanonicalTemporalRelation(toId, fromId, "R:temporal.before");
+            case "R:temporal.overlapped_by" -> new CanonicalTemporalRelation(toId, fromId, "R:temporal.overlaps");
+            case "R:temporal.contains" -> new CanonicalTemporalRelation(toId, fromId, "R:temporal.during");
+            case "R:temporal.started_by" -> new CanonicalTemporalRelation(toId, fromId, "R:temporal.starts");
+            case "R:temporal.finished_by" -> new CanonicalTemporalRelation(toId, fromId, "R:temporal.finishes");
+            default -> new CanonicalTemporalRelation(fromId, toId, normalized);
+        };
+    }
+
     private String normalizeTemporalType(String type) {
         if (type == null) {
             return null;
@@ -274,11 +332,53 @@ public class TriadEdgePersistenceService {
         return switch (base) {
             case "meets" -> "R:temporal.before";
             case "met_by" -> "R:temporal.after";
+            case "equals" -> "R:temporal.overlaps";
             case "before", "after", "overlaps", "overlapped_by", "during", "contains",
-                    "starts", "started_by", "finishes", "finished_by", "equals" -> "R:temporal." + base;
+                    "starts", "started_by", "finishes", "finished_by" -> "R:temporal." + base;
             default -> trimmed;
         };
     }
+
+    private String reconcileTemporalType(String existingType, String incomingType) {
+        if (incomingType == null || incomingType.isBlank()) {
+            return incomingType;
+        }
+        if (existingType == null || existingType.isBlank()) {
+            return incomingType;
+        }
+        if (existingType.equals(incomingType)) {
+            return incomingType;
+        }
+
+        if (isOverlap(existingType) && isEnclosure(incomingType)) {
+            return incomingType;
+        }
+        if (isEnclosure(existingType) && isOverlap(incomingType)) {
+            return existingType;
+        }
+
+        return null;
+    }
+
+    private boolean isOverlap(String type) {
+        return "R:temporal.overlaps".equals(type) || "R:temporal.overlapped_by".equals(type);
+    }
+
+    private boolean isEnclosure(String type) {
+        return "R:temporal.during".equals(type);
+    }
+
+    private boolean isDirectEnclosureContradiction(String existingType, String incomingType) {
+        if (existingType == null || incomingType == null) {
+            return false;
+        }
+        return ("R:temporal.during".equals(existingType) && "R:temporal.contains".equals(incomingType))
+                || ("R:temporal.contains".equals(existingType) && "R:temporal.during".equals(incomingType));
+    }
+
+    private record CanonicalTemporalRelation(UUID fromId, UUID toId, String type) {}
+
+    private record ExistingCanonicalEdge(String originalType, String normalizedType, UUID fromId, UUID toId) {}
 
     private UUID readUuidField(Object target, String fieldName) {
         Object value = readField(target, fieldName);

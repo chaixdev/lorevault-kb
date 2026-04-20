@@ -14,6 +14,7 @@ public enum TemporalRelation {
     STARTED_BY,
     FINISHES,
     FINISHED_BY,
+    @Deprecated(since = "April 2026", forRemoval = false)
     EQUALS,
     AFTER  // Keep for bidirectional convenience
 }
