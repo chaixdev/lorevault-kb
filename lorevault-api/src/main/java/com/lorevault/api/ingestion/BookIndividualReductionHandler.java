@@ -1,9 +1,8 @@
 package com.lorevault.api.ingestion;
 
 import com.lorevault.api.support.BookIndividualResolutionResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanWrapperImpl;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
@@ -12,28 +11,19 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 @Component
+@Slf4j
+@RequiredArgsConstructor
 public class BookIndividualReductionHandler {
-
-    private static final Logger log = LoggerFactory.getLogger(BookIndividualReductionHandler.class);
 
     private final BookIndividualReductionService bookIndividualReductionService;
     private final ApplicationEventPublisher eventPublisher;
 
-    public BookIndividualReductionHandler(
-            BookIndividualReductionService bookIndividualReductionService,
-            ApplicationEventPublisher eventPublisher
-    ) {
-        this.bookIndividualReductionService = bookIndividualReductionService;
-        this.eventPublisher = eventPublisher;
-    }
-
     @Async
     @EventListener
     public void handleChapterIndividualsResolved(ChapterIndividualsResolvedEvent event) {
-        BeanWrapperImpl eventBean = new BeanWrapperImpl(event);
-        UUID jobId = (UUID) eventBean.getPropertyValue("jobId");
-        UUID chapterId = (UUID) eventBean.getPropertyValue("chapterId");
-        UUID bookId = (UUID) eventBean.getPropertyValue("bookId");
+        UUID jobId = event.getJobId();
+        UUID chapterId = event.getChapterId();
+        UUID bookId = event.getBookId();
 
         log.info("[BOOK_INDIVIDUAL_REDUCTION] Started: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId);
 

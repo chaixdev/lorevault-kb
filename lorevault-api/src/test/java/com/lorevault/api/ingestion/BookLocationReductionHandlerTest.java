@@ -48,8 +48,8 @@ class BookLocationReductionHandlerTest {
         ArgumentCaptor<BookLocationsReducedEvent> captor = ArgumentCaptor.forClass(BookLocationsReducedEvent.class);
         verify(eventPublisher).publishEvent(captor.capture());
         BookLocationsReducedEvent published = captor.getValue();
-        assertThat(new org.springframework.beans.BeanWrapperImpl(published).getPropertyValue("jobId")).isEqualTo(jobId);
-        assertThat(new org.springframework.beans.BeanWrapperImpl(published).getPropertyValue("chapterId")).isEqualTo(chapterId);
-        assertThat(new org.springframework.beans.BeanWrapperImpl(published).getPropertyValue("bookId")).isEqualTo(bookId);
+        assertThat(published.getJobId()).isEqualTo(jobId);
+        assertThat(published.getChapterId()).isEqualTo(chapterId);
+        assertThat(published.getBookId()).isEqualTo(bookId);
     }
 }

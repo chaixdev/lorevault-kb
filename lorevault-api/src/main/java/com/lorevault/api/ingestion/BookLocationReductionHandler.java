@@ -2,37 +2,27 @@ package com.lorevault.api.ingestion;
 
 import com.lorevault.api.support.BookLocationResolutionResponse;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanWrapperImpl;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 @Component
+@Slf4j
+@RequiredArgsConstructor
 public class BookLocationReductionHandler {
-
-    private static final Logger log = LoggerFactory.getLogger(BookLocationReductionHandler.class);
 
     private final BookLocationReductionService bookLocationReductionService;
     private final ApplicationEventPublisher eventPublisher;
 
-    public BookLocationReductionHandler(
-            BookLocationReductionService bookLocationReductionService,
-            ApplicationEventPublisher eventPublisher
-    ) {
-        this.bookLocationReductionService = bookLocationReductionService;
-        this.eventPublisher = eventPublisher;
-    }
-
     @Async
     @EventListener
     public void handleChapterLocationsResolved(ChapterLocationsResolvedEvent event) {
-        BeanWrapperImpl eventBean = new BeanWrapperImpl(event);
-        UUID jobId = (UUID) eventBean.getPropertyValue("jobId");
-        UUID chapterId = (UUID) eventBean.getPropertyValue("chapterId");
-        UUID bookId = (UUID) eventBean.getPropertyValue("bookId");
+        UUID jobId = event.getJobId();
+        UUID chapterId = event.getChapterId();
+        UUID bookId = event.getBookId();
 
         log.info("[BOOK_LOCATION_REDUCTION] Started: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId);
 
