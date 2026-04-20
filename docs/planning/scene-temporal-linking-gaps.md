@@ -6,13 +6,27 @@
 
 Scene temporal linking currently fails to preserve or use important LLM-derived chronology information.
 
-The strongest current finding is a write-time defect in the triad analysis pipeline, compounded by a separate read-time chapter-scoping limitation. Together, these make cross-chapter temporal links either fail to materialize or remain ineffective even if they do exist.
+The strongest current finding is a pipeline-shape mismatch.
+
+The expected mental model is roughly:
+
+1. chapter ingestion starts
+2. scenes are segmented for the chapter
+3. scenes are persisted as durable graph nodes
+4. triads are built from those persisted scenes
+5. later temporal-linking work uses those persisted scene identities
+
+The current implementation does not behave cleanly like that.
+
+Instead, important parts of triad analysis and triad-edge application still depend on in-memory or chapter-local assumptions, while cross-chapter references require persisted scene identities at a broader scope.
+
+That mismatch, combined with a separate read-time chapter-scoping limitation, makes cross-chapter temporal links either fail to materialize or remain ineffective even if they do exist.
 
 ## Problem
 
 The ingestion pipeline is intended to use scene triad analysis to infer temporal relationships between scenes, including chapter-boundary cases such as the last scene of one chapter and the first scene of the next.
 
-Today, the graph tends to end up with heuristic `MEETS` relations as the durable result, while LLM-derived temporal hints are either dropped before persistence or ignored by downstream consumers.
+Today, the graph tends to end up with structural adjacency or heuristic `MEETS`-like results as the durable visible outcome, while stronger LLM-derived temporal hints are either dropped before durable persistence or ignored by downstream consumers.
 
 This creates two related gaps:
 
@@ -46,10 +60,11 @@ Current code-path findings:
 
 1. `SceneDetectionService.performFullSceneDetection(...)` creates a synthetic `Chapter` plus temporary in-memory `Scene` objects for triad analysis.
 2. That same flow runs `triadOrchestrationService.analyzeChapterTriadsWithIndividuals(...)` and immediately calls `triadEdgePersistenceService.applyTriadAnalyses(...)`.
-3. Only later, `SceneDetectionHandler.detectAndPersistScenes(...)` calls `sceneProcessingService.persistDetectedScenes(...)` to save the real scene nodes.
-4. `TemporalEdgeWriteRepository.upsertTemporalEdge(...)` uses `MATCH` on both scene endpoints before `MERGE`, so triad edges that reference not-yet-persisted scenes do not materialize.
-5. `TemporalReadRepository.findChapterEventEdges(...)` only returns edges where both endpoints belong to the same chapter.
-6. `EventOrderingService.orderBookEventsUpToChapter(...)` concatenates chapter-local orders rather than building a cross-chapter temporal graph.
+3. Only later, `SceneDetectionHandler.detectAndPersistScenes(...)` calls `sceneProcessingService.persistDetectedScenes(...)` to save the real current-chapter scene nodes.
+4. `TemporalEdgeWriteRepository.upsertTemporalEdge(...)` uses `MATCH` on both scene endpoints before `MERGE`, so triad edges that reference scenes not yet durable in Neo4j do not materialize.
+5. Cross-chapter triad reasoning may therefore exist conceptually or in-memory without having a durable scene-identity path broad enough to write those edges reliably.
+6. `TemporalReadRepository.findChapterEventEdges(...)` only returns edges where both endpoints belong to the same chapter.
+7. `EventOrderingService.orderBookEventsUpToChapter(...)` concatenates chapter-local orders rather than building a cross-chapter temporal graph.
 
 ## Scope
 
@@ -70,15 +85,17 @@ Current code-path findings:
 ### Primary/root defect: triad analysis is treated as a pre-persistence step
 
 - `SceneDetectionService` creates temporary scenes with fresh UUIDs for triad work.
-- `TriadEdgePersistenceService` attempts to persist triad relations before those current-chapter scenes are saved.
+- `TriadEdgePersistenceService` attempts to persist triad relations before those current-chapter scenes are saved as durable graph nodes.
 - `TemporalEdgeWriteRepository.upsertTemporalEdge(...)` requires both scene nodes to already exist in Neo4j.
 - As a result, LLM-derived triad relations involving current-chapter scenes can fail silently at write time.
+
+In other words, the implementation still behaves as if temporal-link materialization can happen from a chapter-local pre-persistence context, while the expected cross-chapter model really needs persisted scene identities at the right granularity first.
 
 ### Cross-chapter triad setup is also incomplete in the ingestion path
 
 - The synthetic `Chapter` created for triad analysis has only its `id` explicitly populated in `SceneDetectionService`.
 - `TriadBuilderService.resolveCrossChapterPreviousScene(...)` requires `bookId` and `chapterNumber` to locate the previous chapter.
-- In this path, that means cross-chapter previous-scene resolution can fail before persistence is even attempted.
+- In this path, that means cross-chapter previous-scene resolution can fail before durable persistence is even attempted.
 
 ### Segmentation-level chronology hints are dropped before they can help triad reasoning
 
@@ -101,8 +118,13 @@ Current code-path findings:
 ### Relationship between the defects
 
 - These are not fully independent bugs.
-- The write-time and cross-chapter-generation problems share the same broad design assumption: triad analysis is performed in-memory before the current chapter’s scenes exist as durable graph nodes.
+- The write-time and cross-chapter-generation problems share the same broad design assumption: triad analysis is performed in-memory before the current chapter’s scenes exist as durable graph nodes at the scope needed by later cross-chapter materialization.
 - The read-time issue is a separate but aligned design decision: chapter-scoped ordering means cross-chapter temporal semantics remain ineffective even if durable links are later present.
+
+So the overall issue is best understood as a mismatch between:
+
+- the expected pipeline shape (persisted scenes first, then triad-driven temporal materialization over durable identities)
+- and the implemented pipeline shape (triad work and triad-edge application still partly depend on pre-persistence and chapter-local assumptions)
 
 ## Open Questions
 
