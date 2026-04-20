@@ -2,8 +2,7 @@ package com.lorevault.api.ai;
 
 import com.lorevault.api.config.LoreVaultContentProperties;
 import com.lorevault.api.content.Chunk;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -17,9 +16,8 @@ import java.util.regex.Pattern;
  * text > threshold applies boundary-aware sliding window with overlap.
  */
 @Service
+@Slf4j
 public class TextChunkingService {
-
-    private static final Logger log = LoggerFactory.getLogger(TextChunkingService.class);
 
     private static final Pattern SENTENCE_PATTERN = Pattern.compile("[.!?…]+[\"'”’)]*\\s+");
     private static final Pattern PARAGRAPH_BREAK_PATTERN = Pattern.compile("\\n\\s*\\n");

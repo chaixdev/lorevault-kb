@@ -4,7 +4,6 @@ import com.lorevault.api.config.LoreVaultContentProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.BeanWrapperImpl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,10 +20,9 @@ class TextChunkingServiceTest {
 
         var chunks = svc.extractChunks(text);
         assertThat(chunks).hasSize(1);
-        BeanWrapperImpl chunkBean = new BeanWrapperImpl(chunks.getFirst());
-        assertThat((Integer) chunkBean.getPropertyValue("startCharInChapter")).isEqualTo(0);
-        assertThat((Integer) chunkBean.getPropertyValue("endCharInChapter")).isEqualTo(text.length());
-        assertThat((String) chunkBean.getPropertyValue("text")).isEqualTo(text.trim());
+        assertThat(chunks.getFirst().getStartCharInChapter()).isEqualTo(0);
+        assertThat(chunks.getFirst().getEndCharInChapter()).isEqualTo(text.length());
+        assertThat(chunks.getFirst().getText()).isEqualTo(text.trim());
     }
 
     @Test
@@ -43,10 +41,9 @@ class TextChunkingServiceTest {
         int prevEnd = -1;
         for (int i = 0; i < chunks.size(); i++) {
             var c = chunks.get(i);
-            BeanWrapperImpl chunkBean = new BeanWrapperImpl(c);
-            int chunkNumber = (Integer) chunkBean.getPropertyValue("chunkNumberInChapter");
-            int start = (Integer) chunkBean.getPropertyValue("startCharInChapter");
-            int end = (Integer) chunkBean.getPropertyValue("endCharInChapter");
+            int chunkNumber = c.getChunkNumberInChapter();
+            int start = c.getStartCharInChapter();
+            int end = c.getEndCharInChapter();
             assertThat(chunkNumber).isEqualTo(i + 1);
             assertThat(end).isGreaterThan(start);
             if (i > 0) {
