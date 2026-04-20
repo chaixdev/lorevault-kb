@@ -12,7 +12,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
@@ -61,9 +60,8 @@ class EmbeddingHandlerTest {
         UUID chapterId = UUID.randomUUID();
 
         Chapter chapter = new Chapter();
-        BeanWrapperImpl chapterBean = new BeanWrapperImpl(chapter);
-        chapterBean.setPropertyValue("id", chapterId);
-        chapterBean.setPropertyValue("rawText", "abcdefghijklmnopqrstuvwxyz0123456789");
+        chapter.setId(chapterId);
+        chapter.setRawText("abcdefghijklmnopqrstuvwxyz0123456789");
 
         Scene scene = new Scene(
                 UUID.randomUUID(),
@@ -103,13 +101,13 @@ class EmbeddingHandlerTest {
         ArgumentCaptor<EmbeddingsCompletedEvent> eventCaptor = ArgumentCaptor.forClass(EmbeddingsCompletedEvent.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());
 
-        BeanWrapperImpl eventBean = new BeanWrapperImpl(eventCaptor.getValue());
-        assertThat(eventBean.getPropertyValue("jobId")).isEqualTo(jobId);
-        assertThat(eventBean.getPropertyValue("chapterId")).isEqualTo(chapterId);
-        assertThat(eventBean.getPropertyValue("totalScenes")).isEqualTo(1);
-        assertThat(eventBean.getPropertyValue("totalChunks")).isEqualTo(1);
-        assertThat(eventBean.getPropertyValue("totalEmbeddings")).isEqualTo(1);
-        assertThat(eventBean.getPropertyValue("chapterLength")).isEqualTo(36);
+        EmbeddingsCompletedEvent published = eventCaptor.getValue();
+        assertThat(published.getJobId()).isEqualTo(jobId);
+        assertThat(published.getChapterId()).isEqualTo(chapterId);
+        assertThat(published.getTotalScenes()).isEqualTo(1);
+        assertThat(published.getTotalChunks()).isEqualTo(1);
+        assertThat(published.getTotalEmbeddings()).isEqualTo(1);
+        assertThat(published.getChapterLength()).isEqualTo(36);
 
         verify(ingestionJobService, atLeastOnce()).updateJobStatus(
                 eq(jobId),
@@ -149,11 +147,11 @@ class EmbeddingHandlerTest {
         ArgumentCaptor<IngestionFailedEvent> failureCaptor = ArgumentCaptor.forClass(IngestionFailedEvent.class);
         verify(eventPublisher).publishEvent(failureCaptor.capture());
 
-        BeanWrapperImpl failureBean = new BeanWrapperImpl(failureCaptor.getValue());
-        assertThat(failureBean.getPropertyValue("jobId")).isEqualTo(jobId);
-        assertThat(failureBean.getPropertyValue("chapterId")).isEqualTo(chapterId);
-        assertThat(failureBean.getPropertyValue("failedStage")).isEqualTo("EMBEDDING");
-        assertThat(failureBean.getPropertyValue("errorMessage")).isEqualTo("scene count failed");
+        IngestionFailedEvent failedEvent = failureCaptor.getValue();
+        assertThat(failedEvent.getJobId()).isEqualTo(jobId);
+        assertThat(failedEvent.getChapterId()).isEqualTo(chapterId);
+        assertThat(failedEvent.getFailedStage()).isEqualTo("EMBEDDING");
+        assertThat(failedEvent.getErrorMessage()).isEqualTo("scene count failed");
 
         verify(ingestionJobService).updateJobStatus(
                 eq(jobId),

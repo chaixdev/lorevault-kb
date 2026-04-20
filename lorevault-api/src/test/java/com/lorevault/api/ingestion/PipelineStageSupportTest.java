@@ -6,7 +6,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.UUID;
@@ -42,12 +41,11 @@ class PipelineStageSupportTest {
         verify(eventPublisher).publishEvent(eventCaptor.capture());
 
         IngestionFailedEvent event = eventCaptor.getValue();
-        BeanWrapperImpl eventBean = new BeanWrapperImpl(event);
-        assertThat(eventBean.getPropertyValue("jobId")).isEqualTo(jobId);
-        assertThat(eventBean.getPropertyValue("chapterId")).isEqualTo(chapterId);
-        assertThat(eventBean.getPropertyValue("failedStage")).isEqualTo("EMBEDDING");
-        assertThat(eventBean.getPropertyValue("errorMessage")).isEqualTo("boom");
-        assertThat(eventBean.getPropertyValue("retryable")).isEqualTo(false);
+        assertThat(event.getJobId()).isEqualTo(jobId);
+        assertThat(event.getChapterId()).isEqualTo(chapterId);
+        assertThat(event.getFailedStage()).isEqualTo("EMBEDDING");
+        assertThat(event.getErrorMessage()).isEqualTo("boom");
+        assertThat(event.isRetryable()).isEqualTo(false);
 
         verify(ingestionJobService).updateJobStatus(
                 eq(jobId),

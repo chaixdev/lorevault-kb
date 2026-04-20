@@ -14,7 +14,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
@@ -62,30 +61,26 @@ class ChunkingHandlerTest {
         String chapterText = "Scene one text. Scene two text.";
 
         Chapter chapter = new Chapter();
-        BeanWrapperImpl chapterBean = new BeanWrapperImpl(chapter);
-        chapterBean.setPropertyValue("id", chapterId);
-        chapterBean.setPropertyValue("rawText", chapterText);
+        chapter.setId(chapterId);
+        chapter.setRawText(chapterText);
 
         Scene scene = new Scene(null, null, null, null, null, null, null, null, null, null, null, null);
-        BeanWrapperImpl sceneBean = new BeanWrapperImpl(scene);
-        sceneBean.setPropertyValue("id", sceneId);
-        sceneBean.setPropertyValue("sceneIndex", 0);
-        sceneBean.setPropertyValue("startCharacterOffset", 0L);
-        sceneBean.setPropertyValue("endCharacterOffset", (long) chapterText.length());
+        scene.setId(sceneId);
+        scene.setSceneIndex(0);
+        scene.setStartCharacterOffset(0L);
+        scene.setEndCharacterOffset((long) chapterText.length());
 
         Chunk first = new Chunk(null, null, null, null, null, null, null, null, null, null, null);
-        BeanWrapperImpl firstBean = new BeanWrapperImpl(first);
-        firstBean.setPropertyValue("chunkNumberInChapter", 1);
-        firstBean.setPropertyValue("startCharInChapter", 0);
-        firstBean.setPropertyValue("endCharInChapter", 10);
-        firstBean.setPropertyValue("text", "Scene one ");
+        first.setChunkNumberInChapter(1);
+        first.setStartCharInChapter(0);
+        first.setEndCharInChapter(10);
+        first.setText("Scene one ");
 
         Chunk second = new Chunk(null, null, null, null, null, null, null, null, null, null, null);
-        BeanWrapperImpl secondBean = new BeanWrapperImpl(second);
-        secondBean.setPropertyValue("chunkNumberInChapter", 2);
-        secondBean.setPropertyValue("startCharInChapter", 10);
-        secondBean.setPropertyValue("endCharInChapter", 20);
-        secondBean.setPropertyValue("text", "text. Scene");
+        second.setChunkNumberInChapter(2);
+        second.setStartCharInChapter(10);
+        second.setEndCharInChapter(20);
+        second.setText("text. Scene");
 
         when(chunkRepo.existsForChapterViaScenes(chapterId)).thenReturn(false);
         when(chunkRepo.existsForChapter(chapterId)).thenReturn(false);
@@ -95,9 +90,8 @@ class ChunkingHandlerTest {
                 .thenReturn(List.of(first, second));
         when(chunkRepo.save(any(Chunk.class))).thenAnswer(invocation -> {
             Chunk chunk = invocation.getArgument(0);
-            BeanWrapperImpl chunkBean = new BeanWrapperImpl(chunk);
-            if (chunkBean.getPropertyValue("id") == null) {
-                chunkBean.setPropertyValue("id", UUID.randomUUID());
+            if (chunk.getId() == null) {
+                chunk.setId(UUID.randomUUID());
             }
             return chunk;
         });
@@ -108,11 +102,11 @@ class ChunkingHandlerTest {
         verify(chunkRepo, org.mockito.Mockito.times(2)).save(chunkCaptor.capture());
         List<Chunk> savedChunks = chunkCaptor.getAllValues();
 
-        verify(sceneRepo).linkChunkToScene(eq(sceneId), eq((UUID) new BeanWrapperImpl(savedChunks.get(0)).getPropertyValue("id")), eq(1));
-        verify(sceneRepo).linkChunkToScene(eq(sceneId), eq((UUID) new BeanWrapperImpl(savedChunks.get(1)).getPropertyValue("id")), eq(2));
+        verify(sceneRepo).linkChunkToScene(eq(sceneId), eq(savedChunks.get(0).getId()), eq(1));
+        verify(sceneRepo).linkChunkToScene(eq(sceneId), eq(savedChunks.get(1).getId()), eq(2));
 
         assertThat(savedChunks)
-                .extracting(chunk -> new BeanWrapperImpl(chunk).getPropertyValue("chunkNumberInChapter"))
+                .extracting(Chunk::getChunkNumberInChapter)
                 .containsExactly(1, 2);
     }
 }
