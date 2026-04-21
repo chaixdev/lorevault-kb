@@ -1,15 +1,16 @@
 # Reorganize source packages for better browsability and semantic guidance
 
-**Status:** ACTIVE — Stage 0 and Stage 1 complete. See `stage0-support-and-search-dto-audit.md` for full execution record. Stage 2 not yet started.
+**Status:** ACTIVE — Stage 0 and Stage 1 complete. See `stage0-support-and-search-dto-audit.md` for full execution record. Stage 2 execution approach agreed; implementation not yet started.
 
 **Execution summary:**
 - Stage 0: full classification of all 21 `support` types + all search DTOs. Zero code moves.
-- Stage 1: 4 type moves executed and verified (301 tests pass). `support` shrunk from 21 → 17 types. All remaining types are transport-shaped shared contracts.
+- Stage 1: 5 type-move units executed and verified. `support` now contains only cross-boundary shared contracts.
   - `HashUtils` → `ingestion`
   - `StringSanitizer` → `content`
   - `PublicationCoordinates` → `content`
   - `ErrorResponse` → `web` (with `ErrorResponseFactory` consolidation — inner class retired, factory now produces `web.ErrorResponse`)
-- ErrorResponse consolidation changes are **staged but uncommitted** (working tree has pending changes).
+  - `SpoilerVisibility`, `SeriesProgress`, `UnconfiguredSeriesPolicy` → `search`
+- Verification: `mvn test -pl lorevault-api` passes with 301 tests, 0 failures, 0 errors after Stage 1.
 - Branch: `refactor/staged-package-reorganization-stage0-audit`
 
 ## Summary
@@ -168,6 +169,138 @@ After the narrow boundary-prep pass, use the clarified ownership lines to drive 
 - optional `api` only if a stable shared contracts surface is clearly justified
 
 This stage should be treated as the primary architectural step. It should not wait on broad cosmetic package cleanup.
+
+#### Agreed Stage 2 execution strategy
+
+The current working decision for Stage 2 is:
+
+- create `lorevault-core` as a plain jar containing non-web feature code and runtime support code
+- create `lorevault-web` as the only Spring Boot application module
+- keep the existing Java package root (`com.lorevault.api`) and preserve the current top-level feature split during extraction
+- use a direct one-way dependency `lorevault-web` → `lorevault-core`
+- do **not** create an `api` module during this stage
+
+This keeps the split aligned with the current codebase shape while avoiding premature contract extraction.
+
+#### Agreed package/module ownership for Stage 2
+
+**`lorevault-web` should own:**
+
+- `com.lorevault.api.LoreVaultApiApplication`
+- `com.lorevault.api.web.*`
+- Thymeleaf templates and other UI-facing resources under `src/main/resources/templates/**`
+- runtime-facing resources such as `application.yml` and boot presentation assets like `banner.png`
+- transport/runtime adapter classes that are currently misplaced in core packages
+
+**`lorevault-core` should own:**
+
+- `ai`
+- `config`
+- `content`
+- `health`
+- `ingestion`
+- `library`
+- `search`
+- `support`
+- `timeline`
+- core-consumed resources such as prompts and schema/bootstrap resources
+
+#### Boundary decisions already made for Stage 2
+
+- `ErrorResponse` remains web-owned in `web`
+- `SpoilerVisibility`, `SeriesProgress`, and `UnconfiguredSeriesPolicy` remain feature-owned in `search`
+- current `support` DTOs stay in `core` for this stage even if they are transport-shaped, because existing core services still own and use them directly
+- `AskDtos` and `SemanticSearchDtos` remain in `search` during Stage 2
+- `lorevault-web` may depend directly on core services and core-owned feature contracts during this stage
+
+#### Known boundary leaks to fix during Stage 2
+
+The split plan should explicitly correct the currently known runtime-adapter leaks:
+
+- `JobStatusBroadcaster` should move out of `ingestion` into `web` because it uses `SseEmitter`
+- `SystemHealthIndicator` should move out of `health` into `web` because Actuator exposure is runtime-adapter behavior
+
+These are Stage 2 moves because they materially affect the module seam, not because they improve internal browsability.
+
+#### Resource ownership rule for Stage 2
+
+- `application.yml`, templates, and boot-facing presentation/runtime resources stay in `lorevault-web`
+- prompt files and schema/bootstrap resources move with `lorevault-core`
+- resource movement must be verified by actual classpath loading after the split
+
+#### Initial dependency split sketch for Stage 2
+
+The module split should treat dependency ownership as part of the boundary, not as an afterthought.
+
+**`lorevault-core` should keep dependencies needed for:**
+
+- Spring-managed services and configuration
+- persistence and repository support
+- validation and retry
+- AI clients and orchestration
+- feature-local libraries used by search, ingestion, content, timeline, and library logic
+
+The expected first-pass dependency set for `lorevault-core` is:
+
+- `spring-boot-starter`
+- `spring-boot-starter-data-neo4j`
+- `spring-boot-starter-validation`
+- `spring-retry`
+- `spring-aspects`
+- `spring-ai-openai`
+- `spring-ai-client-chat`
+- `opennlp-tools`
+- `ahocorasick`
+- `lombok`
+
+`lorevault-core` is therefore a **plain jar**, but not a framework-free jar. It remains a Spring-managed engine module; it simply stops being the Boot runtime shell.
+
+**`lorevault-web` should keep dependencies needed for:**
+
+- Spring Boot application startup
+- HTTP controllers and transport adapters
+- Thymeleaf UI rendering
+- actuator exposure and runtime shell concerns
+- OpenAPI / Swagger UI
+
+The expected first-pass dependency set for `lorevault-web` is:
+
+- dependency on `lorevault-core`
+- `spring-boot-starter-web`
+- `spring-boot-starter-thymeleaf`
+- `spring-boot-starter-actuator`
+- `springdoc-openapi-starter-webmvc-ui`
+- `lombok`
+
+#### Dependency decisions already made for Stage 2
+
+- `spring-boot-starter-web` must not remain in `lorevault-core`
+- `spring-boot-starter-thymeleaf` must not remain in `lorevault-core`
+- `springdoc-openapi-starter-webmvc-ui` must not remain in `lorevault-core`
+- `spring-boot-starter-actuator` is treated as web-owned for this split because actuator exposure is part of the runtime shell
+- `spring-boot-starter` is acceptable in `lorevault-core` for the first-pass split because it minimizes churn while keeping core Spring-managed
+
+This dependency split is intentionally pragmatic. It prefers a clean runtime boundary over premature narrowing of every Spring dependency to the smallest possible artifact set.
+
+#### Test placement rule for Stage 2
+
+- MVC slice tests and UI/controller tests belong in `lorevault-web`
+- focused core service and repository tests belong in `lorevault-core`
+- full-context `@SpringBootTest` coverage should remain in `lorevault-web` initially because the Boot application lives there
+
+#### Safe execution order for Stage 2
+
+1. Add `lorevault-core` and `lorevault-web` modules to the reactor and establish one-way dependency from web to core.
+2. Move non-web source and core-owned resources into `lorevault-core` without renaming packages.
+3. Move Boot application, web source, and web-owned resources into `lorevault-web`.
+4. Fix known boundary leaks (`JobStatusBroadcaster`, `SystemHealthIndicator`) and any compile-time dependency violations exposed by the split.
+5. Re-home tests by runtime boundary only after the production split compiles cleanly.
+
+#### Stage 2 risk notes
+
+- The biggest extraction risk is trying to redesign service signatures while moving modules. Existing core services already use current feature DTOs directly, and changing those signatures during Stage 2 would add avoidable risk.
+- The other major risk is silent resource breakage: prompts, schema/bootstrap files, and runtime config must be verified after the move rather than assumed to load correctly from the new module layout.
+- A separate `api` module remains deferred until the repository has at least two genuine consumers of the same shared contract surface.
 
 ### Stage 3 — Post-split browsability cleanup inside stable modules
 
