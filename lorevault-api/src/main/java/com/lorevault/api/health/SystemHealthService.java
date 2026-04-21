@@ -4,8 +4,9 @@ import com.lorevault.api.config.LoreVaultModelsProperties;
 import com.lorevault.api.health.HealthMetricsCollector;
 import com.lorevault.api.health.RetryableHealthChecker;
 import com.lorevault.api.health.ModelHealthValidator;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.neo4j.driver.Driver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -30,9 +31,9 @@ import java.util.Map;
  * maintaining clear separation from configuration services like ModelRegistryService.
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class SystemHealthService {
+
+    private static final Logger log = LoggerFactory.getLogger(SystemHealthService.class);
 
     private final RetryableHealthChecker retryableHealthChecker;
     private final ModelHealthValidator modelHealthValidator;
@@ -44,6 +45,8 @@ public class SystemHealthService {
     private final ChatClient nlpSmallChatClient;
     @Qualifier("nlpBig")
     private final ChatClient nlpBigChatClient;
+
+    private final Driver neo4jDriver;
     
     private final LoreVaultModelsProperties modelsProperties;
     private final ModelRegistryService modelRegistryService;
@@ -67,6 +70,30 @@ public class SystemHealthService {
 
     private volatile EmbeddingHealthStatus lastEmbeddingStatus = 
         new EmbeddingHealthStatus(true, "SKIPPED", 0, 0);
+
+    public SystemHealthService(
+        RetryableHealthChecker retryableHealthChecker,
+        ModelHealthValidator modelHealthValidator,
+        HealthMetricsCollector healthMetricsCollector,
+        @Qualifier("embeddingModel") EmbeddingModel embeddingModel,
+        @Qualifier("nlpSmall") ChatClient nlpSmallChatClient,
+        @Qualifier("nlpBig") ChatClient nlpBigChatClient,
+        Driver neo4jDriver,
+        LoreVaultModelsProperties modelsProperties,
+        ModelRegistryService modelRegistryService,
+        Environment environment
+    ) {
+        this.retryableHealthChecker = retryableHealthChecker;
+        this.modelHealthValidator = modelHealthValidator;
+        this.healthMetricsCollector = healthMetricsCollector;
+        this.embeddingModel = embeddingModel;
+        this.nlpSmallChatClient = nlpSmallChatClient;
+        this.nlpBigChatClient = nlpBigChatClient;
+        this.neo4jDriver = neo4jDriver;
+        this.modelsProperties = modelsProperties;
+        this.modelRegistryService = modelRegistryService;
+        this.environment = environment;
+    }
 
     /**
      * Performs comprehensive system health check on startup.
@@ -95,6 +122,7 @@ public class SystemHealthService {
         var llmHealth = checkLlmHealth();
         var embeddingHealth = checkEmbeddingHealth();
         var chatSlotsHealth = checkChatSlotsHealth();
+        var databaseHealth = checkDatabaseHealth();
 
         chatSlotsHealth.forEach((slot, status) -> {
             if (status.isHealthy()) {
@@ -114,11 +142,18 @@ public class SystemHealthService {
                     status.getAttemptsUsed());
             }
         });
+
+        if (databaseHealth.healthy()) {
+            log.info("✅ Startup database connectivity healthy: {} ms", databaseHealth.durationMs());
+        } else {
+            log.error("❌ Startup database connectivity unhealthy: {}", databaseHealth.error());
+        }
         
         long totalMs = Duration.between(overallStart, Instant.now()).toMillis();
         
         boolean allHealthy = llmHealth.isHealthy() && 
                             embeddingHealth.healthy() &&
+                            databaseHealth.healthy() &&
                             chatSlotsHealth.values().stream().allMatch(HealthMetricsCollector.ModelHealthStatus::isHealthy);
         
         if (allHealthy) {
@@ -127,6 +162,7 @@ public class SystemHealthService {
             log.error("❌ System health check found issues ({} ms total)", totalMs);
             if (!llmHealth.isHealthy()) log.error("  - LLM health: {}", llmHealth.getErrorMessage());
             if (!embeddingHealth.healthy()) log.error("  - Embedding health: {}", embeddingHealth.error());
+            if (!databaseHealth.healthy()) log.error("  - Database health: {}", databaseHealth.error());
             chatSlotsHealth.forEach((slot, status) -> {
                 if (!status.isHealthy()) {
                     log.error("  - Chat slot '{}' health: {}", slot, status.getErrorMessage());
@@ -199,12 +235,14 @@ public class SystemHealthService {
         var llmHealth = checkLlmHealth();
         var embeddingHealth = getLastEmbeddingStatus(); // Use cached to avoid redundant calls
         var chatSlotsHealth = checkChatSlotsHealth();
+        var databaseHealth = checkDatabaseHealth();
         
         boolean overallHealthy = llmHealth.isHealthy() && 
                                 embeddingHealth.healthy() &&
+                                databaseHealth.healthy() &&
                                 chatSlotsHealth.values().stream().allMatch(HealthMetricsCollector.ModelHealthStatus::isHealthy);
         
-        return new SystemHealthResponse(overallHealthy, llmHealth, embeddingHealth, chatSlotsHealth);
+        return new SystemHealthResponse(overallHealthy, llmHealth, embeddingHealth, chatSlotsHealth, databaseHealth);
     }
 
     /**
@@ -219,6 +257,18 @@ public class SystemHealthService {
      */
     public boolean isLlmServiceHealthy() {
         return checkLlmHealth().isHealthy();
+    }
+
+    public DatabaseHealthStatus checkDatabaseHealth() {
+        Instant start = Instant.now();
+        try {
+            neo4jDriver.verifyConnectivity();
+            long ms = Duration.between(start, Instant.now()).toMillis();
+            return new DatabaseHealthStatus(true, null, ms);
+        } catch (Exception e) {
+            long ms = Duration.between(start, Instant.now()).toMillis();
+            return new DatabaseHealthStatus(false, e.getMessage(), ms);
+        }
     }
 
     // Private helper methods
@@ -296,10 +346,13 @@ public class SystemHealthService {
 
     public record EmbeddingHealthStatus(boolean healthy, String error, long durationMs, int dimension) {}
 
+    public record DatabaseHealthStatus(boolean healthy, String error, long durationMs) {}
+
     public record SystemHealthResponse(
         boolean isOverallHealthy,
         HealthMetricsCollector.ModelHealthStatus llmHealth,
         EmbeddingHealthStatus embeddingHealth,
-        Map<String, HealthMetricsCollector.ModelHealthStatus> chatSlotsHealth
+        Map<String, HealthMetricsCollector.ModelHealthStatus> chatSlotsHealth,
+        DatabaseHealthStatus databaseHealth
     ) {}
 }

@@ -20,16 +20,17 @@ class SystemHealthIndicatorTest {
 
         var llmHealth = new HealthMetricsCollector.ModelHealthStatus(true, "gemini-2.5-flash-lite", "OK", 10, 10, 1);
         var emb = new SystemHealthService.EmbeddingHealthStatus(false, "dim mismatch", 5, 0);
+        var db = new SystemHealthService.DatabaseHealthStatus(false, "db down", 3);
         var slots = Map.of(
                 "nlp-small", new HealthMetricsCollector.ModelHealthStatus(true, "A", "OK", 8, 8, 1),
                 "nlp-big", new HealthMetricsCollector.ModelHealthStatus(false, "B", "timeout", 60, 60, 2)
         );
-        var system = new SystemHealthService.SystemHealthResponse(false, llmHealth, emb, slots);
+        var system = new SystemHealthService.SystemHealthResponse(false, llmHealth, emb, slots, db);
         when(svc.getOverallSystemHealth()).thenReturn(system);
 
         Health h = indicator.health();
         assertThat(h.getStatus().getCode()).isEqualTo("DOWN");
-    assertThat(h.getDetails()).containsKeys("llm", "embeddings");
+    assertThat(h.getDetails()).containsKeys("llm", "embeddings", "database");
 
     @SuppressWarnings("unchecked")
     Map<String, Object> llm = (Map<String, Object>) h.getDetails().get("llm");
@@ -39,5 +40,10 @@ class SystemHealthIndicatorTest {
     Map<String, Object> embeddings = (Map<String, Object>) h.getDetails().get("embeddings");
     assertThat(embeddings.get("healthy")).isEqualTo(false);
     assertThat(embeddings.get("error")).isEqualTo("dim mismatch");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> database = (Map<String, Object>) h.getDetails().get("database");
+    assertThat(database.get("healthy")).isEqualTo(false);
+    assertThat(database.get("error")).isEqualTo("db down");
     }
 }

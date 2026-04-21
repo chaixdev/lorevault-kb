@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.neo4j.driver.Driver;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -51,6 +52,9 @@ class SystemHealthServiceTest {
     @Mock
     @Qualifier("nlpBig")
     private ChatClient nlpBigChatClient;
+
+    @Mock
+    private Driver neo4jDriver;
 
     @Mock
     private LoreVaultModelsProperties modelsProperties;
@@ -168,6 +172,7 @@ class SystemHealthServiceTest {
         // Given - all subsystems healthy
         mockHealthyLlm();
         mockHealthyEmbedding();
+        mockHealthyDatabase();
         
         // When
         var result = service.getOverallSystemHealth();
@@ -176,6 +181,7 @@ class SystemHealthServiceTest {
         assertThat(result.isOverallHealthy()).isTrue();
         assertThat(result.llmHealth().isHealthy()).isTrue();
         assertThat(result.embeddingHealth().healthy()).isTrue();
+        assertThat(result.databaseHealth().healthy()).isTrue();
         assertThat(result.chatSlotsHealth()).hasSize(2);
     }
 
@@ -184,6 +190,7 @@ class SystemHealthServiceTest {
     void shouldReportOverallUnhealthyWhenEmbeddingFails() {
         // Given - LLM healthy but embedding fails
         mockHealthyLlm();
+        mockHealthyDatabase();
         setLastEmbeddingStatusToUnhealthy();
 
         // When
@@ -193,6 +200,20 @@ class SystemHealthServiceTest {
         assertThat(result.isOverallHealthy()).isFalse();
         assertThat(result.llmHealth().isHealthy()).isTrue();
         assertThat(result.embeddingHealth().healthy()).isFalse();
+    }
+
+    @Test
+    @DisplayName("should report overall unhealthy when database connectivity fails")
+    void shouldReportOverallUnhealthyWhenDatabaseFails() {
+        mockHealthyLlm();
+        mockHealthyEmbedding();
+        doThrow(new RuntimeException("neo4j unavailable")).when(neo4jDriver).verifyConnectivity();
+
+        var result = service.getOverallSystemHealth();
+
+        assertThat(result.isOverallHealthy()).isFalse();
+        assertThat(result.databaseHealth().healthy()).isFalse();
+        assertThat(result.databaseHealth().error()).contains("neo4j unavailable");
     }
 
     @Test
@@ -216,6 +237,7 @@ class SystemHealthServiceTest {
         // Given
         mockHealthyLlm();
         mockHealthyEmbedding();
+        mockHealthyDatabase();
         // Override global test property to allow startup health check to run in this unit test
         ReflectionTestUtils.setField(service, "startupHealthCheckEnabled", true);
 
@@ -302,6 +324,10 @@ class SystemHealthServiceTest {
         float[] testVector = new float[384];
         lenient().when(embeddingModel.embed(anyString())).thenReturn(testVector);
         lenient().when(embeddingModel.dimensions()).thenReturn(384);
+    }
+
+    private void mockHealthyDatabase() {
+        doNothing().when(neo4jDriver).verifyConnectivity();
     }
 
     private void setLastEmbeddingStatusToUnhealthy() {

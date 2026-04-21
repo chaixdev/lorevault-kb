@@ -1,7 +1,7 @@
 package com.lorevault.api.health;
 
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -13,12 +13,16 @@ import java.util.Map;
  * Renamed from LlmModelInfoService to support broader model types (LLM, embedding, etc.).
  */
 @Service
-@Slf4j
 public class ModelRegistryService {
 
-    @Getter
+    private static final Logger log = LoggerFactory.getLogger(ModelRegistryService.class);
+
     @Value("${lorevault.ai.models.nlp-big.model:unknown}")
     private String currentModelId;
+
+    public String getCurrentModelId() {
+        return currentModelId;
+    }
 
     // Static mapping of model IDs to human-readable names
     private static final Map<String, String> MODEL_NAME_MAPPING = Map.of(

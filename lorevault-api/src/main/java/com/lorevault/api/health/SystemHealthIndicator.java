@@ -2,7 +2,6 @@ package com.lorevault.api.health;
 
 import com.lorevault.api.health.SystemHealthService;
 import com.lorevault.api.health.HealthMetricsCollector;
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.context.annotation.Primary;
@@ -17,10 +16,13 @@ import java.util.Map;
  */
 @Component
 @Primary
-@RequiredArgsConstructor
 public class SystemHealthIndicator implements HealthIndicator {
 
     private final SystemHealthService systemHealthService;
+
+    public SystemHealthIndicator(SystemHealthService systemHealthService) {
+        this.systemHealthService = systemHealthService;
+    }
 
     @Override
     public Health health() {
@@ -52,6 +54,13 @@ public class SystemHealthIndicator implements HealthIndicator {
         }
         llm.put("slots", slots);
         details.put("llm", llm);
+
+        var db = system.databaseHealth();
+        Map<String, Object> database = new HashMap<>();
+        database.put("healthy", db.healthy());
+        database.put("durationMs", db.durationMs());
+        if (!db.healthy() && db.error() != null) database.put("error", db.error());
+        details.put("database", database);
 
         if (system.isOverallHealthy()) {
             return Health.up().withDetails(details).build();
