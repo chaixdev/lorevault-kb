@@ -437,7 +437,8 @@ That makes this less a pure scene-linking problem and more a future **event mode
 
 ## 13. Related Docs
 
-- `../../planning/temporal-compatibility-and-coarsening-for-ambiguity-handling.md`
+- `../../rules/temporal-relation-semantics.md`
+- `../../adr/010-practical-allen-relation-usage.md`
 - `../../concepts/event-dag.md`
 - `../../concepts/Narrative event DAG.md`
 - `../../concepts/event-model.md`
