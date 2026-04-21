@@ -72,7 +72,11 @@ public class SceneDetectionService {
         try {
             return detectScenesWithRetry(jobId, chapterId, chapterText, null);
         } catch (Exception e) {
-            log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage(), e);
+            if (isExpectedRetryableSegmentationFailure(e)) {
+                log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage());
+            } else {
+                log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage(), e);
+            }
             throw new RuntimeException("Scene detection failed: " + e.getMessage(), e);
         }
     }
@@ -95,7 +99,11 @@ public class SceneDetectionService {
         try {
             return detectScenesWithRetry(jobId, chapterId, chapterText, chapter);
         } catch (Exception e) {
-            log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage(), e);
+            if (isExpectedRetryableSegmentationFailure(e)) {
+                log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage());
+            } else {
+                log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage(), e);
+            }
             throw new RuntimeException("Scene detection failed: " + e.getMessage(), e);
         }
     }
@@ -229,10 +237,37 @@ public class SceneDetectionService {
             );
 
         } catch (Exception e) {
-            // Log the specific stage that failed for debugging with full stack trace
-            log.error("Triad-based scene detection pipeline failed: {}", e.getMessage(), e);
+            if (isExpectedRetryableSegmentationFailure(e)) {
+                log.warn("Triad-based scene detection pipeline failed: {}", e.getMessage());
+            } else {
+                log.error("Triad-based scene detection pipeline failed: {}", e.getMessage(), e);
+            }
             throw e; // Re-throw to trigger retry
         }
+    }
+
+    private boolean isExpectedRetryableSegmentationFailure(Throwable exception) {
+        Throwable current = exception;
+        while (current != null) {
+            if (current instanceof RuntimeException && isKnownRetryableMessage(current.getMessage())) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private boolean isKnownRetryableMessage(String message) {
+        if (message == null) {
+            return false;
+        }
+        return message.contains("Chapter segmentation parsing returned empty results")
+                || message.contains("Scene coordinate localization returned empty results")
+                || message.contains("Scene coordinate localization dropped scenes")
+                || message.contains("Segmented fallback produced no localizable scenes")
+                || message.contains("produced no localizable scenes")
+                || message.contains("Scene detection failed with retry:")
+                || message.contains("Chapter segmentation failed after");
     }
 
     private Chapter createTriadAnalysisChapter(UUID chapterId, String chapterText, Chapter chapterMetadata) {

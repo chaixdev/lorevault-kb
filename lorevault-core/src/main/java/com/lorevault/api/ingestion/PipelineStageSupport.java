@@ -1,9 +1,5 @@
 package com.lorevault.api.ingestion;
 
-import com.lorevault.api.ingestion.IngestionFailure;
-import com.lorevault.api.ingestion.IngestionStatus;
-import com.lorevault.api.ingestion.IngestionFailedEvent;
-import com.lorevault.api.ingestion.IngestionJobService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -58,13 +54,20 @@ public class PipelineStageSupport {
         try {
             return work.get();
         } catch (Exception e) {
-            log.error("Stage {} failed for job={} chapter={}", stage, jobId, chapterId, e);
             boolean retryable = false;
             try {
                 retryable = isRetryable != null && Boolean.TRUE.equals(isRetryable.apply(e));
             } catch (Exception classifierError) {
                 log.debug("Failure classifier threw for stage {} job={} chapter={}: {}",
                         stage, jobId, chapterId, classifierError.getMessage());
+            }
+
+            if (retryable) {
+                log.warn("Stage {} failed for job={} chapter={}: {}", stage, jobId, chapterId, safeMessage(e));
+                log.debug("Stage {} retryable failure details for job={} chapter={}", stage, jobId, chapterId, e);
+            } else {
+                log.error("Stage {} failed for job={} chapter={}: {}", stage, jobId, chapterId, safeMessage(e));
+                log.debug("Stage {} failure details for job={} chapter={}", stage, jobId, chapterId, e);
             }
 
             eventPublisher.publishEvent(new IngestionFailedEvent(

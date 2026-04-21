@@ -5,13 +5,10 @@ import com.lorevault.api.support.SubmitChapterResponse;
 import com.lorevault.api.support.JobStatusResponse;
 import com.lorevault.api.support.JobListResponse;
 import com.lorevault.api.content.PublicationCoordinates;
-import com.lorevault.api.ingestion.ChapterIngestionEvent;
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Book;
-import com.lorevault.api.ingestion.IngestionJob;
 import com.lorevault.api.content.BookGraphRepository;
 import com.lorevault.api.content.ChapterGraphRepository;
-import com.lorevault.api.ingestion.IngestionJobGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,7 +82,8 @@ public class IngestionService {
             }
             return supplier.get();
         } catch (Exception e) {
-            log.warn("Best-effort lookup failed ({}): {}", operation, e.getMessage(), e);
+            log.warn("Best-effort lookup failed ({}): {}", operation, e.getMessage());
+            log.debug("Best-effort lookup failure details ({}):", operation, e);
             return fallback;
         }
     }
