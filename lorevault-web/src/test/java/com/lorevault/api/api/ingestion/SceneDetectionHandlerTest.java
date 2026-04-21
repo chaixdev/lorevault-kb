@@ -2,6 +2,7 @@ package com.lorevault.api.ingestion;
 
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
+import com.lorevault.api.ai.SceneLocalizationException;
 import com.lorevault.api.ai.SceneWithCoordinates;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
@@ -212,6 +213,35 @@ class SceneDetectionHandlerTest {
 
             verify(ingestionJobService).updateJobStatus(eq(jobId), eq(IngestionStatus.FAILED), anyString(), any());
             verify(eventPublisher, never()).publishEvent(any(ScenesDetectedEvent.class));
+        }
+
+        @Test
+        @DisplayName("Should mark scene localization mismatch as retryable handled failure")
+        void handleChapterPersisted_sceneLocalizationMismatch_emitsRetryableFailure() {
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneDetectionService.detectScenesInChapter(any(), any()))
+                    .thenThrow(new SceneLocalizationException(
+                            IngestionFailure.builder(
+                                            "SCENE_LOCALIZATION_ANCHOR_NOT_FOUND",
+                                            "Failed to localize scene 4 because start anchor 'anchor' was not found"
+                                    )
+                                    .exceptionType(SceneLocalizationException.class.getSimpleName())
+                                    .stage("SCENE_SEGMENTATION")
+                                    .detail("sceneIndex", 4)
+                                    .detail("startAnchor", "anchor")
+                                    .build()
+                    ));
+
+            handler.handleChapterIngestion(testEvent);
+
+            ArgumentCaptor<IngestionFailedEvent> eventCaptor = ArgumentCaptor.forClass(IngestionFailedEvent.class);
+            verify(eventPublisher).publishEvent(eventCaptor.capture());
+
+            IngestionFailedEvent failedEvent = eventCaptor.getValue();
+            assertThat(failedEvent.getJobId()).isEqualTo(jobId);
+            assertThat(failedEvent.getFailedStage()).isEqualTo("SCENE_DETECTION");
+            assertThat(failedEvent.isRetryable()).isTrue();
         }
 
         @Test

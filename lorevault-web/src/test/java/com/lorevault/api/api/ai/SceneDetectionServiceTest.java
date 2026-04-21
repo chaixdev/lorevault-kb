@@ -198,6 +198,45 @@ class SceneDetectionServiceTest {
     }
 
     @Test
+    @DisplayName("Should preserve scene localization business failure after retries are exhausted")
+    void shouldPreserveSceneLocalizationExceptionAfterRetryExhaustion() {
+        UUID jobId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+        String chapterText = "Short text.";
+
+        SceneDetectionClient.SegmentationBudgetCheck admission = new SceneDetectionClient.SegmentationBudgetCheck(
+                "nlp-small", 128000, 89600, 10, 10, 20, true
+        );
+
+        when(sceneDetectionClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
+        when(sceneDetectionClient.detectChapterSegmentation(eq(jobId), eq(chapterText))).thenReturn(
+                "<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>"
+        );
+        when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt()))
+                .thenReturn(List.of(new SceneDetectionResult(4, "anchor", "ctx", "", "", "", "")));
+
+        SceneLocalizationException failure = new SceneLocalizationException(
+                com.lorevault.api.ingestion.IngestionFailure.builder(
+                                "SCENE_LOCALIZATION_ANCHOR_NOT_FOUND",
+                                "Failed to localize scene 4 because start anchor 'anchor' was not found"
+                        )
+                        .exceptionType(SceneLocalizationException.class.getSimpleName())
+                        .stage("SCENE_SEGMENTATION")
+                        .detail("sceneIndex", 4)
+                        .detail("startAnchor", "anchor")
+                        .build()
+        );
+
+        when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any())).thenThrow(failure);
+
+        assertThatThrownBy(() -> sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText))
+                .isInstanceOf(SceneLocalizationException.class)
+                .hasMessageContaining("start anchor 'anchor' was not found");
+
+        verify(sceneDetectionClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText));
+    }
+
+    @Test
     @DisplayName("Should preserve chapter metadata for triad analysis")
     void shouldPreserveChapterMetadataForTriadAnalysis() {
         UUID jobId = UUID.randomUUID();
