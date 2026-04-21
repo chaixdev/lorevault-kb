@@ -69,7 +69,7 @@ start_background() {
 
   (
     cd "$ROOT_DIR"
-    exec mvn -pl lorevault-api spring-boot:run -Dspring-boot.run.profiles="$RUN_PROFILE"
+    exec mvn -pl lorevault-web spring-boot:run -Dspring-boot.run.profiles="$RUN_PROFILE"
   ) >>"$LOG_FILE" 2>&1 &
 
   echo "$!" >"$PID_FILE"
@@ -81,7 +81,7 @@ run_foreground() {
   load_env
 
   cd "$ROOT_DIR"
-  exec mvn -pl lorevault-api spring-boot:run -Dspring-boot.run.profiles="$RUN_PROFILE"
+  exec mvn -pl lorevault-web spring-boot:run -Dspring-boot.run.profiles="$RUN_PROFILE"
 }
 
 wait_for_ready() {

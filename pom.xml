@@ -31,7 +31,8 @@
     </properties>
 
     <modules>
-        <module>lorevault-api</module>
+        <module>lorevault-core</module>
+        <module>lorevault-web</module>
     </modules>
 
     <dependencyManagement>

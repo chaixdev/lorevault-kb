@@ -12,9 +12,9 @@ BOOK_TITLE="The Kevin Jenkins Experience"
 BOOK_NUMBER=0
 
 CHAPTER_FILES=(
-  "$ROOT_DIR/lorevault-api/src/test/resources/sample-chapters/000_deathworlders - The Kevin Jenkins Experience.txt"
-  "$ROOT_DIR/lorevault-api/src/test/resources/sample-chapters/005_reddit-Hambone3110 - Run, little monster.txt"
-  "$ROOT_DIR/lorevault-api/src/test/resources/sample-chapters/007_reddit-Hambone3110 - Aftermath.txt"
+  "$ROOT_DIR/lorevault-web/src/test/resources/sample-chapters/000_deathworlders - The Kevin Jenkins Experience.txt"
+  "$ROOT_DIR/lorevault-web/src/test/resources/sample-chapters/005_reddit-Hambone3110 - Run, little monster.txt"
+  "$ROOT_DIR/lorevault-web/src/test/resources/sample-chapters/007_reddit-Hambone3110 - Aftermath.txt"
 )
 
 require_command() {
