@@ -6,6 +6,7 @@ import com.lorevault.api.ai.SceneDetectionResult;
 import com.lorevault.api.ai.SceneWithCoordinates;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
+import com.lorevault.api.ingestion.IngestionFailure;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -239,11 +240,7 @@ public class SceneProcessingService {
                         beforePosition);
 
                 if (startPos == -1) {
-                    throw new RuntimeException(String.format(
-                            "Failed to localize scene %d because start anchor '%s' was not found",
-                            result.sceneIndex(),
-                            result.startAnchor()
-                    ));
+                    throw sceneAnchorMismatch(result.sceneIndex(), result.startAnchor());
                 }
 
                 long endPos;
@@ -269,19 +266,33 @@ public class SceneProcessingService {
                     log.debug("Localized scene {}: start={}, end={}, length={}",
                             result.sceneIndex(), startPos, endPos, endPos - startPos);
                 } else {
-                    throw new RuntimeException(String.format(
-                            "Failed to localize scene %d: invalid bounds startPos=%d, endPos=%d",
+                    throw sceneLocalizationFailure(
+                            "SCENE_LOCALIZATION_INVALID_BOUNDS",
+                            String.format(
+                                    "Failed to localize scene %d: invalid bounds startPos=%d, endPos=%d",
+                                    result.sceneIndex(),
+                                    startPos,
+                                    endPos
+                            ),
                             result.sceneIndex(),
-                            startPos,
-                            endPos
-                    ));
+                            result.startAnchor(),
+                            null
+                    );
                 }
+            } catch (SceneLocalizationException e) {
+                throw e;
             } catch (Exception e) {
-                throw new RuntimeException(String.format(
-                        "Error localizing scene %d: %s",
+                throw sceneLocalizationFailure(
+                        "SCENE_LOCALIZATION_FAILED",
+                        String.format(
+                                "Error localizing scene %d: %s",
+                                result.sceneIndex(),
+                                e.getMessage()
+                        ),
                         result.sceneIndex(),
-                        e.getMessage()
-                ), e);
+                        result.startAnchor(),
+                        e
+                );
             }
         }
 
@@ -290,6 +301,43 @@ public class SceneProcessingService {
         log.debug("Successfully localized {} out of {} scenes", coordinatedScenes.size(), aiResults.size());
 
         return coordinatedScenes;
+    }
+
+    private SceneLocalizationException sceneAnchorMismatch(int sceneIndex, String startAnchor) {
+        return sceneLocalizationFailure(
+                "SCENE_LOCALIZATION_ANCHOR_NOT_FOUND",
+                String.format(
+                        "Failed to localize scene %d because start anchor '%s' was not found",
+                        sceneIndex,
+                        startAnchor
+                ),
+                sceneIndex,
+                startAnchor,
+                null
+        );
+    }
+
+    private SceneLocalizationException sceneLocalizationFailure(
+            String code,
+            String message,
+            int sceneIndex,
+            String startAnchor,
+            Throwable cause
+    ) {
+        IngestionFailure failure = IngestionFailure.builder(code, message)
+                .exceptionType(SceneLocalizationException.class.getSimpleName())
+                .stage("SCENE_SEGMENTATION")
+                .detail("sceneIndex", sceneIndex)
+                .detail("startAnchor", anchorPreview(startAnchor))
+                .build();
+        return cause == null ? new SceneLocalizationException(failure) : new SceneLocalizationException(failure, cause);
+    }
+
+    private String anchorPreview(String anchor) {
+        if (anchor == null) {
+            return null;
+        }
+        return anchor.length() <= 160 ? anchor : anchor.substring(0, 157) + "...";
     }
 
     // =============================================================================
