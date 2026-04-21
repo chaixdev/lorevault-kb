@@ -4,6 +4,8 @@ This directory contains contributor guidance and durable rules.
 
 Rules docs capture coding preferences, documentation conventions, code hygiene expectations, and repeatable guidance that should shape future work across the repository.
 
+Rules should be self-contained. They may link to other rules, ADRs, or patterns when that improves canonical guidance, but they should not depend on planning or brainstorm material.
+
 ## Use This Folder For
 
 - coding rules and architectural preferences
@@ -19,6 +21,8 @@ Rules docs capture coding preferences, documentation conventions, code hygiene e
 - historical refactor logs
 
 Rules should be short, opinionated, and easy to apply repeatedly.
+
+If a rule needs rationale or mechanism context that only exists in exploratory docs, promote the necessary truth into canonical docs rather than linking outward.
 
 ## Current Rules
 

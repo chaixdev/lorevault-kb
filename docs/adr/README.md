@@ -4,6 +4,8 @@ This directory contains accepted architectural decisions.
 
 ADRs document moments where LoreVault reached a real fork in the road, chose one path, and wants to preserve the reasoning behind that choice.
 
+ADRs should be self-contained. They may link to other ADRs, rules, or patterns when that adds useful canonical context, but they should not depend on planning or brainstorm material.
+
 ## ADRs Are For
 
 - recording decisions that were actually made
@@ -17,6 +19,8 @@ ADRs document moments where LoreVault reached a real fork in the road, chose one
 - implementation walkthroughs
 - speculative design sketches
 - current mechanism explanations that belong in `../patterns/`
+
+If an ADR needs context that currently lives only in exploratory docs, promote the necessary truth into canonical docs first instead of linking outward.
 
 ## Suggested Shape
 
