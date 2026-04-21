@@ -124,4 +124,4 @@ Use these as the baseline pattern to extend rather than inventing ad hoc wrapper
 ## Related Work
 
 - The scene-localization anchor-mismatch path is a concrete example of this rule.
-- Broad audit work for similar cases is tracked under planning, not in this rules doc.
+- Similar future audit work should follow this rule rather than expanding the rule into ticket tracking.
