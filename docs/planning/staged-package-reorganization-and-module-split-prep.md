@@ -179,7 +179,6 @@ At that point, cleanup becomes less likely to be undone by later architectural m
 
 ## Open Questions
 
-- Which subpackage vocabulary should become the default across features: `model`, `service`, `repository`, `dto`, `event`, `handler`, `client`, `config`, and similar?
 - Which packages should remain intentionally flat even after review?
 - Should feature-specific request and response models move out of `support` and live closer to their owning feature or web area?
 - How much repository naming standardization is desirable before package moves begin?
@@ -188,6 +187,105 @@ At that point, cleanup becomes less likely to be undone by later architectural m
 - Which existing support types are truly shareable contracts versus internal coupling artifacts that should stay with `core`?
 - Should the eventual `api` module exist at all, or should shared contract extraction stop at a narrower set of DTOs?
 - How much of `ingestion` should be reorganized before module extraction versus only after `core` exists as a stable home?
+
+## Code Organization Guidance
+
+This section records the agreed internal vocabulary and structural rules to apply when placing new code and when deciding what to move or split during each stage.
+
+### Canonical subpackage vocabulary
+
+When a feature package grows beyond roughly 10–15 public types, or when it clearly mixes transport concerns with domain or infrastructure concerns, use this vocabulary to introduce subpackages:
+
+| Subpackage | What belongs there |
+|---|---|
+| `web.command` | HTTP command controllers, request models, response shaping, validation, file extraction |
+| `web.query` | HTTP query controllers, read-path request and response models |
+| `web.ui` | Server-side UI controllers, Thymeleaf view models, form objects |
+| `application` | Orchestration services, coordinators, pipeline handlers, use-case services |
+| `domain` | Core domain models, domain-specific rules, value objects |
+| `infrastructure` | Repository implementations, graph clients, AI clients, external service adapters |
+
+The existing `web.command`, `web.query`, and `web.ui` split already matches this vocabulary and should be preserved and strengthened rather than replaced.
+
+### Allowed dependency direction
+
+Dependencies must flow in one direction only:
+
+```
+web → application → domain
+infrastructure → domain (implements interfaces defined in domain or application)
+```
+
+`web` must never import from `infrastructure` directly. `domain` must never import from `web` or `infrastructure`. Violation of this direction is a package boundary smell, not just a style issue.
+
+### Type ownership rule
+
+Every type must have a single owning feature package. A type that cannot be assigned to one feature is a shared contract candidate — it belongs in a minimal shared area, not a catch-all like `support`. Types placed in `support` should be evaluated against: does any two distinct features genuinely need this, or is it internal coupling disguised as sharing?
+
+### Naming vocabulary
+
+Use these suffixes consistently. Introducing a new pattern requires an explicit decision.
+
+| Suffix | Meaning |
+|---|---|
+| `*Controller` | HTTP entry point, command or query |
+| `*Service` | Single-feature orchestration or business logic |
+| `*Coordinator` | Multi-branch or multi-stage orchestration (reserved for genuinely complex fan-in/fan-out) |
+| `*Handler` | Pipeline stage listener, reacts to one event type |
+| `*Event` | Internal pipeline event |
+| `*Repository` | Data access interface |
+| `*GraphRepository` | Neo4j-specific repository (existing convention — preserve until standardization pass) |
+| `*ReadRepository` | Query-only repository split (use when read/write separation is actively needed) |
+
+Avoid introducing new `*OrchestrationService` names — use `*Coordinator` for fan-in cases and `*Service` for everything else.
+
+### DTO placement rule
+
+- DTOs consumed and produced only by one feature area live in that feature area.
+- DTOs consumed by both `web` and `core` are shared contract candidates — they belong in a minimal shared area or, if a future `api` module exists, in that module.
+- Prefer duplication over the wrong abstraction. Two nearly identical DTOs in two features is better than a shared DTO that creates a hidden coupling channel.
+- Transport DTOs (HTTP request/response shapes) must not be used inside `application` or `domain` logic — pass domain primitives or dedicated application-layer types instead.
+
+### Repository naming guidance
+
+The codebase currently uses `*GraphRepository`, `*ReadRepository`, and `*WriteRepository` with no clear rule. Until a naming standardization pass is explicitly scoped, do not introduce additional naming patterns. New repositories should follow `*GraphRepository` as the default.
+
+### Stage exit criteria
+
+Each stage has binary pass/fail conditions. A stage is complete only when all criteria are met.
+
+**Stage 0 exit criteria:**
+- Every type in `support` is classified as: web-owned transport, core-owned domain or orchestration, shared contract, or ambiguous/deferred.
+- Every search DTO is classified as: web-owned or core-owned.
+- Error-response shaping types have a designated owner.
+- No new types have been moved — this stage is audit-only.
+
+**Stage 1 exit criteria:**
+- `support` contains only types that are genuinely shared contracts with two or more real consumers.
+- Search transport DTOs have moved to their owning feature area or a designated contracts location.
+- No type move in this stage required changing more than two call sites.
+- The `web` vs `core` module boundary is now representable as a package split with zero circular dependencies.
+
+**Stage 2 exit criteria:**
+- Maven modules `lorevault-web` and `lorevault-core` exist and compile independently.
+- No circular dependency between modules (`mvn dependency:analyze` passes).
+- `lorevault-web` has no compile-time dependency on `lorevault-core` infrastructure classes.
+- All existing tests pass.
+- Optional `api` module exists only if it has two or more genuine consumers.
+
+**Stage 3 exit criteria:**
+- `ingestion` package has internal subpackages matching the canonical vocabulary (at minimum: `application`, `infrastructure`, and event types separated from handlers).
+- No production package contains more than 15 public types without intentional justification.
+- Naming vocabulary is consistent within each module.
+
+### Anti-patterns to avoid
+
+- **Layer-first rewrite**: converting feature-first packages to a horizontal `service/`, `repository/`, `controller/` layout. This erases feature cohesion and is explicitly out of scope.
+- **Premature `api` module**: creating a third module before two real consumers of the shared surface exist.
+- **Transport DTO reuse in core**: passing HTTP request/response types directly into application or domain services.
+- **Cosmetic moves before ownership cleanup**: moving files for browsability before the `web` vs `core` boundary is clear — this creates move-twice work.
+- **`support` replaced by `shared` or `common`**: renaming the catch-all package without reducing its scope. The goal is a smaller shared area with intentional membership, not a rename.
+- **`*OrchestrationService` proliferation**: naming every service with `Orchestration` when `*Service` or `*Coordinator` is sufficient.
 
 ## Success Criteria
 
