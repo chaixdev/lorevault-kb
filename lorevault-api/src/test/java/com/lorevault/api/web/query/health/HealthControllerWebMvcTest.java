@@ -34,11 +34,12 @@ class HealthControllerWebMvcTest {
     void getHealth_overallHealthy_returns200WithChecks() throws Exception {
         var llmHealth = new HealthMetricsCollector.ModelHealthStatus(true, "gemini-2.5-flash-lite", "OK", 10, 10, 1);
         var embeddingHealth = new SystemHealthService.EmbeddingHealthStatus(true, null, 5, 768);
+        var databaseHealth = new SystemHealthService.DatabaseHealthStatus(true, null, 4);
         var chatSlotsHealth = Map.of(
                 "nlp-small", new HealthMetricsCollector.ModelHealthStatus(true, "small", "OK", 10, 10, 1),
                 "nlp-big", new HealthMetricsCollector.ModelHealthStatus(true, "big", "OK", 12, 12, 1)
         );
-        var systemHealth = new SystemHealthService.SystemHealthResponse(true, llmHealth, embeddingHealth, chatSlotsHealth);
+        var systemHealth = new SystemHealthService.SystemHealthResponse(true, llmHealth, embeddingHealth, chatSlotsHealth, databaseHealth);
         
         when(systemHealthService.getOverallSystemHealth()).thenReturn(systemHealth);
 
@@ -47,6 +48,7 @@ class HealthControllerWebMvcTest {
                 .andExpect(jsonPath("$.healthy").value(true))
                 .andExpect(jsonPath("$.checks.llm.healthy").value(true))
                 .andExpect(jsonPath("$.checks.embeddings.healthy").value(true))
+                .andExpect(jsonPath("$.checks.database.healthy").value(true))
                 .andExpect(jsonPath("$.checks.llm.slots['nlp-small'].healthy").value(true));
     }
 
@@ -54,14 +56,16 @@ class HealthControllerWebMvcTest {
         void getHealth_unhealthyEmbeddings_includesError() throws Exception {
         var llmHealth = new HealthMetricsCollector.ModelHealthStatus(true, "gemini-2.5-flash-lite", "OK", 10, 10, 1);
         var embeddingHealth = new SystemHealthService.EmbeddingHealthStatus(false, "dim mismatch", 7, 0);
+        var databaseHealth = new SystemHealthService.DatabaseHealthStatus(false, "db unavailable", 9);
         var chatSlotsHealth = Map.<String, HealthMetricsCollector.ModelHealthStatus>of();
-        var systemHealth = new SystemHealthService.SystemHealthResponse(false, llmHealth, embeddingHealth, chatSlotsHealth);
+        var systemHealth = new SystemHealthService.SystemHealthResponse(false, llmHealth, embeddingHealth, chatSlotsHealth, databaseHealth);
         
         when(systemHealthService.getOverallSystemHealth()).thenReturn(systemHealth);
 
         mockMvc.perform(get("/api/query/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.healthy").value(false))
-                .andExpect(jsonPath("$.checks.embeddings.error").value("dim mismatch"));
+                .andExpect(jsonPath("$.checks.embeddings.error").value("dim mismatch"))
+                .andExpect(jsonPath("$.checks.database.error").value("db unavailable"));
     }
 }
