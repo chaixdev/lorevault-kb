@@ -4,25 +4,19 @@ import com.lorevault.api.content.Scene;
 import com.lorevault.api.content.ChapterReadRepository;
 import com.lorevault.api.content.SceneGraphRepository;
 import com.lorevault.api.timeline.TemporalReadRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class EventOrderingService {
 
     private final SceneGraphRepository sceneRepo;
     private final ChapterReadRepository chapterReadRepo;
     private final TemporalReadRepository temporalReadRepo;
-
-    public EventOrderingService(SceneGraphRepository sceneRepo,
-                                ChapterReadRepository chapterReadRepo,
-                                TemporalReadRepository temporalReadRepo) {
-        this.sceneRepo = sceneRepo;
-        this.chapterReadRepo = chapterReadRepo;
-        this.temporalReadRepo = temporalReadRepo;
-    }
 
     /**
      * Order events within a chapter using TEMPORAL precedence edges first,

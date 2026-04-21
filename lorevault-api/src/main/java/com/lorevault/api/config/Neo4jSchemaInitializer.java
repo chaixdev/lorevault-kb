@@ -2,8 +2,8 @@ package com.lorevault.api.config;
 
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Component;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,15 +13,11 @@ import java.util.List;
  * Creates minimal constraints and indexes needed for the current data model.
  */
 @Component
+@RequiredArgsConstructor
+@Slf4j
 public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
 
-    private static final Logger log = LoggerFactory.getLogger(Neo4jSchemaInitializer.class);
-
     private final Neo4jClient neo4jClient;
-
-    public Neo4jSchemaInitializer(Neo4jClient neo4jClient) {
-        this.neo4jClient = neo4jClient;
-    }
 
     // Unique constraints on business IDs
     private static final String CHAPTER_ID_UNIQUE =
