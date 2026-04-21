@@ -9,8 +9,7 @@ import com.lorevault.api.ingestion.IngestionJobGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
 import com.lorevault.api.ai.EmbeddingService;
 import com.lorevault.api.ingestion.IngestionJobService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
@@ -30,9 +29,8 @@ import java.util.UUID;
  * - Gather final statistics and mark job complete
  */
 @Component
+@Slf4j
 public class EmbeddingHandler {
-
-    private static final Logger log = LoggerFactory.getLogger(EmbeddingHandler.class);
 
     private final ChapterGraphRepository chapterRepo;
     private final ChunkGraphRepository chunkRepo;

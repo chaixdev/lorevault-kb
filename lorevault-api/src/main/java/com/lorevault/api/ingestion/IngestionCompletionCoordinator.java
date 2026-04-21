@@ -3,17 +3,15 @@ package com.lorevault.api.ingestion;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 @Component
+@Slf4j
 public class IngestionCompletionCoordinator {
-
-    private static final Logger log = LoggerFactory.getLogger(IngestionCompletionCoordinator.class);
 
     private final IngestionJobGraphRepository jobRepo;
     private final IngestionJobService ingestionJobService;

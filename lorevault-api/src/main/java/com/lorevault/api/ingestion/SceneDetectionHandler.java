@@ -8,8 +8,7 @@ import com.lorevault.api.ai.SceneDetectionService;
 import com.lorevault.api.ai.SceneProcessingService;
 import com.lorevault.api.timeline.DefaultTemporalEdgeService;
 import com.lorevault.api.timeline.TriadEdgePersistenceService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -35,9 +34,8 @@ import java.util.stream.Collectors;
  * - Update job status throughout the process
  */
 @Component
+@Slf4j
 public class SceneDetectionHandler {
-
-    private static final Logger log = LoggerFactory.getLogger(SceneDetectionHandler.class);
 
     private final ChapterGraphRepository chapterRepo;
     private final SceneGraphRepository sceneRepo;
