@@ -60,7 +60,7 @@ cp .env.example .env
 ```
 
 The app reads runtime configuration from environment variables referenced in
-`lorevault-api/src/main/resources/application.yml`. Maven does **not** auto-load
+`lorevault-web/src/main/resources/application.yml`. Maven does **not** auto-load
 `.env`, so source it before running the app unless your IDE task already does that.
 
 Preferred local run command:
@@ -106,7 +106,10 @@ Minimal constraint applied automatically on startup:
 
 ```text
 lorevault/
-├── lorevault-api/
+├── lorevault-core/
+│   ├── src/main/java/
+│   └── src/main/resources/
+├── lorevault-web/
 │   ├── src/main/java/
 │   ├── src/main/resources/
 │   └── src/test/

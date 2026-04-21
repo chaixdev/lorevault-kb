@@ -19,7 +19,7 @@ The LoreVault API provides **live, auto-generated documentation** that is always
 ### Using the Auto-Generated Documentation
 
 **For API Testing**:
-1. Start the LoreVault API (`mvn -pl lorevault-api spring-boot:run`)
+1. Start the LoreVault API (`mvn -pl lorevault-web spring-boot:run`)
 2. Import OpenAPI spec into Postman from `http://localhost:18080/api/docs`
 3. All endpoints, schemas, and examples are automatically included
 

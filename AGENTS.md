@@ -8,7 +8,7 @@ Use it for command selection, documentation routing, and local development workf
 ## Repo shape
 
 - Java 21 + Maven multi-module project
-- Main runnable module: `lorevault-api`
+- Main runnable module: `lorevault-web`
 - Graph database: Neo4j via `docker-compose.yml`
 - Living documentation: `docs/`
 
@@ -37,8 +37,8 @@ When checking status or roadmap, prefer these files in this order:
 ### Compile / package
 
 - `mvn clean compile`
-- `mvn -pl lorevault-api clean compile -DskipTests`
-- `mvn -pl lorevault-api package -DskipTests`
+- `mvn -pl lorevault-web,lorevault-core clean compile -DskipTests`
+- `mvn -pl lorevault-web package -DskipTests`
 
 ## Run commands
 
@@ -131,7 +131,7 @@ Relevant local files:
 
 - `.env`
 - `.env.example`
-- `lorevault-api/src/main/resources/application.yml`
+- `lorevault-web/src/main/resources/application.yml`
 
 Important keys used by the app include:
 

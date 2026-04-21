@@ -302,6 +302,112 @@ This dependency split is intentionally pragmatic. It prefers a clean runtime bou
 - The other major risk is silent resource breakage: prompts, schema/bootstrap files, and runtime config must be verified after the move rather than assumed to load correctly from the new module layout.
 - A separate `api` module remains deferred until the repository has at least two genuine consumers of the same shared contract surface.
 
+#### Relocation strategy after the initial module split
+
+The agreed follow-up strategy is **not** one-file-at-a-time relocation. The preferred approach is a small number of coherent relocation passes that remove the temporary shared-source setup without mixing that work with broader architectural redesign.
+
+The current reactor split proves that the `web` / `core` boundary works. The next goal is to make the filesystem layout match that boundary.
+
+#### Transitional rule for dependency strictness during relocation
+
+During physical source relocation, dependency cleanup should stay **secondary** to source movement.
+
+- temporary overlap is acceptable when it reduces migration churn
+- `lorevault-web` may remain permissive while files and tests are moving
+- `lorevault-core` may keep broad **core-safe** Spring and infrastructure dependencies while relocation is in progress
+
+However, the following remain hard red lines for `lorevault-core` even during relocation:
+
+- no `spring-boot-starter-web`
+- no Thymeleaf dependency
+- no springdoc/OpenAPI web starter
+- no MVC/SSE/transport runtime APIs as a module dependency strategy
+
+This keeps the boundary meaningful while still allowing a pragmatic migration.
+
+#### Preferred relocation sequence
+
+**Phase 2A — relocate web production source first**
+
+Move into `lorevault-web/src/main/java`:
+
+- `LoreVaultApiApplication`
+- `web/**`
+- runtime adapters already classified as web-owned, including `JobStatusBroadcaster` and `SystemHealthIndicator`
+
+Then update `lorevault-web/pom.xml` to stop reading production sources from `../lorevault-api/src/main/java`.
+
+**Why first:** `web` is already the clearest seam and is smaller than the core feature set, so it is the safest first physical move.
+
+**Phase 2B — relocate web resources**
+
+Move into `lorevault-web/src/main/resources`:
+
+- `application.yml`
+- `templates/**`
+- `banner.png`
+
+Then remove the temporary back-reference from `lorevault-web/pom.xml` to the old resource location.
+
+**Phase 2C — relocate core production source**
+
+Move into `lorevault-core/src/main/java`:
+
+- `ai`
+- `config`
+- `content`
+- `health` minus web-owned runtime adapters
+- `ingestion` minus web-owned runtime adapters
+- `library`
+- `search`
+- `support`
+- `timeline`
+
+Then update `lorevault-core/pom.xml` to stop reading production sources from `../lorevault-api/src/main/java`.
+
+**Phase 2D — relocate core resources**
+
+Move into `lorevault-core/src/main/resources`:
+
+- `prompts/**`
+- `db/**`
+
+Then remove the temporary back-reference from `lorevault-core/pom.xml` to the old resource location.
+
+**Phase 2E — relocate tests by module ownership**
+
+Only after production source and resources are stable:
+
+- move MVC slice tests and UI/controller tests into `lorevault-web/src/test/java`
+- move focused service, repository, and core integration tests into `lorevault-core/src/test/java`
+- keep full `@SpringBootTest` coverage in `lorevault-web` first, then reconsider later only if a narrower runtime test shape becomes worthwhile
+
+**Phase 2F — remove transitional scaffolding**
+
+After the physical relocation is complete and verified:
+
+- remove `sourceDirectory` back-references into `../lorevault-api/src/...`
+- remove compiler include/exclude slicing used to carve the old tree into modules
+- remove any now-obsolete transitional `lorevault-api` source structure
+
+#### What this strategy is explicitly avoiding
+
+- no one-file-at-a-time relocation across unrelated packages
+- no giant all-at-once filesystem rewrite across code, tests, and resources together
+- no service-signature redesign during source relocation
+- no tightening of every dependency at the same time files are still moving
+
+#### Verification rule for relocation phases
+
+Each relocation pass should be followed by verification at the module/reactor level:
+
+- module compile still passes
+- full reactor tests still pass
+- Boot startup still works from `lorevault-web`
+- user-facing runtime/UAT checks confirm that `lorevault-web` loads and wires `lorevault-core` correctly
+
+Only after that should the repository move into a stricter dependency-pruning pass.
+
 ### Stage 3 — Post-split browsability cleanup inside stable modules
 
 Once module ownership is settled, revisit larger browsability problems that are still worth solving inside the new module boundaries.

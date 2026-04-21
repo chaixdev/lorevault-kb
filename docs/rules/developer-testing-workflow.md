@@ -37,10 +37,10 @@
 
 ## Reports
 
-- JaCoCo: `lorevault-api/target/site/jacoco/index.html`
-- PIT: `lorevault-api/target/pit-reports/index.html`
-- Surefire reports: `lorevault-api/target/surefire-reports/`
-- Failsafe reports: `lorevault-api/target/failsafe-reports/`
+- JaCoCo: `lorevault-web/target/site/jacoco/index.html`
+- PIT: `lorevault-web/target/pit-reports/index.html`
+- Surefire reports: `lorevault-web/target/surefire-reports/`
+- Failsafe reports: `lorevault-web/target/failsafe-reports/`
 
 ## Running The App For Manual Testing
 
@@ -57,4 +57,4 @@ Background workflow:
 ./scripts/dev-api.sh logs
 ```
 
-If you are not using the helper script, make sure the environment variables referenced by `lorevault-api/src/main/resources/application.yml` are available.
+If you are not using the helper script, make sure the environment variables referenced by `lorevault-web/src/main/resources/application.yml` are available.
