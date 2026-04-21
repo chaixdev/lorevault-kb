@@ -22,6 +22,7 @@ Rules should be short, opinionated, and easy to apply repeatedly.
 
 ## Current Rules
 
+- [Code organization guidance](code-organization-guidance.md)
 - [Development workflow](development-workflow.md)
 - [Exception semantics](exception-semantics.md)
 - [Service design principles](service-design-principles.md)

@@ -1,18 +1,19 @@
 # Reorganize source packages for better browsability and semantic guidance
 
-**Status:** ACTIVE — Stage 0 and Stage 1 complete. See `stage0-support-and-search-dto-audit.md` for full execution record. Stage 2 module split and transitional scaffolding cleanup are complete.
+**Status:** ACTIVE — Stage 0, Stage 1, and Stage 2 are complete. Stage 3 is in progress: pass 1 is complete, and follow-up internal package cleanup remains.
 
 **Execution summary:**
 - Stage 0: full classification of all 21 `support` types + all search DTOs. Zero code moves.
-- Stage 1: 5 type-move units executed and verified. `support` now contains only cross-boundary shared contracts.
+- Stage 1: 5 type-move units executed and verified. `support` is now a more homogeneous cross-boundary DTO/contract bucket, but ownership cleanup still remains before it contains only truly shared contracts.
   - `HashUtils` → `ingestion`
   - `StringSanitizer` → `content`
   - `PublicationCoordinates` → `content`
   - `ErrorResponse` → `web` (with `ErrorResponseFactory` consolidation — inner class retired, factory now produces `web.ErrorResponse`)
   - `SpoilerVisibility`, `SeriesProgress`, `UnconfiguredSeriesPolicy` → `search`
 - Verification: `mvn test -pl lorevault-api` passes with 301 tests, 0 failures, 0 errors after Stage 1.
+- Stage 2: module extraction is complete. The reactor now contains `lorevault-core` and `lorevault-web`; `lorevault-web` depends one-way on `lorevault-core`; transitional `../lorevault-api/src/...` back-references are gone from module POMs; and the obsolete `lorevault-api/pom.xml` module stub was removed.
 - Stage 3 (pass 1): ingestion events were moved under `ingestion.events` and all affected imports/usages were updated across core + web.
-- Verification after Stage 3 pass 1: `mvn clean test` passes with 301 tests, 0 failures, 0 errors.
+- Latest known full-reactor verification on this branch remains green: `mvn clean test` passes with 305 tests, 0 failures, 0 errors.
 - Branch: `refactor/staged-package-reorganization-stage0-audit`
 
 ## Summary
@@ -226,7 +227,7 @@ Verification note:
 
 - `lorevault-core/src/main/java` contains no `SseEmitter`, MVC controller annotations, or Actuator `HealthIndicator` runtime adapters.
 
-With these seam fixes in place, remaining Stage 2 work is relocation/cleanup verification and removal of any transitional scaffolding; Stage 3 package-browsability cleanup remains a separate follow-up.
+With these seam fixes in place, Stage 2 is treated as complete in the current repository state. Remaining work is now Stage 3 package-browsability cleanup inside the stable `core` / `web` split, plus any later cleanup of stale legacy metadata or local artifacts that still mention `lorevault-api`.
 
 #### Resource ownership rule for Stage 2
 
@@ -424,10 +425,12 @@ Only after that should the repository move into a stricter dependency-pruning pa
 
 Once module ownership is settled, revisit larger browsability problems that are still worth solving inside the new module boundaries.
 
-The strongest current candidates for that later cleanup remain:
+The strongest current candidates for that later cleanup now span multiple feature areas, not only `ingestion`:
 
 - `ingestion`, especially if it still mixes events, handlers, repositories, services, and status models in one namespace
 - `search`, especially if orchestration, infrastructure, and DTO concerns still sit too close together
+- `support`, especially where transport-shaped DTOs still blur true feature ownership or remain in a shared bucket by convenience rather than necessity
+- selective mixed web adapter zones only where ownership is still unclear after the split
 
 At that point, cleanup becomes less likely to be undone by later architectural moves.
 
@@ -436,15 +439,32 @@ At that point, cleanup becomes less likely to be undone by later architectural m
 - ✅ Pass 1 complete: all ingestion pipeline event classes now live in `com.lorevault.api.ingestion.events`.
 - ✅ Core pipeline listeners/coordinators/support classes now import events from `ingestion.events`.
 - ✅ Web broadcaster and related tests were updated to consume `ingestion.events` types.
-- ✅ Full reactor verification is green after the move (`mvn clean test`, 301/0/0).
-- ⏳ Next Stage 3 pass should target handler/service/repository subpackage separation inside `ingestion` (for example, `application`/`infrastructure`) while preserving runtime behavior.
+- ✅ Stage 2 module extraction and transitional scaffolding cleanup are complete: the parent reactor only includes `lorevault-core` and `lorevault-web`, module POMs read their own `src/main/**` trees directly, and the obsolete `lorevault-api/pom.xml` stub is gone.
+- ✅ Latest known full reactor verification on this branch remains green (`mvn clean test`, 305/0/0).
+- ⏳ Stage 3 pass 2 should target handler/service/repository/status-model separation inside `lorevault-core/src/main/java/com/lorevault/api/ingestion/**`, using the agreed vocabulary (`application`, `infrastructure`, events isolated from handlers) while preserving runtime behavior.
+- ⏳ A parallel Stage 3 planning concern is ownership cleanup inside `lorevault-core/src/main/java/com/lorevault/api/support/**`: the package is now comparatively homogeneous, but many request/response DTOs are still feature-shaped contracts rather than clearly minimal shared contracts.
+- ⏳ A later Stage 3 pass should reassess `lorevault-core/src/main/java/com/lorevault/api/search/**`, where orchestration, DTOs, policies, and infrastructure concerns still appear comparatively flat even though `entityextraction` already exists as a focused subarea.
+- ⏳ Selective web cleanup should remain in scope only for mixed adapter zones, not as a broad `web` reshuffle. `lorevault-web/src/main/java/com/lorevault/api/web/ui/**` and `.../web/command/ingestion/**` are already meaningfully structured and should be preserved unless new growth creates sharper seams.
+- ⏳ `lorevault-core/src/main/java/com/lorevault/api/ai/**`, `.../content/**`, and `.../timeline/**` remain valid future browsability candidates, but they are lower-priority than `support`, `ingestion`, and `search` unless active work exposes clearer ownership or navigation pain.
+- ⏳ The transitional web test tree under `lorevault-web/src/test/java/com/lorevault/api/api/**` should be normalized if Stage 3 continues, so test package layout matches the post-split module structure more clearly.
+- ⏳ Non-blocking cleanup still exists outside the reactor boundary: stale `lorevault-api` references remain in IDE metadata and local artifacts (for example `.idea/**`, `logs/lorevault-api.log`, and the legacy `lorevault-api/` directory contents). Those are cleanup follow-ups, not architectural blockers.
+
+#### Remaining staged work from the current repo state
+
+1. Re-audit `support` DTO ownership so the package trends toward a minimal shared-contract area rather than a long-term catch-all DTO bucket.
+2. Perform Stage 3 pass 2 inside `ingestion` by separating mixed responsibilities into stable subpackages without changing runtime semantics.
+3. Re-evaluate `search` for an equivalent internal split once the intended ownership of DTOs, orchestration, and infrastructure concerns is clearer.
+4. Keep selective web cleanup in scope only where feature ownership is still blurred; preserve the existing `web.command`, `web.query`, and `web.ui` structure where it is already working well.
+5. Normalize the post-split test tree so `lorevault-web` tests no longer look like a transitional mirror of the old module layout.
+6. Revisit `ai`, `content`, and `timeline` only if future growth or active feature work reveals clearer browsability seams worth codifying.
+7. Optionally clean stale legacy `lorevault-api` metadata/artifacts once they are no longer useful for local archaeology.
 
 ## Candidate Work Sequence
 
 1. Audit and classify shared contract and support types by ownership risk.
 2. Perform only the smallest package or type moves that clarify future module boundaries.
 3. Split modules around the now-clearer `web` / `core` seam.
-4. Revisit larger internal package cleanup within the resulting modules.
+4. Revisit larger internal package cleanup within the resulting modules, starting with the highest-friction mixed feature areas and preserving already-cohesive web substructure.
 
 ## Open Questions
 
@@ -453,108 +473,17 @@ At that point, cleanup becomes less likely to be undone by later architectural m
 - How much repository naming standardization is desirable before package moves begin?
 - Should search extraction concerns remain under `search` or become a more explicitly named subarea?
 - Should the eventual work be done feature by feature, or should a repo-wide package convention be codified first in a brainstorm or rules doc?
-- Which existing support types are truly shareable contracts versus internal coupling artifacts that should stay with `core`?
+- Which existing support types are truly shareable contracts versus feature-owned DTOs that should move closer to their owning area?
 - Should the eventual `api` module exist at all, or should shared contract extraction stop at a narrower set of DTOs?
 - How much of `ingestion` should be reorganized before module extraction versus only after `core` exists as a stable home?
 
 ## Code Organization Guidance
 
-This section records the agreed internal vocabulary and structural rules to apply when placing new code and when deciding what to move or split during each stage.
+The durable code-organization rules for package vocabulary, dependency direction, type ownership, DTO placement, repository naming, stage exit criteria, and anti-patterns now live in:
 
-### Canonical subpackage vocabulary
+- `../rules/code-organization-guidance.md`
 
-When a feature package grows beyond roughly 10–15 public types, or when it clearly mixes transport concerns with domain or infrastructure concerns, use this vocabulary to introduce subpackages:
-
-| Subpackage | What belongs there |
-|---|---|
-| `web.command` | HTTP command controllers, request models, response shaping, validation, file extraction |
-| `web.query` | HTTP query controllers, read-path request and response models |
-| `web.ui` | Server-side UI controllers, Thymeleaf view models, form objects |
-| `application` | Orchestration services, coordinators, pipeline handlers, use-case services |
-| `domain` | Core domain models, domain-specific rules, value objects |
-| `infrastructure` | Repository implementations, graph clients, AI clients, external service adapters |
-
-The existing `web.command`, `web.query`, and `web.ui` split already matches this vocabulary and should be preserved and strengthened rather than replaced.
-
-### Allowed dependency direction
-
-Dependencies must flow in one direction only:
-
-```
-web → application → domain
-infrastructure → domain (implements interfaces defined in domain or application)
-```
-
-`web` must never import from `infrastructure` directly. `domain` must never import from `web` or `infrastructure`. Violation of this direction is a package boundary smell, not just a style issue.
-
-### Type ownership rule
-
-Every type must have a single owning feature package. A type that cannot be assigned to one feature is a shared contract candidate — it belongs in a minimal shared area, not a catch-all like `support`. Types placed in `support` should be evaluated against: does any two distinct features genuinely need this, or is it internal coupling disguised as sharing?
-
-### Naming vocabulary
-
-Use these suffixes consistently. Introducing a new pattern requires an explicit decision.
-
-| Suffix | Meaning |
-|---|---|
-| `*Controller` | HTTP entry point, command or query |
-| `*Service` | Single-feature orchestration or business logic |
-| `*Coordinator` | Multi-branch or multi-stage orchestration (reserved for genuinely complex fan-in/fan-out) |
-| `*Handler` | Pipeline stage listener, reacts to one event type |
-| `*Event` | Internal pipeline event |
-| `*Repository` | Data access interface |
-| `*GraphRepository` | Neo4j-specific repository (existing convention — preserve until standardization pass) |
-| `*ReadRepository` | Query-only repository split (use when read/write separation is actively needed) |
-
-Avoid introducing new `*OrchestrationService` names — use `*Coordinator` for fan-in cases and `*Service` for everything else.
-
-### DTO placement rule
-
-- DTOs consumed and produced only by one feature area live in that feature area.
-- DTOs consumed by both `web` and `core` are shared contract candidates — they belong in a minimal shared area or, if a future `api` module exists, in that module.
-- Prefer duplication over the wrong abstraction. Two nearly identical DTOs in two features is better than a shared DTO that creates a hidden coupling channel.
-- Transport DTOs (HTTP request/response shapes) must not be used inside `application` or `domain` logic — pass domain primitives or dedicated application-layer types instead.
-
-### Repository naming guidance
-
-The codebase currently uses `*GraphRepository`, `*ReadRepository`, and `*WriteRepository` with no clear rule. Until a naming standardization pass is explicitly scoped, do not introduce additional naming patterns. New repositories should follow `*GraphRepository` as the default.
-
-### Stage exit criteria
-
-Each stage has binary pass/fail conditions. A stage is complete only when all criteria are met.
-
-**Stage 0 exit criteria:**
-- Every type in `support` is classified as: web-owned transport, core-owned domain or orchestration, shared contract, or ambiguous/deferred.
-- Every search DTO is classified as: web-owned or core-owned.
-- Error-response shaping types have a designated owner.
-- No new types have been moved — this stage is audit-only.
-
-**Stage 1 exit criteria:**
-- `support` contains only types that are genuinely shared contracts with two or more real consumers.
-- Search transport DTOs have moved to their owning feature area or a designated contracts location.
-- No type move in this stage required changing more than two call sites.
-- The `web` vs `core` module boundary is now representable as a package split with zero circular dependencies.
-
-**Stage 2 exit criteria:**
-- Maven modules `lorevault-web` and `lorevault-core` exist and compile independently.
-- No circular dependency between modules (`mvn dependency:analyze` passes).
-- `lorevault-web` has no compile-time dependency on `lorevault-core` infrastructure classes.
-- All existing tests pass.
-- Optional `api` module exists only if it has two or more genuine consumers.
-
-**Stage 3 exit criteria:**
-- `ingestion` package has internal subpackages matching the canonical vocabulary (at minimum: `application`, `infrastructure`, and event types separated from handlers).
-- No production package contains more than 15 public types without intentional justification.
-- Naming vocabulary is consistent within each module.
-
-### Anti-patterns to avoid
-
-- **Layer-first rewrite**: converting feature-first packages to a horizontal `service/`, `repository/`, `controller/` layout. This erases feature cohesion and is explicitly out of scope.
-- **Premature `api` module**: creating a third module before two real consumers of the shared surface exist.
-- **Transport DTO reuse in core**: passing HTTP request/response types directly into application or domain services.
-- **Cosmetic moves before ownership cleanup**: moving files for browsability before the `web` vs `core` boundary is clear — this creates move-twice work.
-- **`support` replaced by `shared` or `common`**: renaming the catch-all package without reducing its scope. The goal is a smaller shared area with intentional membership, not a rename.
-- **`*OrchestrationService` proliferation**: naming every service with `Orchestration` when `*Service` or `*Coordinator` is sufficient.
+Use that rules doc as the source of truth when placing new code and when deciding what to move or split during staged package cleanup.
 
 ## Success Criteria
 
@@ -568,6 +497,7 @@ Each stage has binary pass/fail conditions. A stage is complete only when all cr
 
 ## Links
 
+- Related rules: `../rules/code-organization-guidance.md`
 - Related rules: `../rules/development-workflow.md`
 - Related planning index: `README.md`
 - Relevant source root: `../../lorevault-api/src/main/java/com/lorevault/api`
