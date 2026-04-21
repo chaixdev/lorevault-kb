@@ -8,20 +8,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class LocationPersistenceService {
 
     private static final String SOURCE = "ai-scene-analysis";
     private static final String UNRESOLVED = "unresolved";
 
     private final LocationMentionGraphRepository locationMentionRepository;
-
-    public LocationPersistenceService(LocationMentionGraphRepository locationMentionRepository) {
-        this.locationMentionRepository = locationMentionRepository;
-    }
 
     @Transactional
     public void persistExtractedLocations(

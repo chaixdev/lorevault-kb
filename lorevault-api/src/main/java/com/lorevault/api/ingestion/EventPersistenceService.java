@@ -8,20 +8,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class EventPersistenceService {
 
     private static final String SOURCE = "ai-scene-analysis";
     private static final String UNRESOLVED = "unresolved";
 
     private final EventMentionGraphRepository eventMentionRepository;
-
-    public EventPersistenceService(EventMentionGraphRepository eventMentionRepository) {
-        this.eventMentionRepository = eventMentionRepository;
-    }
 
     @Transactional
     public void persistExtractedEvents(

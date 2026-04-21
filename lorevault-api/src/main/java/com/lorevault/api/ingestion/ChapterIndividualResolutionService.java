@@ -6,19 +6,17 @@ import com.lorevault.api.support.ChapterIndividualResolutionResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class ChapterIndividualResolutionService {
 
     static final String CHAPTER_RESOLVED = "chapter-resolved";
 
     private final ChapterIndividualGraphRepository chapterIndividualRepository;
-
-    public ChapterIndividualResolutionService(ChapterIndividualGraphRepository chapterIndividualRepository) {
-        this.chapterIndividualRepository = chapterIndividualRepository;
-    }
 
     @Transactional
     public ChapterIndividualResolutionResponse resolveChapter(UUID chapterId) {
