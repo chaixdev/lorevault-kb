@@ -2,8 +2,8 @@ package com.lorevault.api.config;
 
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Component;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,11 +13,15 @@ import java.util.List;
  * Creates minimal constraints and indexes needed for the current data model.
  */
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
 
+    private static final Logger log = LoggerFactory.getLogger(Neo4jSchemaInitializer.class);
+
     private final Neo4jClient neo4jClient;
+
+    public Neo4jSchemaInitializer(Neo4jClient neo4jClient) {
+        this.neo4jClient = neo4jClient;
+    }
 
     // Unique constraints on business IDs
     private static final String CHAPTER_ID_UNIQUE =
@@ -129,7 +133,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         
         log.info("Schema initialization complete: {} ensured, {} failed", successful, failed);
         if (failed > 0) {
-            log.warn("Some schema artifacts failed to create. Check logs above for details.");
+            log.error("Some schema artifacts failed to create. Check logs above for details.");
         }
     }
 
@@ -145,7 +149,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             log.debug("Ensured constraint: {}", description);
             return "ensured: " + description;
         } catch (Exception e) {
-            log.warn("Failed to create constraint {}: {}", description, e.getMessage());
+            log.error("Failed to create constraint {}: {}", description, e.getMessage());
             return "failed: " + description;
         }
     }
@@ -156,7 +160,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             log.debug("Ensured index: {}", description);
             return "ensured: " + description;
         } catch (Exception e) {
-            log.warn("Failed to create index {}: {}", description, e.getMessage());
+            log.error("Failed to create index {}: {}", description, e.getMessage());
             return "failed: " + description;
         }
     }
@@ -167,7 +171,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             log.debug("Ensured vector index: {}", description);
             return "ensured: " + description;
         } catch (Exception e) {
-            log.warn("Failed to create vector index {}: {}", description, e.getMessage());
+            log.error("Failed to create vector index {}: {}", description, e.getMessage());
             log.debug("Vector index creation requires Neo4j 5.x with vector capabilities");
             return "failed: " + description;
         }
