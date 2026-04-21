@@ -1,4 +1,4 @@
-package com.lorevault.api.support;
+package com.lorevault.api.content;
 
 public class StringSanitizer {
         public static String toSnakeCase(String input) {

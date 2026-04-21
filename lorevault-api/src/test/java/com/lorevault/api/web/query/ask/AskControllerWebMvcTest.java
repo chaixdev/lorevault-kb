@@ -9,7 +9,7 @@ import com.lorevault.api.search.SemanticSearchDtos.SearchMetadata;
 import com.lorevault.api.search.SemanticSearchDtos.SearchResultDto;
 import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchRequest;
 import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchResponse;
-import com.lorevault.api.support.PublicationCoordinates;
+import com.lorevault.api.content.PublicationCoordinates;
 import com.lorevault.api.search.RagService;
 import com.lorevault.api.search.SemanticSearchService;
 import org.junit.jupiter.api.Tag;

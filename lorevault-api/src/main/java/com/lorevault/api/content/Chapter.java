@@ -1,6 +1,6 @@
 package com.lorevault.api.content;
 
-import com.lorevault.api.support.PublicationCoordinates;
+import com.lorevault.api.content.PublicationCoordinates;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

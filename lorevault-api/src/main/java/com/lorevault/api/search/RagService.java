@@ -505,7 +505,7 @@ public class RagService {
 
     private CitationDto buildCitation(SearchResultDto searchResult) {
         if (searchResult.getChapterId() == null) {
-            com.lorevault.api.support.PublicationCoordinates fallbackCoords = new com.lorevault.api.support.PublicationCoordinates();
+            com.lorevault.api.content.PublicationCoordinates fallbackCoords = new com.lorevault.api.content.PublicationCoordinates();
             fallbackCoords.setBookNumber(searchResult.getBookNumber());
             fallbackCoords.setChapterNumber(searchResult.getChapterNumber());
 
@@ -520,7 +520,7 @@ public class RagService {
 
         if (chapterOpt.isPresent()) {
             Chapter chapter = chapterOpt.get();
-            com.lorevault.api.support.PublicationCoordinates coords = new com.lorevault.api.support.PublicationCoordinates();
+            com.lorevault.api.content.PublicationCoordinates coords = new com.lorevault.api.content.PublicationCoordinates();
             coords.setUniverse(chapter.getUniverse());
             coords.setSeries(chapter.getSeries());
             coords.setBookTitle(chapter.getBookTitle());
@@ -541,7 +541,7 @@ public class RagService {
                     searchResult.getSnippet(),
                     coords);
         } else {
-            com.lorevault.api.support.PublicationCoordinates fallbackCoords = new com.lorevault.api.support.PublicationCoordinates();
+            com.lorevault.api.content.PublicationCoordinates fallbackCoords = new com.lorevault.api.content.PublicationCoordinates();
             fallbackCoords.setBookNumber(searchResult.getBookNumber());
             fallbackCoords.setChapterNumber(searchResult.getChapterNumber());
 

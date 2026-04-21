@@ -1,4 +1,4 @@
-package com.lorevault.api.support;
+package com.lorevault.api.ingestion;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

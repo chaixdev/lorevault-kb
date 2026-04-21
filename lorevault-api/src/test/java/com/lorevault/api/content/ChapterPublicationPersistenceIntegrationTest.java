@@ -2,7 +2,7 @@ package com.lorevault.api.content;
 
 import com.lorevault.api.content.Book;
 import com.lorevault.api.content.Chapter;
-import com.lorevault.api.support.PublicationCoordinates;
+import com.lorevault.api.content.PublicationCoordinates;
 import com.lorevault.api.content.BookGraphRepository;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.testing.TestImages;

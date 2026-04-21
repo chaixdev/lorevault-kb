@@ -1,6 +1,6 @@
 # Reorganize source packages for better browsability and semantic guidance
 
-**Status:** PARKED
+**Status:** ACTIVE (Stage 0 audit complete — see `stage0-support-and-search-dto-audit.md`. Stage 1 partial: 3 core-owned types moved out of `support`.)
 
 ## Summary
 

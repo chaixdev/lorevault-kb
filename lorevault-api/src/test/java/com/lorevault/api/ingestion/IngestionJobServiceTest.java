@@ -357,8 +357,8 @@ class IngestionJobServiceTest {
     }
 
     private Chapter createTestChapter() {
-        com.lorevault.api.support.PublicationCoordinates coords = 
-                new com.lorevault.api.support.PublicationCoordinates(
+        com.lorevault.api.content.PublicationCoordinates coords = 
+                new com.lorevault.api.content.PublicationCoordinates(
                         "TestUniverse", 
                         "TestSeries", 
                         "TestBook", 

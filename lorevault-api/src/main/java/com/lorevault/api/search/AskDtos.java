@@ -90,10 +90,10 @@ public class AskDtos {
         private double score;
         private String snippet;
         // Nested publication coordinates for full citation context
-        private com.lorevault.api.support.PublicationCoordinates coordinates;
+        private com.lorevault.api.content.PublicationCoordinates coordinates;
 
         public static CitationDto of(UUID chunkId, double score, String snippet,
-                                   com.lorevault.api.support.PublicationCoordinates coordinates) {
+                                   com.lorevault.api.content.PublicationCoordinates coordinates) {
             CitationDto dto = new CitationDto();
             dto.chunkId = chunkId;
             dto.score = score;

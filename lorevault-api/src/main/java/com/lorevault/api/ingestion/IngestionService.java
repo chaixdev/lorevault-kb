@@ -4,7 +4,7 @@ import com.lorevault.api.support.SubmitChapterRequest;
 import com.lorevault.api.support.SubmitChapterResponse;
 import com.lorevault.api.support.JobStatusResponse;
 import com.lorevault.api.support.JobListResponse;
-import com.lorevault.api.support.PublicationCoordinates;
+import com.lorevault.api.content.PublicationCoordinates;
 import com.lorevault.api.ingestion.ChapterIngestionEvent;
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Book;
@@ -29,7 +29,7 @@ import java.util.function.Supplier;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.lorevault.api.support.HashUtils.generateSha256Hash;
+import static com.lorevault.api.ingestion.HashUtils.generateSha256Hash;
 
 /**
  * Service for chapter submission and job management.

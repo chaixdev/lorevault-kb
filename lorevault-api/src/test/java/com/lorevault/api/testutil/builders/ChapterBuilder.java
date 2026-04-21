@@ -1,7 +1,7 @@
 package com.lorevault.api.testutil.builders;
 
 import com.lorevault.api.content.Chapter;
-import com.lorevault.api.support.PublicationCoordinates;
+import com.lorevault.api.content.PublicationCoordinates;
 import com.lorevault.api.testutil.TestClock;
 import com.lorevault.api.testutil.TestIds;
 

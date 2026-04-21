@@ -147,7 +147,7 @@ class IngestionServiceChapterPersistenceIntegrationTest {
                 book.getId(),
                 book.getUniverseId(),
                 book.getSeriesId(),
-                new com.lorevault.api.support.PublicationCoordinates(
+                new com.lorevault.api.content.PublicationCoordinates(
                         book.getUniverse(),
                         book.getSeries(),
                         book.getTitle(),

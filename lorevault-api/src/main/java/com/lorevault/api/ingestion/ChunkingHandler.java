@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static com.lorevault.api.support.HashUtils.generateSha256Hash;
+import static com.lorevault.api.ingestion.HashUtils.generateSha256Hash;
 
 /**
  * Handler for text chunking stage of the ingestion pipeline.
