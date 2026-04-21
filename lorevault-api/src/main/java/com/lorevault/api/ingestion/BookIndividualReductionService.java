@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -144,33 +146,12 @@ public class BookIndividualReductionService {
         return UUID.fromString(value.toString());
     }
 
+    @Getter
+    @RequiredArgsConstructor
     private static final class BookReductionCandidate {
         private final UUID chapterIndividualId;
         private final UUID chapterId;
         private final String displayName;
         private final String normalizedName;
-
-        private BookReductionCandidate(UUID chapterIndividualId, UUID chapterId, String displayName, String normalizedName) {
-            this.chapterIndividualId = chapterIndividualId;
-            this.chapterId = chapterId;
-            this.displayName = displayName;
-            this.normalizedName = normalizedName;
-        }
-
-        public UUID getChapterIndividualId() {
-            return chapterIndividualId;
-        }
-
-        public UUID getChapterId() {
-            return chapterId;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-
-        public String getNormalizedName() {
-            return normalizedName;
-        }
     }
 }
