@@ -1,7 +1,6 @@
 package com.lorevault.api.search;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.lorevault.api.support.SpoilerVisibility;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

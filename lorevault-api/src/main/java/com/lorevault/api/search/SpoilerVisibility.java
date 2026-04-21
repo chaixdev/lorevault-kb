@@ -1,4 +1,4 @@
-package com.lorevault.api.support;
+package com.lorevault.api.search;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;

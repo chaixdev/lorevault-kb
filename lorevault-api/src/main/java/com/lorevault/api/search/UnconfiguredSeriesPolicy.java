@@ -1,4 +1,4 @@
-package com.lorevault.api.support;
+package com.lorevault.api.search;
 
 /**
  * Controls what happens when a series appears in search results but is absent

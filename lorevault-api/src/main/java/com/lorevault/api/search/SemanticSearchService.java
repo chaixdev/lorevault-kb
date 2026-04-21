@@ -9,7 +9,6 @@ import com.lorevault.api.search.SemanticSearchDtos.SearchMetadata;
 import com.lorevault.api.search.SemanticSearchDtos.SemanticSearchFilters;
 import com.lorevault.api.search.entityextraction.ExtractionResult;
 import com.lorevault.api.search.entityextraction.QueryEntityExtractor;
-import com.lorevault.api.support.SpoilerVisibility;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingModel;

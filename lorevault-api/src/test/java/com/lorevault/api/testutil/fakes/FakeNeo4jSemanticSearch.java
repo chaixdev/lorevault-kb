@@ -1,7 +1,7 @@
 package com.lorevault.api.testutil.fakes;
 
 import com.lorevault.api.search.Neo4jSemanticSearch;
-import com.lorevault.api.support.SpoilerVisibility;
+import com.lorevault.api.search.SpoilerVisibility;
 
 import java.util.ArrayList;
 import java.util.Comparator;
