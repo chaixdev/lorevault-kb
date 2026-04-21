@@ -1,5 +1,6 @@
 package com.lorevault.api.web.command.ingestion.extractor;
 
+import lombok.Getter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,6 +18,7 @@ public class FileContentExtractor {
     /**
      * Context object for file content extraction results
      */
+    @Getter
     public static class ContentExtractionResult {
         private final boolean success;
         private final String content;
@@ -41,11 +43,6 @@ public class FileContentExtractor {
             return new ContentExtractionResult(false, null, filename, errorMessage, cause);
         }
 
-        public boolean isSuccess() { return success; }
-        public String getContent() { return content; }
-        public String getFilename() { return filename; }
-        public String getErrorMessage() { return errorMessage; }
-        public Exception getCause() { return cause; }
     }
 
     /**

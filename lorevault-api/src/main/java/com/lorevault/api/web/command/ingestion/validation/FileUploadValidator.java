@@ -1,5 +1,6 @@
 package com.lorevault.api.web.command.ingestion.validation;
 
+import lombok.Getter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,6 +21,7 @@ public class FileUploadValidator {
     /**
      * Validation result context object
      */
+    @Getter
     public static class ValidationResult {
         private final boolean valid;
         private final String errorCode;
@@ -45,10 +47,6 @@ public class FileUploadValidator {
             return new ValidationResult(false, errorCode, errorMessage, details);
         }
 
-        public boolean isValid() { return valid; }
-        public String getErrorCode() { return errorCode; }
-        public String getErrorMessage() { return errorMessage; }
-        public Object getErrorDetails() { return errorDetails; }
     }
 
     /**
@@ -122,6 +120,7 @@ public class FileUploadValidator {
     }
 
     // Error detail classes for structured error information
+    @Getter
     public static class FileTypeError {
         private final List<String> supportedTypes;
         private final String receivedType;
@@ -130,11 +129,9 @@ public class FileUploadValidator {
             this.supportedTypes = supportedTypes;
             this.receivedType = receivedType;
         }
-
-        public List<String> getSupportedTypes() { return supportedTypes; }
-        public String getReceivedType() { return receivedType; }
     }
 
+    @Getter
     public static class FileSizeError {
         private final long fileSize;
         private final long maxSize;
@@ -143,8 +140,5 @@ public class FileUploadValidator {
             this.fileSize = fileSize;
             this.maxSize = maxSize;
         }
-
-        public long getFileSize() { return fileSize; }
-        public long getMaxSize() { return maxSize; }
     }
 }

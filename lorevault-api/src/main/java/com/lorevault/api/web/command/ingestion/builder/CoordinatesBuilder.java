@@ -1,6 +1,7 @@
 package com.lorevault.api.web.command.ingestion.builder;
 
 import com.lorevault.api.support.SubmitChapterRequest;
+import lombok.Getter;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -17,6 +18,7 @@ public class CoordinatesBuilder {
     /**
      * Validation result for coordinate parameters
      */
+    @Getter
     public static class CoordinateValidationResult {
         private final boolean valid;
         private final String errorCode;
@@ -36,9 +38,6 @@ public class CoordinatesBuilder {
             return new CoordinateValidationResult(false, errorCode, errorMessage);
         }
 
-        public boolean isValid() { return valid; }
-        public String getErrorCode() { return errorCode; }
-        public String getErrorMessage() { return errorMessage; }
     }
 
     // Validation helpers

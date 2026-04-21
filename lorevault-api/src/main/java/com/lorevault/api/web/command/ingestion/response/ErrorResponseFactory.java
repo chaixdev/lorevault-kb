@@ -2,6 +2,7 @@ package com.lorevault.api.web.command.ingestion.response;
 
 import com.lorevault.api.web.command.ingestion.builder.CoordinatesBuilder;
 import com.lorevault.api.web.command.ingestion.validation.FileUploadValidator;
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,7 @@ public class ErrorResponseFactory {
     /**
      * Standard error response structure
      */
+    @Getter
     public static class ErrorResponse {
         private final String timestamp;
         private final int status;
@@ -38,13 +40,6 @@ public class ErrorResponseFactory {
             this.details = details != null ? details : new HashMap<>();
         }
 
-        // Getters
-        public String getTimestamp() { return timestamp; }
-        public int getStatus() { return status; }
-        public String getError() { return error; }
-        public String getMessage() { return message; }
-        public String getCode() { return code; }
-        public Map<String, Object> getDetails() { return details; }
     }
 
     /**

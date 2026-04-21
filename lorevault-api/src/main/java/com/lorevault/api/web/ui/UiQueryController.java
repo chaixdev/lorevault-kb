@@ -4,6 +4,7 @@ import com.lorevault.api.search.AskDtos;
 import com.lorevault.api.search.RagService;
 import com.lorevault.api.search.SemanticSearchDtos;
 import com.lorevault.api.search.SemanticSearchService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,15 +13,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 @RequestMapping("/ui/query")
+@RequiredArgsConstructor
 public class UiQueryController {
 
     private final RagService ragService;
     private final SemanticSearchService semanticSearchService;
-
-    public UiQueryController(RagService ragService, SemanticSearchService semanticSearchService) {
-        this.ragService = ragService;
-        this.semanticSearchService = semanticSearchService;
-    }
 
     @PostMapping("/ask/vector")
     public String askVector(@RequestParam("question") String question,
