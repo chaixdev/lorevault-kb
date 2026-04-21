@@ -121,7 +121,7 @@ Strong current precedent already exists and should guide the audit baseline:
 
 ## Links
 
-- Related planning: `scene-localization-anchor-mismatch-should-raise-business-failure.md`
+- Related rule: `../rules/exception-semantics.md`
 - Related planning: `stuck-ingestion-status.md`
 - Related implementation: `../../lorevault-core/src/main/java/com/lorevault/api/ai/SceneProcessingService.java`
 - Related implementation: `../../lorevault-core/src/main/java/com/lorevault/api/ai/SceneDetectionService.java`
