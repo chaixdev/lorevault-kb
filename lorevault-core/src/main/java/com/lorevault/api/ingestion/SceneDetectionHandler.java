@@ -2,6 +2,7 @@ package com.lorevault.api.ingestion;
 
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
+import com.lorevault.api.ai.SceneLocalizationException;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
@@ -196,6 +197,9 @@ public class SceneDetectionHandler {
     }
 
     private boolean isRetryableError(Exception e) {
+        if (e instanceof SceneLocalizationException) {
+            return true;
+        }
         String message = e.getMessage();
         return message != null && (
                 message.contains("LLM API") || 

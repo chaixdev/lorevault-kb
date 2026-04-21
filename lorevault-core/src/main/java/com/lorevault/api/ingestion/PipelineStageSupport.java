@@ -97,6 +97,10 @@ public class PipelineStageSupport {
                 && triadAnalysisException.failure() != null) {
             return triadAnalysisException.failure();
         }
+        if (e instanceof com.lorevault.api.ai.SceneLocalizationException sceneLocalizationException
+                && sceneLocalizationException.failure() != null) {
+            return sceneLocalizationException.failure();
+        }
         return IngestionFailure.fromException(stage, e);
     }
 }

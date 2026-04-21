@@ -71,6 +71,9 @@ public class SceneDetectionService {
 
         try {
             return detectScenesWithRetry(jobId, chapterId, chapterText, null);
+        } catch (SceneLocalizationException e) {
+            log.warn("Scene detection failed for chapter {}: {}", chapterId, e.getMessage());
+            throw e;
         } catch (Exception e) {
             if (isExpectedRetryableSegmentationFailure(e)) {
                 log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage());
@@ -98,6 +101,9 @@ public class SceneDetectionService {
 
         try {
             return detectScenesWithRetry(jobId, chapterId, chapterText, chapter);
+        } catch (SceneLocalizationException e) {
+            log.warn("Scene detection failed for chapter {}: {}", chapterId, e.getMessage());
+            throw e;
         } catch (Exception e) {
             if (isExpectedRetryableSegmentationFailure(e)) {
                 log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage());
@@ -140,6 +146,10 @@ public class SceneDetectionService {
         String failureMsg = String.format("Chapter segmentation failed after %d attempts in %d ms: %s",
                     retryResult.getAttemptsUsed(), retryResult.getTotalDurationMs(),
                     retryResult.getLastException().getMessage());
+
+            if (retryResult.getLastException() instanceof SceneLocalizationException sceneLocalizationException) {
+                throw sceneLocalizationException;
+            }
 
             log.error("Scene detection failed for chapter {}: {}", chapterId, failureMsg);
 
@@ -249,6 +259,9 @@ public class SceneDetectionService {
     private boolean isExpectedRetryableSegmentationFailure(Throwable exception) {
         Throwable current = exception;
         while (current != null) {
+            if (current instanceof SceneLocalizationException) {
+                return true;
+            }
             if (current instanceof RuntimeException && isKnownRetryableMessage(current.getMessage())) {
                 return true;
             }
