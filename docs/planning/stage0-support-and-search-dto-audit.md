@@ -1,6 +1,6 @@
 # Stage 0 Audit: support package and search DTO ownership classification
 
-**Status:** ACTIVE
+**Status:** Stage 0 and Stage 1 complete. ErrorResponse consolidation changes **staged but uncommitted**.
 **Branch:** `refactor/staged-package-reorganization-stage0-audit`
 **Parent plan:** `staged-package-reorganization-and-module-split-prep.md`
 
@@ -21,7 +21,7 @@ This document is the **Stage 0 deliverable** as defined in the parent plan. It c
 
 | Type | Kind | Consumers (production) | Proposed ownership | Confidence |
 |---|---|---|---|---|
-| `ErrorResponse` | Transport DTO | 5 web controllers (`JobsController`, 4 ingestion command controllers) | **web-owned transport** | HIGH |
+| `ErrorResponse` | Transport DTO | ~~5 web controllers~~ **Moved to `com.lorevault.api.web`** | **web-owned transport** | HIGH |
 | `JobStatusResponse` | Transport DTO | `web.query.job.JobsController`, `web.ui.JobsUiController`, `ingestion.IngestionService`, `ingestion.IngestionJobService` | **shared contract** (web + core both consume) | HIGH |
 | `JobListResponse` | Transport DTO | Same consumers as `JobStatusResponse` | **shared contract** (web + core both consume) | HIGH |
 | `SubmitChapterRequest` | Transport DTO | `web.command.ingestion.CommandIngestionController`, `web.ui.IngestionUiController`, `ingestion.IngestionService` | **shared contract** (web + core both consume) | HIGH |
@@ -47,8 +47,8 @@ This document is the **Stage 0 deliverable** as defined in the parent plan. It c
 
 | Ownership bucket | Types | Count |
 |---|---|---|
-| **web-owned transport** | `ErrorResponse` | 1 |
-| **core-owned domain/utility** | `PublicationCoordinates`, `StringSanitizer`, `HashUtils` | 3 |
+| **web-owned transport** | `ErrorResponse` (moved to `web`) | 1 (0 remaining in `support`) |
+| **core-owned domain/utility** | `PublicationCoordinates`, `StringSanitizer`, `HashUtils` (all moved out of `support`) | 3 (0 remaining in `support`) |
 | **shared contract** (web + core both consume) | `JobStatusResponse`, `JobListResponse`, `SubmitChapterRequest`, `SubmitChapterResponse`, `CreateUniverseRequest/Response`, `CreateSeriesRequest/Response`, `CreateBookRequest/Response`, `*ResolutionResponse` × 4, `SpoilerVisibility`, `SeriesProgress`, `UnconfiguredSeriesPolicy` | 17 |
 | **misplaced / feature-local** | (none found) | 0 |
 
@@ -122,6 +122,19 @@ The following three moves from Section 5 were executed and verified:
 
 After these moves, `support` now contains 18 types (down from 21), all of which are transport-shaped shared contracts. The package no longer contains any utility classes or domain value objects.
 
+### Stage 1 addition: ErrorResponse consolidation and move (STAGED — NOT YET COMMITTED)
+
+| Move | From | To | Import sites updated | Test status |
+|---|---|---|---|---|
+| `ErrorResponse` | `support` | `web` | 5 production files + `ErrorResponseFactory` | Pass |
+| `ErrorResponseFactory.ErrorResponse` (inner class) | `web.command.ingestion.response` | Removed | N/A (factory now produces `web.ErrorResponse`) | Pass |
+
+**Note:** These changes are staged but uncommitted. Run `git status` to see pending changes. `mvn test` passes (301 tests, 0 failures) with these changes applied.
+
+The factory's inner `ErrorResponse` class had a flat JSON shape (`{timestamp, status, error, message, code, details}`) that differed from the canonical `ErrorResponse` with nested `ErrorDetails` (`{error: {code, message, details}, timestamp, path}`). The factory now produces instances of the canonical `web.ErrorResponse`, eliminating the dual-format confusion.
+
+After this move, `support` now contains 17 types, all of which are transport-shaped shared contracts consumed by both `web` and `core`. The only non-contract type has been removed: `ErrorResponse` was web-only and now lives in `web` where it belongs.
+
 ## 6. Proposed Stage 1 targets (from this audit)
 
 Based on the classification above, the Stage 1 moves that would most reduce module ambiguity are:
@@ -136,7 +149,7 @@ Based on the classification above, the Stage 1 moves that would most reduce modu
 
 ### Medium-value, requires more thought
 
-4. **Consolidate ErrorResponse** — retire `ErrorResponseFactory.ErrorResponse` in favor of the canonical `support.ErrorResponse`, then move `ErrorResponse` to the `web` package during module split.
+4. ~~**Consolidate ErrorResponse** — retire `ErrorResponseFactory.ErrorResponse` in favor of the canonical `support.ErrorResponse`, then move `ErrorResponse` to the `web` package during module split.~~ **DONE** — factory now produces `web.ErrorResponse`; inner class removed.
 
 5. **SpoilerVisibility / SeriesProgress / UnconfiguredSeriesPolicy cluster** — these three are tightly coupled. `SpoilerVisibility` is consumed by search DTOs (shared), but `SeriesProgress` and `UnconfiguredSeriesPolicy` are only consumed by search infrastructure. If search DTOs move to a shared area, these three should follow as a unit.
 
@@ -146,9 +159,9 @@ Based on the classification above, the Stage 1 moves that would most reduce modu
 
 ---
 
-## 7. Revised support package profile after proposed Stage 1 moves
+## 7. Revised support package profile after Stage 1 execution
 
-If moves 1–3 are executed, `support` shrinks from 21 to 17 types, and all remaining types are **transport-shaped shared contracts**. The package would then have a clear, narrow meaning: "cross-boundary DTOs consumed by both web and core."
+After the 3 core-owned type moves plus the ErrorResponse consolidation, `support` shrinks from 21 to 17 types, and all remaining types are **transport-shaped shared contracts**. The package now has a clear, narrow meaning: "cross-boundary DTOs consumed by both web and core."
 
 | After Stage 1 | Status |
 |---|---|
@@ -157,5 +170,30 @@ If moves 1–3 are executed, `support` shrinks from 21 to 17 types, and all rema
 | `support` has no utility classes | Yes |
 | `support` has no domain types | Yes |
 | `support` has no catch-all policy types | Yes |
+| `support` has no web-only types | Yes |
+| `ErrorResponse` lives in `web` where it belongs | Yes |
 
 This satisfies the Stage 1 exit criterion: *"support contains only types that are genuinely shared contracts with two or more real consumers."*
+
+**Note on commit state:** The ErrorResponse consolidation changes are staged but uncommitted. Once committed, this execution record is final for Stage 1.
+
+---
+
+## 8. Remaining work
+
+### Immediate (pending commit)
+
+- Commit the ErrorResponse consolidation changes (staged but uncommitted in working tree)
+
+### Stage 1 follow-up (optional)
+
+- Move `SpoilerVisibility` / `SeriesProgress` / `UnconfiguredSeriesPolicy` cluster to `search` as a unit (item 5 from audit). This is low-risk since these three types are only consumed by search infrastructure.
+
+### Stage 2 (not started)
+
+- Maven module split into `lorevault-web` and `lorevault-core`
+- Optional `api` shared-contracts module only if justified by two or more genuine consumers
+
+### Stage 3 (not started)
+
+- Post-split browsability cleanup inside `ingestion` and `search` packages

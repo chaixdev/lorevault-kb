@@ -1,6 +1,16 @@
 # Reorganize source packages for better browsability and semantic guidance
 
-**Status:** ACTIVE (Stage 0 audit complete — see `stage0-support-and-search-dto-audit.md`. Stage 1 partial: 3 core-owned types moved out of `support`.)
+**Status:** ACTIVE — Stage 0 and Stage 1 complete. See `stage0-support-and-search-dto-audit.md` for full execution record. Stage 2 not yet started.
+
+**Execution summary:**
+- Stage 0: full classification of all 21 `support` types + all search DTOs. Zero code moves.
+- Stage 1: 4 type moves executed and verified (301 tests pass). `support` shrunk from 21 → 17 types. All remaining types are transport-shaped shared contracts.
+  - `HashUtils` → `ingestion`
+  - `StringSanitizer` → `content`
+  - `PublicationCoordinates` → `content`
+  - `ErrorResponse` → `web` (with `ErrorResponseFactory` consolidation — inner class retired, factory now produces `web.ErrorResponse`)
+- ErrorResponse consolidation changes are **staged but uncommitted** (working tree has pending changes).
+- Branch: `refactor/staged-package-reorganization-stage0-audit`
 
 ## Summary
 
