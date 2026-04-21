@@ -3,7 +3,7 @@ package com.lorevault.api.web.command.ingestion;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.ingestion.ChapterIndividualResolutionService;
 import com.lorevault.api.support.ChapterIndividualResolutionResponse;
-import com.lorevault.api.support.ErrorResponse;
+import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
 import java.util.UUID;

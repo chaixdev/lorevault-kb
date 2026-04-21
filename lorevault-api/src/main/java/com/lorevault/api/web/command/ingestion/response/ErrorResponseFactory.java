@@ -1,8 +1,8 @@
 package com.lorevault.api.web.command.ingestion.response;
 
+import com.lorevault.api.web.ErrorResponse;
 import com.lorevault.api.web.command.ingestion.builder.CoordinatesBuilder;
 import com.lorevault.api.web.command.ingestion.validation.FileUploadValidator;
-import lombok.Getter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -18,29 +18,6 @@ import java.util.Map;
  */
 @Component
 public class ErrorResponseFactory {
-
-    /**
-     * Standard error response structure
-     */
-    @Getter
-    public static class ErrorResponse {
-        private final String timestamp;
-        private final int status;
-        private final String error;
-        private final String message;
-        private final String code;
-        private final Map<String, Object> details;
-
-        public ErrorResponse(int status, String error, String message, String code, Map<String, Object> details) {
-            this.timestamp = LocalDateTime.now().toString();
-            this.status = status;
-            this.error = error;
-            this.message = message;
-            this.code = code;
-            this.details = details != null ? details : new HashMap<>();
-        }
-
-    }
 
     /**
      * Create error response for file validation failures
@@ -65,13 +42,12 @@ public class ErrorResponseFactory {
             }
         }
 
-        ErrorResponse error = new ErrorResponse(
-            HttpStatus.BAD_REQUEST.value(),
-            "Bad Request",
-            result.getErrorMessage(),
-            result.getErrorCode(),
-            details
-        );
+        ErrorResponse error = ErrorResponse.builder()
+            .code(result.getErrorCode())
+            .message(result.getErrorMessage())
+            .details("httpStatus", HttpStatus.BAD_REQUEST.value())
+            .timestamp(LocalDateTime.now())
+            .build();
 
         return ResponseEntity.badRequest().body(error);
     }
@@ -80,13 +56,12 @@ public class ErrorResponseFactory {
      * Create error response for coordinate validation failures
      */
     public ResponseEntity<ErrorResponse> createCoordinateValidationError(CoordinatesBuilder.CoordinateValidationResult result) {
-        ErrorResponse error = new ErrorResponse(
-            HttpStatus.BAD_REQUEST.value(),
-            "Bad Request", 
-            result.getErrorMessage(),
-            result.getErrorCode(),
-            null
-        );
+        ErrorResponse error = ErrorResponse.builder()
+            .code(result.getErrorCode())
+            .message(result.getErrorMessage())
+            .details("httpStatus", HttpStatus.BAD_REQUEST.value())
+            .timestamp(LocalDateTime.now())
+            .build();
 
         return ResponseEntity.badRequest().body(error);
     }
@@ -95,13 +70,12 @@ public class ErrorResponseFactory {
      * Create error response for missing file
      */
     public ResponseEntity<ErrorResponse> createMissingFileError() {
-        ErrorResponse error = new ErrorResponse(
-            HttpStatus.BAD_REQUEST.value(),
-            "Bad Request",
-            "No file provided in request",
-            "MISSING_FILE",
-            null
-        );
+        ErrorResponse error = ErrorResponse.builder()
+            .code("MISSING_FILE")
+            .message("No file provided in request")
+            .details("httpStatus", HttpStatus.BAD_REQUEST.value())
+            .timestamp(LocalDateTime.now())
+            .build();
 
         return ResponseEntity.badRequest().body(error);
     }
@@ -110,17 +84,14 @@ public class ErrorResponseFactory {
      * Create error response for file reading errors
      */
     public ResponseEntity<ErrorResponse> createFileReadingError(String filename, Exception cause) {
-        Map<String, Object> details = new HashMap<>();
-        details.put("filename", filename);
-        details.put("cause", cause.getClass().getSimpleName());
-
-        ErrorResponse error = new ErrorResponse(
-            HttpStatus.BAD_REQUEST.value(),
-            "Bad Request",
-            "Failed to read file content",
-            "FILE_READING_ERROR",
-            details
-        );
+        ErrorResponse error = ErrorResponse.builder()
+            .code("FILE_READING_ERROR")
+            .message("Failed to read file content")
+            .details("filename", filename)
+            .details("cause", cause.getClass().getSimpleName())
+            .details("httpStatus", HttpStatus.BAD_REQUEST.value())
+            .timestamp(LocalDateTime.now())
+            .build();
 
         return ResponseEntity.badRequest().body(error);
     }
@@ -129,17 +100,14 @@ public class ErrorResponseFactory {
      * Create error response for ingestion service failures
      */
     public ResponseEntity<ErrorResponse> createIngestionServiceError(Exception cause) {
-        Map<String, Object> details = new HashMap<>();
-        details.put("cause", cause.getClass().getSimpleName());
-        details.put("message", cause.getMessage());
-
-        ErrorResponse error = new ErrorResponse(
-            HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            "Internal Server Error",
-            "Chapter ingestion failed due to internal error",
-            "INGESTION_SERVICE_ERROR", 
-            details
-        );
+        ErrorResponse error = ErrorResponse.builder()
+            .code("INGESTION_SERVICE_ERROR")
+            .message("Chapter ingestion failed due to internal error")
+            .details("cause", cause.getClass().getSimpleName())
+            .details("message", cause.getMessage())
+            .details("httpStatus", HttpStatus.INTERNAL_SERVER_ERROR.value())
+            .timestamp(LocalDateTime.now())
+            .build();
 
         return ResponseEntity.internalServerError().body(error);
     }
@@ -161,16 +129,13 @@ public class ErrorResponseFactory {
      * Create error response for unexpected exceptions
      */
     public ResponseEntity<ErrorResponse> createUnexpectedError(Exception cause) {
-        Map<String, Object> details = new HashMap<>();
-        details.put("cause", cause.getClass().getSimpleName());
-
-        ErrorResponse error = new ErrorResponse(
-            HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            "Internal Server Error",
-            "An unexpected error occurred",
-            "UNEXPECTED_ERROR",
-            details
-        );
+        ErrorResponse error = ErrorResponse.builder()
+            .code("UNEXPECTED_ERROR")
+            .message("An unexpected error occurred")
+            .details("cause", cause.getClass().getSimpleName())
+            .details("httpStatus", HttpStatus.INTERNAL_SERVER_ERROR.value())
+            .timestamp(LocalDateTime.now())
+            .build();
 
         return ResponseEntity.internalServerError().body(error);
     }

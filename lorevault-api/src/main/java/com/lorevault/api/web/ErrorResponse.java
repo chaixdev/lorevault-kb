@@ -1,4 +1,4 @@
-package com.lorevault.api.support;
+package com.lorevault.api.web;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
