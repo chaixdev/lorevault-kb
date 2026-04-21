@@ -3,6 +3,7 @@ package com.lorevault.api.ingestion;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class IngestionCompletionCoordinator {
 
     private final IngestionJobGraphRepository jobRepo;
@@ -18,16 +20,6 @@ public class IngestionCompletionCoordinator {
     private final ApplicationEventPublisher eventPublisher;
 
     private final ConcurrentHashMap<CompletionKey, CompletionState> completionStates = new ConcurrentHashMap<>();
-
-    public IngestionCompletionCoordinator(
-            IngestionJobGraphRepository jobRepo,
-            IngestionJobService ingestionJobService,
-            ApplicationEventPublisher eventPublisher
-    ) {
-        this.jobRepo = jobRepo;
-        this.ingestionJobService = ingestionJobService;
-        this.eventPublisher = eventPublisher;
-    }
 
     @Async
     @EventListener
