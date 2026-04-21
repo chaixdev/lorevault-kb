@@ -92,6 +92,7 @@ At minimum, each planning item should include:
 
 - [Book-location reduction can fail under chained uploads](book-location-reduction-race-under-chained-uploads.md)
 - [Cross-chapter temporal linking is analyzed but not materialized](cross-chapter-temporal-linking-materialization-gap.md)
+- [Scene-localization anchor mismatches should surface as expected business failures](scene-localization-anchor-mismatch-should-raise-business-failure.md)
 - [Reorganize source packages for better browsability and semantic guidance](staged-package-reorganization-and-module-split-prep.md)
 - [Stuck ingestion status sometimes remains in an intermediate state](stuck-ingestion-status.md)
 - [Temporal ambiguity handling needs compatibility and coarsening rules](temporal-compatibility-and-coarsening-for-ambiguity-handling.md)

@@ -1,6 +1,6 @@
 # Reorganize source packages for better browsability and semantic guidance
 
-**Status:** ACTIVE — Stage 0 and Stage 1 complete. See `stage0-support-and-search-dto-audit.md` for full execution record. Stage 2 execution approach agreed; implementation not yet started.
+**Status:** ACTIVE — Stage 0 and Stage 1 complete. See `stage0-support-and-search-dto-audit.md` for full execution record. Stage 2 module split and transitional scaffolding cleanup are complete.
 
 **Execution summary:**
 - Stage 0: full classification of all 21 `support` types + all search DTOs. Zero code moves.
@@ -11,6 +11,8 @@
   - `ErrorResponse` → `web` (with `ErrorResponseFactory` consolidation — inner class retired, factory now produces `web.ErrorResponse`)
   - `SpoilerVisibility`, `SeriesProgress`, `UnconfiguredSeriesPolicy` → `search`
 - Verification: `mvn test -pl lorevault-api` passes with 301 tests, 0 failures, 0 errors after Stage 1.
+- Stage 3 (pass 1): ingestion events were moved under `ingestion.events` and all affected imports/usages were updated across core + web.
+- Verification after Stage 3 pass 1: `mvn clean test` passes with 301 tests, 0 failures, 0 errors.
 - Branch: `refactor/staged-package-reorganization-stage0-audit`
 
 ## Summary
@@ -213,14 +215,18 @@ This keeps the split aligned with the current codebase shape while avoiding prem
 - `AskDtos` and `SemanticSearchDtos` remain in `search` during Stage 2
 - `lorevault-web` may depend directly on core services and core-owned feature contracts during this stage
 
-#### Known boundary leaks to fix during Stage 2
+#### Stage 2 seam-fix verification (runtime-adapter leaks)
 
-The split plan should explicitly correct the currently known runtime-adapter leaks:
+The runtime-adapter seam leaks previously tracked for Stage 2 are now verified as resolved in the current split:
 
-- `JobStatusBroadcaster` should move out of `ingestion` into `web` because it uses `SseEmitter`
-- `SystemHealthIndicator` should move out of `health` into `web` because Actuator exposure is runtime-adapter behavior
+- `JobStatusBroadcaster` is web-owned at `lorevault-web/src/main/java/com/lorevault/api/web/query/job/JobStatusBroadcaster.java`
+- `SystemHealthIndicator` is web-owned at `lorevault-web/src/main/java/com/lorevault/api/web/health/SystemHealthIndicator.java`
 
-These are Stage 2 moves because they materially affect the module seam, not because they improve internal browsability.
+Verification note:
+
+- `lorevault-core/src/main/java` contains no `SseEmitter`, MVC controller annotations, or Actuator `HealthIndicator` runtime adapters.
+
+With these seam fixes in place, remaining Stage 2 work is relocation/cleanup verification and removal of any transitional scaffolding; Stage 3 package-browsability cleanup remains a separate follow-up.
 
 #### Resource ownership rule for Stage 2
 
@@ -390,6 +396,12 @@ After the physical relocation is complete and verified:
 - remove compiler include/exclude slicing used to carve the old tree into modules
 - remove any now-obsolete transitional `lorevault-api` source structure
 
+**Completion note (verified):**
+
+- `lorevault-core/pom.xml` and `lorevault-web/pom.xml` no longer use `../lorevault-api/src/...` source/resource back-references.
+- No temporary compiler include/exclude slicing remains for module carving.
+- The obsolete transitional module stub `lorevault-api/pom.xml` has been removed.
+
 #### What this strategy is explicitly avoiding
 
 - no one-file-at-a-time relocation across unrelated packages
@@ -418,6 +430,14 @@ The strongest current candidates for that later cleanup remain:
 - `search`, especially if orchestration, infrastructure, and DTO concerns still sit too close together
 
 At that point, cleanup becomes less likely to be undone by later architectural moves.
+
+#### Stage 3 progress notes (current)
+
+- ✅ Pass 1 complete: all ingestion pipeline event classes now live in `com.lorevault.api.ingestion.events`.
+- ✅ Core pipeline listeners/coordinators/support classes now import events from `ingestion.events`.
+- ✅ Web broadcaster and related tests were updated to consume `ingestion.events` types.
+- ✅ Full reactor verification is green after the move (`mvn clean test`, 301/0/0).
+- ⏳ Next Stage 3 pass should target handler/service/repository subpackage separation inside `ingestion` (for example, `application`/`infrastructure`) while preserving runtime behavior.
 
 ## Candidate Work Sequence
 
