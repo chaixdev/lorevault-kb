@@ -42,7 +42,8 @@ public class AskController {
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            log.error("Semantic search failed for query '{}': {}", request.getQuery(), e.getMessage(), e);
+            log.error("Semantic search failed for query '{}': {}", request.getQuery(), e.getMessage());
+            log.debug("Semantic search failure details for query '{}'", request.getQuery(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -65,7 +66,8 @@ public class AskController {
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            log.error("RAG failed for question '{}': {}", request.getQuestion(), e.getMessage(), e);
+            log.error("RAG failed for question '{}': {}", request.getQuestion(), e.getMessage());
+            log.debug("RAG failure details for question '{}'", request.getQuestion(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -88,7 +90,8 @@ public class AskController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            log.error("Graph-aware QA failed for question '{}': {}", request.getQuestion(), e.getMessage(), e);
+            log.error("Graph-aware QA failed for question '{}': {}", request.getQuestion(), e.getMessage());
+            log.debug("Graph-aware QA failure details for question '{}'", request.getQuestion(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -112,7 +115,8 @@ public class AskController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            log.error("Hybrid QA failed for question '{}': {}", request.getQuestion(), e.getMessage(), e);
+            log.error("Hybrid QA failed for question '{}': {}", request.getQuestion(), e.getMessage());
+            log.debug("Hybrid QA failure details for question '{}'", request.getQuestion(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

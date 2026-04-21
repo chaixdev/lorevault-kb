@@ -89,7 +89,8 @@ public class CommandIngestionController {
 			return errorResponseFactory.createIngestionSuccessResponse(response.getJobId().toString());
             
 		} catch (Exception e) {
-			log.error("[CMD] Unexpected error during file submission: {}", file.getOriginalFilename(), e);
+			log.error("[CMD] Unexpected error during file submission: {}", file.getOriginalFilename());
+			log.debug("[CMD] File submission failure details for file={}", file.getOriginalFilename(), e);
 			return errorResponseFactory.createIngestionServiceError(e);
 		}
 	}
