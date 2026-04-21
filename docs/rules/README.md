@@ -23,6 +23,7 @@ Rules should be short, opinionated, and easy to apply repeatedly.
 ## Current Rules
 
 - [Development workflow](development-workflow.md)
+- [Exception semantics](exception-semantics.md)
 - [Service design principles](service-design-principles.md)
 - [Specification documentation guidelines](spec-documentation-guidelines.md)
 - [Architecture documentation guidelines](architecture-documentation-guidelines.md)
