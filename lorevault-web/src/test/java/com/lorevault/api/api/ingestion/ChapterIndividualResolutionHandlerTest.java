@@ -15,6 +15,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.lorevault.api.support.ChapterIndividualResolutionResponse;
+import com.lorevault.api.ingestion.events.ChapterIndividualsResolvedEvent;
+import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ChapterIndividualResolutionHandler")

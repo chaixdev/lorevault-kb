@@ -7,6 +7,7 @@ import com.lorevault.api.content.Chunk;
 import com.lorevault.api.content.ChunkGraphRepository;
 import com.lorevault.api.content.Scene;
 import com.lorevault.api.content.SceneGraphRepository;
+import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -3,6 +3,8 @@ package com.lorevault.api.ingestion;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.lorevault.api.ingestion.events.ChapterIndividualsResolvedEvent;
+import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;

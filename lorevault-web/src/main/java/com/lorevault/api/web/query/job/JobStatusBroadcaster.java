@@ -1,10 +1,10 @@
 package com.lorevault.api.web.query.job;
 
-import com.lorevault.api.ingestion.ChunksCreatedEvent;
-import com.lorevault.api.ingestion.IngestionCompletedEvent;
-import com.lorevault.api.ingestion.IngestionEvent;
-import com.lorevault.api.ingestion.IngestionFailedEvent;
-import com.lorevault.api.ingestion.ScenesDetectedEvent;
+import com.lorevault.api.ingestion.events.ChunksCreatedEvent;
+import com.lorevault.api.ingestion.events.IngestionCompletedEvent;
+import com.lorevault.api.ingestion.events.IngestionEvent;
+import com.lorevault.api.ingestion.events.IngestionFailedEvent;
+import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;

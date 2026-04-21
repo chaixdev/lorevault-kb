@@ -1,5 +1,9 @@
 package com.lorevault.api.ingestion;
 
+import com.lorevault.api.ingestion.events.BookIndividualsReducedEvent;
+import com.lorevault.api.ingestion.events.BookLocationsReducedEvent;
+import com.lorevault.api.ingestion.events.EmbeddingsCompletedEvent;
+import com.lorevault.api.ingestion.events.IngestionCompletedEvent;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 

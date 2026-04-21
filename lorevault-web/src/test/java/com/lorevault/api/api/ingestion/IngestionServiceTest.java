@@ -9,7 +9,7 @@ import com.lorevault.api.support.JobListResponse;
 import com.lorevault.api.support.JobStatusResponse;
 import com.lorevault.api.support.SubmitChapterRequest;
 import com.lorevault.api.support.SubmitChapterResponse;
-import com.lorevault.api.ingestion.ChapterIngestionEvent;
+import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import com.lorevault.api.content.BookGraphRepository;
 import com.lorevault.api.content.ChapterGraphRepository;
 import org.junit.jupiter.api.BeforeEach;

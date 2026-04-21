@@ -7,6 +7,7 @@ import com.lorevault.api.ai.TriadOrchestrationService;
 import com.lorevault.api.content.Book;
 import com.lorevault.api.content.BookGraphRepository;
 import com.lorevault.api.content.ChapterGraphRepository;
+import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import com.lorevault.api.integration.TestConfig;
 import com.lorevault.api.support.BookIndividualResolutionResponse;
 import com.lorevault.api.support.ChapterIndividualResolutionResponse;

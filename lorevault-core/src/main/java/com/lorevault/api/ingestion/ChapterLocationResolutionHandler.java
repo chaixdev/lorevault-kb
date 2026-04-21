@@ -1,6 +1,8 @@
 package com.lorevault.api.ingestion;
 
 import com.lorevault.api.support.ChapterLocationResolutionResponse;
+import com.lorevault.api.ingestion.events.ChapterLocationsResolvedEvent;
+import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

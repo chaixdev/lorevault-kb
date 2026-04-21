@@ -1,6 +1,6 @@
 package com.lorevault.api.web.query.job;
 
-import com.lorevault.api.ingestion.ScenesDetectedEvent;
+import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

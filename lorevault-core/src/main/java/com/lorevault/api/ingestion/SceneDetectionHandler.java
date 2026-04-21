@@ -4,6 +4,8 @@ import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
+import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
+import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import com.lorevault.api.ai.SceneDetectionService;
 import com.lorevault.api.ai.SceneProcessingService;
 import com.lorevault.api.timeline.DefaultTemporalEdgeService;

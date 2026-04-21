@@ -1,5 +1,9 @@
 package com.lorevault.api.ingestion;
 
+import com.lorevault.api.ingestion.events.BookIndividualsReducedEvent;
+import com.lorevault.api.ingestion.events.BookLocationsReducedEvent;
+import com.lorevault.api.ingestion.events.EmbeddingsCompletedEvent;
+import com.lorevault.api.ingestion.events.IngestionCompletedEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

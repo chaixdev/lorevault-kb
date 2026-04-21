@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion;
 
+import com.lorevault.api.ingestion.events.IngestionFailedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 

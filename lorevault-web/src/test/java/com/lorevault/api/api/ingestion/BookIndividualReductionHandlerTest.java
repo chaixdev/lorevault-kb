@@ -1,6 +1,8 @@
 package com.lorevault.api.ingestion;
 
 import com.lorevault.api.support.BookIndividualResolutionResponse;
+import com.lorevault.api.ingestion.events.BookIndividualsReducedEvent;
+import com.lorevault.api.ingestion.events.ChapterIndividualsResolvedEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

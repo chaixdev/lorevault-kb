@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion;
 
+import com.lorevault.api.ingestion.events.IngestionFailedEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

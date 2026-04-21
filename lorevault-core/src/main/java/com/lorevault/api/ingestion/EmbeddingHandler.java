@@ -2,7 +2,8 @@ package com.lorevault.api.ingestion;
 
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.ingestion.IngestionStatus;
-import com.lorevault.api.ingestion.ChunksCreatedEvent;
+import com.lorevault.api.ingestion.events.ChunksCreatedEvent;
+import com.lorevault.api.ingestion.events.EmbeddingsCompletedEvent;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
 import com.lorevault.api.ingestion.IngestionJobGraphRepository;

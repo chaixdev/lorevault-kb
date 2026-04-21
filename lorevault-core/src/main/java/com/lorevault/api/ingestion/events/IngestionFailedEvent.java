@@ -1,4 +1,4 @@
-package com.lorevault.api.ingestion;
+package com.lorevault.api.ingestion.events;
 
 import lombok.Getter;
 

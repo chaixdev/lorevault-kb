@@ -1,6 +1,8 @@
 package com.lorevault.api.ingestion;
 
 import com.lorevault.api.support.BookLocationResolutionResponse;
+import com.lorevault.api.ingestion.events.BookLocationsReducedEvent;
+import com.lorevault.api.ingestion.events.ChapterLocationsResolvedEvent;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

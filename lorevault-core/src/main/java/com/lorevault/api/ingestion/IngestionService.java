@@ -9,6 +9,7 @@ import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Book;
 import com.lorevault.api.content.BookGraphRepository;
 import com.lorevault.api.content.ChapterGraphRepository;
+import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
