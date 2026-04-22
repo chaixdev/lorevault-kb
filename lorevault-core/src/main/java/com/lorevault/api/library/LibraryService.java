@@ -3,7 +3,6 @@ package com.lorevault.api.library;
 import com.lorevault.api.content.Universe;
 import com.lorevault.api.content.Series;
 import com.lorevault.api.content.Book;
-import com.lorevault.api.support.*;
 import com.lorevault.api.content.BookGraphRepository;
 import com.lorevault.api.content.SeriesGraphRepository;
 import com.lorevault.api.content.UniverseGraphRepository;
@@ -12,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Service for managing publication hierarchy (Universe/Series/Book) creation.
@@ -29,172 +29,121 @@ public class LibraryService {
     /**
      * Create a universe, returning the existing one if it already exists
      */
-    public CreateUniverseResponse createUniverse(CreateUniverseRequest request) {
-        validateUniverseName(request.getName());
+    public LibraryResult<Universe> createUniverse(String name) {
+        validateUniverseName(name);
 
-        log.info("Creating universe: {}", request.getName());
+        log.info("Creating universe: {}", name);
         
         // Check if universe already exists
-        Optional<Universe> existingUniverse = universeRepo.findByName(request.getName());
+        Optional<Universe> existingUniverse = universeRepo.findByName(name);
         if (existingUniverse.isPresent()) {
-            log.info("Universe already exists: {}", request.getName());
-            Universe universe = existingUniverse.get();
-            return CreateUniverseResponse.existing(
-                universe.getId(),
-                universe.getName(),
-                universe.getSlug(),
-                universe.getCreatedAt(),
-                universe.getUpdatedAt()
-            );
+            log.info("Universe already exists: {}", name);
+            return new LibraryResult<>(existingUniverse.get(), false);
         }
 
         // Create new universe
-        Universe newUniverse = Universe.ofName(request.getName());
+        Universe newUniverse = Universe.ofName(name);
         Universe savedUniverse = universeRepo.save(newUniverse);
         
         log.info("Created universe: {} with id: {}", savedUniverse.getName(), savedUniverse.getId());
         
-        return CreateUniverseResponse.newlyCreated(
-            savedUniverse.getId(),
-            savedUniverse.getName(),
-            savedUniverse.getSlug(),
-            savedUniverse.getCreatedAt(),
-            savedUniverse.getUpdatedAt()
-        );
+        return new LibraryResult<>(savedUniverse, true);
     }
 
     /**
      * Create a series within a universe, returning the existing one if it already exists
      */
-    public CreateSeriesResponse createSeries(CreateSeriesRequest request) {
-        validateSeriesName(request.getName());
+    public LibraryResult<Series> createSeries(UUID universeId, String name) {
+        validateSeriesName(name);
 
-        log.info("Creating series: {} in universe: {}", request.getName(), request.getUniverseId());
+        log.info("Creating series: {} in universe: {}", name, universeId);
         
         // Validate universe exists
-        Universe universe = universeRepo.findById(request.getUniverseId())
-                .orElseThrow(() -> new IllegalArgumentException("Universe not found: " + request.getUniverseId()));
+        Universe universe = universeRepo.findById(universeId)
+                .orElseThrow(() -> new IllegalArgumentException("Universe not found: " + universeId));
 
         // Check if series already exists in this universe
-        Optional<Series> existingSeries = seriesRepo.findByNameAndUniverseId(
-                request.getName(), request.getUniverseId());
+        Optional<Series> existingSeries = seriesRepo.findByNameAndUniverseId(name, universeId);
         if (existingSeries.isPresent()) {
-            log.info("Series already exists: {} in universe: {}", request.getName(), request.getUniverseId());
-            Series series = existingSeries.get();
-            return CreateSeriesResponse.existing(
-                series.getId(),
-                series.getUniverseId(),
-                series.getUniverseName(),
-                series.getName(),
-                series.getCreatedAt(),
-                series.getUpdatedAt()
-            );
+            log.info("Series already exists: {} in universe: {}", name, universeId);
+            return new LibraryResult<>(existingSeries.get(), false);
         }
 
         // Create new series
-        Series newSeries = Series.create(request.getUniverseId(), universe.getName(), request.getName());
+        Series newSeries = Series.create(universeId, universe.getName(), name);
         Series savedSeries = seriesRepo.save(newSeries);
         
         log.info("Created series: {} with id: {} in universe: {}", 
                 savedSeries.getName(), savedSeries.getId(), savedSeries.getUniverseId());
         
-        return CreateSeriesResponse.newlyCreated(
-            savedSeries.getId(),
-            savedSeries.getUniverseId(),
-            savedSeries.getUniverseName(),
-            savedSeries.getName(),
-            savedSeries.getCreatedAt(),
-            savedSeries.getUpdatedAt()
-        );
+        return new LibraryResult<>(savedSeries, true);
     }
 
     /**
      * Create a book, either standalone in a universe or within a series.
      * Returns the existing one if it already exists.
      */
-    public CreateBookResponse createBook(CreateBookRequest request) {
-        validateBookTitle(request.getTitle());
+    public LibraryResult<Book> createBook(UUID universeId, UUID seriesId, String title, Integer bookNumber) {
+        validateBookTitle(title);
 
         log.info("Creating book: {} in universe: {}, series: {}", 
-                request.getTitle(), request.getUniverseId(), request.getSeriesId());
+                title, universeId, seriesId);
         
         // Validate universe exists
-        Universe universe = universeRepo.findById(request.getUniverseId())
-                .orElseThrow(() -> new IllegalArgumentException("Universe not found: " + request.getUniverseId()));
+        Universe universe = universeRepo.findById(universeId)
+                .orElseThrow(() -> new IllegalArgumentException("Universe not found: " + universeId));
 
         Series series = null;
-        if (request.getSeriesId() != null) {
+        if (seriesId != null) {
             // Validate series exists and belongs to universe
-            series = seriesRepo.findById(request.getSeriesId())
-                    .orElseThrow(() -> new IllegalArgumentException("Series not found: " + request.getSeriesId()));
+            series = seriesRepo.findById(seriesId)
+                    .orElseThrow(() -> new IllegalArgumentException("Series not found: " + seriesId));
             
-            if (!series.getUniverseId().equals(request.getUniverseId())) {
+            if (!series.getUniverseId().equals(universeId)) {
                 throw new IllegalArgumentException("Series does not belong to the specified universe");
             }
         }
 
         // Check if book already exists
-        Optional<Book> existingBook = findExistingBook(request);
+        Optional<Book> existingBook = findExistingBook(universeId, seriesId, title);
         if (existingBook.isPresent()) {
             log.info("Book already exists: {} in universe: {}, series: {}", 
-                    request.getTitle(), request.getUniverseId(), request.getSeriesId());
-            Book book = existingBook.get();
-            return CreateBookResponse.existing(
-                book.getId(),
-                book.getUniverseId(),
-                book.getUniverse(),
-                book.getSeriesId(),
-                book.getSeries(),
-                book.getTitle(),
-                book.getBookNumber(),
-                book.getCreatedAt(),
-                book.getUpdatedAt()
-            );
+                    title, universeId, seriesId);
+            return new LibraryResult<>(existingBook.get(), false);
         }
 
         // Create new book
-        Book newBook = createNewBook(request, universe, series);
+        Book newBook = createNewBook(universeId, seriesId, title, bookNumber, universe, series);
         Book savedBook = bookRepo.save(newBook);
         
         log.info("Created book: {} with id: {} in universe: {}, series: {}", 
                 savedBook.getTitle(), savedBook.getId(), savedBook.getUniverseId(), savedBook.getSeriesId());
         
-        return CreateBookResponse.newlyCreated(
-            savedBook.getId(),
-            savedBook.getUniverseId(),
-            savedBook.getUniverse(),
-            savedBook.getSeriesId(),
-            savedBook.getSeries(),
-            savedBook.getTitle(),
-            savedBook.getBookNumber(),
-            savedBook.getCreatedAt(),
-            savedBook.getUpdatedAt()
-        );
+        return new LibraryResult<>(savedBook, true);
     }
 
-    private Optional<Book> findExistingBook(CreateBookRequest request) {
-        if (request.getSeriesId() != null) {
+    private Optional<Book> findExistingBook(UUID universeId, UUID seriesId, String title) {
+        if (seriesId != null) {
             // Book in series
-            return bookRepo.findByTitleAndSeriesId(request.getTitle(), request.getSeriesId());
+            return bookRepo.findByTitleAndSeriesId(title, seriesId);
         } else {
             // Standalone book
-            return bookRepo.findStandaloneByTitleAndUniverseId(
-                    request.getTitle(), request.getUniverseId());
+            return bookRepo.findStandaloneByTitleAndUniverseId(title, universeId);
         }
     }
 
-    private Book createNewBook(CreateBookRequest request, Universe universe, Series series) {
+    private Book createNewBook(UUID universeId, UUID seriesId, String title, Integer bookNumber, Universe universe, Series series) {
         if (series != null) {
             return Book.createInSeries(
                 universe.getId(),
                 universe.getName(),
                 series.getId(),
                 series.getName(),
-                request.getBookNumber(),
-                request.getTitle()
+                bookNumber,
+                title
             );
         } else {
-            return Book.createStandalone(universe.getId(), universe.getName(), request.getTitle());
+            return Book.createStandalone(universe.getId(), universe.getName(), title);
         }
     }
 

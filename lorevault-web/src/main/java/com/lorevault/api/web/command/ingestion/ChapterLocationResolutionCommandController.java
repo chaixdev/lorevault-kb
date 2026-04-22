@@ -1,7 +1,8 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.ChapterLocationResolutionService;
-import com.lorevault.api.support.ChapterLocationResolutionResponse;
+import com.lorevault.api.ingestion.application.ChapterLocationResolutionService;
+import com.lorevault.api.ingestion.application.ChapterLocationResolutionResult;
+import com.lorevault.api.web.command.ingestion.ChapterLocationResolutionResponse;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +45,14 @@ public class ChapterLocationResolutionCommandController {
         }
 
         log.info("[CMD] Resolve chapter locations: chapterId={}", chapterUuid);
-        ChapterLocationResolutionResponse response = chapterLocationResolutionService.resolveChapter(chapterUuid);
+        ChapterLocationResolutionResult result = chapterLocationResolutionService.resolveChapter(chapterUuid);
+        ChapterLocationResolutionResponse response = new ChapterLocationResolutionResponse(
+            result.chapterId(),
+            result.success(),
+            result.rawLocationsProcessed(),
+            result.chapterLocationsCreated(),
+            result.message()
+        );
         return ResponseEntity.ok(response);
     }
 }

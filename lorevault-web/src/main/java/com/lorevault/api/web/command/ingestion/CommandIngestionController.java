@@ -1,8 +1,9 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.support.SubmitChapterRequest;
-import com.lorevault.api.support.SubmitChapterResponse;
-import com.lorevault.api.ingestion.IngestionService;
+import com.lorevault.api.web.command.ingestion.SubmitChapterRequest;
+import com.lorevault.api.web.command.ingestion.SubmitChapterResponse;
+import com.lorevault.api.ingestion.application.IngestionService;
+import com.lorevault.api.ingestion.application.IngestionSubmissionResult;
 import com.lorevault.api.web.command.ingestion.builder.CoordinatesBuilder;
 import com.lorevault.api.web.command.ingestion.extractor.FileContentExtractor;
 import com.lorevault.api.web.command.ingestion.response.ErrorResponseFactory;
@@ -81,12 +82,17 @@ public class CommandIngestionController {
 			SubmitChapterRequest request = coordinatesBuilder.buildSubmitRequest(bookId, chapterNumber, finalChapterTitle, contentResult.getContent());
 
 			// Submit for processing
-			SubmitChapterResponse response = ingestionService.submitChapter(request);
+			IngestionSubmissionResult result = ingestionService.submitChapter(
+				request.getBookId(), 
+				request.getChapterNumber(), 
+				request.getChapterTitle(), 
+				request.getChapterText()
+			);
             
 			log.info("[CMD] Ingest submitted: jobId={}, chapterId={}", 
-					response.getJobId(), response.getChapterId());
+					result.jobId(), result.chapterId());
 
-			return errorResponseFactory.createIngestionSuccessResponse(response.getJobId().toString());
+			return errorResponseFactory.createIngestionSuccessResponse(result.jobId().toString());
             
 		} catch (Exception e) {
 			log.error("[CMD] Unexpected error during file submission: {}", file.getOriginalFilename());

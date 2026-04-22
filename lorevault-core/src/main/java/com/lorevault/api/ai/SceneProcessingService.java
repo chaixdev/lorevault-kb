@@ -6,7 +6,7 @@ import com.lorevault.api.ai.SceneDetectionResult;
 import com.lorevault.api.ai.SceneWithCoordinates;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
-import com.lorevault.api.ingestion.IngestionFailure;
+import com.lorevault.api.ingestion.domain.IngestionFailure;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

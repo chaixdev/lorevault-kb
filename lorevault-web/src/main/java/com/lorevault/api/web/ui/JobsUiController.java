@@ -1,8 +1,8 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.support.JobListResponse;
-import com.lorevault.api.support.JobStatusResponse;
-import com.lorevault.api.ingestion.IngestionService;
+import com.lorevault.api.ingestion.application.IngestionService;
+import com.lorevault.api.ingestion.application.JobStatusDetails;
+import com.lorevault.api.ingestion.application.PaginatedJobSummaries;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -26,15 +26,15 @@ public class JobsUiController {
     public String listJobs(@RequestParam(value = "limit", defaultValue = "20") int limit,
                            @RequestParam(value = "offset", defaultValue = "0") int offset,
                            Model model) {
-        JobListResponse response = ingestionService.listJobs(null, null, limit, offset);
-        model.addAttribute("jobs", response.getJobs());
-        model.addAttribute("pagination", response.getPagination());
+        PaginatedJobSummaries response = ingestionService.listJobs(null, null, limit, offset);
+        model.addAttribute("jobs", response.jobs());
+        model.addAttribute("pagination", response.pagination());
         return "ui/jobs :: jobTable";
     }
 
     @GetMapping("/{jobId}")
     public String jobDetail(@PathVariable UUID jobId, Model model) {
-        JobStatusResponse status = ingestionService.getJobStatus(jobId)
+        JobStatusDetails status = ingestionService.getJobStatus(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
         model.addAttribute("status", status);
         return "ui/jobs :: jobDetail";
@@ -42,7 +42,7 @@ public class JobsUiController {
 
     @GetMapping("/{jobId}/expand")
     public String expandedJobDetail(@PathVariable UUID jobId, Model model) {
-        JobStatusResponse status = ingestionService.getJobStatus(jobId)
+        JobStatusDetails status = ingestionService.getJobStatus(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
         model.addAttribute("status", status);
         return "ui/jobs :: jobExpandedRow";

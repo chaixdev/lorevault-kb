@@ -1,7 +1,8 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.ChapterIndividualResolutionService;
-import com.lorevault.api.support.ChapterIndividualResolutionResponse;
+import com.lorevault.api.ingestion.application.ChapterIndividualResolutionService;
+import com.lorevault.api.ingestion.application.ChapterIndividualResolutionResult;
+import com.lorevault.api.web.command.ingestion.ChapterIndividualResolutionResponse;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
@@ -43,7 +44,14 @@ public class ChapterIndividualResolutionCommandController {
         }
 
         log.info("[CMD] Resolve chapter individuals: chapterId={}", chapterUuid);
-        ChapterIndividualResolutionResponse response = chapterIndividualResolutionService.resolveChapter(chapterUuid);
+        ChapterIndividualResolutionResult result = chapterIndividualResolutionService.resolveChapter(chapterUuid);
+        ChapterIndividualResolutionResponse response = new ChapterIndividualResolutionResponse(
+            result.chapterId(),
+            result.success(),
+            result.rawIndividualsProcessed(),
+            result.chapterIndividualsCreated(),
+            result.message()
+        );
         return ResponseEntity.ok(response);
     }
 }

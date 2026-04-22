@@ -1,9 +1,12 @@
 package com.lorevault.api.web.query.job;
 
-import com.lorevault.api.support.JobStatusResponse;
-import com.lorevault.api.support.JobListResponse;
+import com.lorevault.api.web.query.job.JobStatusResponse;
+import com.lorevault.api.web.query.job.JobListResponse;
 import com.lorevault.api.web.ErrorResponse;
-import com.lorevault.api.ingestion.IngestionService;
+import com.lorevault.api.ingestion.application.IngestionService;
+import com.lorevault.api.ingestion.application.JobStatusDetails;
+import com.lorevault.api.ingestion.application.PaginatedJobSummaries;
+import com.lorevault.api.ingestion.application.JobSummary;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,17 +52,44 @@ public class JobsController {
             );
         }
 
-        Optional<JobStatusResponse> status = ingestionService.getJobStatus(jobUuid);
+        Optional<JobStatusDetails> statusOpt = ingestionService.getJobStatus(jobUuid);
         
-        if (status.isEmpty()) {
+        if (statusOpt.isEmpty()) {
             log.info("Job not found: {}", jobId);
             return ResponseEntity.notFound().build();
         }
 
-        log.debug("Returning job status for jobId: {}, status: {}", 
-                jobId, status.get().getCurrentStatus());
+        JobStatusDetails details = statusOpt.get();
+        JobStatusResponse response = new JobStatusResponse();
+        response.setJobId(details.jobId());
+        response.setChapterId(details.chapterId());
+        response.setBookId(details.bookId());
+        response.setCurrentStatus(details.currentStatus());
+        response.setProgressPercent(details.progressPercent());
+        response.setIsComplete(details.isComplete());
+        response.setCreatedAt(details.createdAt());
+        response.setCompletedAt(details.completedAt());
         
-        return ResponseEntity.ok(status.get());
+        if (details.recentUpdates() != null) {
+            response.setRecentUpdates(details.recentUpdates().stream()
+                .map(u -> new JobStatusResponse.StatusUpdateDto(u.status(), u.description(), u.timestamp(), u.progressPercent()))
+                .toList());
+        }
+        
+        if (details.failureDetails() != null) {
+            response.setFailureDetails(new JobStatusResponse.FailureDetails(
+                details.failureDetails().code(),
+                details.failureDetails().message(),
+                details.failureDetails().exceptionType(),
+                details.failureDetails().stage(),
+                details.failureDetails().additionalDetails()
+            ));
+        }
+
+        log.debug("Returning job status for jobId: {}, status: {}", 
+                jobId, response.getCurrentStatus());
+        
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -114,7 +144,33 @@ public class JobsController {
             }
         }
 
-        JobListResponse response = ingestionService.listJobs(universe, status, limit, offset);
+        PaginatedJobSummaries summaries = ingestionService.listJobs(universe, status, limit, offset);
+        
+        JobListResponse response = new JobListResponse(
+            summaries.jobs().stream().map(j -> {
+                JobListResponse.JobSummary summary = new JobListResponse.JobSummary();
+                summary.setJobId(j.jobId());
+                summary.setChapterId(j.chapterId());
+                summary.setBookId(j.bookId());
+                summary.setChapterTitle(j.chapterTitle());
+                summary.setUniverse(j.universe());
+                summary.setSeries(j.series());
+                summary.setBookNumber(j.bookNumber());
+                summary.setChapterNumber(j.chapterNumber());
+                summary.setStatus(j.status());
+                summary.setProgress(j.progress());
+                summary.setCreatedAt(j.createdAt());
+                summary.setCompletedAt(j.completedAt());
+                return summary;
+            }).toList(),
+            new JobListResponse.Pagination(
+                summaries.pagination().total(),
+                summaries.pagination().limit(),
+                summaries.pagination().offset(),
+                summaries.pagination().hasMore()
+            )
+        );
+        
         return ResponseEntity.ok(response);
     }
 }

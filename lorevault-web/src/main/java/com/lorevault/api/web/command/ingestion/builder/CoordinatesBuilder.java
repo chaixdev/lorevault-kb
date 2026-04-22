@@ -1,6 +1,6 @@
 package com.lorevault.api.web.command.ingestion.builder;
 
-import com.lorevault.api.support.SubmitChapterRequest;
+import com.lorevault.api.web.command.ingestion.SubmitChapterRequest;
 import lombok.Getter;
 import org.springframework.stereotype.Component;
 

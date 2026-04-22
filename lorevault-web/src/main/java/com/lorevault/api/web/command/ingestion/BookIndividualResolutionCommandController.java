@@ -1,7 +1,8 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.BookIndividualReductionService;
-import com.lorevault.api.support.BookIndividualResolutionResponse;
+import com.lorevault.api.ingestion.application.BookIndividualReductionService;
+import com.lorevault.api.ingestion.application.BookIndividualResolutionResult;
+import com.lorevault.api.web.command.ingestion.BookIndividualResolutionResponse;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
@@ -43,7 +44,14 @@ public class BookIndividualResolutionCommandController {
         }
 
         log.info("[CMD] Resolve book individuals: bookId={}", bookUuid);
-        BookIndividualResolutionResponse response = bookIndividualReductionService.resolveBook(bookUuid);
+        BookIndividualResolutionResult result = bookIndividualReductionService.resolveBook(bookUuid);
+        BookIndividualResolutionResponse response = new BookIndividualResolutionResponse(
+            result.bookId(),
+            result.success(),
+            result.chapterIndividualsProcessed(),
+            result.bookIndividualsCreated(),
+            result.message()
+        );
         return ResponseEntity.ok(response);
     }
 }

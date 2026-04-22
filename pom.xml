@@ -70,6 +70,7 @@
                     <configuration>
                         <source>21</source>
                         <target>21</target>
+                        <parameters>true</parameters>
                         <!-- Ensure Lombok annotation processing is always enabled in all modules -->
                         <annotationProcessorPaths>
                             <path>

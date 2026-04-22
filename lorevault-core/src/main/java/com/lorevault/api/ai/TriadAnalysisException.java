@@ -1,6 +1,6 @@
 package com.lorevault.api.ai;
 
-import com.lorevault.api.ingestion.IngestionFailure;
+import com.lorevault.api.ingestion.domain.IngestionFailure;
 
 /**
  * Domain exception for malformed or incomplete triad analysis output.

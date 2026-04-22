@@ -1,11 +1,9 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.support.CreateBookRequest;
-import com.lorevault.api.support.CreateBookResponse;
-import com.lorevault.api.support.CreateSeriesRequest;
-import com.lorevault.api.support.CreateSeriesResponse;
-import com.lorevault.api.support.CreateUniverseRequest;
-import com.lorevault.api.support.CreateUniverseResponse;
+import com.lorevault.api.content.Universe;
+import com.lorevault.api.content.Series;
+import com.lorevault.api.content.Book;
+import com.lorevault.api.library.LibraryResult;
 import com.lorevault.api.library.LibraryQueryService;
 import com.lorevault.api.library.LibraryService;
 import com.lorevault.api.web.ui.form.CreateBookForm;
@@ -52,11 +50,11 @@ public class LibraryUiController {
         }
 
         try {
-            CreateUniverseResponse response = libraryService.createUniverse(new CreateUniverseRequest(form.getName()));
-            model.addAttribute("message", response.isCreated()
+            LibraryResult<Universe> result = libraryService.createUniverse(form.getName());
+            model.addAttribute("message", result.isNew()
                     ? "Universe created successfully"
                     : "Universe already exists; loaded existing record");
-            model.addAttribute("messageType", response.isCreated() ? "success" : "info");
+            model.addAttribute("messageType", result.isNew() ? "success" : "info");
             model.addAttribute("refreshUniverses", true);
             CreateUniverseForm resetForm = new CreateUniverseForm();
             model.addAttribute("createUniverseForm", resetForm);
@@ -90,12 +88,12 @@ public class LibraryUiController {
         }
 
         try {
-            CreateSeriesResponse response = libraryService.createSeries(new CreateSeriesRequest(
-                    form.getUniverseId(), form.getName().trim()));
-            model.addAttribute("message", response.isCreated()
+            LibraryResult<Series> result = libraryService.createSeries(
+                    form.getUniverseId(), form.getName().trim());
+            model.addAttribute("message", result.isNew()
                     ? "Series created successfully"
                     : "Series already exists; loaded existing record");
-            model.addAttribute("messageType", response.isCreated() ? "success" : "info");
+            model.addAttribute("messageType", result.isNew() ? "success" : "info");
             model.addAttribute("refreshSeriesUniverseId", form.getUniverseId());
             CreateSeriesForm resetForm = new CreateSeriesForm();
             resetForm.setUniverseId(form.getUniverseId());
@@ -133,16 +131,15 @@ public class LibraryUiController {
         }
 
         try {
-            CreateBookRequest request = new CreateBookRequest(
+            LibraryResult<Book> result = libraryService.createBook(
                     form.getUniverseId(),
                     form.getSeriesId(),
                     form.getTitle().trim(),
                     form.getSeriesId() == null ? null : form.getBookNumber());
-            CreateBookResponse response = libraryService.createBook(request);
-            model.addAttribute("message", response.isCreated()
+            model.addAttribute("message", result.isNew()
                     ? "Book created successfully"
                     : "Book already exists; loaded existing record");
-            model.addAttribute("messageType", response.isCreated() ? "success" : "info");
+            model.addAttribute("messageType", result.isNew() ? "success" : "info");
             model.addAttribute("refreshBooksUniverseId", form.getUniverseId());
             CreateBookForm resetForm = new CreateBookForm();
             resetForm.setUniverseId(form.getUniverseId());
@@ -221,11 +218,10 @@ public class LibraryUiController {
             
             // Step 1: Get or create universe
             if (form.isCreatingNewUniverse()) {
-                CreateUniverseResponse universeResponse = libraryService.createUniverse(
-                        new CreateUniverseRequest(form.getNewUniverseName()));
-                universeId = universeResponse.getUniverseId();
-                universeName = universeResponse.getName();
-                universeCreated = universeResponse.isCreated();
+                LibraryResult<Universe> universeResult = libraryService.createUniverse(form.getNewUniverseName());
+                universeId = universeResult.entity().getId();
+                universeName = universeResult.entity().getName();
+                universeCreated = universeResult.isNew();
             } else {
                 universeId = form.getExistingUniverseId();
                 universeName = libraryQueryService.listUniverses().stream()
@@ -241,11 +237,10 @@ public class LibraryUiController {
             boolean seriesCreated = false;
             
             if (form.isCreatingNewSeries()) {
-                CreateSeriesResponse seriesResponse = libraryService.createSeries(
-                        new CreateSeriesRequest(universeId, form.getNewSeriesName()));
-                seriesId = seriesResponse.getSeriesId();
-                seriesName = seriesResponse.getName();
-                seriesCreated = seriesResponse.isCreated();
+                LibraryResult<Series> seriesResult = libraryService.createSeries(universeId, form.getNewSeriesName());
+                seriesId = seriesResult.entity().getId();
+                seriesName = seriesResult.entity().getName();
+                seriesCreated = seriesResult.isNew();
             } else if (form.getExistingSeriesId() != null) {
                 UUID existingSeriesId = form.getExistingSeriesId();
                 seriesId = existingSeriesId;
@@ -257,12 +252,11 @@ public class LibraryUiController {
             }
 
             // Step 3: Create book
-            CreateBookRequest bookRequest = new CreateBookRequest(
+            LibraryResult<Book> bookResult = libraryService.createBook(
                     universeId,
                     seriesId,
                     form.getBookTitle(),
                     seriesId == null ? null : form.getBookNumber());
-            CreateBookResponse bookResponse = libraryService.createBook(bookRequest);
 
             // Build success message
             StringBuilder message = new StringBuilder();
@@ -272,14 +266,14 @@ public class LibraryUiController {
             if (seriesCreated) {
                 message.append("Created series '").append(seriesName).append("'. ");
             }
-            if (bookResponse.isCreated()) {
+            if (bookResult.isNew()) {
                 message.append("Created book '").append(form.getBookTitle()).append("'.");
             } else {
                 message.append("Book '").append(form.getBookTitle()).append("' already exists.");
             }
 
             model.addAttribute("message", message.toString());
-            model.addAttribute("messageType", bookResponse.isCreated() ? "success" : "info");
+            model.addAttribute("messageType", bookResult.isNew() ? "success" : "info");
             model.addAttribute("refreshUniverses", true);
             
             // Reset form

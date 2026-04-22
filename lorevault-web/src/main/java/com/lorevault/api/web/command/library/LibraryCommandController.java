@@ -1,6 +1,9 @@
 package com.lorevault.api.web.command.library;
 
-import com.lorevault.api.support.*;
+import com.lorevault.api.content.Universe;
+import com.lorevault.api.content.Series;
+import com.lorevault.api.content.Book;
+import com.lorevault.api.library.LibraryResult;
 import com.lorevault.api.library.LibraryService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -29,7 +32,24 @@ public class LibraryCommandController {
         log.info("[CMD] Create universe: {}", request.getName());
         
         try {
-            CreateUniverseResponse response = catalogService.createUniverse(request);
+            LibraryResult<Universe> result = catalogService.createUniverse(request.getName());
+            Universe universe = result.entity();
+            
+            CreateUniverseResponse response = result.isNew() ?
+                CreateUniverseResponse.newlyCreated(
+                    universe.getId(),
+                    universe.getName(),
+                    universe.getSlug(),
+                    universe.getCreatedAt(),
+                    universe.getUpdatedAt()
+                ) :
+                CreateUniverseResponse.existing(
+                    universe.getId(),
+                    universe.getName(),
+                    universe.getSlug(),
+                    universe.getCreatedAt(),
+                    universe.getUpdatedAt()
+                );
             
             log.info("[CMD] Universe {}: {} with id: {}", 
                     response.isCreated() ? "created" : "exists", 
@@ -55,7 +75,26 @@ public class LibraryCommandController {
         log.info("[CMD] Create series: {} in universe: {}", request.getName(), request.getUniverseId());
         
         try {
-            CreateSeriesResponse response = catalogService.createSeries(request);
+            LibraryResult<Series> result = catalogService.createSeries(request.getUniverseId(), request.getName());
+            Series series = result.entity();
+            
+            CreateSeriesResponse response = result.isNew() ?
+                CreateSeriesResponse.newlyCreated(
+                    series.getId(),
+                    series.getUniverseId(),
+                    series.getUniverseName(),
+                    series.getName(),
+                    series.getCreatedAt(),
+                    series.getUpdatedAt()
+                ) :
+                CreateSeriesResponse.existing(
+                    series.getId(),
+                    series.getUniverseId(),
+                    series.getUniverseName(),
+                    series.getName(),
+                    series.getCreatedAt(),
+                    series.getUpdatedAt()
+                );
             
             log.info("[CMD] Series {}: {} with id: {} in universe: {}", 
                     response.isCreated() ? "created" : "exists", 
@@ -84,7 +123,37 @@ public class LibraryCommandController {
                 request.getTitle(), request.getUniverseId(), request.getSeriesId());
         
         try {
-            CreateBookResponse response = catalogService.createBook(request);
+            LibraryResult<Book> result = catalogService.createBook(
+                request.getUniverseId(), 
+                request.getSeriesId(), 
+                request.getTitle(), 
+                request.getBookNumber()
+            );
+            Book book = result.entity();
+            
+            CreateBookResponse response = result.isNew() ?
+                CreateBookResponse.newlyCreated(
+                    book.getId(),
+                    book.getUniverseId(),
+                    book.getUniverse(),
+                    book.getSeriesId(),
+                    book.getSeries(),
+                    book.getTitle(),
+                    book.getBookNumber(),
+                    book.getCreatedAt(),
+                    book.getUpdatedAt()
+                ) :
+                CreateBookResponse.existing(
+                    book.getId(),
+                    book.getUniverseId(),
+                    book.getUniverse(),
+                    book.getSeriesId(),
+                    book.getSeries(),
+                    book.getTitle(),
+                    book.getBookNumber(),
+                    book.getCreatedAt(),
+                    book.getUpdatedAt()
+                );
             
             log.info("[CMD] Book {}: {} with id: {} in universe: {}, series: {}", 
                     response.isCreated() ? "created" : "exists", 

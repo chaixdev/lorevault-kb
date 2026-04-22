@@ -2,10 +2,10 @@ package com.lorevault.api.ai;
 
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
-import com.lorevault.api.ingestion.IngestionFailure;
-import com.lorevault.api.ingestion.IngestionStatus;
+import com.lorevault.api.ingestion.domain.IngestionFailure;
+import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.timeline.TriadRelationInverter;
-import com.lorevault.api.ingestion.IngestionJobService;
+import com.lorevault.api.ingestion.application.IngestionJobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.prompt.PromptTemplate;

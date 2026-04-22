@@ -1,6 +1,6 @@
 package com.lorevault.api.ai;
 
-import com.lorevault.api.ingestion.IngestionFailure;
+import com.lorevault.api.ingestion.domain.IngestionFailure;
 
 /**
  * Business exception for expected scene-localization failures in the scene detection pipeline.

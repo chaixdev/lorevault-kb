@@ -1,16 +1,15 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.ingestion.IngestionService;
+import com.lorevault.api.content.Universe;
+import com.lorevault.api.content.Series;
+import com.lorevault.api.content.Book;
+import com.lorevault.api.library.LibraryResult;
+import com.lorevault.api.ingestion.application.IngestionService;
 import com.lorevault.api.library.LibraryQueryService;
 import com.lorevault.api.library.LibraryService;
-import com.lorevault.api.support.CreateBookRequest;
-import com.lorevault.api.support.CreateBookResponse;
-import com.lorevault.api.support.CreateSeriesRequest;
-import com.lorevault.api.support.CreateSeriesResponse;
-import com.lorevault.api.support.CreateUniverseRequest;
-import com.lorevault.api.support.CreateUniverseResponse;
-import com.lorevault.api.support.SubmitChapterRequest;
-import com.lorevault.api.support.SubmitChapterResponse;
+import com.lorevault.api.web.command.ingestion.SubmitChapterRequest;
+import com.lorevault.api.web.command.ingestion.SubmitChapterResponse;
+import com.lorevault.api.ingestion.application.IngestionSubmissionResult;
 import com.lorevault.api.web.command.ingestion.builder.CoordinatesBuilder;
 import com.lorevault.api.web.command.ingestion.extractor.FileContentExtractor;
 import com.lorevault.api.web.command.ingestion.validation.FileUploadValidator;
@@ -102,9 +101,14 @@ public class IngestionUiController {
                     finalChapterTitle,
                     contentResult.getContent());
 
-            SubmitChapterResponse response = ingestionService.submitChapter(request);
+            IngestionSubmissionResult response = ingestionService.submitChapter(
+                    request.getBookId(),
+                    request.getChapterNumber(),
+                    request.getChapterTitle(),
+                    request.getChapterText()
+            );
             log.info("[UI] Chapter submission queued. JobId={}, ChapterId={}",
-                    response.getJobId(), response.getChapterId());
+                    response.jobId(), response.chapterId());
 
             ChapterUploadForm resetForm = new ChapterUploadForm();
             resetForm.setUniverseSelection(form.getUniverseSelection());
@@ -224,14 +228,19 @@ public class IngestionUiController {
                         finalChapterTitle,
                         contentResult.getContent());
 
-                SubmitChapterResponse response = ingestionService.submitChapter(request);
+                IngestionSubmissionResult response = ingestionService.submitChapter(
+                        request.getBookId(),
+                        request.getChapterNumber(),
+                        request.getChapterTitle(),
+                        request.getChapterText()
+                );
                 successCount++;
                 results.add(BatchUploadItemResult.submitted(
                         clientId,
                         filename,
                         chapterNumber,
-                        response.getJobId(),
-                        response.getChapterId(),
+                        response.jobId(),
+                        response.chapterId(),
                         "Queued for processing"
                 ));
             } catch (Exception ex) {
@@ -283,9 +292,9 @@ public class IngestionUiController {
                 bindingResult.rejectValue("newUniverseName", "universe.name.required", "Universe name is required when creating a new universe");
                 return null;
             }
-            CreateUniverseResponse response = libraryService.createUniverse(new CreateUniverseRequest(form.getNewUniverseName().trim()));
-            form.setUniverseSelection(response.getUniverseId().toString());
-            return response.getUniverseId();
+            LibraryResult<Universe> result = libraryService.createUniverse(form.getNewUniverseName().trim());
+            form.setUniverseSelection(result.entity().getId().toString());
+            return result.entity().getId();
         }
 
         UUID universeId = parseUuid(universeSelection);
@@ -301,9 +310,9 @@ public class IngestionUiController {
                 bindingResult.rejectValue("newSeriesName", "series.name.required", "Series name is required when creating a new series");
                 return null;
             }
-            CreateSeriesResponse response = libraryService.createSeries(new CreateSeriesRequest(universeId, form.getNewSeriesName().trim()));
-            form.setSeriesSelection(response.getSeriesId().toString());
-            return response.getSeriesId();
+            LibraryResult<Series> result = libraryService.createSeries(universeId, form.getNewSeriesName().trim());
+            form.setSeriesSelection(result.entity().getId().toString());
+            return result.entity().getId();
         }
 
         return parseUuid(seriesSelection);
@@ -319,14 +328,14 @@ public class IngestionUiController {
                 bindingResult.rejectValue("newBookNumber", "book.number.required", "Book number is required when creating a book inside a series");
                 return null;
             }
-            CreateBookResponse response = libraryService.createBook(new CreateBookRequest(
+            LibraryResult<Book> result = libraryService.createBook(
                     universeId,
                     seriesId,
                     form.getNewBookTitle().trim(),
                     seriesId == null ? null : form.getNewBookNumber()
-            ));
-            form.setBookSelection(response.getBookId().toString());
-            return response.getBookId();
+            );
+            form.setBookSelection(result.entity().getId().toString());
+            return result.entity().getId();
         }
 
         UUID bookId = parseUuid(bookSelection);
