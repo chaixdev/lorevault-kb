@@ -1,13 +1,8 @@
 package com.lorevault.api.ingestion.application.resolution;
-import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.IngestionFailure;
 
-import com.lorevault.api.content.ChapterIndividual;
-import com.lorevault.api.content.ChapterIndividualGraphRepository;
-import com.lorevault.api.content.ChapterGraphRepository;
+import com.lorevault.api.content.domain.ChapterIndividual;
+import com.lorevault.api.content.infrastructure.ChapterIndividualGraphRepository;
+import com.lorevault.api.content.infrastructure.ChapterGraphRepository;
 import com.lorevault.api.ingestion.application.result.ChapterIndividualResolutionResult;
 
 import java.util.ArrayList;

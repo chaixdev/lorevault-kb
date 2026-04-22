@@ -4,19 +4,14 @@ import com.lorevault.api.ingestion.application.result.IngestionSubmissionResult;
 import com.lorevault.api.ingestion.application.result.JobStatusDetails;
 import com.lorevault.api.ingestion.application.result.PaginatedJobSummaries;
 
-import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.IngestionFailure;
 
-import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
-import com.lorevault.api.content.PublicationCoordinates;
-import com.lorevault.api.content.Chapter;
-import com.lorevault.api.content.Book;
-import com.lorevault.api.content.BookGraphRepository;
-import com.lorevault.api.content.ChapterGraphRepository;
+import com.lorevault.api.content.domain.PublicationCoordinates;
+import com.lorevault.api.content.domain.Chapter;
+import com.lorevault.api.content.domain.Book;
+import com.lorevault.api.content.infrastructure.BookGraphRepository;
+import com.lorevault.api.content.infrastructure.ChapterGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

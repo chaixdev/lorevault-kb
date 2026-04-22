@@ -1,13 +1,8 @@
 package com.lorevault.api.ingestion.application.resolution;
-import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.IngestionFailure;
 
-import com.lorevault.api.content.BookIndividual;
-import com.lorevault.api.content.BookIndividualGraphRepository;
-import com.lorevault.api.content.BookGraphRepository;
+import com.lorevault.api.content.domain.BookIndividual;
+import com.lorevault.api.content.infrastructure.BookIndividualGraphRepository;
+import com.lorevault.api.content.infrastructure.BookGraphRepository;
 import com.lorevault.api.ingestion.application.result.BookIndividualResolutionResult;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,8 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

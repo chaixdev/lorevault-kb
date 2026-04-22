@@ -1,9 +1,9 @@
 package com.lorevault.api.ai.application;
 
-import com.lorevault.api.content.Chapter;
-import com.lorevault.api.content.Chunk;
-import com.lorevault.api.content.ChapterGraphRepository;
-import com.lorevault.api.content.ChunkGraphRepository;
+import com.lorevault.api.content.domain.Chapter;
+import com.lorevault.api.content.domain.Chunk;
+import com.lorevault.api.content.infrastructure.ChapterGraphRepository;
+import com.lorevault.api.content.infrastructure.ChunkGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingRequest;

@@ -1,19 +1,8 @@
 package com.lorevault.api.library;
-import com.lorevault.api.library.*;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
 
-import com.lorevault.api.content.Universe;
-import com.lorevault.api.content.Series;
-import com.lorevault.api.content.Book;
+import com.lorevault.api.content.domain.Universe;
+import com.lorevault.api.content.domain.Series;
+import com.lorevault.api.content.domain.Book;
 import com.lorevault.api.testutil.fakes.FakeContentRepositories;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

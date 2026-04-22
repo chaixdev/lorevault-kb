@@ -1,8 +1,8 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.content.Universe;
-import com.lorevault.api.content.Series;
-import com.lorevault.api.content.Book;
+import com.lorevault.api.content.domain.Universe;
+import com.lorevault.api.content.domain.Series;
+import com.lorevault.api.content.domain.Book;
 import com.lorevault.api.library.LibraryResult;
 import com.lorevault.api.library.LibraryQueryService;
 import com.lorevault.api.library.LibraryService;

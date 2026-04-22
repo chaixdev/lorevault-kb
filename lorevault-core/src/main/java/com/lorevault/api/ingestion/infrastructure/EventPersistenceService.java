@@ -1,9 +1,9 @@
 package com.lorevault.api.ingestion.infrastructure;
 
 import com.lorevault.api.ai.application.TriadOrchestrationService;
-import com.lorevault.api.content.EventMention;
-import com.lorevault.api.content.EventMentionGraphRepository;
-import com.lorevault.api.content.Scene;
+import com.lorevault.api.content.domain.EventMention;
+import com.lorevault.api.content.infrastructure.EventMentionGraphRepository;
+import com.lorevault.api.content.domain.Scene;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;

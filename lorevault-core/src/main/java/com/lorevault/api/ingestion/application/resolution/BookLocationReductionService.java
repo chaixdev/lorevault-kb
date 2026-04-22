@@ -1,15 +1,10 @@
 package com.lorevault.api.ingestion.application.resolution;
-import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.IngestionFailure;
 
-import com.lorevault.api.content.BookLocation;
-import com.lorevault.api.content.BookLocationGraphRepository;
-import com.lorevault.api.content.BookGraphRepository;
-import com.lorevault.api.content.ChapterLocation;
-import com.lorevault.api.content.ChapterLocationGraphRepository;
+import com.lorevault.api.content.domain.BookLocation;
+import com.lorevault.api.content.infrastructure.BookLocationGraphRepository;
+import com.lorevault.api.content.infrastructure.BookGraphRepository;
+import com.lorevault.api.content.domain.ChapterLocation;
+import com.lorevault.api.content.infrastructure.ChapterLocationGraphRepository;
 import com.lorevault.api.ingestion.application.result.BookLocationResolutionResult;
 import java.util.ArrayList;
 import java.util.Comparator;

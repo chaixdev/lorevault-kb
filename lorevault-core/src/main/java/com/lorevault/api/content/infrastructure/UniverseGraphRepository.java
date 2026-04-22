@@ -1,0 +1,16 @@
+package com.lorevault.api.content.infrastructure;
+
+import com.lorevault.api.content.domain.Universe;
+import org.springframework.data.neo4j.repository.Neo4jRepository;
+import org.springframework.data.neo4j.repository.query.Query;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface UniverseGraphRepository extends Neo4jRepository<Universe, UUID> {
+    
+    @Query("MATCH (u:Universe) WHERE u.name = $name RETURN u")
+    Optional<Universe> findByName(String name);
+}

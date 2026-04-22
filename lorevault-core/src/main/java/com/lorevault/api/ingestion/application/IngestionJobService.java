@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion.application;
 
+import com.lorevault.api.content.domain.Scene;
 import com.lorevault.api.ingestion.application.result.JobStatusDetails;
 import com.lorevault.api.ingestion.application.result.JobSummary;
 import com.lorevault.api.ingestion.application.result.PaginatedJobSummaries;
@@ -7,17 +8,12 @@ import com.lorevault.api.ingestion.application.result.PaginatedJobSummaries;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.IngestionFailure;
 
-import com.lorevault.api.content.Chapter;
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.content.ChapterGraphRepository;
-import com.lorevault.api.content.ChunkGraphRepository;
+import com.lorevault.api.content.domain.Chapter;
+import com.lorevault.api.content.infrastructure.ChapterGraphRepository;
+import com.lorevault.api.content.infrastructure.ChunkGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
-import com.lorevault.api.content.SceneGraphRepository;
+import com.lorevault.api.content.infrastructure.SceneGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.StatusRecordGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -158,7 +154,7 @@ public class IngestionJobService {
         }
         log.info("Cleaned up {} chunks for failed chapter {} (graph)", deletedChunks, chapterId);
         
-        List<com.lorevault.api.content.Scene> existingScenes = sceneRepo.findByChapterId(chapterId);
+        List<Scene> existingScenes = sceneRepo.findByChapterId(chapterId);
         sceneRepo.deleteByChapterId(chapterId);
         int deletedScenes = existingScenes.size();
         log.info("Cleaned up {} scenes for failed chapter {} (graph)", deletedScenes, chapterId);

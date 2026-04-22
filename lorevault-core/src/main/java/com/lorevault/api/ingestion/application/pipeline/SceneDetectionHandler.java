@@ -2,21 +2,16 @@ package com.lorevault.api.ingestion.application.pipeline;
 
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.IngestionFailure;
 
 import com.lorevault.api.ai.domain.SceneLocalizationException;
-import com.lorevault.api.content.Chapter;
-import com.lorevault.api.content.Scene;
-import com.lorevault.api.content.ChapterGraphRepository;
-import com.lorevault.api.content.SceneGraphRepository;
+import com.lorevault.api.content.domain.Chapter;
+import com.lorevault.api.content.domain.Scene;
+import com.lorevault.api.content.infrastructure.ChapterGraphRepository;
+import com.lorevault.api.content.infrastructure.SceneGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import com.lorevault.api.ai.application.SceneDetectionService;
 import com.lorevault.api.ai.application.SceneProcessingService;
-import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.infrastructure.IndividualPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.LocationPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.EventPersistenceService;

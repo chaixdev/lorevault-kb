@@ -1,9 +1,9 @@
 package com.lorevault.api.ai.application;
 
-import com.lorevault.api.content.Chapter;
-import com.lorevault.api.content.Scene;
-import com.lorevault.api.content.ChapterReadRepository;
-import com.lorevault.api.content.SceneGraphRepository;
+import com.lorevault.api.content.domain.Chapter;
+import com.lorevault.api.content.domain.Scene;
+import com.lorevault.api.content.infrastructure.ChapterReadRepository;
+import com.lorevault.api.content.infrastructure.SceneGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

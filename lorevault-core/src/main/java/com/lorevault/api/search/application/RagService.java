@@ -1,10 +1,8 @@
 package com.lorevault.api.search.application;
-import com.lorevault.api.search.domain.SpoilerVisibility;
-import com.lorevault.api.search.domain.UnconfiguredSeriesPolicy;
-import com.lorevault.api.search.domain.SeriesProgress;
 
-import com.lorevault.api.content.Chapter;
-import com.lorevault.api.content.Chunk;
+import com.lorevault.api.content.domain.Chapter;
+import com.lorevault.api.content.domain.Chunk;
+import com.lorevault.api.content.domain.PublicationCoordinates;
 import com.lorevault.api.search.application.CoreSearchRecords.CoreAskRequest;
 import com.lorevault.api.search.application.CoreSearchRecords.CoreAskResponse;
 import com.lorevault.api.search.application.CoreSearchRecords.CoreCitation;
@@ -14,11 +12,10 @@ import com.lorevault.api.search.application.CoreSearchRecords.CoreSemanticSearch
 import com.lorevault.api.search.application.CoreSearchRecords.CoreSemanticSearchResponse;
 import com.lorevault.api.search.application.CoreSearchRecords.CoreSearchResult;
 import com.lorevault.api.search.application.CoreSearchRecords.CoreSemanticSearchFilters;
-import com.lorevault.api.search.application.QuestionIntentClassifier;
 import com.lorevault.api.search.domain.QuestionIntent;
 import com.lorevault.api.search.infrastructure.CypherTemplateRegistry;
-import com.lorevault.api.content.ChapterGraphRepository;
-import com.lorevault.api.content.ChunkGraphRepository;
+import com.lorevault.api.content.infrastructure.ChapterGraphRepository;
+import com.lorevault.api.content.infrastructure.ChunkGraphRepository;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -510,7 +507,7 @@ public class RagService {
 
     private CoreCitation buildCitation(CoreSearchResult searchResult) {
         if (searchResult.chapterId() == null) {
-            com.lorevault.api.content.PublicationCoordinates fallbackCoords = new com.lorevault.api.content.PublicationCoordinates();
+            PublicationCoordinates fallbackCoords = new PublicationCoordinates();
             fallbackCoords.setBookNumber(searchResult.bookNumber());
             fallbackCoords.setChapterNumber(searchResult.chapterNumber());
 
@@ -525,7 +522,7 @@ public class RagService {
 
         if (chapterOpt.isPresent()) {
             Chapter chapter = chapterOpt.get();
-            com.lorevault.api.content.PublicationCoordinates coords = new com.lorevault.api.content.PublicationCoordinates();
+            PublicationCoordinates coords = new PublicationCoordinates();
             coords.setUniverse(chapter.getUniverse());
             coords.setSeries(chapter.getSeries());
             coords.setBookTitle(chapter.getBookTitle());
@@ -546,7 +543,7 @@ public class RagService {
                     searchResult.snippet(),
                     coords);
         } else {
-            com.lorevault.api.content.PublicationCoordinates fallbackCoords = new com.lorevault.api.content.PublicationCoordinates();
+            PublicationCoordinates fallbackCoords = new PublicationCoordinates();
             fallbackCoords.setBookNumber(searchResult.bookNumber());
             fallbackCoords.setChapterNumber(searchResult.chapterNumber());
 

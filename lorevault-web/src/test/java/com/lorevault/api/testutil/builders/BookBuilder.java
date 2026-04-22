@@ -1,16 +1,6 @@
 package com.lorevault.api.testutil.builders;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
 
-import com.lorevault.api.content.Book;
+import com.lorevault.api.content.domain.Book;
 import com.lorevault.api.testutil.TestClock;
 import com.lorevault.api.testutil.TestIds;
 

@@ -1,22 +1,14 @@
 package com.lorevault.api.search;
+import com.lorevault.api.content.domain.Chapter;
 import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.application.CoreSearchRecords.*;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.domain.*;
 import com.lorevault.api.search.infrastructure.*;
 
-import com.lorevault.api.content.Chunk;
-import com.lorevault.api.search.application.CoreSearchRecords.*;
+import com.lorevault.api.content.domain.Chunk;
 
-import com.lorevault.api.content.ChapterGraphRepository;
-import com.lorevault.api.content.ChunkGraphRepository;
+import com.lorevault.api.content.infrastructure.ChapterGraphRepository;
+import com.lorevault.api.content.infrastructure.ChunkGraphRepository;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.search.application.SemanticSearchService;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +25,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -125,7 +116,7 @@ class RagServiceTest {
             when(chunkRepo.findById(chunkId))
                 .thenReturn(Optional.of(mockChunk));
 
-            com.lorevault.api.content.Chapter chapter = new com.lorevault.api.content.Chapter();
+            Chapter chapter = new Chapter();
             chapter.setId(chapterId);
             chapter.setUniverse("Cosmere");
             chapter.setSeries("Stormlight Archive");

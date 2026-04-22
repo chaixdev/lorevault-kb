@@ -1,20 +1,15 @@
 package com.lorevault.api.ingestion;
 
-import com.lorevault.api.content.Chapter;
+import com.lorevault.api.content.domain.Chapter;
+import com.lorevault.api.content.domain.PublicationCoordinates;
+import com.lorevault.api.content.domain.Scene;
 import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
 import com.lorevault.api.ingestion.application.result.*;
 import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
-import com.lorevault.api.content.ChapterGraphRepository;
-import com.lorevault.api.content.ChunkGraphRepository;
+import com.lorevault.api.content.infrastructure.ChapterGraphRepository;
+import com.lorevault.api.content.infrastructure.ChunkGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
-import com.lorevault.api.content.SceneGraphRepository;
+import com.lorevault.api.content.infrastructure.SceneGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.StatusRecordGraphRepository;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -152,9 +147,9 @@ class IngestionJobServiceTest {
             when(chunkRepo.countByChapterIdViaScenes(testChapterId)).thenReturn(deletedChunks);
             doNothing().when(chunkRepo).deleteByChapterIdViaScenes(testChapterId);
             when(sceneRepo.findByChapterId(testChapterId)).thenReturn(List.of(
-                    new com.lorevault.api.content.Scene(),
-                    new com.lorevault.api.content.Scene(),
-                    new com.lorevault.api.content.Scene()
+                    new Scene(),
+                    new Scene(),
+                    new Scene()
             ));
             doNothing().when(sceneRepo).deleteByChapterId(testChapterId);
             when(jobRepo.findById(testJobId)).thenReturn(Optional.of(job));
@@ -363,8 +358,8 @@ class IngestionJobServiceTest {
     }
 
     private Chapter createTestChapter() {
-        com.lorevault.api.content.PublicationCoordinates coords = 
-                new com.lorevault.api.content.PublicationCoordinates(
+        PublicationCoordinates coords =
+                new PublicationCoordinates(
                         "TestUniverse", 
                         "TestSeries", 
                         "TestBook", 
