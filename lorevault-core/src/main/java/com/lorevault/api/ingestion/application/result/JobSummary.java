@@ -1,4 +1,4 @@
-package com.lorevault.api.ingestion.application;
+package com.lorevault.api.ingestion.application.result;
 
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 import java.time.LocalDateTime;

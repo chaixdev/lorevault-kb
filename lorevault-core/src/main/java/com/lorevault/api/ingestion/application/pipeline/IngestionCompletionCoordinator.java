@@ -1,4 +1,6 @@
-package com.lorevault.api.ingestion.application;
+package com.lorevault.api.ingestion.application.pipeline;
+
+import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.domain.StatusRecord;

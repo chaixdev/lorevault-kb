@@ -1,6 +1,14 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.*;
-import com.lorevault.api.ingestion.application.*;
+import com.lorevault.api.ingestion.application.IngestionJobService;
+import com.lorevault.api.ingestion.application.IngestionService;
+import com.lorevault.api.ingestion.application.pipeline.*;
+import com.lorevault.api.ingestion.application.resolution.*;
+import com.lorevault.api.ingestion.application.result.*;
+import com.lorevault.api.ingestion.application.IngestionJobService;
+import com.lorevault.api.ingestion.application.IngestionService;
+import com.lorevault.api.ingestion.application.pipeline.*;
+import com.lorevault.api.ingestion.application.resolution.*;
+import com.lorevault.api.ingestion.application.result.*;
 import com.lorevault.api.ingestion.domain.*;
 import com.lorevault.api.ingestion.infrastructure.*;
 import com.lorevault.api.search.application.*;
@@ -9,7 +17,7 @@ import com.lorevault.api.search.infrastructure.*;
 
 import com.lorevault.api.content.Book;
 import com.lorevault.api.content.Chapter;
-import com.lorevault.api.ingestion.application.IngestionSubmissionResult;
+import com.lorevault.api.ingestion.application.result.IngestionSubmissionResult;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import com.lorevault.api.content.BookGraphRepository;
 import com.lorevault.api.content.ChapterGraphRepository;

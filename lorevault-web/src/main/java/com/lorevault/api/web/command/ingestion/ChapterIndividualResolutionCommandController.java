@@ -1,7 +1,7 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.application.ChapterIndividualResolutionService;
-import com.lorevault.api.ingestion.application.ChapterIndividualResolutionResult;
+import com.lorevault.api.ingestion.application.resolution.ChapterIndividualResolutionService;
+import com.lorevault.api.ingestion.application.result.ChapterIndividualResolutionResult;
 import com.lorevault.api.web.command.ingestion.ChapterIndividualResolutionResponse;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;

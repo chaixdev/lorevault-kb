@@ -1,11 +1,11 @@
-package com.lorevault.api.ingestion.application;
+package com.lorevault.api.ingestion.application.resolution;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.domain.StatusRecord;
 import com.lorevault.api.ingestion.domain.LlmCallRecord;
 import com.lorevault.api.ingestion.domain.IngestionFailure;
 
-import com.lorevault.api.ingestion.application.BookIndividualResolutionResult;
+import com.lorevault.api.ingestion.application.result.BookIndividualResolutionResult;
 import com.lorevault.api.ingestion.events.BookIndividualsReducedEvent;
 import com.lorevault.api.ingestion.events.ChapterIndividualsResolvedEvent;
 import lombok.RequiredArgsConstructor;

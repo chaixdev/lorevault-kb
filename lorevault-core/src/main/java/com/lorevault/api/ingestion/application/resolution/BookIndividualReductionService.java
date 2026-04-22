@@ -1,4 +1,4 @@
-package com.lorevault.api.ingestion.application;
+package com.lorevault.api.ingestion.application.resolution;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.domain.StatusRecord;
@@ -8,7 +8,7 @@ import com.lorevault.api.ingestion.domain.IngestionFailure;
 import com.lorevault.api.content.BookIndividual;
 import com.lorevault.api.content.BookIndividualGraphRepository;
 import com.lorevault.api.content.BookGraphRepository;
-import com.lorevault.api.ingestion.application.BookIndividualResolutionResult;
+import com.lorevault.api.ingestion.application.result.BookIndividualResolutionResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;

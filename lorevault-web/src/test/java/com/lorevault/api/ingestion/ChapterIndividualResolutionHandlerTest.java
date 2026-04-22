@@ -1,6 +1,14 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.*;
-import com.lorevault.api.ingestion.application.*;
+import com.lorevault.api.ingestion.application.IngestionJobService;
+import com.lorevault.api.ingestion.application.IngestionService;
+import com.lorevault.api.ingestion.application.pipeline.*;
+import com.lorevault.api.ingestion.application.resolution.*;
+import com.lorevault.api.ingestion.application.result.*;
+import com.lorevault.api.ingestion.application.IngestionJobService;
+import com.lorevault.api.ingestion.application.IngestionService;
+import com.lorevault.api.ingestion.application.pipeline.*;
+import com.lorevault.api.ingestion.application.resolution.*;
+import com.lorevault.api.ingestion.application.result.*;
 import com.lorevault.api.ingestion.domain.*;
 import com.lorevault.api.ingestion.infrastructure.*;
 import com.lorevault.api.search.application.*;
@@ -21,7 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.lorevault.api.ingestion.application.ChapterIndividualResolutionResult;
+import com.lorevault.api.ingestion.application.result.ChapterIndividualResolutionResult;
 import com.lorevault.api.ingestion.events.ChapterIndividualsResolvedEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 

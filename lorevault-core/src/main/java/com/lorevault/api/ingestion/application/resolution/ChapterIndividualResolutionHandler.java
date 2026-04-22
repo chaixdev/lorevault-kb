@@ -1,4 +1,4 @@
-package com.lorevault.api.ingestion.application;
+package com.lorevault.api.ingestion.application.resolution;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.domain.StatusRecord;
@@ -15,7 +15,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-import com.lorevault.api.ingestion.application.ChapterIndividualResolutionResult;
+import com.lorevault.api.ingestion.application.result.ChapterIndividualResolutionResult;
 
 @Component
 @Slf4j

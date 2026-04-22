@@ -1,7 +1,7 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.application.ChapterLocationResolutionService;
-import com.lorevault.api.ingestion.application.ChapterLocationResolutionResult;
+import com.lorevault.api.ingestion.application.resolution.ChapterLocationResolutionService;
+import com.lorevault.api.ingestion.application.result.ChapterLocationResolutionResult;
 import com.lorevault.api.web.command.ingestion.ChapterLocationResolutionResponse;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;

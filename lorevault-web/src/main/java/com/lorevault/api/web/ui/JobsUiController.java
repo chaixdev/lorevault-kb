@@ -1,8 +1,8 @@
 package com.lorevault.api.web.ui;
 
 import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.JobStatusDetails;
-import com.lorevault.api.ingestion.application.PaginatedJobSummaries;
+import com.lorevault.api.ingestion.application.result.JobStatusDetails;
+import com.lorevault.api.ingestion.application.result.PaginatedJobSummaries;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;

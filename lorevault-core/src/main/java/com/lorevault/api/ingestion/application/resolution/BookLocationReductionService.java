@@ -1,4 +1,4 @@
-package com.lorevault.api.ingestion.application;
+package com.lorevault.api.ingestion.application.resolution;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.domain.StatusRecord;
@@ -10,7 +10,7 @@ import com.lorevault.api.content.BookLocationGraphRepository;
 import com.lorevault.api.content.BookGraphRepository;
 import com.lorevault.api.content.ChapterLocation;
 import com.lorevault.api.content.ChapterLocationGraphRepository;
-import com.lorevault.api.ingestion.application.BookLocationResolutionResult;
+import com.lorevault.api.ingestion.application.result.BookLocationResolutionResult;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;

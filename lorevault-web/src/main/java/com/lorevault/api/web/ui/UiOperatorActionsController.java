@@ -1,11 +1,11 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.ingestion.application.BookLocationReductionService;
-import com.lorevault.api.ingestion.application.ChapterIndividualResolutionService;
-import com.lorevault.api.ingestion.application.ChapterLocationResolutionService;
-import com.lorevault.api.ingestion.application.BookLocationResolutionResult;
-import com.lorevault.api.ingestion.application.ChapterIndividualResolutionResult;
-import com.lorevault.api.ingestion.application.ChapterLocationResolutionResult;
+import com.lorevault.api.ingestion.application.resolution.BookLocationReductionService;
+import com.lorevault.api.ingestion.application.resolution.ChapterIndividualResolutionService;
+import com.lorevault.api.ingestion.application.resolution.ChapterLocationResolutionService;
+import com.lorevault.api.ingestion.application.result.BookLocationResolutionResult;
+import com.lorevault.api.ingestion.application.result.ChapterIndividualResolutionResult;
+import com.lorevault.api.ingestion.application.result.ChapterLocationResolutionResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;

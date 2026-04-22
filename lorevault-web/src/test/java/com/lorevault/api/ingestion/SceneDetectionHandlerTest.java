@@ -1,6 +1,14 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.*;
-import com.lorevault.api.ingestion.application.*;
+import com.lorevault.api.ingestion.application.IngestionJobService;
+import com.lorevault.api.ingestion.application.IngestionService;
+import com.lorevault.api.ingestion.application.pipeline.*;
+import com.lorevault.api.ingestion.application.resolution.*;
+import com.lorevault.api.ingestion.application.result.*;
+import com.lorevault.api.ingestion.application.IngestionJobService;
+import com.lorevault.api.ingestion.application.IngestionService;
+import com.lorevault.api.ingestion.application.pipeline.*;
+import com.lorevault.api.ingestion.application.resolution.*;
+import com.lorevault.api.ingestion.application.result.*;
 import com.lorevault.api.ingestion.domain.*;
 import com.lorevault.api.ingestion.infrastructure.*;
 import com.lorevault.api.search.application.*;

@@ -1,13 +1,13 @@
-package com.lorevault.api.ingestion.application;
+package com.lorevault.api.ingestion.application.resolution;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.domain.StatusRecord;
 import com.lorevault.api.ingestion.domain.LlmCallRecord;
 import com.lorevault.api.ingestion.domain.IngestionFailure;
 
-import com.lorevault.api.ingestion.application.BookLocationResolutionResult;
-import com.lorevault.api.ingestion.events.BookLocationsReducedEvent;
+import com.lorevault.api.ingestion.application.result.ChapterLocationResolutionResult;
 import com.lorevault.api.ingestion.events.ChapterLocationsResolvedEvent;
+import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,55 +19,55 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 @RequiredArgsConstructor
-public class BookLocationReductionHandler {
+public class ChapterLocationResolutionHandler {
 
-    private final BookLocationReductionService bookLocationReductionService;
+    private final ChapterLocationResolutionService chapterLocationResolutionService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Async
     @EventListener
-    public void handleChapterLocationsResolved(ChapterLocationsResolvedEvent event) {
-        UUID jobId = event.getJobId();
+    public void handleScenesDetected(ScenesDetectedEvent event) {
         UUID chapterId = event.getChapterId();
+        UUID jobId = event.getJobId();
         UUID bookId = event.getBookId();
 
-        log.info("[BOOK_LOCATION_REDUCTION] Started: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId);
+        log.info("[CHAPTER_LOCATION_RESOLUTION] Started: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId);
 
         try {
-            BookLocationResolutionResult response = bookLocationReductionService.resolveBook(bookId);
+            ChapterLocationResolutionResult response = chapterLocationResolutionService.resolveChapter(chapterId);
 
             if (response.success()) {
                 log.info(
-                        "[BOOK_LOCATION_REDUCTION] Completed: jobId={}, chapterId={}, bookId={}, chapterLocationCount={}, bookLocationCount={}",
+                        "[CHAPTER_LOCATION_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterLocationCount={}",
                         jobId,
                         chapterId,
                         bookId,
-                        response.chapterLocationsProcessed(),
-                        response.bookLocationsCreated()
+                        response.rawLocationsProcessed(),
+                        response.chapterLocationsCreated()
                 );
             } else {
                 log.warn(
-                        "[BOOK_LOCATION_REDUCTION] Skipped: jobId={}, chapterId={}, bookId={}, chapterLocationCount={}, bookLocationCount={}, reason={}",
+                        "[CHAPTER_LOCATION_RESOLUTION] Skipped: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterLocationCount={}, reason={}",
                         jobId,
                         chapterId,
                         bookId,
-                        response.chapterLocationsProcessed(),
-                        response.bookLocationsCreated(),
+                        response.rawLocationsProcessed(),
+                        response.chapterLocationsCreated(),
                         response.message()
                 );
             }
 
-            eventPublisher.publishEvent(new BookLocationsReducedEvent(
+            eventPublisher.publishEvent(new ChapterLocationsResolvedEvent(
                     this,
                     jobId,
                     chapterId,
                     bookId,
                     response.success(),
-                    response.chapterLocationsProcessed(),
-                    response.bookLocationsCreated()
+                    response.rawLocationsProcessed(),
+                    response.chapterLocationsCreated()
             ));
         } catch (Exception e) {
-            log.error("[BOOK_LOCATION_REDUCTION] Failed: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId, e);
+            log.error("[CHAPTER_LOCATION_RESOLUTION] Failed: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId, e);
             throw e;
         }
     }

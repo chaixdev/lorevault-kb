@@ -1,13 +1,11 @@
 package com.lorevault.api.web.query.job;
-import com.lorevault.api.ingestion.application.*;
+import com.lorevault.api.ingestion.application.IngestionJobService;
+import com.lorevault.api.ingestion.application.IngestionService;
+import com.lorevault.api.ingestion.application.pipeline.*;
+import com.lorevault.api.ingestion.application.resolution.*;
+import com.lorevault.api.ingestion.application.result.*;
 import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.application.CoreSearchRecords.*;
-import com.lorevault.api.ingestion.application.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
 
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import org.junit.jupiter.api.BeforeEach;

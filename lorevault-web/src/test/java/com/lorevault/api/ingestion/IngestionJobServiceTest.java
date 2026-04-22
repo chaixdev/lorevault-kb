@@ -1,23 +1,22 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.*;
-import com.lorevault.api.ingestion.application.*;
+
+import com.lorevault.api.content.Chapter;
+import com.lorevault.api.ingestion.application.IngestionJobService;
+import com.lorevault.api.ingestion.application.IngestionService;
+import com.lorevault.api.ingestion.application.pipeline.*;
+import com.lorevault.api.ingestion.application.resolution.*;
+import com.lorevault.api.ingestion.application.result.*;
 import com.lorevault.api.ingestion.domain.*;
 import com.lorevault.api.ingestion.infrastructure.*;
 import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.domain.*;
 import com.lorevault.api.search.infrastructure.*;
-
-import com.lorevault.api.content.Chapter;
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.application.JobStatusDetails;
-import com.lorevault.api.ingestion.application.PaginatedJobSummaries;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.StatusRecordGraphRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

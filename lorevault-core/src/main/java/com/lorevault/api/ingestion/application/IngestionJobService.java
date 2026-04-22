@@ -1,4 +1,9 @@
 package com.lorevault.api.ingestion.application;
+
+import com.lorevault.api.ingestion.application.result.JobStatusDetails;
+import com.lorevault.api.ingestion.application.result.JobSummary;
+import com.lorevault.api.ingestion.application.result.PaginatedJobSummaries;
+
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.domain.StatusRecord;
