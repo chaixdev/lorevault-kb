@@ -1,8 +1,9 @@
-package com.lorevault.api.content.timeline;
+package com.lorevault.api.content.timeline.application;
 
 import com.lorevault.api.content.entities.Scene;
 import com.lorevault.api.content.entities.ChapterReadRepository;
 import com.lorevault.api.content.entities.SceneGraphRepository;
+import com.lorevault.api.content.timeline.infrastructure.TemporalReadRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

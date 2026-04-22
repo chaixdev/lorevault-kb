@@ -1,7 +1,8 @@
-package com.lorevault.api.content.timeline;
+package com.lorevault.api.content.timeline.application;
 
 import com.lorevault.api.ai.domain.TriadAnalysisException;
 import com.lorevault.api.ai.application.TriadOrchestrationService;
+import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
 import com.lorevault.api.ingestion.domain.IngestionFailure;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
@@ -50,8 +51,8 @@ public class TriadEdgePersistenceService {
 
         for (var a : analyses) {
             if (a.previousSceneIndex() != null && a.currentSceneIndex() != null && a.prevToCurrType() != null) {
-                UUID fromId = sceneIndexToPersistedId.get(a.previousSceneIndex());
-                UUID toId = sceneIndexToPersistedId.get(a.currentSceneIndex());
+                UUID fromId = resolvePersistedSceneId(a.previousSceneId(), a.previousSceneIndex(), sceneIndexToPersistedId);
+                UUID toId = resolvePersistedSceneId(a.currentSceneId(), a.currentSceneIndex(), sceneIndexToPersistedId);
                 if (fromId != null && toId != null) {
                     upsertWithAmbiguityHandling(jobId, chapterId, a.currentSceneIndex(), fromId, toId,
                             a.prevToCurrType(), a.prevToCurrCertainty(), a.prevToCurrEvidence(), a.timelineMarker());
@@ -59,14 +60,26 @@ public class TriadEdgePersistenceService {
             }
 
             if (a.currentSceneIndex() != null && a.nextSceneIndex() != null && a.currToNextType() != null) {
-                UUID fromId = sceneIndexToPersistedId.get(a.currentSceneIndex());
-                UUID toId = sceneIndexToPersistedId.get(a.nextSceneIndex());
+                UUID fromId = resolvePersistedSceneId(a.currentSceneId(), a.currentSceneIndex(), sceneIndexToPersistedId);
+                UUID toId = resolvePersistedSceneId(a.nextSceneId(), a.nextSceneIndex(), sceneIndexToPersistedId);
                 if (fromId != null && toId != null) {
                     upsertWithAmbiguityHandling(jobId, chapterId, a.currentSceneIndex(), fromId, toId,
                             a.currToNextType(), a.currToNextCertainty(), a.currToNextEvidence(), a.timelineMarker());
                 }
             }
         }
+    }
+
+    private UUID resolvePersistedSceneId(UUID sceneId,
+                                         Integer sceneIndex,
+                                         Map<Integer, UUID> sceneIndexToPersistedId) {
+        if (sceneId != null) {
+            return sceneId;
+        }
+        if (sceneIndex == null || sceneIndexToPersistedId == null) {
+            return null;
+        }
+        return sceneIndexToPersistedId.get(sceneIndex);
     }
 
     private void upsertWithAmbiguityHandling(UUID jobId,

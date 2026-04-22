@@ -7,7 +7,7 @@ import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Scene;
 import com.lorevault.api.ingestion.domain.IngestionFailure;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.content.timeline.domain.TriadRelationInverter;
+import com.lorevault.api.content.timeline.application.TriadRelationInverter;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -97,6 +97,9 @@ public class TriadOrchestrationService {
     public record TriadSceneEventExtraction(int sceneIndex, List<TriadEventExtraction> events) {}
 
     public record TriadAnalysis(
+            UUID previousSceneId,
+            UUID currentSceneId,
+            UUID nextSceneId,
             Integer previousSceneIndex,
             Integer currentSceneIndex,
             Integer nextSceneIndex,
@@ -179,6 +182,9 @@ public class TriadOrchestrationService {
                     : null;
 
             analyses.add(new TriadAnalysis(
+                    t.previous() != null ? t.previous().getEventId() : null,
+                    t.current() != null ? t.current().getEventId() : null,
+                    t.next() != null ? t.next().getEventId() : null,
                     t.previous() != null ? t.previous().getSceneIndex() : null,
                     t.current().getSceneIndex(),
                     t.next() != null ? t.next().getSceneIndex() : null,

@@ -1,6 +1,6 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.library.LibraryQueryService;
+import com.lorevault.api.library.application.LibraryQueryService;
 import com.lorevault.api.web.ui.view.BookOption;
 import com.lorevault.api.web.ui.view.LibraryHierarchy;
 import com.lorevault.api.web.ui.view.SeriesOption;

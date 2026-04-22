@@ -1,7 +1,7 @@
 package com.lorevault.api.content.entities;
 
-import com.lorevault.api.content.library.Book;
-import com.lorevault.api.content.library.PublicationCoordinates;
+import com.lorevault.api.library.domain.Book;
+import com.lorevault.api.library.domain.PublicationCoordinates;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

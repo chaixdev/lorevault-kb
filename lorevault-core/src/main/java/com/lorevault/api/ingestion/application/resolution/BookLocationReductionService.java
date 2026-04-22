@@ -2,7 +2,7 @@ package com.lorevault.api.ingestion.application.resolution;
 
 import com.lorevault.api.content.entities.BookLocation;
 import com.lorevault.api.content.entities.BookLocationGraphRepository;
-import com.lorevault.api.content.library.BookGraphRepository;
+import com.lorevault.api.library.infrastructure.BookGraphRepository;
 import com.lorevault.api.content.entities.ChapterLocation;
 import com.lorevault.api.content.entities.ChapterLocationGraphRepository;
 import com.lorevault.api.ingestion.application.result.BookLocationResolutionResult;

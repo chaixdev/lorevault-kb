@@ -2,7 +2,7 @@ package com.lorevault.api.search.application;
 
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Chunk;
-import com.lorevault.api.content.library.PublicationCoordinates;
+import com.lorevault.api.library.domain.PublicationCoordinates;
 import com.lorevault.api.search.application.CoreSearchRecords.CoreAskRequest;
 import com.lorevault.api.search.application.CoreSearchRecords.CoreAskResponse;
 import com.lorevault.api.search.application.CoreSearchRecords.CoreCitation;

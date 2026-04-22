@@ -1,5 +1,5 @@
 package com.lorevault.api.timeline;
-import com.lorevault.api.content.timeline.domain.RelationNormalizer;
+import com.lorevault.api.content.timeline.application.RelationNormalizer;
 import com.lorevault.api.content.timeline.domain.TemporalRelation;
 import com.lorevault.api.content.timeline.domain.CanonicalRelation;
 

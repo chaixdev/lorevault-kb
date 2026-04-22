@@ -1,13 +1,13 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.content.library.PublicationCoordinates;
+import com.lorevault.api.library.domain.PublicationCoordinates;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.application.IngestionService;
 
-import com.lorevault.api.content.library.Book;
+import com.lorevault.api.library.domain.Book;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.ingestion.application.result.IngestionSubmissionResult;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
-import com.lorevault.api.content.library.BookGraphRepository;
+import com.lorevault.api.library.infrastructure.BookGraphRepository;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.testing.TestImages;
 import org.junit.jupiter.api.BeforeEach;

@@ -2,7 +2,7 @@ package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.application.IngestionService;
 
-import com.lorevault.api.content.library.Book;
+import com.lorevault.api.library.domain.Book;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
@@ -12,7 +12,7 @@ import com.lorevault.api.ingestion.application.result.JobStatusDetails;
 import com.lorevault.api.ingestion.application.result.PaginatedJobSummaries;
 import com.lorevault.api.web.command.ingestion.SubmitChapterRequest;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
-import com.lorevault.api.content.library.BookGraphRepository;
+import com.lorevault.api.library.infrastructure.BookGraphRepository;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

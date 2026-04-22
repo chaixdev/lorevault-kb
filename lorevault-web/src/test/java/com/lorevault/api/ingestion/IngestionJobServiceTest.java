@@ -1,7 +1,7 @@
 package com.lorevault.api.ingestion;
 
 import com.lorevault.api.content.entities.Chapter;
-import com.lorevault.api.content.library.PublicationCoordinates;
+import com.lorevault.api.library.domain.PublicationCoordinates;
 import com.lorevault.api.content.entities.Scene;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.application.result.*;

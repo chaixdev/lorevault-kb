@@ -1,5 +1,6 @@
-package com.lorevault.api.content.library;
+package com.lorevault.api.library.infrastructure;
 
+import com.lorevault.api.library.domain.Series;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.stereotype.Repository;

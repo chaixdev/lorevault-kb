@@ -1,6 +1,6 @@
 # Systematically transform package structure toward the target shape
 
-**Status:** NOT STARTED
+**Status:** IN PROGRESS
 
 ## Summary
 
@@ -89,7 +89,8 @@ The main currently known areas to preserve unless new evidence appears are:
 - Feature-local `config` should be introduced only when it is genuinely earned by meaningful local configuration or bean wiring.
 - `support` should not remain a long-term ambiguity sink.
 - `ingestion` and `search` are currently the strongest candidates for selective internal restructuring.
-- `ai`, `content`, `library`, `timeline`, `health`, and `config` should remain flat unless active work reveals stronger mixed-responsibility seams.
+- `ai`, `library`, `health`, and `config` should remain flat unless active work reveals stronger mixed-responsibility seams.
+- `content` is now a semantic umbrella with `content.library`, `content.entities`, and `content.timeline`, and should not be treated as a flat package.
 
 ## Open Questions
 

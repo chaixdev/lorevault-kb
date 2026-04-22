@@ -186,7 +186,7 @@
                                         <include>com.lorevault.api.ingestion.*</include>
                                         <include>com.lorevault.api.library.*</include>
                                         <include>com.lorevault.api.search.*</include>
-                                        <include>com.lorevault.api.timeline.*</include>
+                                        <include>com.lorevault.api.content.timeline.*</include>
                                     </includes>
                                     <limits>
                                         <limit>
@@ -292,14 +292,18 @@
                         <version>1.15.3</version>
                         <configuration>
                             <targetClasses>
-                                <param>com.lorevault.api.service.*</param>
-                                <param>com.lorevault.api.domain.*</param>
-                                <param>com.lorevault.api.application.*</param>
+                                <param>com.lorevault.api.ai.*</param>
+                                <param>com.lorevault.api.content.*</param>
+                                <param>com.lorevault.api.ingestion.*</param>
+                                <param>com.lorevault.api.library.*</param>
+                                <param>com.lorevault.api.search.*</param>
                             </targetClasses>
                             <targetTests>
-                                <param>com.lorevault.api.service.*</param>
-                                <param>com.lorevault.api.domain.*</param>
-                                <param>com.lorevault.api.application.*</param>
+                                <param>com.lorevault.api.ai.*</param>
+                                <param>com.lorevault.api.content.*</param>
+                                <param>com.lorevault.api.ingestion.*</param>
+                                <param>com.lorevault.api.library.*</param>
+                                <param>com.lorevault.api.search.*</param>
                             </targetTests>
                             <excludedTestClasses>
                                 <param>**/*IT</param>

@@ -1,9 +1,9 @@
 package com.lorevault.api.content;
 
-import com.lorevault.api.content.library.Book;
+import com.lorevault.api.library.domain.Book;
 import com.lorevault.api.content.entities.Chapter;
-import com.lorevault.api.content.library.PublicationCoordinates;
-import com.lorevault.api.content.library.BookGraphRepository;
+import com.lorevault.api.library.domain.PublicationCoordinates;
+import com.lorevault.api.library.infrastructure.BookGraphRepository;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.testing.TestImages;
 import org.junit.jupiter.api.BeforeEach;

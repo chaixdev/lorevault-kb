@@ -1,5 +1,5 @@
 package com.lorevault.api.content;
-import com.lorevault.api.content.library.Series;
+import com.lorevault.api.library.domain.Series;
 
 import com.lorevault.api.testutil.TestIds;
 import com.lorevault.api.testutil.builders.SeriesBuilder;

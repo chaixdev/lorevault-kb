@@ -1,4 +1,4 @@
-package com.lorevault.api.content.library;
+package com.lorevault.api.library.domain;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

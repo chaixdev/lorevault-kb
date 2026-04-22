@@ -1,5 +1,5 @@
 package com.lorevault.api.web.query.ask;
-import com.lorevault.api.content.library.PublicationCoordinates;
+import com.lorevault.api.library.domain.PublicationCoordinates;
 import com.lorevault.api.search.domain.SpoilerVisibility;
 
 import com.fasterxml.jackson.annotation.JsonInclude;

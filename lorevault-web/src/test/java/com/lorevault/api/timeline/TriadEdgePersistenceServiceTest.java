@@ -1,6 +1,6 @@
 package com.lorevault.api.timeline;
-import com.lorevault.api.content.timeline.TriadEdgePersistenceService;
-import com.lorevault.api.content.timeline.TemporalEdgeWriteRepository;
+import com.lorevault.api.content.timeline.application.TriadEdgePersistenceService;
+import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
 
 import com.lorevault.api.ai.application.TriadOrchestrationService;
 import com.lorevault.api.ingestion.domain.IngestionJob;
@@ -48,6 +48,7 @@ class TriadEdgePersistenceServiceTest {
     private final UUID jobId = UUID.randomUUID();
     private final UUID scene0Id = UUID.randomUUID();
     private final UUID scene1Id = UUID.randomUUID();
+    private final UUID previousChapterSceneId = UUID.randomUUID();
     private final UUID statusRecordId = UUID.randomUUID();
     private final UUID callRecordId = UUID.randomUUID();
 
@@ -105,6 +106,24 @@ class TriadEdgePersistenceServiceTest {
         );
         assertThat(typeCaptor.getValue()).isEqualTo("R:temporal.before");
         verify(temporalEdgeWriteRepository, never()).upsertAmbiguousRelation(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void crossChapterPreviousSceneId_is_persisted_even_when_not_in_current_chapter_index_map() {
+        when(temporalEdgeWriteRepository.findTemporalRelationBetween(previousChapterSceneId, scene1Id))
+                .thenReturn(null);
+
+        service.applyTriadAnalysesPostPersistence(
+                chapterId,
+                List.of(triad(previousChapterSceneId, scene1Id, null, 99, 1, null, "R:temporal.before", null)),
+                Map.of(1, scene1Id)
+        );
+
+        verify(temporalEdgeWriteRepository).upsertTemporalEdge(
+                eq(previousChapterSceneId), eq(scene1Id),
+                eq("R:temporal.before"),
+                any(), any(), any(), any(), any(), any(), any()
+        );
     }
 
     @Test
@@ -287,17 +306,31 @@ class TriadEdgePersistenceServiceTest {
     }
 
     private TriadOrchestrationService.TriadAnalysis triad(int prevIndex, int currIndex, String type) {
+        return triad(scene0Id, scene1Id, null, prevIndex, currIndex, null, type, null);
+    }
+
+    private TriadOrchestrationService.TriadAnalysis triad(UUID prevId,
+                                                          UUID currId,
+                                                          UUID nextId,
+                                                          Integer prevIndex,
+                                                          Integer currIndex,
+                                                          Integer nextIndex,
+                                                          String prevToCurrType,
+                                                          String currToNextType) {
         return new TriadOrchestrationService.TriadAnalysis(
+                prevId,
+                currId,
+                nextId,
                 prevIndex,
                 currIndex,
-                null,
+                nextIndex,
                 "marker",
-                type,
+                prevToCurrType,
                 "Explicit",
                 "test evidence",
-                null,
-                null,
-                null,
+                currToNextType,
+                currToNextType != null ? "Explicit" : null,
+                currToNextType != null ? "test evidence" : null,
                 null
         );
     }

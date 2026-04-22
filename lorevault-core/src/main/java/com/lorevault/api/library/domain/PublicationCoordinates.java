@@ -1,6 +1,6 @@
-package com.lorevault.api.content.library;
+package com.lorevault.api.library.domain;
 
-import static com.lorevault.api.content.library.StringSanitizer.toSnakeCase;
+import static com.lorevault.api.library.domain.StringSanitizer.toSnakeCase;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;

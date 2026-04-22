@@ -1,6 +1,6 @@
 package com.lorevault.api.search.application;
 
-import com.lorevault.api.content.library.PublicationCoordinates;
+import com.lorevault.api.library.domain.PublicationCoordinates;
 import com.lorevault.api.search.domain.SpoilerVisibility;
 
 import java.util.List;

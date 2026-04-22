@@ -1,4 +1,7 @@
-package com.lorevault.api.content.timeline.domain;
+package com.lorevault.api.content.timeline.application;
+
+import com.lorevault.api.content.timeline.domain.CanonicalRelation;
+import com.lorevault.api.content.timeline.domain.TemporalRelation;
 
 import java.util.Objects;
 

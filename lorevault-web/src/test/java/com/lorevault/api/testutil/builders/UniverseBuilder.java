@@ -1,6 +1,6 @@
 package com.lorevault.api.testutil.builders;
 
-import com.lorevault.api.content.library.Universe;
+import com.lorevault.api.library.domain.Universe;
 import com.lorevault.api.testutil.TestClock;
 import com.lorevault.api.testutil.TestIds;
 

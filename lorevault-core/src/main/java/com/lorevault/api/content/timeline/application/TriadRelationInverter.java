@@ -1,4 +1,4 @@
-package com.lorevault.api.content.timeline.domain;
+package com.lorevault.api.content.timeline.application;
 
 /**
  * Invert relation expressed as prev -> curr into curr vs prev label string.
