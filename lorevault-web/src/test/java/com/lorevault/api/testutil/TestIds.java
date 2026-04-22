@@ -1,6 +1,6 @@
 package com.lorevault.api.testutil;
 
-import com.lorevault.api.content.domain.PublicationCoordinates;
+import com.lorevault.api.content.library.PublicationCoordinates;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

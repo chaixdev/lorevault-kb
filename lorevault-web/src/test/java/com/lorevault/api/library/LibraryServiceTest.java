@@ -1,8 +1,8 @@
 package com.lorevault.api.library;
 
-import com.lorevault.api.content.domain.Universe;
-import com.lorevault.api.content.domain.Series;
-import com.lorevault.api.content.domain.Book;
+import com.lorevault.api.content.library.Universe;
+import com.lorevault.api.content.library.Series;
+import com.lorevault.api.content.library.Book;
 import com.lorevault.api.testutil.fakes.FakeContentRepositories;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

@@ -1,8 +1,8 @@
 package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.application.resolution.*;
 
-import com.lorevault.api.content.domain.ChapterIndividual;
-import com.lorevault.api.content.infrastructure.ChapterIndividualGraphRepository;
+import com.lorevault.api.content.entities.ChapterIndividual;
+import com.lorevault.api.content.entities.ChapterIndividualGraphRepository;
 import com.lorevault.api.ingestion.application.result.ChapterIndividualResolutionResult;
 import java.util.List;
 import java.util.UUID;

@@ -1,8 +1,8 @@
 package com.lorevault.api.search;
 import com.lorevault.api.search.infrastructure.*;
 
-import com.lorevault.api.content.domain.Chunk;
-import com.lorevault.api.content.infrastructure.ChunkGraphRepository;
+import com.lorevault.api.content.entities.Chunk;
+import com.lorevault.api.content.entities.ChunkGraphRepository;
 import com.lorevault.api.search.infrastructure.Neo4jSemanticSearch.SearchFilters;
 import com.lorevault.api.search.infrastructure.Neo4jSemanticSearch.SearchResult;
 import com.lorevault.api.search.domain.SeriesProgress;

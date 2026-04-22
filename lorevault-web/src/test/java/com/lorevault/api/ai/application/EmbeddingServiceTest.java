@@ -1,7 +1,7 @@
 package com.lorevault.api.ai.application;
 
-import com.lorevault.api.content.domain.Chapter;
-import com.lorevault.api.content.domain.Chunk;
+import com.lorevault.api.content.entities.Chapter;
+import com.lorevault.api.content.entities.Chunk;
 import com.lorevault.api.testutil.fakes.FakeContentRepositories;
 import com.lorevault.api.testutil.fakes.FakeEmbeddingModel;
 import org.junit.jupiter.api.DisplayName;

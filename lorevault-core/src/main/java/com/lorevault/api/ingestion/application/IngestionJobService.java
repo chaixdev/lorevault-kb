@@ -1,6 +1,6 @@
 package com.lorevault.api.ingestion.application;
 
-import com.lorevault.api.content.domain.Scene;
+import com.lorevault.api.content.entities.Scene;
 import com.lorevault.api.ingestion.application.result.JobStatusDetails;
 import com.lorevault.api.ingestion.application.result.JobSummary;
 import com.lorevault.api.ingestion.application.result.PaginatedJobSummaries;
@@ -9,11 +9,11 @@ import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.domain.StatusRecord;
 
-import com.lorevault.api.content.domain.Chapter;
-import com.lorevault.api.content.infrastructure.ChapterGraphRepository;
-import com.lorevault.api.content.infrastructure.ChunkGraphRepository;
+import com.lorevault.api.content.entities.Chapter;
+import com.lorevault.api.content.entities.ChapterGraphRepository;
+import com.lorevault.api.content.entities.ChunkGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
-import com.lorevault.api.content.infrastructure.SceneGraphRepository;
+import com.lorevault.api.content.entities.SceneGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.StatusRecordGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -3,13 +3,13 @@ package com.lorevault.api.ingestion.application.pipeline;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 
-import com.lorevault.api.content.domain.Chapter;
+import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.ingestion.events.ChunksCreatedEvent;
 import com.lorevault.api.ingestion.events.EmbeddingsCompletedEvent;
-import com.lorevault.api.content.infrastructure.ChapterGraphRepository;
-import com.lorevault.api.content.infrastructure.ChunkGraphRepository;
+import com.lorevault.api.content.entities.ChapterGraphRepository;
+import com.lorevault.api.content.entities.ChunkGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
-import com.lorevault.api.content.infrastructure.SceneGraphRepository;
+import com.lorevault.api.content.entities.SceneGraphRepository;
 import com.lorevault.api.ai.application.EmbeddingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;

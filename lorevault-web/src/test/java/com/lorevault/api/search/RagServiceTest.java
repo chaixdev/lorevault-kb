@@ -1,14 +1,14 @@
 package com.lorevault.api.search;
-import com.lorevault.api.content.domain.Chapter;
+import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.application.CoreSearchRecords.*;
 import com.lorevault.api.search.domain.*;
 import com.lorevault.api.search.infrastructure.*;
 
-import com.lorevault.api.content.domain.Chunk;
+import com.lorevault.api.content.entities.Chunk;
 
-import com.lorevault.api.content.infrastructure.ChapterGraphRepository;
-import com.lorevault.api.content.infrastructure.ChunkGraphRepository;
+import com.lorevault.api.content.entities.ChapterGraphRepository;
+import com.lorevault.api.content.entities.ChunkGraphRepository;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.search.application.SemanticSearchService;
 import org.junit.jupiter.api.BeforeEach;

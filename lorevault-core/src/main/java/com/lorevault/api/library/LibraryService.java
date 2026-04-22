@@ -1,11 +1,11 @@
 package com.lorevault.api.library;
 
-import com.lorevault.api.content.domain.Universe;
-import com.lorevault.api.content.domain.Series;
-import com.lorevault.api.content.domain.Book;
-import com.lorevault.api.content.infrastructure.BookGraphRepository;
-import com.lorevault.api.content.infrastructure.SeriesGraphRepository;
-import com.lorevault.api.content.infrastructure.UniverseGraphRepository;
+import com.lorevault.api.content.library.Universe;
+import com.lorevault.api.content.library.Series;
+import com.lorevault.api.content.library.Book;
+import com.lorevault.api.content.library.BookGraphRepository;
+import com.lorevault.api.content.library.SeriesGraphRepository;
+import com.lorevault.api.content.library.UniverseGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

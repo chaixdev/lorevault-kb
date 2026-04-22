@@ -4,8 +4,8 @@ import com.lorevault.api.ai.infrastructure.SceneDetectionClient;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 
-import com.lorevault.api.content.domain.Chapter;
-import com.lorevault.api.content.domain.Scene;
+import com.lorevault.api.content.entities.Chapter;
+import com.lorevault.api.content.entities.Scene;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

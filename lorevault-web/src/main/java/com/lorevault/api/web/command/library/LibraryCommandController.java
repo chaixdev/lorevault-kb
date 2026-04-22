@@ -1,8 +1,8 @@
 package com.lorevault.api.web.command.library;
 
-import com.lorevault.api.content.domain.Universe;
-import com.lorevault.api.content.domain.Series;
-import com.lorevault.api.content.domain.Book;
+import com.lorevault.api.content.library.Universe;
+import com.lorevault.api.content.library.Series;
+import com.lorevault.api.content.library.Book;
 import com.lorevault.api.library.LibraryResult;
 import com.lorevault.api.library.LibraryService;
 import io.swagger.v3.oas.annotations.tags.Tag;

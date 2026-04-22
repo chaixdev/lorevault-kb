@@ -1,8 +1,8 @@
 package com.lorevault.api.search.application;
 
-import com.lorevault.api.content.domain.Chapter;
-import com.lorevault.api.content.domain.Chunk;
-import com.lorevault.api.content.domain.PublicationCoordinates;
+import com.lorevault.api.content.entities.Chapter;
+import com.lorevault.api.content.entities.Chunk;
+import com.lorevault.api.content.library.PublicationCoordinates;
 import com.lorevault.api.search.application.CoreSearchRecords.CoreAskRequest;
 import com.lorevault.api.search.application.CoreSearchRecords.CoreAskResponse;
 import com.lorevault.api.search.application.CoreSearchRecords.CoreCitation;
@@ -14,8 +14,8 @@ import com.lorevault.api.search.application.CoreSearchRecords.CoreSearchResult;
 import com.lorevault.api.search.application.CoreSearchRecords.CoreSemanticSearchFilters;
 import com.lorevault.api.search.domain.QuestionIntent;
 import com.lorevault.api.search.infrastructure.CypherTemplateRegistry;
-import com.lorevault.api.content.infrastructure.ChapterGraphRepository;
-import com.lorevault.api.content.infrastructure.ChunkGraphRepository;
+import com.lorevault.api.content.entities.ChapterGraphRepository;
+import com.lorevault.api.content.entities.ChunkGraphRepository;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

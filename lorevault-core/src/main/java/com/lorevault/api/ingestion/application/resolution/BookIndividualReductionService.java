@@ -1,8 +1,8 @@
 package com.lorevault.api.ingestion.application.resolution;
 
-import com.lorevault.api.content.domain.BookIndividual;
-import com.lorevault.api.content.infrastructure.BookIndividualGraphRepository;
-import com.lorevault.api.content.infrastructure.BookGraphRepository;
+import com.lorevault.api.content.entities.BookIndividual;
+import com.lorevault.api.content.entities.BookIndividualGraphRepository;
+import com.lorevault.api.content.library.BookGraphRepository;
 import com.lorevault.api.ingestion.application.result.BookIndividualResolutionResult;
 import java.util.ArrayList;
 import java.util.List;

@@ -2,9 +2,9 @@ package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.infrastructure.*;
 
 import com.lorevault.api.ai.application.TriadOrchestrationService;
-import com.lorevault.api.content.domain.EventMention;
-import com.lorevault.api.content.infrastructure.EventMentionGraphRepository;
-import com.lorevault.api.content.domain.Scene;
+import com.lorevault.api.content.entities.EventMention;
+import com.lorevault.api.content.entities.EventMentionGraphRepository;
+import com.lorevault.api.content.entities.Scene;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;

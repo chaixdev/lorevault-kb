@@ -7,7 +7,7 @@ import com.lorevault.api.web.query.ask.AskDtos.AskMetadata;
 import com.lorevault.api.web.query.ask.AskDtos.AskRequest;
 import com.lorevault.api.web.query.ask.AskDtos.CitationDto;
 import com.lorevault.api.web.query.ask.SemanticSearchDtos.SemanticSearchRequest;
-import com.lorevault.api.content.domain.PublicationCoordinates;
+import com.lorevault.api.content.library.PublicationCoordinates;
 import com.lorevault.api.search.application.RagService;
 import com.lorevault.api.search.application.SemanticSearchService;
 import org.junit.jupiter.api.Tag;

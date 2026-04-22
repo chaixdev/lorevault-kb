@@ -1,10 +1,10 @@
 package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.application.resolution.*;
 
-import com.lorevault.api.content.domain.BookLocation;
-import com.lorevault.api.content.infrastructure.BookLocationGraphRepository;
-import com.lorevault.api.content.domain.ChapterLocation;
-import com.lorevault.api.content.infrastructure.ChapterLocationGraphRepository;
+import com.lorevault.api.content.entities.BookLocation;
+import com.lorevault.api.content.entities.BookLocationGraphRepository;
+import com.lorevault.api.content.entities.ChapterLocation;
+import com.lorevault.api.content.entities.ChapterLocationGraphRepository;
 import com.lorevault.api.ingestion.application.result.BookLocationResolutionResult;
 import java.util.List;
 import java.util.UUID;

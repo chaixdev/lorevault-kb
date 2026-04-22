@@ -2,10 +2,10 @@ package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.infrastructure.*;
 
 import com.lorevault.api.ai.application.TriadOrchestrationService;
-import com.lorevault.api.content.domain.Chapter;
-import com.lorevault.api.content.domain.IndividualMention;
-import com.lorevault.api.content.infrastructure.IndividualMentionGraphRepository;
-import com.lorevault.api.content.domain.Scene;
+import com.lorevault.api.content.entities.Chapter;
+import com.lorevault.api.content.entities.IndividualMention;
+import com.lorevault.api.content.entities.IndividualMentionGraphRepository;
+import com.lorevault.api.content.entities.Scene;
 import com.lorevault.api.testutil.builders.PublicationCoordinatesBuilder;
 import java.util.List;
 import java.util.UUID;

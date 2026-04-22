@@ -1,0 +1,21 @@
+package com.lorevault.api.content.entities;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.neo4j.core.schema.Node;
+
+@Node("ChapterLocation")
+public record ChapterLocation(
+        @Id UUID id,
+        UUID chapterId,
+        String displayName,
+        String normalizedName,
+        List<String> aliases,
+        Integer mentionCount,
+        @CreatedDate LocalDateTime createdAt,
+        @LastModifiedDate LocalDateTime updatedAt
+) {}

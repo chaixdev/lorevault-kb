@@ -7,11 +7,11 @@ import com.lorevault.api.ingestion.application.result.PaginatedJobSummaries;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
-import com.lorevault.api.content.domain.PublicationCoordinates;
-import com.lorevault.api.content.domain.Chapter;
-import com.lorevault.api.content.domain.Book;
-import com.lorevault.api.content.infrastructure.BookGraphRepository;
-import com.lorevault.api.content.infrastructure.ChapterGraphRepository;
+import com.lorevault.api.content.library.PublicationCoordinates;
+import com.lorevault.api.content.entities.Chapter;
+import com.lorevault.api.content.library.Book;
+import com.lorevault.api.content.library.BookGraphRepository;
+import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

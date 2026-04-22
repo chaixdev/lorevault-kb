@@ -1,14 +1,4 @@
 package com.lorevault.api.timeline;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
 
 import com.lorevault.api.testing.TestImages;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,9 +20,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.lorevault.api.timeline.application.DefaultTemporalEdgeService;
-import com.lorevault.api.timeline.infrastructure.EventGraphRepository;
-import com.lorevault.api.timeline.infrastructure.TemporalEdgeWriteRepository;
+import com.lorevault.api.content.timeline.DefaultTemporalEdgeService;
+import com.lorevault.api.content.timeline.EventGraphRepository;
+import com.lorevault.api.content.timeline.TemporalEdgeWriteRepository;
 
 @DataNeo4jTest
 @Testcontainers

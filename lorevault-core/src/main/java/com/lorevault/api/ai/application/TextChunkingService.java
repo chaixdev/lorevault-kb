@@ -1,7 +1,7 @@
 package com.lorevault.api.ai.application;
 
 import com.lorevault.api.config.LoreVaultContentProperties;
-import com.lorevault.api.content.domain.Chunk;
+import com.lorevault.api.content.entities.Chunk;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

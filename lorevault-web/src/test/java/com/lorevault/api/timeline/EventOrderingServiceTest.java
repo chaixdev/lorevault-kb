@@ -1,11 +1,11 @@
 package com.lorevault.api.timeline;
 
-import com.lorevault.api.content.domain.Scene;
-import com.lorevault.api.content.infrastructure.ChapterReadRepository;
-import com.lorevault.api.content.infrastructure.SceneGraphRepository;
-import com.lorevault.api.timeline.application.EventOrderingService;
-import com.lorevault.api.timeline.infrastructure.TemporalReadRepository;
-import com.lorevault.api.timeline.infrastructure.TemporalReadRepository.TemporalEdgePair;
+import com.lorevault.api.content.entities.Scene;
+import com.lorevault.api.content.entities.ChapterReadRepository;
+import com.lorevault.api.content.entities.SceneGraphRepository;
+import com.lorevault.api.content.timeline.EventOrderingService;
+import com.lorevault.api.content.timeline.TemporalReadRepository;
+import com.lorevault.api.content.timeline.TemporalReadRepository.TemporalEdgePair;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
