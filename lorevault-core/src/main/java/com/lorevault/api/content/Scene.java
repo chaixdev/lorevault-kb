@@ -11,7 +11,7 @@ import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Property;
 import org.springframework.data.neo4j.core.schema.Relationship;
 
-import com.lorevault.api.timeline.Event;
+import com.lorevault.api.timeline.domain.Event;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;

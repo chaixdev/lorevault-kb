@@ -1,4 +1,6 @@
 package com.lorevault.api.timeline;
+import com.lorevault.api.timeline.domain.CertaintyLevel;
+import com.lorevault.api.timeline.domain.CertaintyWeights;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.application.IngestionService;
 import com.lorevault.api.ingestion.application.pipeline.*;

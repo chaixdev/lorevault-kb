@@ -1,4 +1,6 @@
-package com.lorevault.api.timeline;
+package com.lorevault.api.timeline.domain;
+
+import com.lorevault.api.timeline.domain.CertaintyLevel;
 
 import java.util.Collections;
 import java.util.EnumMap;

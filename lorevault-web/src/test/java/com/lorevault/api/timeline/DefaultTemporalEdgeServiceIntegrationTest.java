@@ -10,7 +10,8 @@ import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.domain.*;
 import com.lorevault.api.search.infrastructure.*;
 
-import com.lorevault.api.timeline.TemporalGraphRepository;
+import com.lorevault.api.timeline.application.DefaultTemporalEdgeService;
+import com.lorevault.api.timeline.infrastructure.TemporalGraphRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

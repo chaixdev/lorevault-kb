@@ -1,6 +1,6 @@
-package com.lorevault.api.timeline;
+package com.lorevault.api.timeline.application;
 
-import com.lorevault.api.timeline.TemporalEdgeWriteRepository;
+import com.lorevault.api.timeline.infrastructure.TemporalEdgeWriteRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

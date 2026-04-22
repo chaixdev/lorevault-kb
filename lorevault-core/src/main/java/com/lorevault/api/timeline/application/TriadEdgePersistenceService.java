@@ -1,4 +1,4 @@
-package com.lorevault.api.timeline;
+package com.lorevault.api.timeline.application;
 
 import com.lorevault.api.ai.domain.TriadAnalysisException;
 import com.lorevault.api.ai.application.TriadOrchestrationService;
@@ -9,6 +9,7 @@ import com.lorevault.api.ingestion.domain.LlmCallRecord;
 import com.lorevault.api.ingestion.infrastructure.LlmCallRecordGraphRepository;
 import com.lorevault.api.ingestion.domain.StatusRecord;
 import com.lorevault.api.ingestion.infrastructure.StatusRecordGraphRepository;
+import com.lorevault.api.timeline.infrastructure.TemporalEdgeWriteRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

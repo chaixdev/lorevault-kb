@@ -30,7 +30,7 @@ import com.lorevault.api.web.command.ingestion.SubmitChapterRequest;
 import com.lorevault.api.web.command.ingestion.SubmitChapterResponse;
 import com.lorevault.api.testutil.SampleChapterLoader;
 import com.lorevault.api.testing.TestImages;
-import com.lorevault.api.timeline.DefaultTemporalEdgeService;
+import com.lorevault.api.timeline.application.DefaultTemporalEdgeService;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;

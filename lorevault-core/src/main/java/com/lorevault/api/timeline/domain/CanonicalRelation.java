@@ -1,4 +1,4 @@
-package com.lorevault.api.timeline;
+package com.lorevault.api.timeline.domain;
 
 /**
  * Canonical subset of Allen interval relations used in LoreVault timeline edges.

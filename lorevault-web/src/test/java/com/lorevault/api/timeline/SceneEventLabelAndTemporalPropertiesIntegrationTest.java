@@ -30,6 +30,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.lorevault.api.timeline.application.DefaultTemporalEdgeService;
+import com.lorevault.api.timeline.infrastructure.EventGraphRepository;
+import com.lorevault.api.timeline.infrastructure.TemporalEdgeWriteRepository;
+
 @DataNeo4jTest
 @Testcontainers
 @Import({DefaultTemporalEdgeService.class})

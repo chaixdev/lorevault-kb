@@ -1,4 +1,7 @@
 package com.lorevault.api.timeline;
+import com.lorevault.api.timeline.domain.RelationNormalizer;
+import com.lorevault.api.timeline.domain.TemporalRelation;
+import com.lorevault.api.timeline.domain.CanonicalRelation;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.application.IngestionService;
 import com.lorevault.api.ingestion.application.pipeline.*;

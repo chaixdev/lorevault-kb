@@ -7,7 +7,7 @@ import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
 import com.lorevault.api.ingestion.domain.IngestionFailure;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.timeline.TriadRelationInverter;
+import com.lorevault.api.timeline.domain.TriadRelationInverter;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

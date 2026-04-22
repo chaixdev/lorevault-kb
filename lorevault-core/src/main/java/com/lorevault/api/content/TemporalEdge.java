@@ -1,8 +1,8 @@
 package com.lorevault.api.content;
 
 import com.lorevault.api.content.Scene;
-import com.lorevault.api.timeline.CertaintyLevel;
-import com.lorevault.api.timeline.TemporalRelation;
+import com.lorevault.api.timeline.domain.CertaintyLevel;
+import com.lorevault.api.timeline.domain.TemporalRelation;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.neo4j.core.schema.GeneratedValue;
