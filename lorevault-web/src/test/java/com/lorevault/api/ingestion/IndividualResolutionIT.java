@@ -15,10 +15,10 @@ import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.domain.*;
 import com.lorevault.api.search.infrastructure.*;
 
-import com.lorevault.api.ai.SceneDetectionService;
-import com.lorevault.api.ai.SceneProcessingService;
-import com.lorevault.api.ai.SceneWithCoordinates;
-import com.lorevault.api.ai.TriadOrchestrationService;
+import com.lorevault.api.ai.application.SceneDetectionService;
+import com.lorevault.api.ai.application.SceneProcessingService;
+import com.lorevault.api.ai.domain.SceneWithCoordinates;
+import com.lorevault.api.ai.application.TriadOrchestrationService;
 import com.lorevault.api.content.Book;
 import com.lorevault.api.content.BookGraphRepository;
 import com.lorevault.api.content.ChapterGraphRepository;

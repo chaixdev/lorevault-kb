@@ -1,4 +1,4 @@
-package com.lorevault.api.ai;
+package com.lorevault.api.ai.application;
 
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;

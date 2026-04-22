@@ -15,14 +15,14 @@ import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.domain.*;
 import com.lorevault.api.search.infrastructure.*;
 
+import com.lorevault.api.ai.domain.SceneLocalizationException;
+import com.lorevault.api.ai.domain.SceneWithCoordinates;
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
-import com.lorevault.api.ai.SceneLocalizationException;
-import com.lorevault.api.ai.SceneWithCoordinates;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
-import com.lorevault.api.ai.SceneDetectionService;
-import com.lorevault.api.ai.SceneProcessingService;
+import com.lorevault.api.ai.application.SceneDetectionService;
+import com.lorevault.api.ai.application.SceneProcessingService;
 import com.lorevault.api.timeline.DefaultTemporalEdgeService;
 import com.lorevault.api.timeline.TriadEdgePersistenceService;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
@@ -140,12 +140,12 @@ class SceneDetectionHandlerTest {
             List<SceneWithCoordinates> sceneCoords = List.of(new SceneWithCoordinates(0, 0, 20, "Scene 1"));
             Scene scene = createScene(0);
             List<Scene> persistedScenes = List.of(scene);
-            List<com.lorevault.api.ai.TriadOrchestrationService.TriadSceneIndividualExtraction> extractions = List.of();
-            List<com.lorevault.api.ai.TriadOrchestrationService.TriadSceneLocationExtraction> locationExtractions = List.of();
-            List<com.lorevault.api.ai.TriadOrchestrationService.TriadSceneEventExtraction> eventExtractions = List.of(
-                    new com.lorevault.api.ai.TriadOrchestrationService.TriadSceneEventExtraction(
+            List<com.lorevault.api.ai.application.TriadOrchestrationService.TriadSceneIndividualExtraction> extractions = List.of();
+            List<com.lorevault.api.ai.application.TriadOrchestrationService.TriadSceneLocationExtraction> locationExtractions = List.of();
+            List<com.lorevault.api.ai.application.TriadOrchestrationService.TriadSceneEventExtraction> eventExtractions = List.of(
+                    new com.lorevault.api.ai.application.TriadOrchestrationService.TriadSceneEventExtraction(
                             0,
-                            List.of(new com.lorevault.api.ai.TriadOrchestrationService.TriadEventExtraction(
+                            List.of(new com.lorevault.api.ai.application.TriadOrchestrationService.TriadEventExtraction(
                                     "The Winter War",
                                     "war",
                                     "R:temporal.before",

@@ -1,7 +1,7 @@
 package com.lorevault.api.timeline;
 
-import com.lorevault.api.ai.TriadAnalysisException;
-import com.lorevault.api.ai.TriadOrchestrationService;
+import com.lorevault.api.ai.domain.TriadAnalysisException;
+import com.lorevault.api.ai.application.TriadOrchestrationService;
 import com.lorevault.api.ingestion.domain.IngestionFailure;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;

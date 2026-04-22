@@ -15,7 +15,7 @@ import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.domain.*;
 import com.lorevault.api.search.infrastructure.*;
 
-import com.lorevault.api.ai.TriadOrchestrationService;
+import com.lorevault.api.ai.application.TriadOrchestrationService;
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.IndividualMention;
 import com.lorevault.api.content.IndividualMentionGraphRepository;

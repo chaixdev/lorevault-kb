@@ -17,7 +17,7 @@ import com.lorevault.api.search.application.CoreSearchRecords.*;
 
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
-import com.lorevault.api.ai.PromptRepository;
+import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.search.application.SemanticSearchService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;

@@ -1,4 +1,4 @@
-package com.lorevault.api.ai;
+package com.lorevault.api.ai.domain;
 
 /**
  * Data transfer object representing a scene with calculated character coordinates.

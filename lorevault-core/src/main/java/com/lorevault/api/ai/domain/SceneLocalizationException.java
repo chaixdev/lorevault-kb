@@ -1,4 +1,4 @@
-package com.lorevault.api.ai;
+package com.lorevault.api.ai.domain;
 
 import com.lorevault.api.ingestion.domain.IngestionFailure;
 

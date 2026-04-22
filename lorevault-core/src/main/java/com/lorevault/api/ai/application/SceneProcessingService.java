@@ -1,9 +1,10 @@
-package com.lorevault.api.ai;
+package com.lorevault.api.ai.application;
 
 import com.lorevault.api.content.Scene;
 import com.lorevault.api.content.Chapter;
-import com.lorevault.api.ai.SceneDetectionResult;
-import com.lorevault.api.ai.SceneWithCoordinates;
+import com.lorevault.api.ai.domain.SceneLocalizationException;
+import com.lorevault.api.ai.domain.SceneDetectionResult;
+import com.lorevault.api.ai.domain.SceneWithCoordinates;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
 import com.lorevault.api.ingestion.domain.IngestionFailure;

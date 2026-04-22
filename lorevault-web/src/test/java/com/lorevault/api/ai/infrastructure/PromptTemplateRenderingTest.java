@@ -1,4 +1,4 @@
-package com.lorevault.api.ai;
+package com.lorevault.api.ai.infrastructure;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.application.IngestionService;
 import com.lorevault.api.ingestion.application.pipeline.*;

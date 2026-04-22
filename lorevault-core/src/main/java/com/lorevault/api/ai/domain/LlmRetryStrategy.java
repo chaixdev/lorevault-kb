@@ -1,4 +1,4 @@
-package com.lorevault.api.ai;
+package com.lorevault.api.ai.domain;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.lorevault.api.ai;
+package com.lorevault.api.ai.application;
 
 import com.lorevault.api.config.LoreVaultContentProperties;
 import com.lorevault.api.content.Chunk;

@@ -10,7 +10,7 @@ import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.domain.*;
 import com.lorevault.api.search.infrastructure.*;
 
-import com.lorevault.api.ai.TriadOrchestrationService;
+import com.lorevault.api.ai.application.TriadOrchestrationService;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
 import com.lorevault.api.ingestion.domain.LlmCallRecord;

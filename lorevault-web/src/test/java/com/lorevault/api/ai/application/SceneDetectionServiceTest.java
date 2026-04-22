@@ -1,4 +1,9 @@
-package com.lorevault.api.ai;
+package com.lorevault.api.ai.application;
+import com.lorevault.api.ai.domain.LlmRetryStrategy;
+import com.lorevault.api.ai.domain.SceneDetectionResult;
+import com.lorevault.api.ai.domain.SceneLocalizationException;
+import com.lorevault.api.ai.domain.SceneWithCoordinates;
+import com.lorevault.api.ai.infrastructure.SceneDetectionClient;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.application.IngestionService;
 import com.lorevault.api.ingestion.application.pipeline.*;

@@ -1,5 +1,8 @@
-package com.lorevault.api.ai;
+package com.lorevault.api.ai.application;
 
+import com.lorevault.api.ai.infrastructure.PromptRepository;
+import com.lorevault.api.ai.infrastructure.SceneDetectionClient;
+import com.lorevault.api.ai.domain.TriadAnalysisException;
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
 import com.lorevault.api.ingestion.domain.IngestionFailure;

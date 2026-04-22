@@ -15,7 +15,7 @@ import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.domain.*;
 import com.lorevault.api.search.infrastructure.*;
 
-import com.lorevault.api.ai.SceneLocalizationException;
+import com.lorevault.api.ai.domain.SceneLocalizationException;
 import com.lorevault.api.ingestion.events.IngestionFailedEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

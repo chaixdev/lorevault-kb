@@ -7,15 +7,15 @@ import com.lorevault.api.ingestion.domain.StatusRecord;
 import com.lorevault.api.ingestion.domain.LlmCallRecord;
 import com.lorevault.api.ingestion.domain.IngestionFailure;
 
+import com.lorevault.api.ai.domain.SceneLocalizationException;
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.Scene;
-import com.lorevault.api.ai.SceneLocalizationException;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
-import com.lorevault.api.ai.SceneDetectionService;
-import com.lorevault.api.ai.SceneProcessingService;
+import com.lorevault.api.ai.application.SceneDetectionService;
+import com.lorevault.api.ai.application.SceneProcessingService;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.infrastructure.IndividualPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.LocationPersistenceService;
@@ -195,7 +195,7 @@ public class SceneDetectionHandler {
 
     private record DetectionPersistenceOutcome(
             List<Scene> persistedScenes,
-            List<com.lorevault.api.ai.TriadOrchestrationService.TriadAnalysis> triadAnalyses
+            List<com.lorevault.api.ai.application.TriadOrchestrationService.TriadAnalysis> triadAnalyses
     ) {}
 
     private void emitScenesDetected(UUID jobId, UUID chapterId, UUID bookId, List<Scene> scenes) {

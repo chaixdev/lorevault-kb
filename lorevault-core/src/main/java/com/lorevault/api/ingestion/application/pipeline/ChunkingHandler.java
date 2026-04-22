@@ -16,7 +16,7 @@ import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
-import com.lorevault.api.ai.TextChunkingService;
+import com.lorevault.api.ai.application.TextChunkingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;

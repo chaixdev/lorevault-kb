@@ -15,7 +15,7 @@ import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.domain.*;
 import com.lorevault.api.search.infrastructure.*;
 
-import com.lorevault.api.ai.EmbeddingService;
+import com.lorevault.api.ai.application.EmbeddingService;
 import com.lorevault.api.content.Chapter;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;

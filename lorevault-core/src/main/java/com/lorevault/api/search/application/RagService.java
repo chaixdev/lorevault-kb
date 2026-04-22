@@ -19,7 +19,7 @@ import com.lorevault.api.search.domain.QuestionIntent;
 import com.lorevault.api.search.infrastructure.CypherTemplateRegistry;
 import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
-import com.lorevault.api.ai.PromptRepository;
+import com.lorevault.api.ai.infrastructure.PromptRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;

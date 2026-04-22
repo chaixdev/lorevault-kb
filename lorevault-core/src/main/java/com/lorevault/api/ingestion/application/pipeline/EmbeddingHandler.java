@@ -15,7 +15,7 @@ import com.lorevault.api.content.ChapterGraphRepository;
 import com.lorevault.api.content.ChunkGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
 import com.lorevault.api.content.SceneGraphRepository;
-import com.lorevault.api.ai.EmbeddingService;
+import com.lorevault.api.ai.application.EmbeddingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;

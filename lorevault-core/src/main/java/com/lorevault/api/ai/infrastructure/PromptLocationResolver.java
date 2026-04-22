@@ -1,4 +1,4 @@
-package com.lorevault.api.ai;
+package com.lorevault.api.ai.infrastructure;
 
 import com.lorevault.api.config.LoreVaultPromptProperties;
 import lombok.RequiredArgsConstructor;
