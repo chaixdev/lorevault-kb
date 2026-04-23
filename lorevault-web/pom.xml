@@ -281,7 +281,9 @@
                                 <exclude>**/*IntegrationTests.java</exclude>
                             </excludes>
                             <excludedGroups combine.self="override"></excludedGroups>
-                            <properties combine.self="override"/>
+                            <properties combine.self="override">
+                                <configurationParameters>junit.jupiter.tags.include=architecture</configurationParameters>
+                            </properties>
                         </configuration>
                     </plugin>
                 </plugins>
