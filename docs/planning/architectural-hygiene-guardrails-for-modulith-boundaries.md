@@ -1,12 +1,23 @@
 # Architectural hygiene guardrails for modulith boundaries
 
-**Status:** NOT STARTED
+**Status:** IN PROGRESS
 
 ## Summary
 
 LoreVault's `lorevault-web` / `lorevault-core` split is established, but the internal modulith still relies heavily on documented intent rather than executable enforcement.
 
 This planning item tracks the next bounded architecture-hygiene pass: make the current boundaries harder to accidentally erode, contain known package debt, and align documentation and transport edges with the actual present-state structure.
+
+Current pass focus (bounded first slice):
+
+- add executable architecture tests that lock in the current `web -> core` dependency direction
+- enforce that core packages do not depend on `com.lorevault.api.web..`
+- add a narrow web-edge placement guardrail for HTTP controllers
+
+Current pass focus (bounded second slice):
+
+- add architecture boundary validation tests for top-level core package cycles
+- let these tests fail naturally where current boundary debt exists, and use that output to drive cleanup tickets
 
 ## Problem
 
@@ -91,6 +102,36 @@ Relevant files and areas include:
 - New top-level package cycles or equivalent boundary regressions are harder to introduce silently.
 - Contributors can tell from canonical docs and verification paths what the present architecture actually is, not just what older docs said it was.
 - The next phase of package-debt reduction can start from a contained baseline instead of a continuously drifting one.
+
+## Current Implementation Notes
+
+- `ModulithBoundaryArchitectureTest` now enforces passing guardrails for current module/package boundaries.
+- `CorePackageBoundaryArchitectureTest` validates a cycle-free top-level core package map and currently fails on known boundary debt.
+
+### Baseline Evidence (current run)
+
+- Command: `mvn -pl lorevault-web test -P architecture-tests -DskipTests=false`
+- Result: `BUILD FAILURE` (expected for this phase)
+- Artifact log: `./artifacts/architectural-hygiene-guardrails-pass1-archunit-failure.log`
+
+Observed failing cycle groups from the baseline run include:
+
+1. `ai - application -> ingestion - application -> ingestion - infrastructure -> content - entities -> content - timeline -> ai - application`
+2. `content - entities <-> content - timeline`
+3. `content - entities -> content - timeline -> ingestion - infrastructure -> content - entities`
+
+Interpretation:
+
+- The guardrails are now executable and surfacing real, currently-known boundary debt.
+- This planning item's first enforcement pass is complete once these failures are captured and linked to the next cleanup ticket.
+
+### Handoff to Cleanup Ticket
+
+Cleanup work is intentionally deferred to:
+
+- `./contain-strong-package-cycles-and-event-boundary-gaps.md`
+
+That follow-up should consume the baseline artifact above and resolve cycle groups in bounded slices rather than relaxing architecture assertions.
 
 ## Links
 
