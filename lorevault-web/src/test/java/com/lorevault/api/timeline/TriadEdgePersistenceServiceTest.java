@@ -72,15 +72,19 @@ class TriadEdgePersistenceServiceTest {
 
         statusRecord = new StatusRecord();
         statusRecord.setId(statusRecordId);
-        statusRecord.setProperties(Map.of("currentSceneIndex", "1"));
+        statusRecord.setProperties(Map.of(
+                "currentSceneId", scene1Id.toString(),
+                "currentSceneIndex", "1"
+        ));
 
         callRecord = new LlmCallRecord();
         callRecord.setId(callRecordId);
         callRecord.setResponseBody("{\"ok\":true}");
         callRecord.setTruncated(false);
 
-        when(statusRecordGraphRepository.findLatestTriadStatusForJobAndCurrentSceneIndex(jobId, "1"))
+        when(statusRecordGraphRepository.findLatestTriadStatusByCurrentSceneId(jobId, scene1Id.toString()))
                 .thenReturn(Optional.of(statusRecord));
+
 
         when(llmCallRecordGraphRepository.findLatestByJobStepAndStatusRecord(
                 eq(jobId), eq("scene-analysis"), eq(statusRecordId)))

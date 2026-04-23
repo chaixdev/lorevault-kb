@@ -37,11 +37,11 @@ public interface StatusRecordGraphRepository extends Neo4jRepository<StatusRecor
 
     @Query("""
             MATCH (s:StatusRecord {jobId: $jobId, status: 'SCENE_TRIAD_ANALYSIS'})
-            WHERE s.`prop.currentSceneIndex` = $currentSceneIndex
+            WHERE s.`prop.currentSceneId` = $currentSceneId
             RETURN s
             ORDER BY s.timestamp DESC
             LIMIT 1
             """)
-    Optional<StatusRecord> findLatestTriadStatusForJobAndCurrentSceneIndex(UUID jobId, String currentSceneIndex);
+    Optional<StatusRecord> findLatestTriadStatusByCurrentSceneId(UUID jobId, String currentSceneId);
 
 }

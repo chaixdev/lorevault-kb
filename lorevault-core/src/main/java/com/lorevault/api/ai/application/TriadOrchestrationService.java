@@ -156,6 +156,9 @@ public class TriadOrchestrationService {
 
             Map<String, Object> statusProps = new HashMap<>();
             statusProps.put("triadIndex", triadIndex++);
+            statusProps.put("prevSceneId", t.previous() != null ? t.previous().getEventId() : null);
+            statusProps.put("currentSceneId", t.current() != null ? t.current().getEventId() : null);
+            statusProps.put("nextSceneId", t.next() != null ? t.next().getEventId() : null);
             statusProps.put("prevSceneIndex", t.previous() != null ? t.previous().getSceneIndex() : null);
             statusProps.put("currentSceneIndex", t.current().getSceneIndex());
             statusProps.put("nextSceneIndex", t.next() != null ? t.next().getSceneIndex() : null);

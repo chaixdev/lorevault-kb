@@ -49,11 +49,13 @@ public class TriadEdgePersistenceService {
         UUID jobId = resolveLatestJobId(chapterId);
 
         for (var a : analyses) {
+            UUID currentScenePersistedId = resolvePersistedSceneId(a.currentSceneId(), a.currentSceneIndex(), sceneIndexToPersistedId);
+
             if (a.previousSceneIndex() != null && a.currentSceneIndex() != null && a.prevToCurrType() != null) {
                 UUID fromId = resolvePersistedSceneId(a.previousSceneId(), a.previousSceneIndex(), sceneIndexToPersistedId);
                 UUID toId = resolvePersistedSceneId(a.currentSceneId(), a.currentSceneIndex(), sceneIndexToPersistedId);
                 if (fromId != null && toId != null) {
-                    upsertWithAmbiguityHandling(jobId, chapterId, a.currentSceneIndex(), fromId, toId,
+                    upsertWithAmbiguityHandling(jobId, chapterId, currentScenePersistedId, a.currentSceneIndex(), fromId, toId,
                             a.prevToCurrType(), a.prevToCurrCertainty(), a.prevToCurrEvidence(), a.timelineMarker());
                 }
             }
@@ -62,7 +64,7 @@ public class TriadEdgePersistenceService {
                 UUID fromId = resolvePersistedSceneId(a.currentSceneId(), a.currentSceneIndex(), sceneIndexToPersistedId);
                 UUID toId = resolvePersistedSceneId(a.nextSceneId(), a.nextSceneIndex(), sceneIndexToPersistedId);
                 if (fromId != null && toId != null) {
-                    upsertWithAmbiguityHandling(jobId, chapterId, a.currentSceneIndex(), fromId, toId,
+                    upsertWithAmbiguityHandling(jobId, chapterId, currentScenePersistedId, a.currentSceneIndex(), fromId, toId,
                             a.currToNextType(), a.currToNextCertainty(), a.currToNextEvidence(), a.timelineMarker());
                 }
             }
@@ -83,6 +85,7 @@ public class TriadEdgePersistenceService {
 
     private void upsertWithAmbiguityHandling(UUID jobId,
                                              UUID chapterId,
+                                             UUID currentSceneId,
                                              Integer currentSceneIndex,
                                              UUID from,
                                              UUID to,
@@ -90,7 +93,7 @@ public class TriadEdgePersistenceService {
                                              String certainty,
                                              String evidence,
                                              String timelineMarker) {
-        StatusRecord statusRecord = findRequiredTriadStatus(jobId, currentSceneIndex);
+        StatusRecord statusRecord = findRequiredTriadStatus(jobId, currentSceneId, currentSceneIndex);
         UUID statusRecordId = statusRecord.getId();
         LlmCallRecord callRecord = findRequiredTriadCall(jobId, statusRecordId);
 
@@ -184,22 +187,23 @@ public class TriadEdgePersistenceService {
                 .orElse(null);
     }
 
-    private StatusRecord findRequiredTriadStatus(UUID jobId, Integer currentSceneIndex) {
-        if (jobId == null || currentSceneIndex == null) {
+    private StatusRecord findRequiredTriadStatus(UUID jobId,
+                                                 UUID currentSceneId,
+                                                 Integer currentSceneIndex) {
+        if (jobId == null || currentSceneId == null) {
             throw triadArtifactFailure(
                     "TRIAD_STATUS_MISSING",
-                    "Unable to resolve triad status record due to missing job or scene index",
+                    "Unable to resolve triad status record due to missing job or current scene id",
                     currentSceneIndex,
                     null,
                     null
             );
         }
 
-        String sceneIndexKey = currentSceneIndex.toString();
-        return statusRecordGraphRepository.findLatestTriadStatusForJobAndCurrentSceneIndex(jobId, sceneIndexKey)
+        return statusRecordGraphRepository.findLatestTriadStatusByCurrentSceneId(jobId, currentSceneId.toString())
                 .orElseThrow(() -> triadArtifactFailure(
                         "TRIAD_STATUS_MISSING",
-                        "Missing SCENE_TRIAD_ANALYSIS status for scene index " + currentSceneIndex,
+                        "Missing SCENE_TRIAD_ANALYSIS status for current scene id " + currentSceneId,
                         currentSceneIndex,
                         null,
                         null
