@@ -68,4 +68,4 @@ When a job fails, the `FAILED` status record carries structured failure informat
 
 ## Primary References
 
-- **Application-level logging rules** — see `../rules/logging-philosophy.md` and ADR 009
+- **Application-level logging rules** — see `../../rules/logging-philosophy.md` and ADR 009

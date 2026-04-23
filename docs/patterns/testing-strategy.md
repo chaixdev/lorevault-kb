@@ -35,15 +35,9 @@ The active direction is simpler than the older ports-and-adapters testing shape:
 - `@Tag("architecture")` — ArchUnit tests, excluded by default
 - untagged/default tests — the normal fast loop
 
-## Commands That Matter
+## Commands
 
-- fast loop: `mvn test`
-- integration verification: `mvn verify -P integration-tests`
-- architecture tests: `mvn test -P architecture-tests`
-- coverage gate: `mvn verify -P coverage-gate`
-- mutation testing: `mvn test -P mutation-testing`
-
-The durable rule is that refactors must preserve behavior and keep the full pipeline testable end to end.
+See `../rules/developer-testing-workflow.md` for the authoritative command reference and default loop guidance.
 
 ## Tooling Notes
 

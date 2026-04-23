@@ -9,7 +9,7 @@ LoreVault adopts a structured, boundary-anchored logging philosophy for the inge
 
 Application log lines must carry consistent structured fields (job ID, chapter ID, stage, outcome) rather than free-form bracketed prefixes. Each pipeline stage emits exactly one `started` log and one terminal log (`completed`, `skipped`, or `failed`). Failures are logged once — at the boundary where they are caught — not re-logged as they propagate.
 
-The concrete rules are in `docs/rules/logging-philosophy.md`.
+The concrete rules are in [Logging Philosophy](../rules/logging-philosophy.md).
 
 ## Context
 
@@ -42,4 +42,4 @@ Require a consistent field set on every stage boundary log. Log once per boundar
 - `PipelineStageSupport.runStage()` is the canonical failure boundary; it logs the failure once. Callers must not re-log the same exception.
 - Book text, AI response payloads, and full API keys must never appear in log lines.
 - The `[STAGE]` prefix style is not prohibited but should be replaced with structured field logging as handlers are touched.
-- See `docs/rules/logging-philosophy.md` for the full rule set and field schema.
+- See [Logging Philosophy](../rules/logging-philosophy.md) for the full rule set and field schema.

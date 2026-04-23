@@ -12,8 +12,8 @@ LoreVault now has enough asynchronous ingestion behavior that ad hoc logging is 
 
 We already have two important canonical docs:
 
-- `docs/adr/009-structured-logging-philosophy.md`
-- `docs/rules/logging-philosophy.md`
+- [ADR 009 — Structured Logging Philosophy](../adr/009-structured-logging-philosophy.md)
+- [Logging Philosophy](../../rules/logging-philosophy.md)
 
 Those docs establish accepted direction and contributor rules.
 
@@ -453,9 +453,9 @@ This brainstorm should not be read as replacing the current accepted docs.
 
 Current canonical truth remains:
 
-- `docs/adr/009-structured-logging-philosophy.md`
-- `docs/rules/logging-philosophy.md`
-- `docs/patterns/ingestion-job-observability.md`
+- [ADR 009 — Structured Logging Philosophy](../adr/009-structured-logging-philosophy.md)
+- [Logging Philosophy Rules](../../rules/logging-philosophy.md)
+- [Ingestion Job Observability Pattern](../../patterns/ingestion/ingestion-job-observability.md)
 
 Those docs answer:
 

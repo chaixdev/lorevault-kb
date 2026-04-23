@@ -623,10 +623,9 @@ That is the best next experiment because it:
 
 ## Primary References
 
-- `docs/patterns/rag-retrieval-chain.md` — current RAG chain
-- `docs/patterns/spoiler-aware-retrieval.md` — spoiler filter mechanism
-- `docs/patterns/individual-resolution-ladder.md` — entity ladder
-- `docs/patterns/location-resolution-ladder.md` — location ladder
+- [RAG Retrieval Chain](../../patterns/search/rag-retrieval-chain.md) — current RAG chain
+- [Spoiler-Aware Retrieval](../../patterns/search/spoiler-aware-retrieval.md) — spoiler filter mechanism
+- [Entity Resolution Ladder](../../patterns/ingestion/entity-resolution-ladder.md) — entity resolution ladder (Individual and Location lanes)
 - `lorevault-api/src/main/java/com/lorevault/api/search/Neo4jSemanticSearch.java` — vector search impl
 - `lorevault-api/src/main/java/com/lorevault/api/search/RagService.java` — RAG orchestration
 - External: Neo4j GraphRAG Pattern Catalog (graphrag.com/reference/graphrag/)

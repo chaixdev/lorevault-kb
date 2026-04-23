@@ -173,7 +173,7 @@ Application logs and the `StatusRecord` chain serve different purposes:
 
 When a stage completes, the `StatusRecord` update is the source of truth. The log line is the fast signal. Do not skip the `StatusRecord` update in favor of a log line, or vice versa.
 
-See `docs/patterns/ingestion-job-observability.md` for the graph observability layer.
+See [Ingestion Job Observability](../patterns/ingestion/ingestion-job-observability.md) for the graph observability layer.
 
 ---
 

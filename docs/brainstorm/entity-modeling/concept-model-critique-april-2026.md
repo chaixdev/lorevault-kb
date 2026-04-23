@@ -3,7 +3,7 @@
 **Date:** April 2026
 **Status:** Review of pre-implementation conceptual model (~1 year after design, before next implementation phase)
 **Source:** Deep architectural review (Oracle consultation + codebase exploration + synthesis)
-**Scope:** All concept docs in `docs/concepts/`, compared against current implementation state
+**Scope:** All concept docs in [Concepts](../../concepts/), compared against [Project Status](../../PROJECT-STATUS.md)
 
 ---
 
@@ -276,7 +276,7 @@ The architecture should stay simple enough for one person to reason about and ma
 
 ## Related Documents
 
-- `docs/concepts/` — the concept docs reviewed here
-- `docs/PROJECT-STATUS.md` — current implementation state
+- [Concepts](../../concepts/) — the concept docs reviewed here
+- [Project Status](../../PROJECT-STATUS.md) — current implementation state
 
 

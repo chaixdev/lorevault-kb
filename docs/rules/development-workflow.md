@@ -12,9 +12,9 @@ The default loop is:
 
 1. identify a problem, opportunity, or missing capability
 2. discuss cause, constraints, and solution space
-3. write an exploratory proposal
+3. write an exploratory solution design proposal document
 4. implement and iterate with verification and UAT
-5. append implementation notes and deviations where useful
+5. append implementation notes and deviations to proposal document where useful
 6. promote accepted truth into canonical top-level docs
 7. keep not-yet-done work in planning documentation
 
@@ -43,7 +43,7 @@ Use top-level docs for accepted and implemented truth:
 - `../rules/` for durable contributor guidance and conventions
 - `../concepts/` for durable abstractions that outlive specific implementations
 
-Once something is implemented and accepted, the important as-is truth should be promoted into the correct canonical home.
+Once something is implemented and accepted, the important as-is truth should be promoted into the correct canonical home, and the planning item should be removed.
 
 ### Planning docs
 
@@ -58,6 +58,8 @@ Planning items should read like lightweight tickets:
 Planning items should **not** be overly opinionated about the implementation approach.
 
 That belongs in the proposal → implementation loop.
+
+Once something is implemented and accepted, the important as-is truth should be promoted into the correct canonical home, and the planning item should be removed.
 
 ## What This Workflow Is Optimized For
 

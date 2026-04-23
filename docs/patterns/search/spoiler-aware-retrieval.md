@@ -77,4 +77,4 @@ The `RagService.validateAndConvertFilters()` method enforces hierarchy validatio
 - **Cross-series spoiler logic**: Not implemented. Each series is filtered independently based on the user's progress in that specific series.
 
 ### Primary References
-- `../adr/006-spoiler-aware-search-design.md`
+- `../../adr/006-spoiler-aware-search-design.md`

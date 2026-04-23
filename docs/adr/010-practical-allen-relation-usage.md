@@ -47,5 +47,5 @@ LoreVault also needs one consistent rule for how directed relations are interpre
 
 This ADR records **why** these temporal choices were made. Use the following docs for current operational guidance:
 
-- `../rules/temporal-relation-semantics.md` — normative contributor/operator interpretation rules
-- `../patterns/graph-shape-specification.md` — present-state graph shape and modeling/readability patterns
+- [temporal-relation-semantics.md](../concepts/temporal-relation-semantics.md) — normative contributor/operator interpretation rules
+- [graph-shape-specification.md](../patterns/content/graph-shape-specification.md) — present-state graph shape and modeling/readability patterns

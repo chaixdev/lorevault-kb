@@ -1094,5 +1094,5 @@ The more ambitious semantic layers — especially claims as a Q&A-serving eviden
 - `../../concepts/Entity-Event-Claim-model.md`
 - `../../concepts/entity-claim-model.md`
 - `../entity-modeling/concept-model-critique-april-2026.md`
-- `../../patterns/rag-retrieval-chain.md`
-- `../../patterns/triad-analysis.md`
+- `../../patterns/search/rag-retrieval-chain.md`
+- `../../patterns/ingestion/triad-analysis.md`

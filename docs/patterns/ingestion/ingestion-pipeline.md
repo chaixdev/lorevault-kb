@@ -292,4 +292,69 @@ To support safe event re-delivery and manual restarts, each handler verifies its
 - **Content hierarchy** — The management of Universes, Series, and Books is the responsibility of the `LibraryService`.
 
 ### Primary References
-- `../adr/004-keep-the-event-driven-ingestion-pipeline.md`
+- `../../adr/004-keep-the-event-driven-ingestion-pipeline.md`
+
+---
+
+## Contributor Constraints
+
+### Executor Binding
+
+All ingestion pipeline handlers must use `@Async("ingestionTaskExecutor")`.
+
+```java
+// Required
+@Async("ingestionTaskExecutor")
+@EventListener
+public void onScenesDetected(ScenesDetectedEvent event) { ... }
+
+// Wrong — silently falls back to default executor
+@Async
+@EventListener
+public void onScenesDetected(ScenesDetectedEvent event) { ... }
+```
+
+`ingestionTaskExecutor` is the named bean defined in `IngestionTaskExecutorConfig`.
+Do not use bare `@Async` in any class in the `ingestion` package.
+
+### Correlation Fields
+
+Every ingestion event class must carry both `jobId` and `correlationId`.
+
+- `jobId` — stable identifier for the ingestion job, used for status tracking and log
+  aggregation across all pipeline stages.
+- `correlationId` — per-request trace identifier, propagated into MDC on every thread
+  that handles the event.
+
+Neither field is optional. Events without both fields cannot be traced through async
+log lines spanning multiple handlers and threads.
+
+### Transactional Event Scoping
+
+`SceneDetectionHandler` is the only pipeline handler that uses
+`@TransactionalEventListener(AFTER_COMMIT)`. Do not change it to `@EventListener`.
+
+All downstream handlers (`ChunkingHandler`, `EmbeddingHandler`,
+`ChapterLocationResolutionHandler`, `ChapterIndividualResolutionHandler`) use
+plain `@EventListener + @Async("ingestionTaskExecutor")`.
+
+**Why:** `@TransactionalEventListener(AFTER_COMMIT)` prevents scene detection from
+firing if the chapter ingestion transaction rolls back. Downstream handlers process
+work that is already durably committed — they do not need the publication-side
+transaction guarantee. Do not propagate `AFTER_COMMIT` further downstream.
+
+### Fan-In Coordinator
+
+`IngestionCompletionCoordinator` expects exactly three branches to complete before
+firing `IngestionCompletedEvent`:
+
+1. Embedding path: `ChunkingHandler → EmbeddingHandler`
+2. Location path: `ChapterLocationResolutionHandler → BookLocationReductionHandler`
+3. Individual path: `ChapterIndividualResolutionHandler → BookIndividualReductionHandler`
+
+**Do not add a new pipeline branch without updating the coordinator's expected count.**
+The coordinator uses an atomic counter. Adding a branch without incrementing the expected
+count causes premature completion — the job completes before all work is done.
+
+If a branch fails, the coordinator must still reach a terminal state. Unhandled branch
+failures leave the job permanently in `IN_PROGRESS`.

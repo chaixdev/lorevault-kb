@@ -4,7 +4,7 @@
 
 This rule defines the quality bar for detailed, implementation-ready mechanism documentation.
 
-In LoreVault, that usually means deeper `docs/patterns/` documents rather than a separate "spec" documentation layer.
+In LoreVault, that usually means deeper [Pattern](../patterns/) documents rather than a separate "spec" documentation layer.
 
 ## Use Spec-Style Docs For
 

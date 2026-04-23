@@ -35,6 +35,6 @@ It does **not** cover:
 
 ## Related Documentation
 
-- `triad-analysis.md`
-- `../adr/002-keep-and-upgrade-spring-ai.md`
-- `../adr/003-prefer-direct-services-over-ports-and-mappers.md`
+- `../ingestion/triad-analysis.md`
+- `../../adr/002-keep-and-upgrade-spring-ai.md`
+- `../../adr/003-prefer-direct-services-over-ports-and-mappers.md`
