@@ -14,7 +14,7 @@ This document consolidates advice from multiple analysis sessions into one actio
 **Companion documents:**
 - [Conceptual model critique](concept-model-critique-april-2026.md) — the structured 8-dimension critique
 - [Oracle raw analysis](oracle_raw.md) — Oracle's unedited reasoning
-- `docs/concepts/` — the original concept docs under review
+- [Conceptual Concepts](../../concepts/) — the original concept docs under review
 
 ---
 
@@ -264,5 +264,5 @@ These emerged from the review but were not resolved:
 
 - [Conceptual model critique](concept-model-critique-april-2026.md) — structured 8-dimension analysis
 - [Oracle raw analysis](oracle_raw.md) — unedited Oracle reasoning
-- `docs/concepts/` — original concept docs under review
-- `docs/PROJECT-STATUS.md` — current implementation state
+- [Concepts](../../concepts/) — original concept docs under review
+- [Project Status](../../PROJECT-STATUS.md) — current implementation state

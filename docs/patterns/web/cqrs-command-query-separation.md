@@ -66,4 +66,4 @@ The CQRS pattern in LoreVault has specific boundaries and does not apply to ever
 
 ## Primary References
 
-- `../adr/003-prefer-direct-services-over-ports-and-mappers.md`
+- `../../adr/003-prefer-direct-services-over-ports-and-mappers.md`

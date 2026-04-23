@@ -15,9 +15,9 @@ It describes:
 
 This document is intentionally implementation-facing and complements:
 
-- `../adr/010-practical-allen-relation-usage.md` for temporal relation policy decisions
-- `../rules/temporal-relation-semantics.md` for contributor/operator interpretation rules
-- pattern docs that explain stage-level workflows (`ingestion-pipeline.md`, `triad-analysis.md`, identity/location ladders)
+- `../../adr/010-practical-allen-relation-usage.md` for temporal relation policy decisions
+- `../../concepts/temporal-relation-semantics.md` for contributor/operator interpretation rules
+- pattern docs that explain stage-level workflows (`../ingestion/ingestion-pipeline.md`, `../ingestion/triad-analysis.md`, `../ingestion/entity-resolution-ladder.md`)
 
 ## Scope
 
@@ -46,8 +46,8 @@ For temporal relation labels, follow ADR-010:
 
 - `A -[:TEMPORAL {relationType: BEFORE}]-> B` means **A happens before B**.
 
-See: `../adr/010-practical-allen-relation-usage.md`.
-Operational checklist guidance lives in: `../rules/temporal-relation-semantics.md`.
+See: `../../adr/010-practical-allen-relation-usage.md`.
+Operational checklist guidance lives in: `../../concepts/temporal-relation-semantics.md`.
 
 ## Core Graph Shape
 
@@ -155,9 +155,8 @@ When reviewing persisted graph data:
 
 ## Cross-References
 
-- `../adr/010-practical-allen-relation-usage.md` — canonical temporal semantics and normalization policy
-- `../rules/temporal-relation-semantics.md` — contributor/operator interpretation and validation rules
-- `triad-analysis.md` — triad inference and temporal edge persistence shape
-- `ingestion-pipeline.md` — when scenes, mentions, and temporal edges are persisted
-- `individual-resolution-ladder.md` — individual evidence ladder
-- `location-resolution-ladder.md` — location evidence ladder
+- `../../adr/010-practical-allen-relation-usage.md` — canonical temporal semantics and normalization policy
+- `../../concepts/temporal-relation-semantics.md` — contributor/operator interpretation and validation rules
+- `../ingestion/triad-analysis.md` — triad inference and temporal edge persistence shape
+- `../ingestion/ingestion-pipeline.md` — when scenes, mentions, and temporal edges are persisted
+- `../ingestion/entity-resolution-ladder.md` — entity evidence ladder (Individual and Location lanes)

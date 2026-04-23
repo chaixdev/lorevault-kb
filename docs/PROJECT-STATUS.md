@@ -1,10 +1,10 @@
 # LoreVault Project Status
 
-**Last Updated:** April 20, 2026  
-**Reviewed Through Commit:** `40dcf98`  
+**Last Updated:** April 23, 2026  
+**Reviewed Through Commit:** `f8ecdfc`  
 **Status:** Active — core ingestion and retrieval slices are stable enough to iterate on event extraction and aggregation  
 **Functional Goals:** Expand event extraction, aggregation, and downstream event-aware retrieval while continuing targeted ingestion hardening  
-**Technical Goals:** Guard the architecture while modularizing the codebase into separate `core` and `web` Maven modules
+**Technical Goals:** Guard the architecture now that the codebase is split into separate `core` and `web` Maven modules
 
 ## What LoreVault Is
 
@@ -16,7 +16,10 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Stack: Java 21, Spring Boot 3.5.4, Spring AI 1.1.4, Neo4j 5.26
 - All domain content entities annotated `@Node` directly (no mirror Node classes)
 - Internal port/adapter indirection removed — services inject concrete beans/repositories directly
-- Package structure: 10 top-level feature-oriented packages in `lorevault-api` (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`, `support/`, `timeline/`, `web/`)
+- Maven structure: `lorevault-core` contains the feature-oriented core packages, and `lorevault-web` contains the HTTP/UI edge
+- Core package structure: 7 top-level feature-oriented packages under `com.lorevault.api` in `lorevault-core` (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`)
+- Edge package structure: `com.lorevault.api.web/**` lives in `lorevault-web`, with `web.command/`, `web.query/`, and `web.ui/` as the canonical edge shape
+- `content` is no longer a flat bucket; `content.entities` and `content.timeline` are current semantic subareas, and `support/` plus top-level `timeline/` are no longer part of the active package map
 - Scene detection now enforces context-budget checks and deterministic segmented fallback for oversized chapters
 - Individual mentions are persisted from scene detection output, with normalized-name and resolution metadata
 - Scoped entity resolution is now active for two lanes:
@@ -38,8 +41,8 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Documentation taxonomy migration in progress
 - **M2 complete** — All 6 content domain entities (`Universe`, `Series`, `Book`, `Chapter`, `Scene`, `Chunk`) annotated `@Node`; mirror `*Node` classes deleted; `Neo4jMapper` deleted; repositories typed to domain entities; `Neo4jContentPersistenceAdapter` calls repositories directly
 - **M3 complete** — `ContentPersistencePort` deleted; `EmbeddingException` deleted; `ContentPersistencePortTCK` deleted; all 7 integration tests migrated to `@Autowired Neo4jContentPersistenceAdapter`; `PromptRepositoryPort`, `SemanticSearchPort`, `EmbeddingPort`, `TemporalEdgePort` all gone in earlier commits
-- **M4 complete** — Spring AI upgraded to 1.1.4 (BOM bump); `EmbeddingModelAdapter` replaced with Spring AI `EmbeddingModel`; `TriadXmlParser` replaced with `.entity(Record.class)` structured output; package structure flattened from layered packages to 10 top-level feature packages in `lorevault-api`
-- **M5 complete** — Modularized codebase into separate `lorevault-core` and `lorevault-web` Maven modules; removed transport leakage by ensuring HTTP DTOs stay in `web` module; core services refactored to use domain primitives and core records; eliminated `support` package; fixed project-wide Lombok configuration issues across modules; repaired all 300+ tests to align with new architectural boundaries.
+- **M4 complete** — Spring AI upgraded to 1.1.4 (BOM bump); `EmbeddingModelAdapter` replaced with Spring AI `EmbeddingModel`; `TriadXmlParser` replaced with `.entity(Record.class)` structured output; package structure flattened from layered packages toward the current feature-oriented package map under `com.lorevault.api`
+- **M5 complete** — Modularized codebase into separate `lorevault-core` and `lorevault-web` Maven modules; moved HTTP controllers and transport DTO ownership under the `web` module; core services refactored to use domain primitives and core records; eliminated the old `support` package; fixed project-wide Lombok configuration issues across modules; repaired all 300+ tests to align with the new module split.
 - **Spoiler-aware search shipped** — Per-request `SpoilerVisibility` DTO accepted on `/api/query/ask/vector` and `/api/query/ask/rag`; `ANY()` Cypher predicate filters chunks beyond the reader's per-series read-through position; `UnconfiguredSeriesPolicy` defaults to `HIDE`; oversample multiplier configurable in `application.yml`; documented in ADR 006
 - **Budgeted scene detection shipped** — Chapter segmentation now checks model context budget before full-chapter submission and falls back to deterministic segmentation when needed; segment-boundary risk is tagged for later reconciliation
 - **Scoped individual resolution shipped** — Triad extraction now persists `IndividualMention` evidence per scene, automatic chapter-level resolution groups mentions into `ChapterIndividual`, and automatic book-level reduction links those chapter identities into thin `BookIndividual` nodes
@@ -57,7 +60,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 
 ## What Is Next
 
-M1–M4 are complete. The architecture is now a flat, feature-oriented modulith with direct Spring AI integration and no port/adapter indirection. Recent work has shifted from structural cleanup to operator-facing product slices, retrieval-mode expansion, timeline correctness, and ingestion/runtime hardening.
+M1–M4 are complete. The architecture is now a two-module, feature-oriented modulith with direct Spring AI integration and no port/adapter indirection. Recent work has shifted from structural cleanup to operator-facing product slices, retrieval-mode expansion, timeline correctness, ingestion/runtime hardening, and follow-up boundary hygiene.
 
 Current focus:
 - Iterate on event extraction and event aggregation while preserving ingestion reliability and retrieval grounding
@@ -71,6 +74,8 @@ Near-term execution slices:
    - Resolve remaining cases where ingestion state can stick in intermediate states, especially around async completion signaling and status persistence alignment
 4. **Retrieval and timeline quality follow-up**
    - Continue validating temporal-linking behavior and explore how event-aware retrieval should interact with existing baseline, graph-aware, and hybrid modes
+5. **Architectural hygiene follow-up**
+   - Add executable guardrails for the current `web -> core` split, prevent new top-level package cycles inside `core`, and reduce documentation drift around the present package map
 
 Broader planned directions remain intact after these slices:
 - Broader entity extraction (Collectives and later claims)
@@ -92,17 +97,16 @@ All 4 decisions from the original modulith plan are resolved. No architectural d
 
 ## Canonical Entry Points
 
-- `docs/architecture/README.md`
-- `docs/planning/README.md`
-- `docs/rules/development-workflow.md`
-- `docs/patterns/README.md`
-- `docs/patterns/individual-resolution-ladder.md`
-- `docs/patterns/location-resolution-ladder.md`
-- `docs/adr/README.md`
-- `docs/concepts/README.md`
-- `docs/rules/README.md`
-- `docs/brainstorm/README.md`
+- [Architecture](architecture/README.md)
+- [Planning](planning/README.md)
+- [Development Workflow](rules/development-workflow.md)
+- [Patterns](patterns/README.md)
+- [Entity Resolution Ladder](patterns/ingestion/entity-resolution-ladder.md)
+- [Architecture Decisions](adr/README.md)
+- [Concepts](concepts/README.md)
+- [Rules](rules/README.md)
+- [Brainstorm](brainstorm/README.md)
 
 ## Historical / Transitional Notes
 
-Documentation taxonomy cleanup is in progress. Historical material largely lives in `docs/archive/`, while active work now centers on `docs/planning/`, `docs/brainstorm/`, and the top-level canonical docs.
+Documentation taxonomy cleanup is in progress. Historical material largely lives in [Archive](archive/), while active work now centers on [Planning](planning/), [Brainstorm](brainstorm/), and the top-level canonical docs.

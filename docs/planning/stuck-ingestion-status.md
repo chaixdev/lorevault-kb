@@ -125,6 +125,6 @@ This mitigation is intentionally narrow: it addresses the strongest observed dea
 ## Links
 
 - Related brainstorm: `../brainstorm/architecture/2026-04-17_async-ingestion-logging-philosophy-brainstorm.md`
-- Related pattern: `../patterns/ingestion-job-observability.md`
+- Related pattern: `../patterns/ingestion/ingestion-job-observability.md`
 - Related ADR: `../adr/009-structured-logging-philosophy.md`
 - Related rules: `../rules/logging-philosophy.md`

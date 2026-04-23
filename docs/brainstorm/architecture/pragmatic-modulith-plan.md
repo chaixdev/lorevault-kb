@@ -21,7 +21,6 @@ Parts of that direction were later implemented, but this document is preserved h
 Several parts of this proposal influenced the current codebase, but the authoritative current-state explanation now belongs in:
 
 - `../adr/003-prefer-direct-services-over-ports-and-mappers.md`
-- `../patterns/content-persistence.md`
 - `../rules/service-design-principles.md`
 
 This file remains a preserved brainstorm/proposal artifact.

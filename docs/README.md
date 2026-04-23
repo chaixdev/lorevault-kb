@@ -69,6 +69,7 @@ The immediate goal of this migration is to make the directory meanings obvious a
 - it may continue guiding design even if implementation changes
 - it is too important to bury in the archive
 - it is not honest to present it as current implementation truth
+- the model or framework has long-horizon architectural influence — it could shape future abstraction boundaries, chosen patterns, or how the system reasons about its domain
 
 ### Use `brainstorm/` when
 

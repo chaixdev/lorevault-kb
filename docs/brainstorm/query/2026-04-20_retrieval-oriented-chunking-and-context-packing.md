@@ -29,14 +29,14 @@ The current specification likely over-optimizes for ingestion simplicity and und
 
 ### Current State
 
-Current chunking truth (see `docs/patterns/text-chunking-specification.md`):
+Current chunking truth (see [Text Chunking Specification](../../patterns/ingestion/text-chunking-specification.md)):
 
 - `Scene` is the primary narrative unit
 - `Chunk` is a technical subdivision for downstream processing
 - scenes under a size threshold become a single chunk
 - larger scenes are subdivided with a sliding window
 
-Current RAG truth (see `docs/patterns/rag-retrieval-chain.md`):
+Current RAG truth (see [RAG Retrieval Chain](../../patterns/search/rag-retrieval-chain.md)):
 
 - chunks are the current retrieval unit
 - chunks are the current citation unit
@@ -292,7 +292,7 @@ Do **not** overwrite the current chunking pattern doc with this direction yet.
 
 For now:
 
-- keep `docs/patterns/text-chunking-specification.md` as present-state truth
+- keep [Text Chunking Specification](../../patterns/ingestion/text-chunking-specification.md) as present-state truth
 - treat retrieval-oriented chunking as future work
 - continue refining the design here before promoting any part of it into planning or canonical docs
 
@@ -300,6 +300,6 @@ For now:
 
 ## Links
 
-- `../../patterns/text-chunking-specification.md`
-- `../../patterns/rag-retrieval-chain.md`
+- `../../patterns/ingestion/text-chunking-specification.md`
+- `../../patterns/search/rag-retrieval-chain.md`
 - `2026-04-12_graph-aware-qa-design-april-2026.md`

@@ -98,7 +98,7 @@ That implies local scene links are a backbone, not the whole story.
 
 ### 4.2 Extra-local resolution is supposed to come from anchors
 
-The research direction in `docs/concepts/Narrative event DAG.md` introduces additional structures:
+The research direction in [Narrative event DAG](../../concepts/Narrative%20event%20DAG.md) introduces additional structures:
 
 - **Events**
 - **Landmarks**
@@ -437,7 +437,7 @@ That makes this less a pure scene-linking problem and more a future **event mode
 
 ## 13. Related Docs
 
-- `../../rules/temporal-relation-semantics.md`
+- `../../concepts/temporal-relation-semantics.md`
 - `../../adr/010-practical-allen-relation-usage.md`
 - `../../concepts/event-dag.md`
 - `../../concepts/Narrative event DAG.md`

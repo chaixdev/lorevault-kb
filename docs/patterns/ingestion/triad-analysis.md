@@ -139,4 +139,4 @@ The triad analysis pattern is focused on temporal inference and does not cover:
 
 ## Primary References
 
-- `../adr/004-keep-the-event-driven-ingestion-pipeline.md`
+- `../../adr/004-keep-the-event-driven-ingestion-pipeline.md`

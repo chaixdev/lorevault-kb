@@ -94,5 +94,5 @@ Each chunk is assigned a number in the context string, such as `[1]` or `[2]`. T
 
 ## Primary References
 
-- `../adr/006-spoiler-aware-search-design.md`
-- `../adr/001-neo4j-for-graph-and-vectors.md`
+- `../../adr/006-spoiler-aware-search-design.md`
+- `../../adr/001-neo4j-for-graph-and-vectors.md`

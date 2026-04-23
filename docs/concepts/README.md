@@ -9,6 +9,7 @@ Concept docs preserve important ideas that can continue guiding the system even 
 - foundational domain models
 - conceptual system shapes worth preserving
 - important abstractions that should not be lost in the archive
+- models or frameworks with long-horizon architectural influence — ideas that could shape future abstraction boundaries, chosen patterns, or how the system reasons about its domain
 
 ## Do Not Use This Folder For
 
@@ -21,6 +22,7 @@ Concept docs preserve important ideas that can continue guiding the system even 
 - [Event DAG](event-dag.md) — durable temporal model (context and interpretation)
 - [Entity-claim model](entity-claim-model.md) — durable claim-first knowledge model (context and interpretation)
 - [Evidence vs interpretation layer](evidence-vs-interpretation-layer.md) — durable ownership boundary between canon/provenance-bearing evidence and rebuildable serving artifacts
+- [Temporal Relation Semantics](temporal-relation-semantics.md) — Allen relation model and normalization choices that shape the temporal graph and future timeline-aware querying
 
 ## Primary Source Research
 

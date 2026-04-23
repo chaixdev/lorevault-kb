@@ -17,6 +17,7 @@ Rules should be self-contained. They may link to other rules, ADRs, or patterns 
 
 - one-off ticket notes
 - current mechanism explanations
+- present-state topology or coupling maps (belongs in `../patterns/`)
 - speculative design work
 - historical refactor logs
 
@@ -33,6 +34,6 @@ If a rule needs rationale or mechanism context that only exists in exploratory d
 - [Specification documentation guidelines](spec-documentation-guidelines.md)
 - [Architecture documentation guidelines](architecture-documentation-guidelines.md)
 - [Developer testing workflow](developer-testing-workflow.md)
-- [CI test profiles](ci-test-profiles.md)
 - [Logging philosophy](logging-philosophy.md)
-- [Temporal relation semantics](temporal-relation-semantics.md)
+- [Coding standards](coding-standards.md)
+- [LoreVault module and domain model conventions](lorevault-module-conventions.md)

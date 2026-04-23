@@ -25,5 +25,5 @@ But this document should not be read as a description of the full implemented sy
 For current truth, prefer:
 
 - `../adr/004-keep-the-event-driven-ingestion-pipeline.md`
-- `../patterns/ingestion-pipeline.md`
+- `../patterns/ingestion/ingestion-pipeline.md`
 - `../concepts/event-dag.md`

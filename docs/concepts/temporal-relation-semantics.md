@@ -2,11 +2,16 @@
 
 **Applies to:** temporal relation extraction, persistence, graph inspection, and contributor/operator interpretation.
 
-This document defines the normative semantics rules for temporal relations in LoreVault.
+This document establishes the foundational temporal relation model for LoreVault,
+grounded in Allen interval algebra. The choices here — which relations are canonical,
+how directed pairs are normalized, what the prompt vocabulary vs. storage vocabulary
+distinction means — are long-horizon decisions that shape the graph schema, the triad
+analysis mechanism, and any future timeline-aware querying capability.
 
-Use this for statements about meaning and interpretation (`must`, `must not`, `cannot`).
+The rules below are the operational consequences of this model. Use them for statements
+about meaning and interpretation (`must`, `must not`, `cannot`).
 
-For graph shape and modeling patterns, see `../patterns/graph-shape-specification.md`.
+For graph shape and modeling patterns, see `../patterns/content/graph-shape-specification.md`.
 
 ---
 
@@ -98,7 +103,7 @@ For example:
 
 - `Scene -[:MENTIONS]-> EventMention`
 
-must be read as “this scene mentions this evidence node,” not as a timeline ordering edge.
+must be read as "this scene mentions this evidence node," not as a timeline ordering edge.
 
 If event mention data includes temporal qualifiers (for example `sceneRelativeRelation`), treat them as mention-level extracted qualifiers, not as inverted scene ordering.
 
@@ -119,5 +124,5 @@ When validating temporal persistence:
 ## See Also
 
 - `../adr/010-practical-allen-relation-usage.md` — architectural decision and rationale
-- `../patterns/graph-shape-specification.md` — graph shape and modeling/readability patterns
-- `../patterns/triad-analysis.md` — triad temporal inference mechanism
+- `../patterns/content/graph-shape-specification.md` — graph shape and modeling/readability patterns
+- `../patterns/ingestion/triad-analysis.md` — triad temporal inference mechanism

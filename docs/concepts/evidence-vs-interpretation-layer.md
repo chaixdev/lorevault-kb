@@ -7,8 +7,7 @@
 - [../brainstorm/scene-detection/scene-detection-naming-analysis-april-2026.md](../brainstorm/scene-detection/scene-detection-naming-analysis-april-2026.md) — layered naming alignment
 - [../brainstorm/devx/2026-04-16_operator-dashboard-and-admin-api-brainstorm.md](../brainstorm/devx/2026-04-16_operator-dashboard-and-admin-api-brainstorm.md) — evidence floor vs disposable derived layers framing
 - [entity-claim-model.md](entity-claim-model.md) — claim/provenance-first conceptual direction
-- [../patterns/individual-resolution-ladder.md](../patterns/individual-resolution-ladder.md) — evidence persisted before consolidation
-- [../patterns/location-resolution-ladder.md](../patterns/location-resolution-ladder.md) — evidence persisted before consolidation
+- [../patterns/ingestion/entity-resolution-ladder.md](../patterns/ingestion/entity-resolution-ladder.md) — evidence persisted before consolidation (Individual and Location lanes)
 
 ## Why This Exists
 
