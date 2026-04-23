@@ -1,15 +1,5 @@
 package com.lorevault.api.ai.infrastructure;
-import com.lorevault.api.ai.application.TriadOrchestrationService;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
+import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.config.LoreVaultModelsProperties;
@@ -30,7 +20,6 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -82,18 +71,18 @@ class SceneDetectionClientTest {
     @Test
     void detectSceneAnalysisTriad_shouldPersistSerializedStructuredResponseBody() {
         UUID jobId = UUID.randomUUID();
-        var response = new TriadOrchestrationService.TriadStructuredResult(
+        var response = new SceneRelationshipAnalysisService.TriadStructuredResult(
                 "timeline-marker",
-                new TriadOrchestrationService.TriadRelation("before", "certain", "evidence-1"),
-                new TriadOrchestrationService.TriadRelation("after", "likely", "evidence-2"),
-                new TriadOrchestrationService.TriadCurrentSceneEntities(
-                        List.of(new TriadOrchestrationService.TriadIndividualExtraction(
+                new SceneRelationshipAnalysisService.TriadRelation("before", "certain", "evidence-1"),
+                new SceneRelationshipAnalysisService.TriadRelation("after", "likely", "evidence-2"),
+                new SceneRelationshipAnalysisService.TriadCurrentSceneEntities(
+                        List.of(new SceneRelationshipAnalysisService.TriadIndividualExtraction(
                                 List.of("Kaladin", "Stormblessed"),
                                 "tall, scarred",
                                 "20s",
                                 "A soldier with a spear"
                         )),
-                        List.of(new TriadOrchestrationService.TriadLocationExtraction(
+                        List.of(new SceneRelationshipAnalysisService.TriadLocationExtraction(
                                 "Bridge Four Barracks",
                                 List.of("the barracks"),
                                 "building",
@@ -112,9 +101,9 @@ class SceneDetectionClientTest {
         when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
         when(requestSpec.options(any())).thenReturn(requestSpec);
         when(requestSpec.call()).thenReturn(callSpec);
-        when(callSpec.entity(eq(TriadOrchestrationService.TriadStructuredResult.class))).thenReturn(response);
+        when(callSpec.entity(eq(SceneRelationshipAnalysisService.TriadStructuredResult.class))).thenReturn(response);
 
-        client.detectSceneAnalysisTriad(jobId, "system prompt", Map.of("curr_text", "chapter text"), TriadOrchestrationService.TriadStructuredResult.class);
+        client.detectSceneAnalysisTriad(jobId, "system prompt", Map.of("curr_text", "chapter text"), SceneRelationshipAnalysisService.TriadStructuredResult.class);
 
         ArgumentCaptor<String> responseBodyCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);

@@ -10,14 +10,14 @@ import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.content.entities.SceneGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
-import com.lorevault.api.ai.application.TriadOrchestrationService;
+import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
 import com.lorevault.api.ingestion.application.scene.SceneDetectionService;
 import com.lorevault.api.ingestion.application.scene.SceneProcessingService;
 import com.lorevault.api.ingestion.infrastructure.IndividualPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.LocationPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.EventPersistenceService;
 import com.lorevault.api.content.timeline.application.DefaultTemporalEdgeService;
-import com.lorevault.api.content.timeline.application.TriadEdgePersistenceService;
+import com.lorevault.api.content.timeline.application.SceneTemporalRelationshipPersistenceService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
@@ -55,8 +55,8 @@ public class SceneDetectionHandler {
     private final LocationPersistenceService locationPersistenceService;
     private final EventPersistenceService eventPersistenceService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
-    private final TriadEdgePersistenceService triadEdgePersistenceService;
-    private final TriadOrchestrationService triadOrchestrationService;
+    private final SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService;
+    private final SceneRelationshipAnalysisService sceneRelationshipAnalysisService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
 
@@ -70,8 +70,8 @@ public class SceneDetectionHandler {
             EventPersistenceService eventPersistenceService,
             IngestionJobService ingestionJobService,
             DefaultTemporalEdgeService defaultTemporalEdgeService,
-            TriadEdgePersistenceService triadEdgePersistenceService,
-            TriadOrchestrationService triadOrchestrationService,
+            SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService,
+            SceneRelationshipAnalysisService sceneRelationshipAnalysisService,
             ApplicationEventPublisher eventPublisher
     ) {
         this.chapterRepo = chapterRepo;
@@ -82,8 +82,8 @@ public class SceneDetectionHandler {
         this.locationPersistenceService = locationPersistenceService;
         this.eventPersistenceService = eventPersistenceService;
         this.defaultTemporalEdgeService = defaultTemporalEdgeService;
-        this.triadEdgePersistenceService = triadEdgePersistenceService;
-        this.triadOrchestrationService = triadOrchestrationService;
+        this.sceneTemporalRelationshipPersistenceService = sceneTemporalRelationshipPersistenceService;
+        this.sceneRelationshipAnalysisService = sceneRelationshipAnalysisService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
@@ -139,14 +139,14 @@ public class SceneDetectionHandler {
                             (UUID left, UUID right) -> left
                     ));
 
-            var sceneRelationshipOutcome = new TriadOrchestrationService.TriadOutcome(List.of(), List.of(), List.of(), List.of());
+            var sceneRelationshipOutcome = new SceneRelationshipAnalysisService.SceneRelationshipOutcome(List.of(), List.of(), List.of(), List.of());
             if (!scenes.isEmpty()) {
                 Chapter triadChapter = chapterRepo.findById(chapterId)
                         .orElseThrow(() -> new IllegalArgumentException("Chapter not found for triad analysis: " + chapterId));
                 triadChapter.setScenes(List.copyOf(scenes));
-                sceneRelationshipOutcome = triadOrchestrationService.analyzeChapterTriadsWithIndividuals(jobId, triadChapter);
+                sceneRelationshipOutcome = sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(jobId, triadChapter);
             }
-            triadEdgePersistenceService.applyTriadAnalysesPostPersistence(
+            sceneTemporalRelationshipPersistenceService.applyTriadAnalysesPostPersistence(
                     chapterId,
                     sceneRelationshipOutcome.triadAnalyses(),
                     sceneIndexToId

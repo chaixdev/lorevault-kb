@@ -1,7 +1,7 @@
 package com.lorevault.api.content.timeline.application;
 
 import com.lorevault.api.ai.domain.TriadAnalysisException;
-import com.lorevault.api.ai.application.TriadOrchestrationService;
+import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
 import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
 import com.lorevault.api.ingestion.domain.IngestionFailure;
 import com.lorevault.api.ingestion.domain.IngestionJob;
@@ -21,17 +21,17 @@ import java.util.UUID;
 
 @Service
 @Slf4j
-public class TriadEdgePersistenceService {
+public class SceneTemporalRelationshipPersistenceService {
 
     private final TemporalEdgeWriteRepository temporalEdgeWriteRepository;
     private final IngestionJobGraphRepository ingestionJobGraphRepository;
     private final StatusRecordGraphRepository statusRecordGraphRepository;
     private final LlmCallRecordGraphRepository llmCallRecordGraphRepository;
 
-    public TriadEdgePersistenceService(TemporalEdgeWriteRepository temporalEdgeWriteRepository,
-                                       IngestionJobGraphRepository ingestionJobGraphRepository,
-                                       StatusRecordGraphRepository statusRecordGraphRepository,
-                                       LlmCallRecordGraphRepository llmCallRecordGraphRepository) {
+    public SceneTemporalRelationshipPersistenceService(TemporalEdgeWriteRepository temporalEdgeWriteRepository,
+                                                       IngestionJobGraphRepository ingestionJobGraphRepository,
+                                                       StatusRecordGraphRepository statusRecordGraphRepository,
+                                                       LlmCallRecordGraphRepository llmCallRecordGraphRepository) {
         this.temporalEdgeWriteRepository = temporalEdgeWriteRepository;
         this.ingestionJobGraphRepository = ingestionJobGraphRepository;
         this.statusRecordGraphRepository = statusRecordGraphRepository;
@@ -40,7 +40,7 @@ public class TriadEdgePersistenceService {
 
     @Transactional
     public void applyTriadAnalysesPostPersistence(UUID chapterId,
-                                                  List<TriadOrchestrationService.TriadAnalysis> analyses,
+                                                  List<SceneRelationshipAnalysisService.SceneRelationshipAnalysis> analyses,
                                                   Map<Integer, UUID> sceneIndexToPersistedId) {
         if (analyses == null || analyses.isEmpty()) {
             return;

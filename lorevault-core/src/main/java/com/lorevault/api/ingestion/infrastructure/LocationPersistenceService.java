@@ -1,6 +1,6 @@
 package com.lorevault.api.ingestion.infrastructure;
 
-import com.lorevault.api.ai.application.TriadOrchestrationService;
+import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
 import com.lorevault.api.content.entities.LocationMention;
 import com.lorevault.api.content.entities.LocationMentionGraphRepository;
 import com.lorevault.api.content.entities.Scene;
@@ -24,7 +24,7 @@ public class LocationPersistenceService {
     @Transactional
     public void persistExtractedLocations(
             List<Scene> persistedScenes,
-            List<TriadOrchestrationService.TriadSceneLocationExtraction> sceneExtractions
+            List<SceneRelationshipAnalysisService.TriadSceneLocationExtraction> sceneExtractions
     ) {
         if (persistedScenes == null || persistedScenes.isEmpty() || sceneExtractions == null || sceneExtractions.isEmpty()) {
             return;
@@ -34,14 +34,14 @@ public class LocationPersistenceService {
                 .filter(scene -> scene.getSceneIndex() != null && scene.getEventId() != null)
                 .collect(Collectors.toMap(Scene::getSceneIndex, scene -> scene, (a, b) -> a));
 
-        for (TriadOrchestrationService.TriadSceneLocationExtraction sceneExtraction : sceneExtractions) {
+        for (SceneRelationshipAnalysisService.TriadSceneLocationExtraction sceneExtraction : sceneExtractions) {
             Scene scene = sceneByIndex.get(sceneExtraction.sceneIndex());
             if (scene == null || sceneExtraction.locations() == null || sceneExtraction.locations().isEmpty()) {
                 continue;
             }
 
             for (int extractionIndex = 0; extractionIndex < sceneExtraction.locations().size(); extractionIndex++) {
-                TriadOrchestrationService.TriadLocationExtraction extracted = sceneExtraction.locations().get(extractionIndex);
+                SceneRelationshipAnalysisService.TriadLocationExtraction extracted = sceneExtraction.locations().get(extractionIndex);
                 String displayName = chooseDisplayName(extracted);
                 if (displayName == null) {
                     continue;
@@ -71,7 +71,7 @@ public class LocationPersistenceService {
         }
     }
 
-    private String chooseDisplayName(TriadOrchestrationService.TriadLocationExtraction extracted) {
+    private String chooseDisplayName(SceneRelationshipAnalysisService.TriadLocationExtraction extracted) {
         if (extracted == null) {
             return null;
         }
