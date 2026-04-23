@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TriadOrchestrationService")
-class TriadOrchestrationServiceTest {
+class SceneRelationshipAnalysisServiceTest {
 
     @Mock
     private TriadBuilderService triadBuilderService;
@@ -55,7 +55,7 @@ class TriadOrchestrationServiceTest {
     @Captor
     private ArgumentCaptor<Map<String, Object>> propertiesCaptor;
 
-    private TriadOrchestrationService triadOrchestrationService;
+    private SceneRelationshipAnalysisService sceneRelationshipAnalysisService;
 
     private final UUID testJobId = UUID.randomUUID();
     private final UUID testChapterId = UUID.randomUUID();
@@ -65,7 +65,7 @@ class TriadOrchestrationServiceTest {
 
     @BeforeEach
     void setUp() {
-        triadOrchestrationService = new TriadOrchestrationService(
+        sceneRelationshipAnalysisService = new SceneRelationshipAnalysisService(
             triadBuilderService,
             sceneDetectionClient,
             promptRepository,
@@ -84,11 +84,11 @@ class TriadOrchestrationServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
-        List<TriadOrchestrationService.TriadAnalysis> result = 
-            triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
+        List<SceneRelationshipAnalysisService.SceneRelationshipAnalysis> result =
+            sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         assertThat(result).hasSize(2);
         verify(ingestionJobService, times(2)).updateJobStatus(
@@ -130,8 +130,8 @@ class TriadOrchestrationServiceTest {
         Chapter testChapter = createTestChapter();
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(List.of());
 
-        List<TriadOrchestrationService.TriadAnalysis> result = 
-            triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
+        List<SceneRelationshipAnalysisService.SceneRelationshipAnalysis> result =
+            sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         assertThat(result).isEmpty();
         verify(ingestionJobService, never()).updateJobStatus(any(), any(), any(), any());
@@ -149,10 +149,10 @@ class TriadOrchestrationServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
-        triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
+        sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         var inOrder = inOrder(ingestionJobService, sceneDetectionClient);
         inOrder.verify(ingestionJobService).updateJobStatus(any(), any(), any(), any());
@@ -160,7 +160,7 @@ class TriadOrchestrationServiceTest {
                 eq(testJobId),
                 eq("mock system prompt"),
                 any(),
-                eq(TriadOrchestrationService.TriadStructuredResult.class)
+                eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)
         );
     }
 
@@ -175,19 +175,19 @@ class TriadOrchestrationServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> userVarsCaptor = ArgumentCaptor.forClass(Map.class);
 
-        triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
+        sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         verify(sceneDetectionClient).detectSceneAnalysisTriad(
                 eq(testJobId),
                 eq("mock system prompt"),
                 userVarsCaptor.capture(),
-                eq(TriadOrchestrationService.TriadStructuredResult.class)
+                eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)
         );
         
         Map<String, Object> userVars = userVarsCaptor.getValue();
@@ -209,14 +209,14 @@ class TriadOrchestrationServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
 
-        TriadOrchestrationService.TriadStructuredResult invalid =
-                new TriadOrchestrationService.TriadStructuredResult("marker", null,
-                        new TriadOrchestrationService.TriadRelation("BEFORE", "Explicit", "evidence"));
+        SceneRelationshipAnalysisService.TriadStructuredResult invalid =
+                new SceneRelationshipAnalysisService.TriadStructuredResult("marker", null,
+                        new SceneRelationshipAnalysisService.TriadRelation("BEFORE", "Explicit", "evidence"));
 
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(invalid);
 
-        assertThatThrownBy(() -> triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter))
+        assertThatThrownBy(() -> sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter))
                 .isInstanceOf(TriadAnalysisException.class)
                 .hasMessageContaining("omitted required relation 'previousToCurrent'");
     }
@@ -232,18 +232,18 @@ class TriadOrchestrationServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
 
-        TriadOrchestrationService.TriadStructuredResult legacy =
-                new TriadOrchestrationService.TriadStructuredResult(
+        SceneRelationshipAnalysisService.TriadStructuredResult legacy =
+                new SceneRelationshipAnalysisService.TriadStructuredResult(
                         "marker",
-                        new TriadOrchestrationService.TriadRelation("R:temporal.meets", "Explicit", "evidence"),
+                        new SceneRelationshipAnalysisService.TriadRelation("R:temporal.meets", "Explicit", "evidence"),
                         null
                 );
 
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(legacy);
 
-        List<TriadOrchestrationService.TriadAnalysis> result =
-                triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
+        List<SceneRelationshipAnalysisService.SceneRelationshipAnalysis> result =
+                sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         assertThat(result).singleElement().satisfies(analysis -> {
             assertThat(analysis.prevToCurrType()).isEqualTo("R:temporal.before");
@@ -262,18 +262,18 @@ class TriadOrchestrationServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
 
-        TriadOrchestrationService.TriadStructuredResult parsed =
-                new TriadOrchestrationService.TriadStructuredResult(
+        SceneRelationshipAnalysisService.TriadStructuredResult parsed =
+                new SceneRelationshipAnalysisService.TriadStructuredResult(
                         "marker",
-                        new TriadOrchestrationService.TriadRelation("R:temporal.during", "Explicit", "evidence"),
+                        new SceneRelationshipAnalysisService.TriadRelation("R:temporal.during", "Explicit", "evidence"),
                         null
                 );
 
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(parsed);
 
-        List<TriadOrchestrationService.TriadAnalysis> result =
-                triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
+        List<SceneRelationshipAnalysisService.SceneRelationshipAnalysis> result =
+                sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         assertThat(result).singleElement().satisfies(analysis -> {
             assertThat(analysis.prevToCurrType()).isEqualTo("R:temporal.during");
@@ -292,17 +292,17 @@ class TriadOrchestrationServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
 
-        TriadOrchestrationService.TriadStructuredResult invalid =
-                new TriadOrchestrationService.TriadStructuredResult(
+        SceneRelationshipAnalysisService.TriadStructuredResult invalid =
+                new SceneRelationshipAnalysisService.TriadStructuredResult(
                         "marker",
-                        new TriadOrchestrationService.TriadRelation("IMMEDIATE_SUCCESSION", "Explicit", "evidence"),
+                        new SceneRelationshipAnalysisService.TriadRelation("IMMEDIATE_SUCCESSION", "Explicit", "evidence"),
                         null
                 );
 
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(invalid);
 
-        assertThatThrownBy(() -> triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter))
+        assertThatThrownBy(() -> sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter))
                 .isInstanceOf(TriadAnalysisException.class)
                 .hasMessageContaining("unsupported temporalType 'IMMEDIATE_SUCCESSION'");
     }
@@ -318,18 +318,18 @@ class TriadOrchestrationServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
 
-        TriadOrchestrationService.TriadStructuredResult legacy =
-                new TriadOrchestrationService.TriadStructuredResult(
+        SceneRelationshipAnalysisService.TriadStructuredResult legacy =
+                new SceneRelationshipAnalysisService.TriadStructuredResult(
                         "marker",
-                        new TriadOrchestrationService.TriadRelation("R:temporal.equals", "Explicit", "same moment legacy output"),
+                        new SceneRelationshipAnalysisService.TriadRelation("R:temporal.equals", "Explicit", "same moment legacy output"),
                         null
                 );
 
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(TriadOrchestrationService.TriadStructuredResult.class)))
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(legacy);
 
-        List<TriadOrchestrationService.TriadAnalysis> result =
-                triadOrchestrationService.analyzeChapterTriads(testJobId, testChapter);
+        List<SceneRelationshipAnalysisService.SceneRelationshipAnalysis> result =
+                sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         assertThat(result).singleElement().satisfies(analysis -> {
             assertThat(analysis.prevToCurrType()).isEqualTo("R:temporal.overlaps");
@@ -391,15 +391,15 @@ class TriadOrchestrationServiceTest {
         );
     }
 
-    private TriadOrchestrationService.TriadStructuredResult createMockTriadResult() {
-        TriadOrchestrationService.TriadRelation mockPrevToCurr = new TriadOrchestrationService.TriadRelation(
+    private SceneRelationshipAnalysisService.TriadStructuredResult createMockTriadResult() {
+        SceneRelationshipAnalysisService.TriadRelation mockPrevToCurr = new SceneRelationshipAnalysisService.TriadRelation(
             "R:temporal.before", "Explicit", "Scene transition analysis"
         );
-        TriadOrchestrationService.TriadRelation mockCurrToNext = new TriadOrchestrationService.TriadRelation(
+        SceneRelationshipAnalysisService.TriadRelation mockCurrToNext = new SceneRelationshipAnalysisService.TriadRelation(
             "R:temporal.overlaps", "StronglyImplied", "Overlapping events"
         );
         
-        return new TriadOrchestrationService.TriadStructuredResult(
+        return new SceneRelationshipAnalysisService.TriadStructuredResult(
             "Timeline marker: Chapter 1",
             mockPrevToCurr,
             mockCurrToNext

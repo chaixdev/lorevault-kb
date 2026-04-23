@@ -167,6 +167,11 @@ Use only the buckets a feature has actually earned.
 
 ## Naming guidance
 
+Name types for product semantics, not implementation technique.
+
+- prefer names like `SceneRelationshipAnalysisService` over technique-leaking names like `TriadOrchestrationService`
+- keep technique terms (for example, `Triad*`) for private/internal helpers where the technique itself is the meaning
+
 Use these suffixes consistently:
 
 | Suffix | Meaning |

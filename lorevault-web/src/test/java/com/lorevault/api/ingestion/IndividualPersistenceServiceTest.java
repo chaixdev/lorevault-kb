@@ -1,7 +1,7 @@
 package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.infrastructure.*;
 
-import com.lorevault.api.ai.application.TriadOrchestrationService;
+import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.IndividualMention;
 import com.lorevault.api.content.entities.IndividualMentionGraphRepository;
@@ -52,15 +52,15 @@ class IndividualPersistenceServiceTest {
                 "hash"
         );
         Scene persistedScene = new Scene(sceneId, 3, 0L, 10L, "ctx", "text", chapterId, null, null, null, null, chapter);
-        TriadOrchestrationService.TriadIndividualExtraction extracted =
-                new TriadOrchestrationService.TriadIndividualExtraction(
+        SceneRelationshipAnalysisService.TriadIndividualExtraction extracted =
+                new SceneRelationshipAnalysisService.TriadIndividualExtraction(
                         List.of("  Nyx  ", "N."),
                         "tall",
                         "20s",
                         "protagonist"
                 );
-        TriadOrchestrationService.TriadSceneIndividualExtraction byScene =
-                new TriadOrchestrationService.TriadSceneIndividualExtraction(3, List.of(extracted));
+        SceneRelationshipAnalysisService.TriadSceneIndividualExtraction byScene =
+                new SceneRelationshipAnalysisService.TriadSceneIndividualExtraction(3, List.of(extracted));
 
         when(individualMentionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -87,15 +87,15 @@ class IndividualPersistenceServiceTest {
     @DisplayName("Skips extracted individuals without non-blank alias")
     void skipsIndividualsWithoutAlias() {
         Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null, null);
-        TriadOrchestrationService.TriadIndividualExtraction invalid =
-                new TriadOrchestrationService.TriadIndividualExtraction(
+        SceneRelationshipAnalysisService.TriadIndividualExtraction invalid =
+                new SceneRelationshipAnalysisService.TriadIndividualExtraction(
                         List.of(" ", "\t", ""),
                         "",
                         "",
                         ""
                 );
-        TriadOrchestrationService.TriadSceneIndividualExtraction byScene =
-                new TriadOrchestrationService.TriadSceneIndividualExtraction(0, List.of(invalid));
+        SceneRelationshipAnalysisService.TriadSceneIndividualExtraction byScene =
+                new SceneRelationshipAnalysisService.TriadSceneIndividualExtraction(0, List.of(invalid));
         service.persistExtractedIndividuals(List.of(persistedScene), List.of(byScene));
 
         verify(individualMentionRepository, never()).save(any());

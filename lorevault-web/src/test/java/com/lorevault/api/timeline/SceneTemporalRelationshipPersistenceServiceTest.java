@@ -1,8 +1,8 @@
 package com.lorevault.api.timeline;
-import com.lorevault.api.content.timeline.application.TriadEdgePersistenceService;
+import com.lorevault.api.content.timeline.application.SceneTemporalRelationshipPersistenceService;
 import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
 
-import com.lorevault.api.ai.application.TriadOrchestrationService;
+import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
 import com.lorevault.api.ingestion.domain.LlmCallRecord;
@@ -31,7 +31,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
-class TriadEdgePersistenceServiceTest {
+class SceneTemporalRelationshipPersistenceServiceTest {
 
     @Mock
     private TemporalEdgeWriteRepository temporalEdgeWriteRepository;
@@ -42,7 +42,7 @@ class TriadEdgePersistenceServiceTest {
     @Mock
     private LlmCallRecordGraphRepository llmCallRecordGraphRepository;
 
-    private TriadEdgePersistenceService service;
+    private SceneTemporalRelationshipPersistenceService service;
 
     private final UUID chapterId = UUID.randomUUID();
     private final UUID jobId = UUID.randomUUID();
@@ -57,7 +57,7 @@ class TriadEdgePersistenceServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new TriadEdgePersistenceService(
+        service = new SceneTemporalRelationshipPersistenceService(
                 temporalEdgeWriteRepository,
                 ingestionJobGraphRepository,
                 statusRecordGraphRepository,
@@ -309,19 +309,19 @@ class TriadEdgePersistenceServiceTest {
         );
     }
 
-    private TriadOrchestrationService.TriadAnalysis triad(int prevIndex, int currIndex, String type) {
+    private SceneRelationshipAnalysisService.SceneRelationshipAnalysis triad(int prevIndex, int currIndex, String type) {
         return triad(scene0Id, scene1Id, null, prevIndex, currIndex, null, type, null);
     }
 
-    private TriadOrchestrationService.TriadAnalysis triad(UUID prevId,
-                                                          UUID currId,
-                                                          UUID nextId,
-                                                          Integer prevIndex,
-                                                          Integer currIndex,
-                                                          Integer nextIndex,
-                                                          String prevToCurrType,
-                                                          String currToNextType) {
-        return new TriadOrchestrationService.TriadAnalysis(
+    private SceneRelationshipAnalysisService.SceneRelationshipAnalysis triad(UUID prevId,
+                                                                             UUID currId,
+                                                                             UUID nextId,
+                                                                             Integer prevIndex,
+                                                                             Integer currIndex,
+                                                                             Integer nextIndex,
+                                                                             String prevToCurrType,
+                                                                             String currToNextType) {
+        return new SceneRelationshipAnalysisService.SceneRelationshipAnalysis(
                 prevId,
                 currId,
                 nextId,

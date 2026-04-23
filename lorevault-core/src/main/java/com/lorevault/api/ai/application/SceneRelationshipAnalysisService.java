@@ -29,7 +29,7 @@ import java.util.UUID;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class TriadOrchestrationService {
+public class SceneRelationshipAnalysisService {
 
     private static final Set<String> ALLOWED_TRIAD_RELATIONS = Set.of(
             "R:temporal.before",
@@ -96,7 +96,7 @@ public class TriadOrchestrationService {
 
     public record TriadSceneEventExtraction(int sceneIndex, List<TriadEventExtraction> events) {}
 
-    public record TriadAnalysis(
+    public record SceneRelationshipAnalysis(
             UUID previousSceneId,
             UUID currentSceneId,
             UUID nextSceneId,
@@ -113,14 +113,14 @@ public class TriadOrchestrationService {
             String currVsPrevInverted // useful for labeling
     ) {}
 
-    public record TriadOutcome(
-            List<TriadAnalysis> triadAnalyses,
+    public record SceneRelationshipOutcome(
+            List<SceneRelationshipAnalysis> triadAnalyses,
             List<TriadSceneIndividualExtraction> sceneIndividualExtractions,
             List<TriadSceneLocationExtraction> sceneLocationExtractions,
             List<TriadSceneEventExtraction> sceneEventExtractions
     ) {
-        public TriadOutcome(
-                List<TriadAnalysis> triadAnalyses,
+        public SceneRelationshipOutcome(
+                List<SceneRelationshipAnalysis> triadAnalyses,
                 List<TriadSceneIndividualExtraction> sceneIndividualExtractions,
                 List<TriadSceneLocationExtraction> sceneLocationExtractions
         ) {
@@ -136,16 +136,16 @@ public class TriadOrchestrationService {
     /**
      * Analyze scene triads and return normalized results.
      */
-    public TriadOutcome analyzeChapterTriadsWithIndividuals(UUID jobId, Chapter chapter) {
+    public SceneRelationshipOutcome analyzeChapterTriadsWithIndividuals(UUID jobId, Chapter chapter) {
         List<TriadBuilderService.SceneTriad> triads = triadBuilder.buildTriadsForChapter(chapter);
         if (triads.isEmpty()) {
-            return new TriadOutcome(List.of(), List.of(), List.of());
+            return new SceneRelationshipOutcome(List.of(), List.of(), List.of());
         }
 
         PromptTemplate systemTemplate = promptRepository.get("scene-analysis");
         String systemPrompt = systemTemplate.render(Map.of());
 
-        List<TriadAnalysis> analyses = new ArrayList<>();
+        List<SceneRelationshipAnalysis> analyses = new ArrayList<>();
         Map<Integer, List<TriadIndividualExtraction>> extractedIndividualsBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadLocationExtraction>> extractedLocationsBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadEventExtraction>> extractedEventsBySceneIndex = new HashMap<>();
@@ -184,7 +184,7 @@ public class TriadOrchestrationService {
                     ? TriadRelationInverter.invertPrevToCurr(normalized.previousToCurrent().temporalType())
                     : null;
 
-            analyses.add(new TriadAnalysis(
+            analyses.add(new SceneRelationshipAnalysis(
                     t.previous() != null ? t.previous().getEventId() : null,
                     t.current() != null ? t.current().getEventId() : null,
                     t.next() != null ? t.next().getEventId() : null,
@@ -241,10 +241,10 @@ public class TriadOrchestrationService {
                 .sorted(java.util.Comparator.comparingInt(TriadSceneEventExtraction::sceneIndex))
                 .toList();
 
-        return new TriadOutcome(analyses, sceneExtractions, sceneLocationExtractions, sceneEventExtractions);
+        return new SceneRelationshipOutcome(analyses, sceneExtractions, sceneLocationExtractions, sceneEventExtractions);
     }
 
-    public List<TriadAnalysis> analyzeChapterTriads(UUID jobId, Chapter chapter) {
+    public List<SceneRelationshipAnalysis> analyzeChapterTriads(UUID jobId, Chapter chapter) {
         return analyzeChapterTriadsWithIndividuals(jobId, chapter).triadAnalyses();
     }
 

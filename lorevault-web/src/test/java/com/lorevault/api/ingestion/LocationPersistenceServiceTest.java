@@ -1,7 +1,7 @@
 package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.infrastructure.*;
 
-import com.lorevault.api.ai.application.TriadOrchestrationService;
+import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
 import com.lorevault.api.content.entities.LocationMention;
 import com.lorevault.api.content.entities.LocationMentionGraphRepository;
 import com.lorevault.api.content.entities.Scene;
@@ -34,16 +34,16 @@ class LocationPersistenceServiceTest {
         UUID sceneId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         Scene persistedScene = new Scene(sceneId, 2, 0L, 10L, "ctx", "text", chapterId, null, null, null, null, null);
-        TriadOrchestrationService.TriadLocationExtraction extracted =
-                new TriadOrchestrationService.TriadLocationExtraction(
+        SceneRelationshipAnalysisService.TriadLocationExtraction extracted =
+                new SceneRelationshipAnalysisService.TriadLocationExtraction(
                         "  Urithiru  ",
                         List.of("the tower", "Urithiru"),
                         "city",
                         "Roshar",
                         "ancient tower city"
                 );
-        TriadOrchestrationService.TriadSceneLocationExtraction byScene =
-                new TriadOrchestrationService.TriadSceneLocationExtraction(2, List.of(extracted));
+        SceneRelationshipAnalysisService.TriadSceneLocationExtraction byScene =
+                new SceneRelationshipAnalysisService.TriadSceneLocationExtraction(2, List.of(extracted));
 
         when(locationMentionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -72,8 +72,8 @@ class LocationPersistenceServiceTest {
     @DisplayName("Falls back to first non blank alias when primary name is missing")
     void fallsBackToAliasWhenPrimaryNameMissing() {
         Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null, null);
-        TriadOrchestrationService.TriadLocationExtraction extracted =
-                new TriadOrchestrationService.TriadLocationExtraction(
+        SceneRelationshipAnalysisService.TriadLocationExtraction extracted =
+                new SceneRelationshipAnalysisService.TriadLocationExtraction(
                         " ",
                         List.of("", " Kharbranth "),
                         "city",
@@ -85,7 +85,7 @@ class LocationPersistenceServiceTest {
 
         service.persistExtractedLocations(
                 List.of(persistedScene),
-                List.of(new TriadOrchestrationService.TriadSceneLocationExtraction(0, List.of(extracted)))
+                List.of(new SceneRelationshipAnalysisService.TriadSceneLocationExtraction(0, List.of(extracted)))
         );
 
         ArgumentCaptor<LocationMention> savedCaptor = ArgumentCaptor.forClass(LocationMention.class);

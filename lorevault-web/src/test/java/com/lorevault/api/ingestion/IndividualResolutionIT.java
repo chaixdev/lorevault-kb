@@ -9,7 +9,6 @@ import com.lorevault.api.ingestion.infrastructure.*;
 import com.lorevault.api.ingestion.application.scene.SceneDetectionService;
 import com.lorevault.api.ingestion.application.scene.SceneProcessingService;
 import com.lorevault.api.ai.domain.SceneWithCoordinates;
-import com.lorevault.api.ai.application.TriadOrchestrationService;
 import com.lorevault.api.library.domain.Book;
 import com.lorevault.api.library.infrastructure.BookGraphRepository;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
@@ -19,7 +18,7 @@ import com.lorevault.api.web.command.ingestion.SubmitChapterRequest;
 import com.lorevault.api.testutil.SampleChapterLoader;
 import com.lorevault.api.testing.TestImages;
 import com.lorevault.api.content.timeline.application.DefaultTemporalEdgeService;
-import com.lorevault.api.content.timeline.application.TriadEdgePersistenceService;
+import com.lorevault.api.content.timeline.application.SceneTemporalRelationshipPersistenceService;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -111,7 +110,7 @@ class IndividualResolutionIT {
     private LocationPersistenceService locationPersistenceService;
 
     @MockitoBean
-    private TriadEdgePersistenceService triadEdgePersistenceService;
+    private SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService;
 
     @BeforeEach
     void setUp() {

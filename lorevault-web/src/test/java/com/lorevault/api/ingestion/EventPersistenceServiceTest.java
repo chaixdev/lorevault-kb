@@ -1,7 +1,7 @@
 package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.infrastructure.*;
 
-import com.lorevault.api.ai.application.TriadOrchestrationService;
+import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
 import com.lorevault.api.content.entities.EventMention;
 import com.lorevault.api.content.entities.EventMentionGraphRepository;
 import com.lorevault.api.content.entities.Scene;
@@ -38,16 +38,16 @@ class EventPersistenceServiceTest {
         UUID sceneId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         Scene persistedScene = new Scene(sceneId, 4, 0L, 10L, "ctx", "text", chapterId, null, null, null, null, null);
-        TriadOrchestrationService.TriadEventExtraction extracted =
-                new TriadOrchestrationService.TriadEventExtraction(
+        SceneRelationshipAnalysisService.TriadEventExtraction extracted =
+                new SceneRelationshipAnalysisService.TriadEventExtraction(
                         "  The Winter War  ",
                         "war",
                         "R:temporal.before",
                         "Explicit",
                         "They still speak of the Winter War"
                 );
-        TriadOrchestrationService.TriadSceneEventExtraction byScene =
-                new TriadOrchestrationService.TriadSceneEventExtraction(4, List.of(extracted));
+        SceneRelationshipAnalysisService.TriadSceneEventExtraction byScene =
+                new SceneRelationshipAnalysisService.TriadSceneEventExtraction(4, List.of(extracted));
 
         when(eventMentionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -77,8 +77,8 @@ class EventPersistenceServiceTest {
     @DisplayName("Skips extracted events without non-blank name")
     void skipsEventsWithoutName() {
         Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null, null);
-        TriadOrchestrationService.TriadEventExtraction invalid =
-                new TriadOrchestrationService.TriadEventExtraction(
+        SceneRelationshipAnalysisService.TriadEventExtraction invalid =
+                new SceneRelationshipAnalysisService.TriadEventExtraction(
                         " ",
                         "meeting",
                         "R:temporal.overlaps",
@@ -88,7 +88,7 @@ class EventPersistenceServiceTest {
 
         service.persistExtractedEvents(
                 List.of(persistedScene),
-                List.of(new TriadOrchestrationService.TriadSceneEventExtraction(0, List.of(invalid)))
+                List.of(new SceneRelationshipAnalysisService.TriadSceneEventExtraction(0, List.of(invalid)))
         );
 
         verify(eventMentionRepository, never()).save(any());
