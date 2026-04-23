@@ -25,7 +25,7 @@ It does not replace missing automation with new scripts unless the caller explic
   - `.env.example`
   - `scripts/reset-dev-db.sh`
   - `scripts/prepare-dev-environment.sh`
-  - `docs/development/current/testing/developer-testing-workflow.md`
+  - [Developer Testing Workflow](../../../docs/rules/developer-testing-workflow.md)
   - `lorevault-api/src/main/resources/application.yml`
 
 ## Methodology

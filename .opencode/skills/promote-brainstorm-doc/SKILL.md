@@ -12,7 +12,7 @@ metadata:
 
 This skill codifies LoreVault's repeatable documentation-promotion pass: start from a brainstorm proposal, append implementation notes, then extract only stabilized knowledge into the correct canonical docs.
 Load it when the task is to refresh current docs after implementation, derive ADRs or pattern docs from shipped work, or reconcile a proposal with landed code.
-It produces edits in `docs/` such as `PROJECT-STATUS.md`, roadmap docs, ADRs, pattern docs, and proposal implementation notes.
+It produces edits in [docs](../../../docs/) such as [PROJECT-STATUS.md](../../../docs/PROJECT-STATUS.md), roadmap docs, ADRs, pattern docs, and proposal implementation notes.
 It does not treat brainstorm material as truth or promote speculative future design into canonical docs.
 
 ## Inputs Required
@@ -20,17 +20,17 @@ It does not treat brainstorm material as truth or promote speculative future des
 - Repository root available
 - Read access to these sources of truth:
   - `AGENTS.md`
-  - `docs/README.md`
-  - `docs/brainstorm/README.md`
+  - [docs/README.md](../../../docs/README.md)
+  - [docs/brainstorm/README.md](../../../docs/brainstorm/README.md)
   - the active brainstorm proposal file
   - the proposal's implementation notes section (append one first if missing)
   - the implemented code and tests relevant to the proposal
-  - current canonical docs likely affected (`PROJECT-STATUS.md`, roadmap, `adr/`, `patterns/`, `concepts/`)
+  - current canonical docs likely affected ([PROJECT-STATUS.md](../../../docs/PROJECT-STATUS.md), roadmap, [adr/](../../../docs/adr/), [patterns/](../../../docs/patterns/), [concepts/](../../../docs/concepts/))
 
 ## Methodology
 
 1. Start from repo taxonomy, not personal preference.
-   - Read `docs/README.md` and `docs/brainstorm/README.md` first.
+   - Read [docs/README.md](../../../docs/README.md) and [docs/brainstorm/README.md](../../../docs/brainstorm/README.md) first.
    - Treat folder meaning as a hard routing constraint.
    - The governing principle is truthful docs over completeness.
 
@@ -55,8 +55,8 @@ It does not treat brainstorm material as truth or promote speculative future des
      - **brainstorm** when it is still future-facing, optional, unresolved, or speculative.
 
 5. Refresh continuity docs after major implemented slices.
-   - Update `docs/PROJECT-STATUS.md` to reflect what has actually shipped and what is next.
-   - Update `docs/development/current/refactor-roadmap.md` when the near-term sequence changes.
+   - Update [PROJECT-STATUS.md](../../../docs/PROJECT-STATUS.md) to reflect what has actually shipped and what is next.
+   - Update [refactor-roadmap.md](../../../docs/planning/README.md) when the near-term sequence changes.
    - Keep these docs iterative and truthful; do not rewrite them into a fake long-term certainty.
 
 6. Promote mechanism docs conservatively.
@@ -109,20 +109,20 @@ Candidate insight -> Target home -> Why
 ```
 
 - Example homes:
-  - `docs/adr/...`
-  - `docs/patterns/...`
-  - `docs/concepts/...`
-  - `docs/development/current/...`
-  - `docs/PROJECT-STATUS.md`
-  - `docs/development/current/refactor-roadmap.md`
+  - [docs/adr/...](../../../docs/adr/)
+  - [docs/patterns/...](../../../docs/patterns/)
+  - [docs/concepts/...](../../../docs/concepts/)
+  - [docs/planning/...](../../../docs/planning/)
+  - [PROJECT-STATUS.md](../../../docs/PROJECT-STATUS.md)
+  - [Planning README](../../../docs/planning/README.md)
 
 ### 3. Canonical docs edits
 - Create or update only the docs justified by implemented truth.
 - Preferred outputs for this repo are:
-  - `docs/PROJECT-STATUS.md`
-  - `docs/development/current/refactor-roadmap.md`
-  - one or more `docs/adr/*.md` files when decision-worthy
-  - one or more `docs/patterns/*.md` files when mechanism-worthy
+  - [PROJECT-STATUS.md](../../../docs/PROJECT-STATUS.md)
+  - [Planning README](../../../docs/planning/README.md)
+  - one or more [docs/adr/*.md](../../../docs/adr/) files when decision-worthy
+  - one or more [docs/patterns/*.md](../../../docs/patterns/) files when mechanism-worthy
 
 ### 4. Final documentation summary
 - Report exactly:
@@ -154,7 +154,7 @@ Candidate insight -> Target home -> Why
 - Canonical docs must not present future wishes as current truth.
 
 ### Edge case: Status/roadmap and canonical mechanism docs drift apart
-- Treat `docs/PROJECT-STATUS.md` as the current progress snapshot.
+- Treat [PROJECT-STATUS.md](../../../docs/PROJECT-STATUS.md) as the current progress snapshot.
 - Align roadmap wording with implemented reality and immediate next slices.
 - Do not leave a new pattern or ADR undocumented in status if it materially changes current state.
 
