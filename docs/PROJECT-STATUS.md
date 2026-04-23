@@ -53,7 +53,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Graph-aware and hybrid retrieval shipped** — RAG retrieval now supports baseline, graph-aware, and hybrid modes; the ask surface was split accordingly and the operator UI now exposes a mode selector for retrieval strategy comparison
 - **Event extraction groundwork shipped** — stage-1 scene analysis now persists event-mention evidence so event-oriented extraction has a durable foothold in the ingestion pipeline
 - **Practical temporal semantics and scene temporal linking shipped** — temporal relation handling now uses a canonical practical vocabulary, triad-edge persistence is normalized, cross-chapter scene context is preserved during temporal analysis, and book-level ordering can now use cross-chapter temporal edges instead of chapter-local concatenation alone
-- **Recent ingestion/runtime hardening shipped** — recent fixes serialized follow-up execution for stability, avoided fragile triad-status property lookups, aligned chunking with content-property configuration, and kept temporal-edge persistence mechanically consistent
+- **Recent ingestion/runtime hardening shipped** — recent fixes serialized follow-up execution for stability, shifted triad-status correlation to stable scene IDs (with scene indexes retained as ordering metadata), aligned chunking with content-property configuration, and kept temporal-edge persistence mechanically consistent
 
 ## What Is Next
 

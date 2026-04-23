@@ -51,7 +51,7 @@ Every LLM call (chapter segmentation scene detection, scene analysis triad analy
 Each `StatusRecord` has a `Map<String, String> properties` for stage-specific metadata. Examples of properties stored include:
 
 - `chapterId` (on QUEUED)
-- `triadIndex`, `prevSceneIndex`, `currentSceneIndex`, `nextSceneIndex` (on SCENE_TRIAD_ANALYSIS)
+- `triadIndex`, `prevSceneId`, `currentSceneId`, `nextSceneId`, `prevSceneIndex`, `currentSceneIndex`, `nextSceneIndex` (on SCENE_TRIAD_ANALYSIS; IDs are correlation keys, indexes are ordering metadata)
 - `chunkCount`, `chapterLength`, `completedAt`, `version`, `pipeline` (on COMPLETE)
 - `failureCode`, `failureMessage`, `failureExceptionType`, `failureStage`, `failureDetail.*` (on FAILED)
 
