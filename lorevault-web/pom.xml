@@ -18,6 +18,8 @@
 
     <properties>
         <jacoco.check.skip>true</jacoco.check.skip>
+        <!-- Testcontainers 1.21.x falls back to Docker API 1.32 unless api.version is set explicitly. -->
+        <testcontainers.docker.api.version>1.40</testcontainers.docker.api.version>
     </properties>
 
     <dependencies>
@@ -119,6 +121,9 @@
                 <configuration>
                     <forkCount>1C</forkCount>
                     <reuseForks>true</reuseForks>
+                    <systemPropertyVariables>
+                        <api.version>${testcontainers.docker.api.version}</api.version>
+                    </systemPropertyVariables>
                     <includes>
                         <include>**/*Test.java</include>
                         <include>**/*Tests.java</include>
@@ -219,6 +224,9 @@
                         <artifactId>maven-surefire-plugin</artifactId>
                         <version>3.1.2</version>
                         <configuration>
+                            <systemPropertyVariables>
+                                <api.version>${testcontainers.docker.api.version}</api.version>
+                            </systemPropertyVariables>
                             <excludedGroups></excludedGroups>
                             <groups>integration</groups>
                         </configuration>
@@ -228,6 +236,9 @@
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <version>3.1.2</version>
                         <configuration>
+                            <systemPropertyVariables>
+                                <api.version>${testcontainers.docker.api.version}</api.version>
+                            </systemPropertyVariables>
                             <includes>
                                 <include>**/*IT.java</include>
                                 <include>**/*ITCase.java</include>

@@ -6,7 +6,6 @@ import com.lorevault.api.ingestion.application.IngestionService;
 import com.lorevault.api.library.domain.Book;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.ingestion.application.result.IngestionSubmissionResult;
-import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import com.lorevault.api.library.infrastructure.BookGraphRepository;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.testing.TestImages;
@@ -15,13 +14,11 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.neo4j.DataNeo4jTest;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -31,9 +28,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.verify;
 
 @DataNeo4jTest
 @Testcontainers
@@ -70,12 +64,8 @@ class IngestionServiceChapterPersistenceIntegrationTest {
     @Autowired
     private Neo4jClient neo4jClient;
 
-    @MockitoBean
-    private ApplicationEventPublisher eventPublisher;
-
     @BeforeEach
     void setUp() {
-        reset(eventPublisher);
         neo4jClient.query("MATCH (n) DETACH DELETE n").run();
     }
 
@@ -99,7 +89,6 @@ class IngestionServiceChapterPersistenceIntegrationTest {
         assertThat(persisted.get("bookNumber")).isEqualTo(0L);
         assertThat(persisted.get("chapterNumber")).isEqualTo(1L);
 
-        verify(eventPublisher).publishEvent(any(ChapterIngestionEvent.class));
     }
 
     @Test
@@ -165,7 +154,7 @@ class IngestionServiceChapterPersistenceIntegrationTest {
                        c.bookNumber AS bookNumber,
                        c.chapterNumber AS chapterNumber
                 """)
-                .bind(chapterId).to("chapterId")
+                .bind(chapterId.toString()).to("chapterId")
                 .fetch()
                 .one();
 

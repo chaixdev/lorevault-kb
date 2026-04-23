@@ -14,13 +14,14 @@ This mechanism also supports cross-chapter continuity. When the system analyzes 
 
 ```mermaid
 graph TD
-    SDService["SceneDetectionService"] -->|"Scene Analysis orchestration"| TOService["TriadOrchestrationService"]
+    SDService["SceneDetectionService"] -->|"Returns localized scene boundaries"| SDH["SceneDetectionHandler"]
+    SDH -->|"Post-persistence triad orchestration"| TOService["TriadOrchestrationService"]
     TOService -->|"Builds triads"| TBService["TriadBuilderService"]
     TBService -->|"Resolves previous chapter"| CRRepo["ChapterReadRepository"]
     TOService -->|"LLM call"| SDClient["SceneDetectionClient"]
     TOService -->|"Inverts relations"| TRInverter["TriadRelationInverter"]
     TOService -->|"Status update"| IJService["IngestionJobService"]
-    SDService -->|"Upserts edges"| TEPService["TriadEdgePersistenceService"]
+    SDH -->|"Upserts edges"| TEPService["TriadEdgePersistenceService"]
     TEPService -->|"Cypher-level upsert"| TEWRepo["TemporalEdgeWriteRepository"]
 ```
 
@@ -28,6 +29,7 @@ graph TD
 
 ```mermaid
 sequenceDiagram
+    participant SDH as "SceneDetectionHandler"
     participant SDS as "SceneDetectionService"
     participant TOS as "TriadOrchestrationService"
     participant TBS as "TriadBuilderService"
@@ -35,7 +37,10 @@ sequenceDiagram
     participant TRI as "TriadRelationInverter"
     participant TEPS as "TriadEdgePersistenceService"
 
-    SDS->>TOS: "analyzeChapterTriads(jobId, chapter)"
+    SDH->>SDS: "detectScenesInChapter(jobId, chapter)"
+    SDS-->>SDH: "localized scene boundaries"
+    SDH->>SDH: "persist scenes"
+    SDH->>TOS: "analyzeChapterTriadsWithIndividuals(jobId, chapter-with-persisted-scenes)"
     TOS->>TBS: "buildTriadsForChapter(chapter)"
     TBS->>TBS: "resolve cross-chapter previous scene"
     TBS-->>TOS: "List<SceneTriad>"
@@ -48,8 +53,8 @@ sequenceDiagram
         TRI-->>TOS: "inverted relation label"
         TOS->>TOS: "build TriadAnalysis record"
     end
-    TOS-->>SDS: "List<TriadAnalysis>"
-    SDS->>TEPS: "applyTriadAnalyses(analyses)"
+    TOS-->>SDH: "TriadOutcome"
+    SDH->>TEPS: "applyTriadAnalysesPostPersistence(analyses)"
     TEPS->>TEPS: "upsert TEMPORAL edges"
 ```
 

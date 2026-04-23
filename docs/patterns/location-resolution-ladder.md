@@ -30,7 +30,7 @@ This makes the graph more symmetrical for later Q&A and navigation work while ke
 
 The scene-analysis prompt already asks for Locations.
 
-`TriadOrchestrationService` and `SceneDetectionService` now carry structured Location data with these fields:
+`TriadOrchestrationService` now carries structured Location data with these fields:
 
 - `primaryName`
 - `aliases`
@@ -38,7 +38,7 @@ The scene-analysis prompt already asks for Locations.
 - `region`
 - `description`
 
-The scene-detection outcome now includes scene-level Location extractions in parallel with scene-level Individual extractions.
+`SceneDetectionService` now returns localized scenes only. `SceneDetectionHandler` runs triad analysis after scene persistence and receives scene-level Location extractions in parallel with scene-level Individual extractions.
 
 ### 2) Scene persistence happens before mention persistence
 

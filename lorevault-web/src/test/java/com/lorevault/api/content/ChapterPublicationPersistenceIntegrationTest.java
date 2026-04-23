@@ -167,7 +167,7 @@ class ChapterPublicationPersistenceIntegrationTest {
                        c.bookNumber AS bookNumber,
                        c.chapterNumber AS chapterNumber
                 """)
-                .bind(chapterId).to("chapterId")
+                .bind(chapterId.toString()).to("chapterId")
                 .fetch()
                 .one();
 

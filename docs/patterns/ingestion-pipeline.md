@@ -7,7 +7,7 @@ LoreVault ingests narrative chapter text through a staged, event-driven pipeline
 
 Stages communicate asynchronously through Spring application events, which isolates failures and preserves partial progress. If chunking fails during a run, the scene detection results from the previous stage survive. This decoupling allows the system to scale specific parts of the pipeline independently and provides a natural boundary for transactional integrity.
 
-The pipeline uses `@Async` event listeners to ensure stages run in separate threads after the publishing transaction commits. A shared `PipelineStageSupport` class provides consistent failure handling across all stages. It manages failure events, updates job statuses, and classifies errors as retryable or terminal. The two-pass scene detection process, involving initial segmentation and subsequent temporal triad analysis, represents the most computationally expensive portion of this flow.
+The pipeline uses `@Async` event listeners to ensure stages run in separate threads after the publishing transaction commits. A shared `PipelineStageSupport` class provides consistent failure handling across all stages. It manages failure events, updates job statuses, and classifies errors as retryable or terminal. The scene stage remains the most computationally expensive portion of this flow because it includes LLM segmentation/localization, scene persistence, and post-persistence triad analysis.
 
 ### Component Map
 ```mermaid
@@ -61,10 +61,12 @@ sequenceDiagram
     Service-->>Controller : "return JobID"
     Service->>SDH : "publish ChapterIngestionEvent (async)"
     
-    SDH->>SDS : "detectScenesInText(chapter)"
-    Note over SDS : "Chapter Segmentation<br>Scene Analysis"
-    SDS-->>SDH : "return scenes"
-    SDH->>SDH : "persist scenes and temporal edges"
+    SDH->>SDS : "detectScenesInChapter(jobId, chapter)"
+    Note over SDS : "Chapter Segmentation<br>Coordinate localization"
+    SDS-->>SDH : "return localized scenes"
+    SDH->>SDH : "persist scenes"
+    SDH->>SDH : "run triad analysis on persisted scenes"
+    SDH->>SDH : "persist TEMPORAL edges + scene-local evidence"
     SDH->>CH : "publish ScenesDetectedEvent"
     SDH->>CIRH : "publish ScenesDetectedEvent"
     SDH->>CLRH : "publish ScenesDetectedEvent"
@@ -107,7 +109,8 @@ sequenceDiagram
 **Stage 2: Scene Detection + evidence persistence** (`SceneDetectionHandler`)
 - Maintains idempotency by checking for existing scenes in the repository before starting work.
 - Executes Chapter Segmentation: Uses an LLM for initial segmentation followed by XML parsing and a 3-tier fallback for coordinate localization.
-- Executes Scene Analysis: Performs triad analysis to establish complex temporal relationships and to extract scene-local entity evidence.
+- Persists localized scenes first so all subsequent processing uses stable scene IDs.
+- Executes Scene Analysis post-persistence: Performs triad analysis to establish complex temporal relationships and to extract scene-local entity evidence.
 - Automatically creates default sequential temporal edges through the `DefaultTemporalEdgeService`.
 - Persists scene-local `IndividualMention` and `LocationMention` evidence after real scene IDs exist.
 - Classified as retryable for transient LLM, API, or connection timeout errors.
