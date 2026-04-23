@@ -25,4 +25,4 @@ public record LocationMention(
         Integer extractionIndex,
         @CreatedDate LocalDateTime createdAt,
         @LastModifiedDate LocalDateTime updatedAt
-) {}
+) implements Mention {}

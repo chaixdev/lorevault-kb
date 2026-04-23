@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
 **Last Updated:** April 23, 2026  
-**Reviewed Through Commit:** `f8ecdfc`  
+**Reviewed Through Commit:** `46034f7`  
 **Status:** Active — core ingestion and retrieval slices are stable enough to iterate on event extraction and aggregation  
 **Functional Goals:** Expand event extraction, aggregation, and downstream event-aware retrieval while continuing targeted ingestion hardening  
 **Technical Goals:** Guard the architecture now that the codebase is split into separate `core` and `web` Maven modules
@@ -57,6 +57,8 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Event extraction groundwork shipped** — stage-1 scene analysis now persists event-mention evidence so event-oriented extraction has a durable foothold in the ingestion pipeline
 - **Practical temporal semantics and scene temporal linking shipped** — temporal relation handling now uses a canonical practical vocabulary, triad-edge persistence is normalized, cross-chapter scene context is preserved during temporal analysis, and book-level ordering can now use cross-chapter temporal edges instead of chapter-local concatenation alone
 - **Recent ingestion/runtime hardening shipped** — recent fixes serialized follow-up execution for stability, shifted triad-status correlation to stable scene IDs (with scene indexes retained as ordering metadata), aligned chunking with content-property configuration, and kept temporal-edge persistence mechanically consistent
+- **Code organization addressed** - refactored code organisation, core/web modules, semantic package structure.
+- **Modern domain-modeling follow-up started** — added a narrow `Mention` capability contract implemented by `IndividualMention`, `LocationMention`, and `EventMention`; added focused mention-contract tests; and wired a first concrete search-side consumer path while keeping persisted mention fields flat (no SDN nested value-object migration)
 
 ## What Is Next
 
@@ -76,6 +78,8 @@ Near-term execution slices:
    - Continue validating temporal-linking behavior and explore how event-aware retrieval should interact with existing baseline, graph-aware, and hybrid modes
 5. **Architectural hygiene follow-up**
    - Add executable guardrails for the current `web -> core` split, prevent new top-level package cycles inside `core`, and reduce documentation drift around the present package map
+6. **Domain-modeling follow-up continuation**
+   - Continue the bounded modern-Java modeling pass by validating where additional narrow capability contracts are justified, while deferring value-object extraction until an explicit SDN-compatible migration path is planned
 
 Broader planned directions remain intact after these slices:
 - Broader entity extraction (Collectives and later claims)

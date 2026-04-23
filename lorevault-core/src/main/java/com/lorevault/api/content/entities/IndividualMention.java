@@ -25,4 +25,4 @@ public record IndividualMention(
         Integer extractionIndex,
         @CreatedDate LocalDateTime createdAt,
         @LastModifiedDate LocalDateTime updatedAt
-) {}
+) implements Mention {}

@@ -2,11 +2,17 @@
 
 ## Status
 
-Parked
+In progress
 
 ## Summary
 
 After the semantic package reorganization, the codebase still contains several families of POJOs and records that repeat overlapping fields and shapes.
+
+Current progress on this follow-up is intentionally narrow:
+
+- added a feature-owned `Mention` capability contract for `IndividualMention`, `LocationMention`, and `EventMention`
+- kept persisted mention fields flat to avoid introducing Spring Data Neo4j composition that would require a coordinated schema/data migration
+- deferred value-object extraction for naming/scope/lifecycle clusters until a later pass has a demonstrated consumer and an explicit migration plan
 
 This follow-up tracks a bounded review of `lorevault-core` content-modeling choices, especially where newer Java features or small semantic value objects might improve clarity without reintroducing inheritance-heavy design, speculative abstraction, or new shared model layers.
 

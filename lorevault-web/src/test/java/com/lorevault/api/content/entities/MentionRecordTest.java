@@ -1,0 +1,163 @@
+package com.lorevault.api.content.entities;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+
+@Tag("unit")
+@DisplayName("Mention records")
+class MentionRecordTest {
+
+    private static final UUID SCENE_ID = UUID.fromString("00000000-0000-0000-0000-000000000101");
+    private static final UUID CHAPTER_ID = UUID.fromString("00000000-0000-0000-0000-000000000102");
+    private static final UUID BOOK_ID = UUID.fromString("00000000-0000-0000-0000-000000000103");
+    private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 4, 23, 10, 15);
+    private static final LocalDateTime UPDATED_AT = LocalDateTime.of(2026, 4, 23, 11, 45);
+
+    @Test
+    @DisplayName("should expose individual mention fields through record accessors")
+    void shouldExposeIndividualMentionFieldsThroughRecordAccessors() {
+        IndividualMention mention = individualMention(UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                List.of("Kal"), "UNRESOLVED");
+
+        assertThat(mention.id()).isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        assertThat(mention.source()).isEqualTo("scene-analysis");
+        assertThat(mention.displayName()).isEqualTo("Kaladin");
+        assertThat(mention.normalizedName()).isEqualTo("kaladin");
+        assertThat(mention.aliases()).containsExactly("Kal");
+        assertThat(mention.activity()).isEqualTo("protecting");
+        assertThat(mention.age()).isEqualTo("young adult");
+        assertThat(mention.physicalProperties()).isEqualTo("scarred");
+        assertThat(mention.sceneId()).isEqualTo(SCENE_ID);
+        assertThat(mention.chapterId()).isEqualTo(CHAPTER_ID);
+        assertThat(mention.bookId()).isEqualTo(BOOK_ID);
+        assertThat(mention.resolutionStatus()).isEqualTo("UNRESOLVED");
+        assertThat(mention.extractionIndex()).isEqualTo(3);
+        assertThat(mention.createdAt()).isEqualTo(CREATED_AT);
+        assertThat(mention.updatedAt()).isEqualTo(UPDATED_AT);
+    }
+
+    @Test
+    @DisplayName("should preserve record equality semantics for mentions")
+    void shouldPreserveRecordEqualitySemanticsForMentions() {
+        LocationMention first = locationMention(UUID.fromString("00000000-0000-0000-0000-000000000010"),
+                List.of("The Tower"), "RESOLVED");
+        LocationMention same = locationMention(UUID.fromString("00000000-0000-0000-0000-000000000010"),
+                List.of("The Tower"), "RESOLVED");
+        LocationMention different = locationMention(UUID.fromString("00000000-0000-0000-0000-000000000011"),
+                List.of("The Tower"), "RESOLVED");
+
+        assertThat(first).isEqualTo(same);
+        assertThat(first.hashCode()).isEqualTo(same.hashCode());
+        assertThat(first).isNotEqualTo(different);
+    }
+
+    @Test
+    @DisplayName("should allow null aliases without affecting other shared fields")
+    void shouldAllowNullAliasesWithoutAffectingOtherSharedFields() {
+        EventMention mention = eventMention(UUID.fromString("00000000-0000-0000-0000-000000000020"), null, "PENDING");
+
+        assertThat(mention.aliases()).isNull();
+        assertThat(mention.displayName()).isEqualTo("The Duel");
+        assertThat(mention.normalizedName()).isEqualTo("the_duel");
+        assertThat(mention.sceneId()).isEqualTo(SCENE_ID);
+        assertThat(mention.chapterId()).isEqualTo(CHAPTER_ID);
+        assertThat(mention.bookId()).isEqualTo(BOOK_ID);
+        assertThat(mention.resolutionStatus()).isEqualTo("PENDING");
+    }
+
+    @Test
+    @DisplayName("should support shared mention contract across mention record types")
+    void shouldSupportSharedMentionContractAcrossMentionRecordTypes() {
+        List<Mention> mentions = List.of(
+                individualMention(UUID.fromString("00000000-0000-0000-0000-000000000031"), List.of("Kal"), "UNRESOLVED"),
+                locationMention(UUID.fromString("00000000-0000-0000-0000-000000000032"), List.of("The Tower"), "RESOLVED"),
+                eventMention(UUID.fromString("00000000-0000-0000-0000-000000000033"), List.of("Contest"), "PENDING")
+        );
+
+        assertThat(mentions)
+                .extracting(Mention::sceneId)
+                .containsOnly(SCENE_ID);
+        assertThat(mentions)
+                .extracting(Mention::chapterId)
+                .containsOnly(CHAPTER_ID);
+        assertThat(mentions)
+                .extracting(Mention::bookId)
+                .containsOnly(BOOK_ID);
+        assertThat(mentions)
+                .extracting(Mention::displayName)
+                .containsExactly("Kaladin", "Urithiru", "The Duel");
+        assertThat(mentions)
+                .extracting(Mention::normalizedName)
+                .containsExactly("kaladin", "urithiru", "the_duel");
+        assertThat(mentions)
+                .extracting(Mention::resolutionStatus)
+                .containsExactly("UNRESOLVED", "RESOLVED", "PENDING");
+    }
+
+    private static IndividualMention individualMention(UUID id, List<String> aliases, String resolutionStatus) {
+        return new IndividualMention(
+                id,
+                "scene-analysis",
+                "Kaladin",
+                "kaladin",
+                aliases,
+                "protecting",
+                "young adult",
+                "scarred",
+                SCENE_ID,
+                CHAPTER_ID,
+                BOOK_ID,
+                resolutionStatus,
+                3,
+                CREATED_AT,
+                UPDATED_AT
+        );
+    }
+
+    private static LocationMention locationMention(UUID id, List<String> aliases, String resolutionStatus) {
+        return new LocationMention(
+                id,
+                "scene-analysis",
+                "Urithiru",
+                "urithiru",
+                aliases,
+                "city",
+                "Roshar",
+                "Ancient tower city",
+                SCENE_ID,
+                CHAPTER_ID,
+                BOOK_ID,
+                resolutionStatus,
+                5,
+                CREATED_AT,
+                UPDATED_AT
+        );
+    }
+
+    private static EventMention eventMention(UUID id, List<String> aliases, String resolutionStatus) {
+        return new EventMention(
+                id,
+                "scene-analysis",
+                "The Duel",
+                "the_duel",
+                aliases,
+                "duel",
+                "during",
+                "high",
+                "Two champions face off",
+                SCENE_ID,
+                CHAPTER_ID,
+                BOOK_ID,
+                resolutionStatus,
+                7,
+                CREATED_AT,
+                UPDATED_AT
+        );
+    }
+}

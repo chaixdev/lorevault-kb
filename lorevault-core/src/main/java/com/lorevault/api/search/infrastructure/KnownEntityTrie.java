@@ -45,7 +45,7 @@ public class KnownEntityTrie {
     public void refresh() {
         try {
             Collection<String> individuals = nameRepository.loadIndividualNames();
-            Collection<String> locations   = nameRepository.loadLocationNames();
+            Collection<String> locations = nameRepository.loadLocationNames();
 
             int total = individuals.size() + locations.size();
             if (total == 0) {
