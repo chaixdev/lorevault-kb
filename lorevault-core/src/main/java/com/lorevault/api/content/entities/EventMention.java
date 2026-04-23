@@ -26,4 +26,4 @@ public record EventMention(
         Integer extractionIndex,
         @CreatedDate LocalDateTime createdAt,
         @LastModifiedDate LocalDateTime updatedAt
-) {}
+) implements Mention {}
