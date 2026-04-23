@@ -1,6 +1,5 @@
 package com.lorevault.api.ingestion.application.scene;
 
-import com.lorevault.api.ai.application.TriadOrchestrationService;
 import com.lorevault.api.ai.domain.LlmRetryStrategy;
 import com.lorevault.api.ai.domain.LlmRetryStrategy.LlmRetryConfig;
 import com.lorevault.api.ai.domain.LlmRetryStrategy.LlmRetryResult;
@@ -9,7 +8,6 @@ import com.lorevault.api.ai.domain.SceneLocalizationException;
 import com.lorevault.api.ai.domain.SceneWithCoordinates;
 import com.lorevault.api.ai.infrastructure.SceneDetectionClient;
 import com.lorevault.api.content.entities.Chapter;
-import com.lorevault.api.content.entities.Scene;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -27,32 +25,16 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SceneDetectionService {
 
-    public record SceneDetectionOutcome(
-            List<SceneWithCoordinates> scenes,
-            List<TriadOrchestrationService.TriadAnalysis> triadAnalyses,
-            List<TriadOrchestrationService.TriadSceneIndividualExtraction> sceneIndividualExtractions,
-            List<TriadOrchestrationService.TriadSceneLocationExtraction> sceneLocationExtractions,
-            List<TriadOrchestrationService.TriadSceneEventExtraction> sceneEventExtractions
-    ) {
-        public SceneDetectionOutcome(
-                List<SceneWithCoordinates> scenes,
-                List<TriadOrchestrationService.TriadAnalysis> triadAnalyses,
-                List<TriadOrchestrationService.TriadSceneIndividualExtraction> sceneIndividualExtractions,
-                List<TriadOrchestrationService.TriadSceneLocationExtraction> sceneLocationExtractions
-        ) {
-            this(scenes, triadAnalyses, sceneIndividualExtractions, sceneLocationExtractions, List.of());
-        }
-    }
+    public record SceneSegmentationOutcome(List<SceneWithCoordinates> scenes) {}
 
     private final SceneDetectionClient sceneDetectionClient;
     private final SceneProcessingService sceneProcessingService;
     private final LlmRetryStrategy llmRetryStrategy;
-    private final TriadOrchestrationService triadOrchestrationService;
 
-    public SceneDetectionOutcome detectScenesInText(UUID jobId, UUID chapterId, String chapterText) {
+    public SceneSegmentationOutcome detectScenesInText(UUID jobId, UUID chapterId, String chapterText) {
         if (chapterText == null || chapterText.trim().isEmpty()) {
             log.warn("Chapter {} has no text content for scene detection", chapterId);
-            return new SceneDetectionOutcome(Collections.emptyList(), List.of(), List.of(), List.of());
+            return new SceneSegmentationOutcome(Collections.emptyList());
         }
 
         log.info("Starting scene detection with retry for chapter {} (job {}, length={} chars)",
@@ -73,7 +55,7 @@ public class SceneDetectionService {
         }
     }
 
-    public SceneDetectionOutcome detectScenesInChapter(UUID jobId, Chapter chapter) {
+    public SceneSegmentationOutcome detectScenesInChapter(UUID jobId, Chapter chapter) {
         if (chapter == null) {
             throw new IllegalArgumentException("chapter must not be null");
         }
@@ -82,7 +64,7 @@ public class SceneDetectionService {
         String chapterText = chapter.getRawText();
         if (chapterText == null || chapterText.trim().isEmpty()) {
             log.warn("Chapter {} has no text content for scene detection", chapterId);
-            return new SceneDetectionOutcome(Collections.emptyList(), List.of(), List.of(), List.of());
+            return new SceneSegmentationOutcome(Collections.emptyList());
         }
 
         log.info("Starting scene detection with retry for chapter {} (job {}, length={} chars)",
@@ -103,16 +85,16 @@ public class SceneDetectionService {
         }
     }
 
-    private SceneDetectionOutcome detectScenesWithRetry(UUID jobId,
-                                                        UUID chapterId,
-                                                        String chapterText,
-                                                        Chapter chapter) {
+    private SceneSegmentationOutcome detectScenesWithRetry(UUID jobId,
+                                                           UUID chapterId,
+                                                           String chapterText,
+                                                           Chapter chapter) {
         LlmRetryConfig retryConfig = LlmRetryConfig.defaultConfig();
 
         log.info("Chapter segmentation starting with retry (max {} attempts) for job {}",
                 retryConfig.getMaxAttempts(), jobId);
 
-        LlmRetryResult<SceneDetectionOutcome> retryResult = llmRetryStrategy.executeWithRetry(
+        LlmRetryResult<SceneSegmentationOutcome> retryResult = llmRetryStrategy.executeWithRetry(
                 "Scene Detection",
                 retryConfig,
                 () -> performFullSceneDetection(jobId, chapterId, chapterText, chapter));
@@ -140,10 +122,10 @@ public class SceneDetectionService {
                 retryResult.getLastException());
     }
 
-    private SceneDetectionOutcome performFullSceneDetection(UUID jobId,
-                                                            UUID chapterId,
-                                                            String chapterText,
-                                                            Chapter chapterMetadata) {
+    private SceneSegmentationOutcome performFullSceneDetection(UUID jobId,
+                                                               UUID chapterId,
+                                                               String chapterText,
+                                                               Chapter chapterMetadata) {
         try {
             log.info("Chapter segmentation: starting for job {} chapter {}", jobId, chapterId);
 
@@ -167,53 +149,9 @@ public class SceneDetectionService {
                 throw new RuntimeException("Scene coordinate localization returned empty results");
             }
 
-            Chapter chapter = createTriadAnalysisChapter(chapterId, chapterText, chapterMetadata);
-            var tempScenes = scenes.stream().map(s -> {
-                String sceneText = null;
-                try {
-                    int start = (int) s.startCharacterOffset();
-                    int end = (int) s.endCharacterOffset();
-                    if (start >= 0 && end <= chapterText.length() && start < end) {
-                        sceneText = chapterText.substring(start, end);
-                    }
-                } catch (Exception e) {
-                    log.debug("Failed to extract scene text for triad analysis: {}", e.getMessage());
-                }
-
-                return new Scene(
-                        UUID.randomUUID(),
-                        s.sceneIndex(),
-                        s.startCharacterOffset(),
-                        s.endCharacterOffset(),
-                        s.contextSummary(),
-                        s.chronology(),
-                        s.chronologyCertainty(),
-                        s.chronologyMarker(),
-                        sceneText,
-                        chapterId,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null
-                );
-            }).toList();
-
-            for (var scene : tempScenes) {
-                chapter.addExistingScene(scene);
-            }
-
-            var triadOutcome = triadOrchestrationService.analyzeChapterTriadsWithIndividuals(jobId, chapter);
-
-            log.debug("Successfully completed scene segmentation/localization pipeline: {} scenes detected, {} triads analyzed",
-                    scenes.size(), triadOutcome.triadAnalyses().size());
-            return new SceneDetectionOutcome(
-                    scenes,
-                    triadOutcome.triadAnalyses(),
-                    triadOutcome.sceneIndividualExtractions(),
-                    triadOutcome.sceneLocationExtractions(),
-                    triadOutcome.sceneEventExtractions()
-            );
+            log.debug("Successfully completed scene segmentation/localization pipeline: {} scenes detected",
+                    scenes.size());
+            return new SceneSegmentationOutcome(scenes);
         } catch (Exception e) {
             if (isExpectedRetryableSegmentationFailure(e)) {
                 log.warn("Triad-based scene detection pipeline failed: {}", e.getMessage());
@@ -249,28 +187,6 @@ public class SceneDetectionService {
                 || message.contains("produced no localizable scenes")
                 || message.contains("Scene detection failed with retry:")
                 || message.contains("Chapter segmentation failed after");
-    }
-
-    private Chapter createTriadAnalysisChapter(UUID chapterId, String chapterText, Chapter chapterMetadata) {
-        Chapter chapter = new Chapter();
-        chapter.setId(chapterId);
-        chapter.setRawText(chapterText);
-
-        if (chapterMetadata != null) {
-            chapter.setBookId(chapterMetadata.getBookId());
-            chapter.setUniverseId(chapterMetadata.getUniverseId());
-            chapter.setSeriesId(chapterMetadata.getSeriesId());
-            chapter.setUniverse(chapterMetadata.getUniverse());
-            chapter.setSeries(chapterMetadata.getSeries());
-            chapter.setBookTitle(chapterMetadata.getBookTitle());
-            chapter.setBookNumber(chapterMetadata.getBookNumber());
-            chapter.setChapterNumber(chapterMetadata.getChapterNumber());
-            chapter.setChapterTitle(chapterMetadata.getChapterTitle());
-            chapter.setContentHash(chapterMetadata.getContentHash());
-            chapter.setCoordinates(chapterMetadata.getCoordinates());
-        }
-
-        return chapter;
     }
 
     private List<SceneWithCoordinates> processSegments(UUID jobId, List<SegmentWindow> segments) {

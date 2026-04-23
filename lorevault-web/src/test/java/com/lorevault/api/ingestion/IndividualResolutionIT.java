@@ -19,6 +19,7 @@ import com.lorevault.api.web.command.ingestion.SubmitChapterRequest;
 import com.lorevault.api.testutil.SampleChapterLoader;
 import com.lorevault.api.testing.TestImages;
 import com.lorevault.api.content.timeline.application.DefaultTemporalEdgeService;
+import com.lorevault.api.content.timeline.application.TriadEdgePersistenceService;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -106,6 +107,12 @@ class IndividualResolutionIT {
     @MockitoBean
     private DefaultTemporalEdgeService defaultTemporalEdgeService;
 
+    @MockitoBean
+    private LocationPersistenceService locationPersistenceService;
+
+    @MockitoBean
+    private TriadEdgePersistenceService triadEdgePersistenceService;
+
     @BeforeEach
     void setUp() {
         reset(eventPublisher, defaultTemporalEdgeService, sceneDetectionService);
@@ -117,10 +124,9 @@ class IndividualResolutionIT {
     @Test
     void fullProcessingCycle_linksMentionsToSingleChapterIndividual_perNormalizedName() {
         SubmitChapterRequest request = SampleChapterLoader.loadSampleChapter("kevin_jenkins");
-        when(sceneDetectionService.detectScenesInText(
+        when(sceneDetectionService.detectScenesInChapter(
                 org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.anyString()))
+                org.mockito.ArgumentMatchers.any(com.lorevault.api.content.entities.Chapter.class)))
                 .thenReturn(outcomeWithRepeatedNyx());
 
         IngestionSubmissionResult response = ingestionService.submitChapter(
@@ -163,10 +169,9 @@ class IndividualResolutionIT {
         SubmitChapterRequest chapterTwo = createSubmitChapterRequest(2, "Chapter Two", "Kevin Jenkins observes the station.");
         SubmitChapterRequest chapterThree = createSubmitChapterRequest(3, "Chapter Three", "Kevin Jenkins departs.");
 
-        when(sceneDetectionService.detectScenesInText(
+        when(sceneDetectionService.detectScenesInChapter(
                 org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.anyString()))
+                org.mockito.ArgumentMatchers.any(com.lorevault.api.content.entities.Chapter.class)))
                 .thenReturn(
                         outcomeWithSingleIndividual("Kevin Jenkins"),
                         outcomeWithSingleIndividual("Kevin Jenkins"),
@@ -225,33 +230,19 @@ class IndividualResolutionIT {
         return request;
     }
 
-    private SceneDetectionService.SceneDetectionOutcome outcomeWithRepeatedNyx() {
+    private SceneDetectionService.SceneSegmentationOutcome outcomeWithRepeatedNyx() {
         List<SceneWithCoordinates> scenes = List.of(
                 new SceneWithCoordinates(0, 0, 120, "Kevin arrives"),
                 new SceneWithCoordinates(1, 121, 260, "Nyx returns")
         );
-        List<TriadOrchestrationService.TriadSceneIndividualExtraction> extractions = List.of(
-                new TriadOrchestrationService.TriadSceneIndividualExtraction(0, List.of(
-                        new TriadOrchestrationService.TriadIndividualExtraction(List.of("Nyx", "N."), "tall", "20s", "pilot"),
-                        new TriadOrchestrationService.TriadIndividualExtraction(List.of("Orion"), "broad", "30s", "captain")
-                )),
-                new TriadOrchestrationService.TriadSceneIndividualExtraction(1, List.of(
-                        new TriadOrchestrationService.TriadIndividualExtraction(List.of("Nyx"), "tall", "20s", "pilot again")
-                ))
-        );
-        return new SceneDetectionService.SceneDetectionOutcome(scenes, List.of(), extractions, List.of());
+        return new SceneDetectionService.SceneSegmentationOutcome(scenes);
     }
 
-    private SceneDetectionService.SceneDetectionOutcome outcomeWithSingleIndividual(String displayName) {
+    private SceneDetectionService.SceneSegmentationOutcome outcomeWithSingleIndividual(String displayName) {
         List<SceneWithCoordinates> scenes = List.of(
                 new SceneWithCoordinates(0, 0, 120, displayName + " scene")
         );
-        List<TriadOrchestrationService.TriadSceneIndividualExtraction> extractions = List.of(
-                new TriadOrchestrationService.TriadSceneIndividualExtraction(0, List.of(
-                        new TriadOrchestrationService.TriadIndividualExtraction(List.of(displayName), null, null, null)
-                ))
-        );
-        return new SceneDetectionService.SceneDetectionOutcome(scenes, List.of(), extractions, List.of());
+        return new SceneDetectionService.SceneSegmentationOutcome(scenes);
     }
 
     private long countNodes(String label) {

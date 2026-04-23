@@ -6,6 +6,7 @@ import com.lorevault.api.ingestion.infrastructure.*;
 
 import com.lorevault.api.ai.domain.SceneLocalizationException;
 import com.lorevault.api.ai.domain.SceneWithCoordinates;
+import com.lorevault.api.ai.application.TriadOrchestrationService;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Scene;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
@@ -53,6 +54,7 @@ class SceneDetectionHandlerTest {
     @Mock private IngestionJobService ingestionJobService;
     @Mock private DefaultTemporalEdgeService defaultTemporalEdgeService;
     @Mock private TriadEdgePersistenceService triadEdgePersistenceService;
+    @Mock private TriadOrchestrationService triadOrchestrationService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
@@ -97,9 +99,11 @@ class SceneDetectionHandlerTest {
             when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
             when(sceneDetectionService.detectScenesInChapter(jobId, testChapter)).thenReturn(
-                    new SceneDetectionService.SceneDetectionOutcome(sceneCoords, List.of(), List.of(), List.of())
+                    new SceneDetectionService.SceneSegmentationOutcome(sceneCoords)
             );
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
+            when(triadOrchestrationService.analyzeChapterTriadsWithIndividuals(eq(jobId), any(Chapter.class)))
+                    .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of(), List.of()));
 
             // When
             handler.handleChapterIngestion(testEvent);
@@ -147,8 +151,10 @@ class SceneDetectionHandlerTest {
             when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
             when(sceneDetectionService.detectScenesInChapter(jobId, testChapter))
-                    .thenReturn(new SceneDetectionService.SceneDetectionOutcome(sceneCoords, List.of(), extractions, locationExtractions, eventExtractions));
+                    .thenReturn(new SceneDetectionService.SceneSegmentationOutcome(sceneCoords));
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
+            when(triadOrchestrationService.analyzeChapterTriadsWithIndividuals(eq(jobId), any(Chapter.class)))
+                    .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), extractions, locationExtractions, eventExtractions));
 
             handler.handleChapterIngestion(testEvent);
 

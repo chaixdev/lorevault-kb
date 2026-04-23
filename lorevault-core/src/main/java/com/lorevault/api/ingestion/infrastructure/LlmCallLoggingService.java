@@ -71,7 +71,8 @@ public class LlmCallLoggingService {
         rec.setInputPreview(safePreview(inputPreview));
 
         if (props.persistBodiesEnabled() == Boolean.TRUE) {
-            TruncationResult tr = maybeTruncate(responseBody, props.maxBodyChars());
+            Integer maxBodyChars = shouldSkipBodyTruncation(step) ? null : props.maxBodyChars();
+            TruncationResult tr = maybeTruncate(responseBody, maxBodyChars);
             rec.setResponseBody(tr.body());
             rec.setTruncated(tr.truncated());
             rec.setResponseHash(tr.hash());
@@ -126,6 +127,10 @@ public class LlmCallLoggingService {
         }
         String truncated = body.substring(0, maxChars);
         return new TruncationResult(truncated, sha256(body), true);
+    }
+
+    private boolean shouldSkipBodyTruncation(String step) {
+        return "scene-analysis".equals(step);
     }
 
     private String sha256(String input) {

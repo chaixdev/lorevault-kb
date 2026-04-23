@@ -79,8 +79,8 @@ class TriadEdgePersistenceServiceTest {
         callRecord.setResponseBody("{\"ok\":true}");
         callRecord.setTruncated(false);
 
-        when(statusRecordGraphRepository.findTriadStatusesForJob(jobId))
-                .thenReturn(List.of(statusRecord));
+        when(statusRecordGraphRepository.findLatestTriadStatusForJobAndCurrentSceneIndex(jobId, "1"))
+                .thenReturn(Optional.of(statusRecord));
 
         when(llmCallRecordGraphRepository.findLatestByJobStepAndStatusRecord(
                 eq(jobId), eq("scene-analysis"), eq(statusRecordId)))

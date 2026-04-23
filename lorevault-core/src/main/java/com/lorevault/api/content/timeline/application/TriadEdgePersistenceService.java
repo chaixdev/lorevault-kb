@@ -18,7 +18,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.Objects;
 
 @Service
 @Slf4j
@@ -197,13 +196,7 @@ public class TriadEdgePersistenceService {
         }
 
         String sceneIndexKey = currentSceneIndex.toString();
-        return statusRecordGraphRepository.findTriadStatusesForJob(jobId).stream()
-                .filter(status -> status != null && status.getProperties() != null)
-                .filter(status -> {
-                    String idx = status.getProperties().get("currentSceneIndex");
-                    return Objects.equals(idx, sceneIndexKey);
-                })
-                .findFirst()
+        return statusRecordGraphRepository.findLatestTriadStatusForJobAndCurrentSceneIndex(jobId, sceneIndexKey)
                 .orElseThrow(() -> triadArtifactFailure(
                         "TRIAD_STATUS_MISSING",
                         "Missing SCENE_TRIAD_ANALYSIS status for scene index " + currentSceneIndex,

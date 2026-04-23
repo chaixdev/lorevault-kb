@@ -10,6 +10,7 @@ import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.content.entities.SceneGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
+import com.lorevault.api.ai.application.TriadOrchestrationService;
 import com.lorevault.api.ingestion.application.scene.SceneDetectionService;
 import com.lorevault.api.ingestion.application.scene.SceneProcessingService;
 import com.lorevault.api.ingestion.infrastructure.IndividualPersistenceService;
@@ -55,6 +56,7 @@ public class SceneDetectionHandler {
     private final EventPersistenceService eventPersistenceService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
     private final TriadEdgePersistenceService triadEdgePersistenceService;
+    private final TriadOrchestrationService triadOrchestrationService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
 
@@ -69,6 +71,7 @@ public class SceneDetectionHandler {
             IngestionJobService ingestionJobService,
             DefaultTemporalEdgeService defaultTemporalEdgeService,
             TriadEdgePersistenceService triadEdgePersistenceService,
+            TriadOrchestrationService triadOrchestrationService,
             ApplicationEventPublisher eventPublisher
     ) {
         this.chapterRepo = chapterRepo;
@@ -80,6 +83,7 @@ public class SceneDetectionHandler {
         this.eventPersistenceService = eventPersistenceService;
         this.defaultTemporalEdgeService = defaultTemporalEdgeService;
         this.triadEdgePersistenceService = triadEdgePersistenceService;
+        this.triadOrchestrationService = triadOrchestrationService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
@@ -117,8 +121,7 @@ public class SceneDetectionHandler {
             }
 
             // Detect and persist new scenes
-            DetectionPersistenceOutcome outcome = detectAndPersistScenes(jobId, chapter);
-            List<Scene> scenes = outcome.persistedScenes();
+            List<Scene> scenes = detectAndPersistScenes(jobId, chapter);
             
             if (scenes.isEmpty()) {
                 log.warn("[SCENE_DETECTION] No scenes detected for chapter {}", chapterId);
@@ -135,11 +138,34 @@ public class SceneDetectionHandler {
                             scene -> scene.getEventId(),
                             (UUID left, UUID right) -> left
                     ));
+
+            var sceneRelationshipOutcome = new TriadOrchestrationService.TriadOutcome(List.of(), List.of(), List.of(), List.of());
+            if (!scenes.isEmpty()) {
+                Chapter triadChapter = chapterRepo.findById(chapterId)
+                        .orElseThrow(() -> new IllegalArgumentException("Chapter not found for triad analysis: " + chapterId));
+                triadChapter.setScenes(List.copyOf(scenes));
+                sceneRelationshipOutcome = triadOrchestrationService.analyzeChapterTriadsWithIndividuals(jobId, triadChapter);
+            }
             triadEdgePersistenceService.applyTriadAnalysesPostPersistence(
                     chapterId,
-                    outcome.triadAnalyses(),
+                    sceneRelationshipOutcome.triadAnalyses(),
                     sceneIndexToId
             );
+
+            if (!scenes.isEmpty()) {
+                individualPersistenceService.persistExtractedIndividuals(
+                        scenes,
+                        sceneRelationshipOutcome.sceneIndividualExtractions()
+                );
+                locationPersistenceService.persistExtractedLocations(
+                        scenes,
+                        sceneRelationshipOutcome.sceneLocationExtractions()
+                );
+                eventPersistenceService.persistExtractedEvents(
+                        scenes,
+                        sceneRelationshipOutcome.sceneEventExtractions()
+                );
+            }
             
                     stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
                     String.format("Detected %d semantic scenes from chapter text", scenes.size()));
@@ -152,46 +178,28 @@ public class SceneDetectionHandler {
         );
     }
 
-    private DetectionPersistenceOutcome detectAndPersistScenes(UUID jobId, Chapter chapter) {
+    private List<Scene> detectAndPersistScenes(UUID jobId, Chapter chapter) {
         UUID chapterId = chapter.getId();
         log.info("[SCENE_DETECTION] Detecting scenes for chapter {}", chapterId);
 
         String chapterText = chapter.getRawText();
         if (chapterText == null || chapterText.trim().isEmpty()) {
             log.warn("[SCENE_DETECTION] Chapter {} has no text content", chapterId);
-            return new DetectionPersistenceOutcome(List.of(), List.of());
+            return List.of();
         }
 
         // Use AI to detect scenes (passing jobId for status tracking)
-        var detectionOutcome = sceneDetectionService.detectScenesInChapter(jobId, chapter);
-        var scenesWithCoords = detectionOutcome.scenes();
+        var segmentationOutcome = sceneDetectionService.detectScenesInChapter(jobId, chapter);
+        var scenesWithCoords = segmentationOutcome.scenes();
 
         if (scenesWithCoords.isEmpty()) {
             log.info("[SCENE_DETECTION] No scenes detected for chapter {}", chapterId);
-            return new DetectionPersistenceOutcome(List.of(), detectionOutcome.triadAnalyses());
+            return List.of();
         }
 
         // Persist detected scenes
-        List<Scene> persistedScenes = sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords);
-        individualPersistenceService.persistExtractedIndividuals(
-                persistedScenes,
-                detectionOutcome.sceneIndividualExtractions()
-        );
-        locationPersistenceService.persistExtractedLocations(
-                persistedScenes,
-                detectionOutcome.sceneLocationExtractions()
-        );
-        eventPersistenceService.persistExtractedEvents(
-                persistedScenes,
-                detectionOutcome.sceneEventExtractions()
-        );
-        return new DetectionPersistenceOutcome(persistedScenes, detectionOutcome.triadAnalyses());
+        return sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords);
     }
-
-    private record DetectionPersistenceOutcome(
-            List<Scene> persistedScenes,
-            List<com.lorevault.api.ai.application.TriadOrchestrationService.TriadAnalysis> triadAnalyses
-    ) {}
 
     private void emitScenesDetected(UUID jobId, UUID chapterId, UUID bookId, List<Scene> scenes) {
         List<UUID> sceneIds = scenes.stream().map(Scene::getEventId).toList();

@@ -4,13 +4,11 @@ import com.lorevault.api.ai.domain.SceneDetectionResult;
 import com.lorevault.api.ai.domain.SceneLocalizationException;
 import com.lorevault.api.ai.domain.SceneWithCoordinates;
 import com.lorevault.api.ai.infrastructure.SceneDetectionClient;
-import com.lorevault.api.ai.application.TriadOrchestrationService;
 
 import com.lorevault.api.content.entities.Chapter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -36,9 +34,6 @@ class SceneDetectionServiceTest {
     private SceneProcessingService sceneProcessingService;
     @Spy
     private LlmRetryStrategy llmRetryStrategy;
-    @Mock
-    private TriadOrchestrationService triadOrchestrationService;
-
     @InjectMocks
     private SceneDetectionService sceneDetectionService;
 
@@ -59,10 +54,7 @@ class SceneDetectionServiceTest {
                 .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "", "", "", "")));
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
                 .thenReturn(List.of(new SceneWithCoordinates(0, 0, 10, "ctx")));
-        when(triadOrchestrationService.analyzeChapterTriadsWithIndividuals(eq(jobId), any()))
-                .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of(), List.of()));
-
-        SceneDetectionService.SceneDetectionOutcome outcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
+        SceneDetectionService.SceneSegmentationOutcome outcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
         List<SceneWithCoordinates> scenes = outcome.scenes();
 
         assertThat(scenes).hasSize(2);
@@ -70,9 +62,6 @@ class SceneDetectionServiceTest {
         assertThat(scenes.get(0).potentialSplitSceneStart()).isFalse();
         assertThat(scenes.get(1).potentialSplitSceneStart()).isTrue();
         assertThat(scenes.get(1).potentialSplitSceneEnd()).isFalse();
-        assertThat(outcome.triadAnalyses()).isEmpty();
-        assertThat(outcome.sceneIndividualExtractions()).isEmpty();
-
         verify(sceneDetectionClient, times(2)).detectChapterSegmentation(eq(jobId), any(String.class));
     }
 
@@ -93,17 +82,12 @@ class SceneDetectionServiceTest {
                 .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "", "", "", "")));
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
                 .thenReturn(List.of(new SceneWithCoordinates(0, 0, chapterText.length(), "ctx")));
-        when(triadOrchestrationService.analyzeChapterTriadsWithIndividuals(eq(jobId), any()))
-                .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of(), List.of()));
-
-        SceneDetectionService.SceneDetectionOutcome outcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
+        SceneDetectionService.SceneSegmentationOutcome outcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
         List<SceneWithCoordinates> scenes = outcome.scenes();
 
         assertThat(scenes).hasSize(1);
         assertThat(scenes.get(0).potentialSplitSceneStart()).isFalse();
         assertThat(scenes.get(0).potentialSplitSceneEnd()).isFalse();
-        assertThat(outcome.triadAnalyses()).isEmpty();
-        assertThat(outcome.sceneIndividualExtractions()).isEmpty();
         verify(sceneDetectionClient, times(1)).detectChapterSegmentation(eq(jobId), eq(chapterText));
     }
 
@@ -242,42 +226,4 @@ class SceneDetectionServiceTest {
         verify(sceneDetectionClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText));
     }
 
-    @Test
-    @DisplayName("Should preserve chapter metadata for triad analysis")
-    void shouldPreserveChapterMetadataForTriadAnalysis() {
-        UUID jobId = UUID.randomUUID();
-        UUID chapterId = UUID.randomUUID();
-        UUID bookId = UUID.randomUUID();
-        String chapterText = "Short text.";
-
-        Chapter chapter = new Chapter();
-        chapter.setId(chapterId);
-        chapter.setBookId(bookId);
-        chapter.setChapterNumber(3);
-        chapter.setRawText(chapterText);
-
-        SceneDetectionClient.SegmentationBudgetCheck admission = new SceneDetectionClient.SegmentationBudgetCheck(
-                "nlp-small", 128000, 89600, 10, 10, 20, true
-        );
-
-        when(sceneDetectionClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
-        when(sceneDetectionClient.detectChapterSegmentation(eq(jobId), eq(chapterText))).thenReturn("<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>");
-        when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt()))
-                .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "", "", "", "")));
-        when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
-                .thenReturn(List.of(new SceneWithCoordinates(0, 0, chapterText.length(), "ctx")));
-        when(triadOrchestrationService.analyzeChapterTriadsWithIndividuals(eq(jobId), any()))
-                .thenReturn(new TriadOrchestrationService.TriadOutcome(List.of(), List.of(), List.of()));
-
-        sceneDetectionService.detectScenesInChapter(jobId, chapter);
-
-        ArgumentCaptor<Chapter> chapterCaptor = ArgumentCaptor.forClass(Chapter.class);
-        verify(triadOrchestrationService).analyzeChapterTriadsWithIndividuals(eq(jobId), chapterCaptor.capture());
-
-        Chapter capturedChapter = chapterCaptor.getValue();
-        assertThat(capturedChapter.getId()).isEqualTo(chapterId);
-        assertThat(capturedChapter.getBookId()).isEqualTo(bookId);
-        assertThat(capturedChapter.getChapterNumber()).isEqualTo(3);
-        assertThat(capturedChapter.getRawText()).isEqualTo(chapterText);
-    }
 }

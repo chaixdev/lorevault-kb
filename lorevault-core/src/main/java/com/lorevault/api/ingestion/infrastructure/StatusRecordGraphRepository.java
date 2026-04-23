@@ -10,6 +10,7 @@ import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface StatusRecordGraphRepository extends Neo4jRepository<StatusRecord, UUID> {
@@ -33,5 +34,14 @@ public interface StatusRecordGraphRepository extends Neo4jRepository<StatusRecor
             ORDER BY s.timestamp DESC
             """)
     List<StatusRecord> findTriadStatusesForJob(UUID jobId);
+
+    @Query("""
+            MATCH (s:StatusRecord {jobId: $jobId, status: 'SCENE_TRIAD_ANALYSIS'})
+            WHERE s.`prop.currentSceneIndex` = $currentSceneIndex
+            RETURN s
+            ORDER BY s.timestamp DESC
+            LIMIT 1
+            """)
+    Optional<StatusRecord> findLatestTriadStatusForJobAndCurrentSceneIndex(UUID jobId, String currentSceneIndex);
 
 }

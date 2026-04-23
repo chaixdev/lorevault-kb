@@ -262,13 +262,13 @@ class LlmCallLoggingServiceTest {
         // Act
         LlmCallRecord result = service.logCall(
             jobId,
-            "scene-analysis",
+            "chapter-segmentation",
             "openai-compatible",
             "gpt-4o-mini",
             0.1,
             0.9,
             6000,
-            "scene-analysis.txt",
+            "chapter-segmentation.txt",
             "You are an AI assistant...",
             "Chapter segmentation XML result...",
             longResponse,
@@ -286,6 +286,43 @@ class LlmCallLoggingServiceTest {
         // Hash should be of the original full response, not the truncated one
         String expectedHash = "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"; // Will be different, but should be consistent
         assertThat(result.getResponseHash()).isNotEqualTo(expectedHash).hasSize(64);
+    }
+
+    @Test
+    void logCall_withSceneAnalysisStep_shouldNotTruncateEvenWhenOverLimit() {
+        // Arrange: truncation at 20 chars
+        var truncationProps = new LoreVaultLlmLoggingProperties(true, true, 20, true);
+        service = new LlmCallLoggingService(truncationProps, jobRepo, statusRepo, llmCallRepo);
+
+        UUID jobId = UUID.randomUUID();
+        when(jobRepo.findById(jobId)).thenReturn(Optional.empty());
+        when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        String longResponse = "This is a very long response that exceeds 20 characters and should not be truncated for scene-analysis";
+
+        // Act
+        LlmCallRecord result = service.logCall(
+                jobId,
+                "scene-analysis",
+                "openai-compatible",
+                "gpt-4o-mini",
+                0.1,
+                0.9,
+                6000,
+                "scene-analysis.txt",
+                "You are an AI assistant...",
+                "Chapter segmentation XML result...",
+                longResponse,
+                1500L,
+                400,
+                200
+        );
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getResponseBody()).isEqualTo(longResponse);
+        assertThat(result.getTruncated()).isFalse();
+        assertThat(result.getResponseHash()).isNotNull().hasSize(64);
     }
 
     @Test
