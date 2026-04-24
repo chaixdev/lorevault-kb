@@ -1,11 +1,12 @@
 package com.lorevault.api.ai.domain;
 
 import com.lorevault.api.ingestion.domain.IngestionFailure;
+import com.lorevault.api.ingestion.domain.IngestionFailureCarrier;
 
 /**
  * Business exception for expected scene-localization failures in the scene detection pipeline.
  */
-public class SceneLocalizationException extends RuntimeException {
+public class SceneLocalizationException extends RuntimeException implements IngestionFailureCarrier {
 
     private final IngestionFailure failure;
 

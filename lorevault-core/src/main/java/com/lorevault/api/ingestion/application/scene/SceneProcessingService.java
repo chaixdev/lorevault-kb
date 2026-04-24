@@ -18,13 +18,17 @@ import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.xml.sax.SAXException;
 
 /**
  * Unified service responsible for scene processing operations:
@@ -168,6 +172,11 @@ public class SceneProcessingService {
      * @return List of parsed scene detection results
      */
     public List<SceneDetectionResult> parseSceneDetectionXml(String xmlResponse, int chapterTextLength) {
+        if (xmlResponse == null || xmlResponse.isBlank()) {
+            log.warn("Scene detection XML response is empty; returning no parsed scenes");
+            return List.of();
+        }
+
         try {
             log.trace("Parsing XML response of length: {}", xmlResponse.length());
 
@@ -188,7 +197,7 @@ public class SceneProcessingService {
             log.info("Successfully parsed {} scene detection results", results.size());
             return results;
 
-        } catch (Exception e) {
+        } catch (ParserConfigurationException | SAXException | IOException e) {
             log.error("Failed to parse scene detection XML response: {}", e.getMessage());
             log.debug("Raw response was: {}", xmlResponse);
 
@@ -276,7 +285,7 @@ public class SceneProcessingService {
                 }
             } catch (SceneLocalizationException e) {
                 throw e;
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 throw sceneLocalizationFailure(
                         "SCENE_LOCALIZATION_FAILED",
                         String.format(
@@ -362,14 +371,14 @@ public class SceneProcessingService {
         return true;
     }
 
-    private Document parseXmlDocument(String cleanXml) throws Exception {
+    private Document parseXmlDocument(String cleanXml) throws ParserConfigurationException, SAXException, IOException {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
 
         log.debug("About to parse XML of length: {}", cleanXml.length());
         log.debug("XML starts with: '{}'", cleanXml.substring(0, Math.min(100, cleanXml.length())));
 
-        byte[] xmlBytes = cleanXml.getBytes("UTF-8");
+        byte[] xmlBytes = cleanXml.getBytes(StandardCharsets.UTF_8);
         log.debug("XML byte array length: {}, first 10 bytes: {}", xmlBytes.length,
                 java.util.Arrays.toString(java.util.Arrays.copyOf(xmlBytes, Math.min(10, xmlBytes.length))));
 

@@ -3,11 +3,13 @@ package com.lorevault.api.ingestion.application.scene;
 import com.lorevault.api.ai.domain.LlmRetryStrategy;
 import com.lorevault.api.ai.domain.LlmRetryStrategy.LlmRetryConfig;
 import com.lorevault.api.ai.domain.LlmRetryStrategy.LlmRetryResult;
+import com.lorevault.api.ai.domain.SceneDetectionException;
 import com.lorevault.api.ai.domain.SceneDetectionResult;
 import com.lorevault.api.ai.domain.SceneLocalizationException;
 import com.lorevault.api.ai.domain.SceneWithCoordinates;
 import com.lorevault.api.ai.infrastructure.SceneDetectionClient;
 import com.lorevault.api.content.entities.Chapter;
+import com.lorevault.api.ingestion.domain.IngestionFailure;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -45,13 +47,21 @@ public class SceneDetectionService {
         } catch (SceneLocalizationException e) {
             log.warn("Scene detection failed for chapter {}: {}", chapterId, e.getMessage());
             throw e;
+        } catch (SceneDetectionException e) {
+            log.warn("Scene detection failed for chapter {}: {}", chapterId, e.getMessage());
+            throw e;
         } catch (Exception e) {
             if (isExpectedRetryableSegmentationFailure(e)) {
                 log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage());
             } else {
                 log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage(), e);
             }
-            throw new RuntimeException("Scene detection failed: " + e.getMessage(), e);
+            throw buildSceneDetectionFailure(
+                    "SCENE_DETECTION_FAILED",
+                    "Scene detection failed: " + safeMessage(e),
+                    chapterId,
+                    e
+            );
         }
     }
 
@@ -75,13 +85,21 @@ public class SceneDetectionService {
         } catch (SceneLocalizationException e) {
             log.warn("Scene detection failed for chapter {}: {}", chapterId, e.getMessage());
             throw e;
+        } catch (SceneDetectionException e) {
+            log.warn("Scene detection failed for chapter {}: {}", chapterId, e.getMessage());
+            throw e;
         } catch (Exception e) {
             if (isExpectedRetryableSegmentationFailure(e)) {
                 log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage());
             } else {
                 log.error("Scene detection failed for chapter {}: {}", chapterId, e.getMessage(), e);
             }
-            throw new RuntimeException("Scene detection failed: " + e.getMessage(), e);
+            throw buildSceneDetectionFailure(
+                    "SCENE_DETECTION_FAILED",
+                    "Scene detection failed: " + safeMessage(e),
+                    chapterId,
+                    e
+            );
         }
     }
 
@@ -117,9 +135,12 @@ public class SceneDetectionService {
 
         log.error("Scene detection failed for chapter {}: {}", chapterId, failureMsg);
         String detailsMsg = String.join("; ", retryResult.getAttemptDetails());
-        throw new RuntimeException(
+        throw buildSceneDetectionFailure(
+                "SCENE_DETECTION_RETRY_EXHAUSTED",
                 "Scene detection failed with retry: " + failureMsg + " | Attempts: " + detailsMsg,
-                retryResult.getLastException());
+                chapterId,
+                retryResult.getLastException()
+        );
     }
 
     private SceneSegmentationOutcome performFullSceneDetection(UUID jobId,
@@ -144,9 +165,14 @@ public class SceneDetectionService {
                         chapterId, budgetCheck.estimatedTotalInput(), budgetCheck.usableInputBudget(), segments.size());
             }
 
-            List<SceneWithCoordinates> scenes = processSegments(jobId, segments);
+            List<SceneWithCoordinates> scenes = processSegments(jobId, chapterId, segments);
             if (scenes.isEmpty()) {
-                throw new RuntimeException("Scene coordinate localization returned empty results");
+                throw buildSceneDetectionFailure(
+                        "SCENE_COORDINATE_LOCALIZATION_EMPTY",
+                        "Scene coordinate localization returned empty results",
+                        chapterId,
+                        null
+                );
             }
 
             log.debug("Successfully completed scene segmentation/localization pipeline: {} scenes detected",
@@ -168,12 +194,44 @@ public class SceneDetectionService {
             if (current instanceof SceneLocalizationException) {
                 return true;
             }
+            if (current instanceof SceneDetectionException sceneDetectionException
+                    && sceneDetectionException.failure() != null) {
+                String code = sceneDetectionException.failure().code();
+                if ("SCENE_DETECTION_RETRY_EXHAUSTED".equals(code)
+                        || "SCENE_SEGMENT_NO_LOCALIZABLE_SCENES".equals(code)
+                        || "SCENE_SEGMENTED_FALLBACK_EMPTY".equals(code)
+                        || "SCENE_SEGMENTATION_XML_EMPTY".equals(code)
+                        || "SCENE_COORDINATE_LOCALIZATION_EMPTY".equals(code)
+                        || "SCENE_COORDINATE_LOCALIZATION_DROPPED_SCENES".equals(code)) {
+                    return true;
+                }
+            }
             if (current instanceof RuntimeException && isKnownRetryableMessage(current.getMessage())) {
                 return true;
             }
             current = current.getCause();
         }
         return false;
+    }
+
+    private SceneDetectionException buildSceneDetectionFailure(String code,
+                                                               String message,
+                                                               UUID chapterId,
+                                                               Throwable cause) {
+        IngestionFailure failure = IngestionFailure.builder(code, message)
+                .exceptionType(cause != null ? cause.getClass().getSimpleName() : null)
+                .stage("SCENE_DETECTION")
+                .detail("chapterId", chapterId)
+                .build();
+        return new SceneDetectionException(failure, cause);
+    }
+
+    private String safeMessage(Throwable throwable) {
+        if (throwable == null) {
+            return "Unknown scene detection failure";
+        }
+        String message = throwable.getMessage();
+        return message != null ? message : throwable.getClass().getSimpleName();
     }
 
     private boolean isKnownRetryableMessage(String message) {
@@ -189,17 +247,22 @@ public class SceneDetectionService {
                 || message.contains("Chapter segmentation failed after");
     }
 
-    private List<SceneWithCoordinates> processSegments(UUID jobId, List<SegmentWindow> segments) {
+    private List<SceneWithCoordinates> processSegments(UUID jobId, UUID chapterId, List<SegmentWindow> segments) {
         List<SceneWithCoordinates> rebasedScenes = new ArrayList<>();
 
         for (SegmentWindow segment : segments) {
-            List<SceneWithCoordinates> localizedSegmentScenes = detectScenesInSingleSegment(jobId, segment.text());
+            List<SceneWithCoordinates> localizedSegmentScenes = detectScenesInSingleSegment(jobId, chapterId, segment.text());
             if (localizedSegmentScenes.isEmpty()) {
-                throw new RuntimeException(String.format(
-                        "Segment %d/%d produced no localizable scenes",
-                        segment.segmentIndex() + 1,
-                        segment.totalSegments()
-                ));
+                throw buildSceneDetectionFailure(
+                        "SCENE_SEGMENT_NO_LOCALIZABLE_SCENES",
+                        String.format(
+                                "Segment %d/%d produced no localizable scenes",
+                                segment.segmentIndex() + 1,
+                                segment.totalSegments()
+                        ),
+                        chapterId,
+                        null
+                );
             }
 
             List<SceneWithCoordinates> sortedSegmentScenes = localizedSegmentScenes.stream()
@@ -227,7 +290,12 @@ public class SceneDetectionService {
         }
 
         if (rebasedScenes.isEmpty()) {
-            throw new RuntimeException("Segmented fallback produced no localizable scenes");
+            throw buildSceneDetectionFailure(
+                    "SCENE_SEGMENTED_FALLBACK_EMPTY",
+                    "Segmented fallback produced no localizable scenes",
+                    chapterId,
+                    null
+            );
         }
 
         List<SceneWithCoordinates> ordered = rebasedScenes.stream()
@@ -253,31 +321,46 @@ public class SceneDetectionService {
         return renumbered;
     }
 
-    private List<SceneWithCoordinates> detectScenesInSingleSegment(UUID jobId, String segmentText) {
+    private List<SceneWithCoordinates> detectScenesInSingleSegment(UUID jobId, UUID chapterId, String segmentText) {
         String segmentationXmlResponse = sceneDetectionClient.detectChapterSegmentation(jobId, segmentText);
         List<SceneDetectionResult> sceneResults = sceneProcessingService.parseSceneDetectionXml(segmentationXmlResponse, segmentText.length());
         if (sceneResults.isEmpty()) {
-            throw new RuntimeException("Chapter segmentation parsing returned empty results - likely malformed XML response");
+            throw buildSceneDetectionFailure(
+                    "SCENE_SEGMENTATION_XML_EMPTY",
+                    "Chapter segmentation parsing returned empty results - likely malformed XML response",
+                    chapterId,
+                    null
+            );
         }
         List<SceneWithCoordinates> scenes = sceneProcessingService.localizeSceneCoordinates(segmentText, sceneResults);
         if (scenes.isEmpty()) {
-            throw new RuntimeException("Scene coordinate localization returned empty results");
+            throw buildSceneDetectionFailure(
+                    "SCENE_COORDINATE_LOCALIZATION_EMPTY",
+                    "Scene coordinate localization returned empty results",
+                    chapterId,
+                    null
+            );
         }
-        validateLocalizationCoverage(sceneResults.size(), scenes.size());
+        validateLocalizationCoverage(chapterId, sceneResults.size(), scenes.size());
         return scenes;
     }
 
-    private void validateLocalizationCoverage(int parsedSceneCount, int localizedSceneCount) {
+    private void validateLocalizationCoverage(UUID chapterId, int parsedSceneCount, int localizedSceneCount) {
         if (parsedSceneCount <= 0) {
             return;
         }
 
         if (localizedSceneCount != parsedSceneCount) {
-            throw new RuntimeException(String.format(
-                    "Scene coordinate localization dropped scenes (parsed=%d localized=%d)",
-                    parsedSceneCount,
-                    localizedSceneCount
-            ));
+            throw buildSceneDetectionFailure(
+                    "SCENE_COORDINATE_LOCALIZATION_DROPPED_SCENES",
+                    String.format(
+                            "Scene coordinate localization dropped scenes (parsed=%d localized=%d)",
+                            parsedSceneCount,
+                            localizedSceneCount
+                    ),
+                    chapterId,
+                    null
+            );
         }
     }
 

@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion.application.scene;
 import com.lorevault.api.ai.domain.LlmRetryStrategy;
+import com.lorevault.api.ai.domain.SceneDetectionException;
 import com.lorevault.api.ai.domain.SceneDetectionResult;
 import com.lorevault.api.ai.domain.SceneLocalizationException;
 import com.lorevault.api.ai.domain.SceneWithCoordinates;
@@ -116,7 +117,7 @@ class SceneDetectionServiceTest {
                 .thenReturn(List.of(new SceneWithCoordinates(0, 0, chapterText.length(), "ctx-1")));
 
         assertThatThrownBy(() -> sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(SceneDetectionException.class)
                 .hasMessageContaining("Scene detection failed with retry")
                 .hasMessageContaining("Scene coordinate localization dropped scenes");
 
@@ -153,7 +154,7 @@ class SceneDetectionServiceTest {
         ));
 
         assertThatThrownBy(() -> sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(SceneDetectionException.class)
                 .hasMessageContaining("Scene detection failed with retry")
                 .hasMessageContaining("Scene coordinate localization dropped scenes");
 
@@ -180,7 +181,7 @@ class SceneDetectionServiceTest {
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any())).thenReturn(List.of());
 
         assertThatThrownBy(() -> sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(SceneDetectionException.class)
                 .hasMessageContaining("Scene detection failed with retry")
                 .hasMessageContaining("Scene coordinate localization returned empty results");
 
