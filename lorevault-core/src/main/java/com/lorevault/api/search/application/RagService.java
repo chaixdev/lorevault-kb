@@ -13,6 +13,8 @@ import com.lorevault.api.search.application.CoreSearchRecords.CoreSemanticSearch
 import com.lorevault.api.search.application.CoreSearchRecords.CoreSearchResult;
 import com.lorevault.api.search.application.CoreSearchRecords.CoreSemanticSearchFilters;
 import com.lorevault.api.search.domain.QuestionIntent;
+import com.lorevault.api.search.domain.EntityLookupException;
+import com.lorevault.api.search.domain.SemanticSearchException;
 import com.lorevault.api.search.infrastructure.CypherTemplateRegistry;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.content.entities.ChunkGraphRepository;
@@ -149,12 +151,12 @@ public class RagService {
 
         // Try individual lookup first, then location lookup
         List<CypherTemplateRegistry.EntityLookupResult> results =
-                templateRegistry.execute("individual-lookup",
+                executeEntityLookupTemplate("individual-lookup",
                         Map.of("normalizedName", normalizedName),
                         request.visibility());
 
         if (results.isEmpty()) {
-            results = templateRegistry.execute("location-lookup",
+            results = executeEntityLookupTemplate("location-lookup",
                     Map.of("normalizedName", normalizedName),
                     request.visibility());
         }
@@ -242,7 +244,13 @@ public class RagService {
 
         // Step 1: Retrieve relevant chunks via semantic search
         CoreSemanticSearchRequest searchRequest = buildSearchRequest(request);
-        CoreSemanticSearchResponse searchResponse = semanticSearchService.search(searchRequest);
+        CoreSemanticSearchResponse searchResponse;
+        try {
+            searchResponse = semanticSearchService.search(searchRequest);
+        } catch (SemanticSearchException e) {
+            log.warn("Narrative QA vector search backend failure: {}", e.getMessage());
+            return buildSearchFailureResponse(request, startTime);
+        }
 
         List<CoreSearchResult> searchResults = searchResponse.results();
         log.debug("Retrieved {} chunks for RAG", searchResults.size());
@@ -283,26 +291,36 @@ public class RagService {
     private CoreAskResponse handleNarrativeQaHybrid(CoreAskRequest request, long startTime) {
         CoreSemanticSearchRequest vectorSearchRequest = buildHybridVectorSearchRequest(request);
 
-        CompletableFuture<List<CoreSearchResult>> vectorFuture = CompletableFuture.supplyAsync(() -> {
+        record BranchOutcome(List<CoreSearchResult> results, boolean failed) {}
+
+        CompletableFuture<BranchOutcome> vectorFuture = CompletableFuture.supplyAsync(() -> {
             try {
-                return semanticSearchService.search(vectorSearchRequest).results();
+                return new BranchOutcome(semanticSearchService.search(vectorSearchRequest).results(), false);
             } catch (Exception e) {
                 log.warn("Hybrid vector branch failed: {}", e.getMessage());
-                return List.of();
+                return new BranchOutcome(List.of(), true);
             }
         });
 
-        CompletableFuture<List<CoreSearchResult>> graphFuture = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<BranchOutcome> graphFuture = CompletableFuture.supplyAsync(() -> {
             try {
-                return runGraphBranch(request);
+                return new BranchOutcome(runGraphBranch(request), false);
             } catch (Exception e) {
                 log.warn("Hybrid graph branch failed: {}", e.getMessage());
-                return List.of();
+                return new BranchOutcome(List.of(), true);
             }
         });
 
-        List<CoreSearchResult> vectorResults = vectorFuture.join();
-        List<CoreSearchResult> graphResults = graphFuture.join();
+        BranchOutcome vectorOutcome = vectorFuture.join();
+        BranchOutcome graphOutcome = graphFuture.join();
+        boolean anyBranchFailed = vectorOutcome.failed() || graphOutcome.failed();
+
+        if (vectorOutcome.failed() && graphOutcome.failed()) {
+            return buildSearchFailureResponse(request, startTime);
+        }
+
+        List<CoreSearchResult> vectorResults = vectorOutcome.results();
+        List<CoreSearchResult> graphResults = graphOutcome.results();
 
         List<CoreSearchResult> fusedResults = fuseByRrf(vectorResults, graphResults, request.topK());
 
@@ -310,6 +328,9 @@ public class RagService {
         List<CoreSearchResult> filteredResults = filterByThreshold(fusedResults, null);
 
         if (filteredResults.isEmpty()) {
+            if (anyBranchFailed) {
+                return buildSearchFailureResponse(request, startTime);
+            }
             return buildNoEvidenceResponse(request, fusedResults.size(), startTime);
         }
 
@@ -329,6 +350,20 @@ public class RagService {
                 modelId != null ? modelId : "unknown-model");
 
         return new CoreAskResponse(answer, citations, metadata);
+    }
+
+    private CoreAskResponse buildSearchFailureResponse(CoreAskRequest request, long startTime) {
+        String failureAnswer = "Search backend failures prevented retrieval for this question.";
+
+        long processingTime = System.currentTimeMillis() - startTime;
+        CoreAskMetadata metadata = new CoreAskMetadata(
+                request.question(),
+                0,
+                0,
+                processingTime,
+                modelId != null ? modelId : "unknown-model");
+
+        return new CoreAskResponse(failureAnswer, List.of(), metadata);
     }
 
     // -------------------------------------------------------------------------
@@ -577,7 +612,7 @@ public class RagService {
             return List.of();
         }
 
-        List<CypherTemplateRegistry.EntityLookupResult> entityScenes = templateRegistry.execute(
+        List<CypherTemplateRegistry.EntityLookupResult> entityScenes = executeEntityLookupTemplate(
                 "individual-scenes",
                 Map.of("normalizedName", subject.toLowerCase().trim()),
                 request.visibility());
@@ -618,6 +653,17 @@ public class RagService {
         }
 
         return graphCandidates.stream().limit(Math.max(hybridBranchN, 1)).toList();
+    }
+
+    private List<CypherTemplateRegistry.EntityLookupResult> executeEntityLookupTemplate(String templateId,
+                                                                                        Map<String, Object> params,
+                                                                                        com.lorevault.api.search.domain.SpoilerVisibility visibility) {
+        try {
+            return templateRegistry.execute(templateId, params, visibility);
+        } catch (EntityLookupException e) {
+            log.warn("Entity lookup template '{}' failed: {}", templateId, e.getMessage());
+            throw e;
+        }
     }
 
     private List<CoreSearchResult> fuseByRrf(List<CoreSearchResult> vectorResults,

@@ -3,6 +3,9 @@ package com.lorevault.api.ingestion.application;
 import com.lorevault.api.ingestion.application.result.IngestionSubmissionResult;
 import com.lorevault.api.ingestion.application.result.JobStatusDetails;
 import com.lorevault.api.ingestion.application.result.PaginatedJobSummaries;
+import com.lorevault.api.ingestion.domain.ChapterPersistenceException;
+import com.lorevault.api.ingestion.domain.ChapterSubmissionLookupException;
+import com.lorevault.api.ingestion.domain.IngestionFailure;
 
 import com.lorevault.api.ingestion.domain.IngestionJob;
 
@@ -79,16 +82,32 @@ public class IngestionService {
         this.requiresNewReadOnlyTx = template;
     }
 
-    private <T> T bestEffortLookup(String operation, Supplier<T> supplier, T fallback) {
+    private <T> T requiredLookup(String operation,
+                                 Supplier<T> supplier,
+                                 String failureCode,
+                                 UUID chapterId,
+                                 ThrowableDetailsAppender detailsAppender) {
         try {
             if (requiresNewReadOnlyTx != null) {
                 return requiresNewReadOnlyTx.execute(status -> supplier.get());
             }
             return supplier.get();
         } catch (Exception e) {
-            log.warn("Best-effort lookup failed ({}): {}", operation, e.getMessage());
-            log.debug("Best-effort lookup failure details ({}):", operation, e);
-            return fallback;
+            log.warn("Required lookup failed ({}): {}", operation, e.getMessage());
+            log.debug("Required lookup failure details ({}):", operation, e);
+
+            IngestionFailure.Builder failureBuilder = IngestionFailure.builder(
+                            failureCode,
+                            "Chapter submission lookup failed during " + operation + ": " + safeMessage(e))
+                    .exceptionType(e.getClass().getSimpleName())
+                    .stage("CHAPTER_SUBMISSION");
+            if (chapterId != null) {
+                failureBuilder.detail("chapterId", chapterId);
+            }
+            if (detailsAppender != null) {
+                detailsAppender.append(failureBuilder);
+            }
+            throw new ChapterSubmissionLookupException(failureBuilder.build(), e);
         }
     }
 
@@ -143,6 +162,12 @@ public class IngestionService {
                 if (activeJobId.isPresent()) {
                     return new IngestionSubmissionResult(activeJobId.get(), chapterId);
                 }
+                throw buildSubmissionLookupFailure(
+                        "CHAPTER_ACTIVE_JOB_ID_MISSING",
+                        "Active chapter ingestion job could not be resolved for chapter: " + chapterId,
+                        chapterId,
+                        builder -> builder.detail("lookupType", "recentJob")
+                );
             }
             
             // Create new job for existing chapter
@@ -200,10 +225,12 @@ public class IngestionService {
      * Check if a chapter has an active processing job
      */
     private boolean checkForActiveJob(UUID chapterId) {
-        return bestEffortLookup(
+        return requiredLookup(
             "hasActiveJobForChapter chapterId=" + chapterId,
             () -> jobRepo.existsActiveForChapter(chapterId),
-            false
+            "CHAPTER_ACTIVE_JOB_LOOKUP_FAILED",
+            chapterId,
+            builder -> builder.detail("lookupType", "activeJob")
         );
     }
 
@@ -211,19 +238,26 @@ public class IngestionService {
      * Find the most recent job for a chapter
      */
     private Optional<UUID> findMostRecentJobId(UUID chapterId) {
-        return bestEffortLookup(
+        return requiredLookup(
             "findMostRecentJobForChapter chapterId=" + chapterId,
             () -> jobRepo.findFirstByChapterIdOrderByCreatedAtDesc(chapterId)
                 .map(IngestionJob::getId),
-            Optional.empty()
+            "CHAPTER_RECENT_JOB_LOOKUP_FAILED",
+            chapterId,
+            builder -> builder.detail("lookupType", "recentJob")
         );
     }
 
     private Optional<Chapter> findExistingChapterByHash(String contentHash) {
-        return bestEffortLookup(
+        return requiredLookup(
             "findChapterByContentHash hash=" + contentHash,
             () -> chapterRepo.findByContentHash(contentHash),
-            Optional.empty()
+            "CHAPTER_HASH_LOOKUP_FAILED",
+            null,
+            builder -> {
+                builder.detail("lookupType", "contentHash");
+                builder.detail("contentHash", contentHash);
+            }
         );
     }
 
@@ -244,9 +278,26 @@ public class IngestionService {
             log.debug("Created new chapter with ID: {}", chapterId);
             return chapterId;
             
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to create chapter in graph: " + e.getMessage(), e);
+            IngestionFailure failure = IngestionFailure.builder(
+                            "CHAPTER_PERSISTENCE_FAILED",
+                            "Failed to create chapter in graph: " + safeMessage(e)
+                    )
+                    .exceptionType(e.getClass().getSimpleName())
+                    .stage("CHAPTER_SUBMISSION")
+                    .detail("bookId", bookId)
+                    .detail("chapterNumber", chapterNumber)
+                    .detail("chapterTitle", chapterTitle)
+                    .build();
+            throw new ChapterPersistenceException(failure, e);
         }
+    }
+
+    private String safeMessage(Exception exception) {
+        String message = exception.getMessage();
+        return message != null ? message : exception.getClass().getSimpleName();
     }
 
     private Chapter buildChapter(UUID bookId, Integer chapterNumber, String chapterTitle, String chapterText, String contentHash) {
@@ -264,5 +315,25 @@ public class IngestionService {
         return Chapter.createWithReferences(
                 book.getId(), book.getUniverseId(), book.getSeriesId(),
                 coords, chapterTitle, chapterText, contentHash);
+    }
+
+    private ChapterSubmissionLookupException buildSubmissionLookupFailure(String code,
+                                                                         String message,
+                                                                         UUID chapterId,
+                                                                         ThrowableDetailsAppender detailsAppender) {
+        IngestionFailure.Builder failureBuilder = IngestionFailure.builder(code, message)
+                .stage("CHAPTER_SUBMISSION");
+        if (chapterId != null) {
+            failureBuilder.detail("chapterId", chapterId);
+        }
+        if (detailsAppender != null) {
+            detailsAppender.append(failureBuilder);
+        }
+        return new ChapterSubmissionLookupException(failureBuilder.build());
+    }
+
+    @FunctionalInterface
+    private interface ThrowableDetailsAppender {
+        void append(IngestionFailure.Builder builder);
     }
 }

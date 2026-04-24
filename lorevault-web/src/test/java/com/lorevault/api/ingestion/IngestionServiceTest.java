@@ -1,6 +1,8 @@
 package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.application.IngestionService;
+import com.lorevault.api.ingestion.domain.ChapterPersistenceException;
+import com.lorevault.api.ingestion.domain.ChapterSubmissionLookupException;
 
 import com.lorevault.api.library.domain.Book;
 import com.lorevault.api.content.entities.Chapter;
@@ -157,7 +159,7 @@ class IngestionServiceTest {
                     testRequest.getChapterTitle(),
                     testRequest.getChapterText()
             ))
-                    .isInstanceOf(IllegalStateException.class)
+                    .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Book not found");
         }
 
@@ -175,7 +177,7 @@ class IngestionServiceTest {
                     testRequest.getChapterTitle(),
                     testRequest.getChapterText()
             ))
-                    .isInstanceOf(IllegalStateException.class)
+                    .isInstanceOf(ChapterPersistenceException.class)
                     .hasMessageContaining("Failed to create chapter in graph");
         }
     }
@@ -226,39 +228,78 @@ class IngestionServiceTest {
     class ErrorHandlingTests {
 
         @Test
-        @DisplayName("Should handle missing active job gracefully")
-        void submitChapter_missingActiveJob_createsNewJob() {
+        @DisplayName("Should fail closed when active job exists but recent job id is missing")
+        void submitChapter_missingActiveJobId_throwsTypedException() {
             when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
             when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(true);
             when(jobRepo.findFirstByChapterIdOrderByCreatedAtDesc(chapterId)).thenReturn(Optional.empty());
-            when(ingestionJobService.createIngestionJob(chapterId)).thenReturn(testJob);
 
-            IngestionSubmissionResult response = ingestionService.submitChapter(
+            assertThatThrownBy(() -> ingestionService.submitChapter(
                     testRequest.getBookId(),
                     testRequest.getChapterNumber(),
                     testRequest.getChapterTitle(),
-                    testRequest.getChapterText());
+                    testRequest.getChapterText()))
+                    .isInstanceOf(ChapterSubmissionLookupException.class)
+                    .hasMessageContaining("could not be resolved");
 
-            assertThat(response.jobId()).isEqualTo(jobId);
-            verify(ingestionJobService).createIngestionJob(chapterId);
+            verify(ingestionJobService, never()).createIngestionJob(any());
+            verify(eventPublisher, never()).publishEvent(any());
         }
 
         @Test
-        @DisplayName("Should handle persistence port exceptions gracefully")
-        void submitChapter_persistenceError_handlesGracefully() {
+        @DisplayName("Should surface active job lookup failure instead of creating new job")
+        void submitChapter_activeJobLookupFailure_throwsTypedException() {
             when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
             when(jobRepo.existsActiveForChapter(chapterId))
                     .thenThrow(new RuntimeException("Connection failed"));
-            when(ingestionJobService.createIngestionJob(chapterId)).thenReturn(testJob);
 
-            IngestionSubmissionResult response = ingestionService.submitChapter(
+            assertThatThrownBy(() -> ingestionService.submitChapter(
                     testRequest.getBookId(),
                     testRequest.getChapterNumber(),
                     testRequest.getChapterTitle(),
-                    testRequest.getChapterText());
+                    testRequest.getChapterText()))
+                    .isInstanceOf(ChapterSubmissionLookupException.class)
+                    .hasMessageContaining("hasActiveJobForChapter");
 
-            assertThat(response.jobId()).isEqualTo(jobId);
-            verify(ingestionJobService).createIngestionJob(chapterId);
+            verify(ingestionJobService, never()).createIngestionJob(any());
+        }
+
+        @Test
+        @DisplayName("Should surface content hash lookup failure instead of treating chapter as new")
+        void submitChapter_contentHashLookupFailure_throwsTypedException() {
+            when(chapterRepo.findByContentHash(anyString()))
+                    .thenThrow(new RuntimeException("Hash lookup failed"));
+
+            assertThatThrownBy(() -> ingestionService.submitChapter(
+                    testRequest.getBookId(),
+                    testRequest.getChapterNumber(),
+                    testRequest.getChapterTitle(),
+                    testRequest.getChapterText()))
+                    .isInstanceOf(ChapterSubmissionLookupException.class)
+                    .hasMessageContaining("findChapterByContentHash");
+
+            verify(chapterRepo, never()).save(any());
+            verify(ingestionJobService, never()).createIngestionJob(any());
+        }
+
+        @Test
+        @DisplayName("Should surface recent job lookup failure instead of creating duplicate work")
+        void submitChapter_recentJobLookupFailure_throwsTypedException() {
+            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
+            when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(true);
+            when(jobRepo.findFirstByChapterIdOrderByCreatedAtDesc(chapterId))
+                    .thenThrow(new RuntimeException("Recent job lookup failed"));
+
+            assertThatThrownBy(() -> ingestionService.submitChapter(
+                    testRequest.getBookId(),
+                    testRequest.getChapterNumber(),
+                    testRequest.getChapterTitle(),
+                    testRequest.getChapterText()))
+                    .isInstanceOf(ChapterSubmissionLookupException.class)
+                    .hasMessageContaining("findMostRecentJobForChapter");
+
+            verify(ingestionJobService, never()).createIngestionJob(any());
+            verify(eventPublisher, never()).publishEvent(any());
         }
     }
 
