@@ -1,4 +1,6 @@
 package com.lorevault.api.ingestion;
+
+import com.lorevault.api.ai.domain.EmbeddingFailure;
 import com.lorevault.api.ai.domain.EmbeddingGenerationException;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.application.pipeline.*;
@@ -176,7 +178,7 @@ class EmbeddingHandlerTest {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
 
-        IngestionFailure failure = IngestionFailure.builder(
+        EmbeddingFailure failure = EmbeddingFailure.builder(
                         "EMBEDDING_BACKEND_UNAVAILABLE",
                         "Embedding backend failed while generating chunk vectors")
                 .exceptionType(EmbeddingGenerationException.class.getSimpleName())
@@ -223,7 +225,7 @@ class EmbeddingHandlerTest {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
 
-        IngestionFailure failure = IngestionFailure.builder(
+        EmbeddingFailure failure = EmbeddingFailure.builder(
                         "EMBEDDING_RESPONSE_EMPTY",
                         "Embedding backend returned no vectors for requested chunks")
                 .exceptionType(EmbeddingGenerationException.class.getSimpleName())

@@ -1,10 +1,10 @@
 package com.lorevault.api.ai.infrastructure;
+import com.lorevault.api.ai.domain.LlmCallLogger;
 import com.lorevault.api.ingestion.application.triad.SceneRelationshipAnalysisService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.config.LoreVaultModelsProperties;
 import com.lorevault.api.config.LoreVaultPromptProperties;
-import com.lorevault.api.ingestion.infrastructure.LlmCallLoggingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,7 +44,7 @@ class LlmClientTest {
     private LoreVaultModelsProperties modelProperties;
 
     @Mock
-    private LlmCallLoggingService llmLog;
+    private LlmCallLogger llmLog;
 
     @Mock
     private ChatClient.ChatClientRequestSpec requestSpec;

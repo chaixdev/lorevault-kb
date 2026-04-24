@@ -5,7 +5,7 @@ import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.ingestion.domain.TriadAnalysisException;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
+import com.lorevault.api.ingestion.domain.triad.TriadAnalysisModels;
 import com.lorevault.api.ingestion.domain.IngestionFailure;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 import lombok.extern.slf4j.Slf4j;

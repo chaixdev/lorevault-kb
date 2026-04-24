@@ -63,7 +63,7 @@ public class EmbeddingHandler {
                 this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         }
 
-    @Async
+    @Async("ingestionTaskExecutor")
     @EventListener
     public void handleChunksCreated(ChunksCreatedEvent event) {
         UUID jobId = event.getJobId();

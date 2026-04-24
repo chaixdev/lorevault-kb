@@ -4,7 +4,7 @@ import com.lorevault.api.ingestion.infrastructure.*;
 import com.lorevault.api.content.entities.LocationMention;
 import com.lorevault.api.content.entities.LocationMentionGraphRepository;
 import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
+import com.lorevault.api.ingestion.domain.triad.TriadAnalysisModels;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;

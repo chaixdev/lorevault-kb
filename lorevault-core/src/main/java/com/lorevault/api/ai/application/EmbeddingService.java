@@ -1,11 +1,11 @@
 package com.lorevault.api.ai.application;
 
+import com.lorevault.api.ai.domain.EmbeddingFailure;
 import com.lorevault.api.ai.domain.EmbeddingGenerationException;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Chunk;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.content.entities.ChunkGraphRepository;
-import com.lorevault.api.ingestion.domain.IngestionFailure;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingRequest;
@@ -301,7 +301,7 @@ public class EmbeddingService {
                                                          int chunkCount,
                                                          long elapsedMs,
                                                          Throwable cause) {
-        IngestionFailure failure = IngestionFailure.builder(code, message)
+        EmbeddingFailure failure = EmbeddingFailure.builder(code, message)
                 .exceptionType(EmbeddingGenerationException.class.getSimpleName())
                 .stage("EMBEDDING")
                 .detail("chapterId", chapterId)

@@ -1,15 +1,11 @@
 package com.lorevault.api.ingestion.infrastructure;
-import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.IngestionFailure;
 
+import com.lorevault.api.ai.domain.LlmCallLogger;
 import com.lorevault.api.config.LoreVaultLlmLoggingProperties;
 import com.lorevault.api.ingestion.domain.LlmCallRecord;
 import com.lorevault.api.ingestion.domain.StatusRecord;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -19,16 +15,27 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
-public class LlmCallLoggingService {
+public class LlmCallLoggingService implements LlmCallLogger {
+
+    private static final Logger log = LoggerFactory.getLogger(LlmCallLoggingService.class);
 
     private final LoreVaultLlmLoggingProperties props;
     private final IngestionJobGraphRepository jobRepo;
     private final StatusRecordGraphRepository statusRepo;
     private final LlmCallRecordGraphRepository llmCallRepo;
 
-    public LlmCallRecord logCall(
+    public LlmCallLoggingService(LoreVaultLlmLoggingProperties props,
+                                 IngestionJobGraphRepository jobRepo,
+                                 StatusRecordGraphRepository statusRepo,
+                                 LlmCallRecordGraphRepository llmCallRepo) {
+        this.props = props;
+        this.jobRepo = jobRepo;
+        this.statusRepo = statusRepo;
+        this.llmCallRepo = llmCallRepo;
+    }
+
+    @Override
+    public void logCall(
             UUID jobId,
             String step,
             String provider,
@@ -46,10 +53,10 @@ public class LlmCallLoggingService {
     ) {
         if (jobId == null) {
             log.debug("[LLM-LOG] Missing jobId; skipping persistence for step={}", step);
-            return null;
+            return;
         }
         if (props.enabled() == Boolean.FALSE) {
-            return null;
+            return;
         }
 
         LlmCallRecord rec = new LlmCallRecord();
@@ -108,7 +115,7 @@ public class LlmCallLoggingService {
             log.debug("[LLM-LOG] Unable to resolve current status for job {}: {}", jobId, e.getMessage());
         }
 
-        return llmCallRepo.save(rec);
+        llmCallRepo.save(rec);
     }
 
     private String safePreview(String s) {

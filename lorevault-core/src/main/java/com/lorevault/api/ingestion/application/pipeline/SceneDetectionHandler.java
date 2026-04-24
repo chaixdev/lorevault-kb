@@ -12,12 +12,13 @@ import com.lorevault.api.content.entities.SceneGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import com.lorevault.api.ingestion.application.triad.SceneRelationshipAnalysisService;
+import com.lorevault.api.ingestion.application.triad.TriadTemporalEdgeRequestFactory;
 import com.lorevault.api.ingestion.application.scene.SceneDetectionService;
 import com.lorevault.api.ingestion.application.scene.SceneProcessingService;
 import com.lorevault.api.ingestion.infrastructure.IndividualPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.LocationPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.EventPersistenceService;
-import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
+import com.lorevault.api.ingestion.domain.triad.TriadAnalysisModels;
 import com.lorevault.api.content.timeline.application.DefaultTemporalEdgeService;
 import com.lorevault.api.content.timeline.application.SceneTemporalRelationshipPersistenceService;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +59,7 @@ public class SceneDetectionHandler {
     private final EventPersistenceService eventPersistenceService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
     private final SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService;
+    private final TriadTemporalEdgeRequestFactory triadTemporalEdgeRequestFactory;
     private final SceneRelationshipAnalysisService sceneRelationshipAnalysisService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
@@ -73,6 +75,7 @@ public class SceneDetectionHandler {
             IngestionJobService ingestionJobService,
             DefaultTemporalEdgeService defaultTemporalEdgeService,
             SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService,
+            TriadTemporalEdgeRequestFactory triadTemporalEdgeRequestFactory,
             SceneRelationshipAnalysisService sceneRelationshipAnalysisService,
             ApplicationEventPublisher eventPublisher
     ) {
@@ -85,12 +88,13 @@ public class SceneDetectionHandler {
         this.eventPersistenceService = eventPersistenceService;
         this.defaultTemporalEdgeService = defaultTemporalEdgeService;
         this.sceneTemporalRelationshipPersistenceService = sceneTemporalRelationshipPersistenceService;
+        this.triadTemporalEdgeRequestFactory = triadTemporalEdgeRequestFactory;
         this.sceneRelationshipAnalysisService = sceneRelationshipAnalysisService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
 
-    @Async
+    @Async("sceneDetectionTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleChapterIngestion(ChapterIngestionEvent event) {
         UUID jobId = event.getJobId();
@@ -158,10 +162,12 @@ public class SceneDetectionHandler {
                         )
                 );
             }
-            sceneTemporalRelationshipPersistenceService.applyTriadAnalysesPostPersistence(
-                    chapterId,
-                    sceneRelationshipOutcome.triadAnalyses(),
-                    sceneIndexToId
+            sceneTemporalRelationshipPersistenceService.applyTemporalRelationships(
+                    triadTemporalEdgeRequestFactory.buildRequests(
+                            chapterId,
+                            sceneRelationshipOutcome.triadAnalyses(),
+                            sceneIndexToId
+                    )
             );
 
             if (!scenes.isEmpty()) {

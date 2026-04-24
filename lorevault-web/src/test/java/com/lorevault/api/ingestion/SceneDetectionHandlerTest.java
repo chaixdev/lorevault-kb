@@ -8,9 +8,10 @@ import com.lorevault.api.ingestion.domain.SceneLocalizationException;
 import com.lorevault.api.ingestion.domain.SceneDetectionException;
 import com.lorevault.api.ingestion.application.scene.SceneWithCoordinates;
 import com.lorevault.api.ingestion.application.triad.SceneRelationshipAnalysisService;
+import com.lorevault.api.ingestion.application.triad.TriadTemporalEdgeRequestFactory;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
+import com.lorevault.api.ingestion.domain.triad.TriadAnalysisModels;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.content.entities.SceneGraphRepository;
 import com.lorevault.api.ingestion.application.scene.SceneDetectionService;
@@ -57,6 +58,7 @@ class SceneDetectionHandlerTest {
     @Mock private IngestionJobService ingestionJobService;
     @Mock private DefaultTemporalEdgeService defaultTemporalEdgeService;
     @Mock private SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService;
+    @Mock private TriadTemporalEdgeRequestFactory triadTemporalEdgeRequestFactory;
     @Mock private SceneRelationshipAnalysisService sceneRelationshipAnalysisService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -107,6 +109,7 @@ class SceneDetectionHandlerTest {
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
             when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(eq(jobId), any(Chapter.class), any(Consumer.class)))
                     .thenReturn(new TriadAnalysisModels.SceneRelationshipOutcome(List.of(), List.of(), List.of()));
+            when(triadTemporalEdgeRequestFactory.buildRequests(eq(chapterId), eq(List.of()), anyMap())).thenReturn(List.of());
 
             // When
             handler.handleChapterIngestion(testEvent);
@@ -118,7 +121,7 @@ class SceneDetectionHandlerTest {
             verify(locationPersistenceService).persistExtractedLocations(persistedScenes, List.of());
             verify(eventPersistenceService).persistExtractedEvents(persistedScenes, List.of());
             verify(defaultTemporalEdgeService).createAllDefaults(bookId);
-            verify(sceneTemporalRelationshipPersistenceService).applyTriadAnalysesPostPersistence(eq(chapterId), eq(List.of()), anyMap());
+            verify(sceneTemporalRelationshipPersistenceService).applyTemporalRelationships(eq(List.of()));
 
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
@@ -158,13 +161,14 @@ class SceneDetectionHandlerTest {
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
             when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(eq(jobId), any(Chapter.class), any(Consumer.class)))
                     .thenReturn(new TriadAnalysisModels.SceneRelationshipOutcome(List.of(), extractions, locationExtractions, eventExtractions));
+            when(triadTemporalEdgeRequestFactory.buildRequests(eq(chapterId), eq(List.of()), anyMap())).thenReturn(List.of());
 
             handler.handleChapterIngestion(testEvent);
 
             verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, extractions);
             verify(locationPersistenceService).persistExtractedLocations(persistedScenes, locationExtractions);
             verify(eventPersistenceService).persistExtractedEvents(persistedScenes, eventExtractions);
-            verify(sceneTemporalRelationshipPersistenceService).applyTriadAnalysesPostPersistence(eq(chapterId), eq(List.of()), anyMap());
+            verify(sceneTemporalRelationshipPersistenceService).applyTemporalRelationships(eq(List.of()));
             verify(eventPublisher).publishEvent(any(ScenesDetectedEvent.class));
             InOrder inOrder = inOrder(individualPersistenceService, locationPersistenceService, eventPersistenceService, eventPublisher);
             inOrder.verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, extractions);
@@ -190,7 +194,7 @@ class SceneDetectionHandlerTest {
             verify(individualPersistenceService, never()).persistExtractedIndividuals(any(), any());
             verify(locationPersistenceService, never()).persistExtractedLocations(any(), any());
             verify(eventPersistenceService, never()).persistExtractedEvents(any(), any());
-            verify(sceneTemporalRelationshipPersistenceService, never()).applyTriadAnalysesPostPersistence(any(), any(), anyMap());
+            verify(sceneTemporalRelationshipPersistenceService, never()).applyTemporalRelationships(any());
             verify(defaultTemporalEdgeService, never()).createAllDefaults(any());
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);

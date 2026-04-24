@@ -1,124 +1,73 @@
 package com.lorevault.api.content.timeline.application;
 
-import com.lorevault.api.ingestion.domain.TriadAnalysisException;
 import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
-import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
-import com.lorevault.api.ingestion.domain.IngestionFailure;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.domain.TriadAnalysisArtifactLookup;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
 public class SceneTemporalRelationshipPersistenceService {
 
     private final TemporalEdgeWriteRepository temporalEdgeWriteRepository;
-    private final TriadAnalysisArtifactLookup triadAnalysisArtifactLookup;
 
-    public SceneTemporalRelationshipPersistenceService(TemporalEdgeWriteRepository temporalEdgeWriteRepository,
-                                                       TriadAnalysisArtifactLookup triadAnalysisArtifactLookup) {
+    public SceneTemporalRelationshipPersistenceService(TemporalEdgeWriteRepository temporalEdgeWriteRepository) {
         this.temporalEdgeWriteRepository = temporalEdgeWriteRepository;
-        this.triadAnalysisArtifactLookup = triadAnalysisArtifactLookup;
     }
 
     @Transactional
-    public void applyTriadAnalysesPostPersistence(UUID chapterId,
-                                                  List<TriadAnalysisModels.SceneRelationshipAnalysis> analyses,
-                                                  Map<Integer, UUID> sceneIndexToPersistedId) {
-        if (analyses == null || analyses.isEmpty()) {
+    public void applyTemporalRelationships(List<TemporalEdgeWriteRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
             return;
         }
 
-        UUID jobId = resolveLatestJobId(chapterId);
-
-        for (var a : analyses) {
-            UUID currentScenePersistedId = resolvePersistedSceneId(a.currentSceneId(), a.currentSceneIndex(), sceneIndexToPersistedId);
-
-            if (a.previousSceneIndex() != null && a.currentSceneIndex() != null && a.prevToCurrType() != null) {
-                UUID fromId = resolvePersistedSceneId(a.previousSceneId(), a.previousSceneIndex(), sceneIndexToPersistedId);
-                UUID toId = resolvePersistedSceneId(a.currentSceneId(), a.currentSceneIndex(), sceneIndexToPersistedId);
-                if (fromId != null && toId != null) {
-                    upsertWithAmbiguityHandling(jobId, chapterId, currentScenePersistedId, a.currentSceneIndex(), fromId, toId,
-                            a.prevToCurrType(), a.prevToCurrCertainty(), a.prevToCurrEvidence(), a.timelineMarker());
-                }
-            }
-
-            if (a.currentSceneIndex() != null && a.nextSceneIndex() != null && a.currToNextType() != null) {
-                UUID fromId = resolvePersistedSceneId(a.currentSceneId(), a.currentSceneIndex(), sceneIndexToPersistedId);
-                UUID toId = resolvePersistedSceneId(a.nextSceneId(), a.nextSceneIndex(), sceneIndexToPersistedId);
-                if (fromId != null && toId != null) {
-                    upsertWithAmbiguityHandling(jobId, chapterId, currentScenePersistedId, a.currentSceneIndex(), fromId, toId,
-                            a.currToNextType(), a.currToNextCertainty(), a.currToNextEvidence(), a.timelineMarker());
-                }
-            }
+        for (var request : requests) {
+            upsertWithAmbiguityHandling(request);
         }
     }
 
-    private UUID resolvePersistedSceneId(UUID sceneId,
-                                         Integer sceneIndex,
-                                         Map<Integer, UUID> sceneIndexToPersistedId) {
-        if (sceneId != null) {
-            return sceneId;
-        }
-        if (sceneIndex == null || sceneIndexToPersistedId == null) {
-            return null;
-        }
-        return sceneIndexToPersistedId.get(sceneIndex);
-    }
-
-    private void upsertWithAmbiguityHandling(UUID jobId,
-                                             UUID chapterId,
-                                             UUID currentSceneId,
-                                             Integer currentSceneIndex,
-                                             UUID from,
-                                             UUID to,
-                                             String type,
-                                             String certainty,
-                                             String evidence,
-                                             String timelineMarker) {
-        StatusRecord statusRecord = findRequiredTriadStatus(jobId, currentSceneId, currentSceneIndex);
-        UUID statusRecordId = statusRecord.getId();
-        LlmCallRecord callRecord = findRequiredTriadCall(jobId, statusRecordId);
-
-        if (callRecord.getResponseBody() == null || Boolean.TRUE.equals(callRecord.getTruncated())) {
-            throw triadArtifactFailure(
-                    "TRIAD_ARTIFACT_UNRECOVERABLE",
-                    "Triad structured output is missing or truncated for scene index " + currentSceneIndex,
-                    currentSceneIndex,
-                    statusRecord,
-                    callRecord
-            );
-        }
-
-        String normalizedIncomingRawType = normalizeTemporalType(type);
-        String existingDirectType = temporalEdgeWriteRepository.findTemporalRelationBetween(from, to);
+    private void upsertWithAmbiguityHandling(TemporalEdgeWriteRequest request) {
+        TemporalEdgeProvenance provenance = request.provenance();
+        String normalizedIncomingRawType = normalizeTemporalType(request.temporalType());
+        String existingDirectType = temporalEdgeWriteRepository.findTemporalRelationBetween(
+                request.fromSceneId(),
+                request.toSceneId()
+        );
         String normalizedExistingDirectType = normalizeTemporalType(existingDirectType);
 
         if (isDirectEnclosureContradiction(normalizedExistingDirectType, normalizedIncomingRawType)) {
             temporalEdgeWriteRepository.upsertAmbiguousRelation(
-                    from,
-                    to,
+                    request.fromSceneId(),
+                    request.toSceneId(),
                     "inferred",
-                    buildAmbiguityPayload(existingDirectType, normalizedExistingDirectType, type, normalizedIncomingRawType,
-                            certainty, evidence, timelineMarker, statusRecord, callRecord),
-                    evidence,
-                    asString(jobId),
-                    asString(chapterId),
-                    asString(statusRecordId),
-                    asString(callRecord.getId())
+                    buildAmbiguityPayload(
+                            existingDirectType,
+                            normalizedExistingDirectType,
+                            request.temporalType(),
+                            normalizedIncomingRawType,
+                            request.certainty(),
+                            request.evidence(),
+                            request.timelineMarker(),
+                            provenance
+                    ),
+                    request.evidence(),
+                    asString(provenance != null ? provenance.jobId() : null),
+                    asString(provenance != null ? provenance.chapterId() : null),
+                    asString(provenance != null ? provenance.statusRecordId() : null),
+                    asString(provenance != null ? provenance.llmCallRecordId() : null)
             );
             return;
         }
 
-        CanonicalTemporalRelation incoming = normalizeToCanonical(from, to, type);
+        CanonicalTemporalRelation incoming = normalizeToCanonical(
+                request.fromSceneId(),
+                request.toSceneId(),
+                request.temporalType()
+        );
         ExistingCanonicalEdge existing = findExistingCanonicalEdge(incoming.fromId(), incoming.toId());
         String reconciledType = reconcileTemporalType(existing.normalizedType(), incoming.type());
         if (existing.normalizedType() != null && !existing.normalizedType().isBlank() && reconciledType == null) {
@@ -126,27 +75,34 @@ public class SceneTemporalRelationshipPersistenceService {
                     incoming.fromId(),
                     incoming.toId(),
                     "inferred",
-                    buildAmbiguityPayload(existing.originalType(), existing.normalizedType(), type, incoming.type(),
-                            certainty, evidence, timelineMarker, statusRecord, callRecord),
-                    evidence,
-                    asString(jobId),
-                    asString(chapterId),
-                    asString(statusRecordId),
-                    asString(callRecord.getId())
+                    buildAmbiguityPayload(
+                            existing.originalType(),
+                            existing.normalizedType(),
+                            request.temporalType(),
+                            incoming.type(),
+                            request.certainty(),
+                            request.evidence(),
+                            request.timelineMarker(),
+                            provenance
+                    ),
+                    request.evidence(),
+                    asString(provenance != null ? provenance.jobId() : null),
+                    asString(provenance != null ? provenance.chapterId() : null),
+                    asString(provenance != null ? provenance.statusRecordId() : null),
+                    asString(provenance != null ? provenance.llmCallRecordId() : null)
             );
             return;
         }
 
         String typeToPersist = reconciledType != null ? reconciledType : incoming.type();
-
         temporalEdgeWriteRepository.upsertTemporalEdge(
                 incoming.fromId(),
                 incoming.toId(),
                 typeToPersist,
-                certainty,
-                mapCertaintyToWeight(certainty),
+                request.certainty(),
+                mapCertaintyToWeight(request.certainty()),
                 "inferred",
-                appendArtifactProvenance(evidence, timelineMarker, statusRecord, callRecord),
+                appendArtifactProvenance(request.evidence(), request.timelineMarker(), provenance),
                 null,
                 null,
                 null
@@ -169,93 +125,31 @@ public class SceneTemporalRelationshipPersistenceService {
         return new ExistingCanonicalEdge(null, null, fromId, toId);
     }
 
-    private UUID resolveLatestJobId(UUID chapterId) {
-        if (chapterId == null) {
-            return null;
-        }
-        return triadAnalysisArtifactLookup.findLatestJobIdByChapterId(chapterId)
-                .orElse(null);
-    }
-
-    private StatusRecord findRequiredTriadStatus(UUID jobId,
-                                                 UUID currentSceneId,
-                                                 Integer currentSceneIndex) {
-        if (jobId == null || currentSceneId == null) {
-            throw triadArtifactFailure(
-                    "TRIAD_STATUS_MISSING",
-                    "Unable to resolve triad status record due to missing job or current scene id",
-                    currentSceneIndex,
-                    null,
-                    null
-            );
-        }
-
-        return triadAnalysisArtifactLookup.findLatestTriadStatusByCurrentSceneId(jobId, currentSceneId)
-                .orElseThrow(() -> triadArtifactFailure(
-                        "TRIAD_STATUS_MISSING",
-                        "Missing SCENE_TRIAD_ANALYSIS status for current scene id " + currentSceneId,
-                        currentSceneIndex,
-                        null,
-                        null
-                ));
-    }
-
-    private LlmCallRecord findRequiredTriadCall(UUID jobId, UUID statusRecordId) {
-        if (jobId == null || statusRecordId == null) {
-            throw triadArtifactFailure(
-                    "TRIAD_ARTIFACT_MISSING",
-                    "Missing triad call linkage metadata",
-                    null,
-                    null,
-                    null
-            );
-        }
-
-        return triadAnalysisArtifactLookup
-                .findLatestTriadCallRecord(jobId, statusRecordId)
-                .orElseThrow(() -> triadArtifactFailure(
-                        "TRIAD_ARTIFACT_MISSING",
-                        "Missing scene-analysis LlmCallRecord for status " + statusRecordId,
-                        null,
-                        null,
-                        null
-                ));
-    }
-
-    private TriadAnalysisException triadArtifactFailure(String code,
-                                                        String message,
-                                                        Integer currentSceneIndex,
-                                                        StatusRecord statusRecord,
-                                                        LlmCallRecord callRecord) {
-        IngestionFailure.Builder builder = IngestionFailure.builder(code, message)
-                .exceptionType(TriadAnalysisException.class.getSimpleName())
-                .stage("SCENE_TRIAD_ANALYSIS")
-                .detail("currentSceneIndex", currentSceneIndex)
-                .detail("statusRecordId", statusRecord != null ? statusRecord.getId() : null)
-                .detail("llmCallRecordId", callRecord != null ? callRecord.getId() : null);
-        return new TriadAnalysisException(builder.build());
-    }
-
     private String appendArtifactProvenance(String evidence,
                                             String timelineMarker,
-                                            StatusRecord statusRecord,
-                                            LlmCallRecord callRecord) {
+                                            TemporalEdgeProvenance provenance) {
         StringBuilder sb = new StringBuilder();
         if (evidence != null && !evidence.isBlank()) {
             sb.append("evidence=").append(evidence);
         }
         if (timelineMarker != null && !timelineMarker.isBlank()) {
-            if (!sb.isEmpty()) sb.append(" | ");
+            if (!sb.isEmpty()) {
+                sb.append(" | ");
+            }
             sb.append("timelineMarker=").append(timelineMarker);
         }
-        UUID statusRecordId = statusRecord == null ? null : statusRecord.getId();
+        UUID statusRecordId = provenance == null ? null : provenance.statusRecordId();
         if (statusRecordId != null) {
-            if (!sb.isEmpty()) sb.append(" | ");
+            if (!sb.isEmpty()) {
+                sb.append(" | ");
+            }
             sb.append("statusRecordId=").append(statusRecordId);
         }
-        UUID llmCallRecordId = callRecord == null ? null : callRecord.getId();
+        UUID llmCallRecordId = provenance == null ? null : provenance.llmCallRecordId();
         if (llmCallRecordId != null) {
-            if (!sb.isEmpty()) sb.append(" | ");
+            if (!sb.isEmpty()) {
+                sb.append(" | ");
+            }
             sb.append("llmCallRecordId=").append(llmCallRecordId);
         }
         return sb.toString();
@@ -268,8 +162,7 @@ public class SceneTemporalRelationshipPersistenceService {
                                          String incomingCertainty,
                                          String evidence,
                                          String timelineMarker,
-                                         StatusRecord statusRecord,
-                                         LlmCallRecord callRecord) {
+                                         TemporalEdgeProvenance provenance) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("existingType", existingType);
         payload.put("normalizedExistingType", normalizedExistingType);
@@ -278,8 +171,8 @@ public class SceneTemporalRelationshipPersistenceService {
         payload.put("incomingCertainty", incomingCertainty);
         payload.put("evidence", evidence);
         payload.put("timelineMarker", timelineMarker);
-        payload.put("statusRecordId", statusRecord != null ? statusRecord.getId() : null);
-        payload.put("llmCallRecordId", callRecord != null ? callRecord.getId() : null);
+        payload.put("statusRecordId", provenance != null ? provenance.statusRecordId() : null);
+        payload.put("llmCallRecordId", provenance != null ? provenance.llmCallRecordId() : null);
         return payload.toString();
     }
 
@@ -288,7 +181,9 @@ public class SceneTemporalRelationshipPersistenceService {
     }
 
     private Double mapCertaintyToWeight(String certainty) {
-        if (certainty == null) return 0.5d;
+        if (certainty == null) {
+            return 0.5d;
+        }
         return switch (certainty) {
             case "Explicit" -> 0.95d;
             case "StronglyImplied" -> 0.8d;
@@ -376,8 +271,9 @@ public class SceneTemporalRelationshipPersistenceService {
                 || ("R:temporal.contains".equals(existingType) && "R:temporal.during".equals(incomingType));
     }
 
-    private record CanonicalTemporalRelation(UUID fromId, UUID toId, String type) {}
+    private record CanonicalTemporalRelation(UUID fromId, UUID toId, String type) {
+    }
 
-    private record ExistingCanonicalEdge(String originalType, String normalizedType, UUID fromId, UUID toId) {}
-
+    private record ExistingCanonicalEdge(String originalType, String normalizedType, UUID fromId, UUID toId) {
+    }
 }

@@ -1,4 +1,4 @@
-package com.lorevault.api.ingestion.application.result;
+package com.lorevault.api.ingestion.domain.triad;
 
 import java.util.List;
 import java.util.UUID;

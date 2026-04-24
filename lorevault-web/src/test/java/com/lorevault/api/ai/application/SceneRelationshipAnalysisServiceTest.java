@@ -5,7 +5,7 @@ import com.lorevault.api.ai.infrastructure.PromptRepository;
 
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
+import com.lorevault.api.ingestion.domain.triad.TriadAnalysisModels;
 import com.lorevault.api.ingestion.application.triad.SceneRelationshipAnalysisService;
 import com.lorevault.api.ingestion.application.triad.TriadBuilderService;
 import org.junit.jupiter.api.BeforeEach;

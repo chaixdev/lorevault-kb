@@ -1,17 +1,14 @@
 package com.lorevault.api.ingestion.application.pipeline;
 
+import com.lorevault.api.ai.domain.EmbeddingFailure;
+import com.lorevault.api.ai.domain.EmbeddingGenerationException;
 import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.domain.IngestionStatus;
+import com.lorevault.api.ingestion.domain.IngestionFailure;
 import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.IngestionFailure;
-
-import com.lorevault.api.ingestion.domain.IngestionFailure;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.ingestion.events.IngestionFailedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import com.lorevault.api.ingestion.events.IngestionFailedEvent;
 
 import java.util.Collections;
 import java.util.Map;
@@ -102,10 +99,24 @@ public class PipelineStageSupport {
     }
 
     private IngestionFailure extractFailure(String stage, Exception e) {
+        if (e instanceof EmbeddingGenerationException embeddingGenerationException
+                && embeddingGenerationException.failure() != null) {
+            return toIngestionFailure(embeddingGenerationException.failure());
+        }
         if (e instanceof com.lorevault.api.ingestion.domain.IngestionFailureCarrier carrier
                 && carrier.failure() != null) {
             return carrier.failure();
         }
         return IngestionFailure.fromException(stage, e);
+    }
+
+    private IngestionFailure toIngestionFailure(EmbeddingFailure failure) {
+        IngestionFailure.Builder builder = IngestionFailure.builder(failure.code(), failure.message())
+                .exceptionType(failure.exceptionType())
+                .stage(failure.stage());
+        if (failure.details() != null) {
+            failure.details().forEach(builder::detail);
+        }
+        return builder.build();
     }
 }

@@ -2,17 +2,17 @@ package com.lorevault.api.ai.infrastructure;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lorevault.api.ai.domain.LlmCallLogger;
 import com.lorevault.api.config.LoreVaultPromptProperties;
 import com.lorevault.api.config.LoreVaultModelsProperties;
-import com.lorevault.api.ingestion.infrastructure.LlmCallLoggingService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.retry.support.RetryTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -24,20 +24,38 @@ import java.util.UUID;
  * Encapsulates the AI model configuration, prompt loading, and retry logic.
  */
 @Component
-@Slf4j
-@RequiredArgsConstructor
 public class LlmClient {
+
+    private static final Logger log = LoggerFactory.getLogger(LlmClient.class);
     
     private final ChatClient nlpSmallChatClient;
     private final ChatClient nlpBigChatClient;
     private final PromptRepository promptRepository;
     private final LoreVaultPromptProperties promptProperties;
     private final LoreVaultModelsProperties modelProperties;
-    private final LlmCallLoggingService llmLog;
+    private final LlmCallLogger llmLog;
     private final ObjectMapper objectMapper;
     
     @Qualifier("llmRetryTemplate")
     private final RetryTemplate retryTemplate;
+
+    public LlmClient(ChatClient nlpSmallChatClient,
+                     ChatClient nlpBigChatClient,
+                     PromptRepository promptRepository,
+                     LoreVaultPromptProperties promptProperties,
+                     LoreVaultModelsProperties modelProperties,
+                     LlmCallLogger llmLog,
+                     ObjectMapper objectMapper,
+                     @Qualifier("llmRetryTemplate") RetryTemplate retryTemplate) {
+        this.nlpSmallChatClient = nlpSmallChatClient;
+        this.nlpBigChatClient = nlpBigChatClient;
+        this.promptRepository = promptRepository;
+        this.promptProperties = promptProperties;
+        this.modelProperties = modelProperties;
+        this.llmLog = llmLog;
+        this.objectMapper = objectMapper;
+        this.retryTemplate = retryTemplate;
+    }
 
     @Value("${lorevault.ai.models.nlp-small.model:openai/gpt-oss-120b}")
     private String nlpSmallModelId;
@@ -186,7 +204,7 @@ public class LlmClient {
         
         try {
             long start = System.nanoTime();
-            return retryTemplate.execute(retryContext -> {
+            String response = retryTemplate.execute(retryContext -> {
                 int retryCount = retryContext.getRetryCount();
                 String attemptMsg = retryCount > 0 ? " (retry=" + retryCount + ")" : "";
                 if (retryCount > 0) {
@@ -195,7 +213,7 @@ public class LlmClient {
                 }
                 log.debug("[LLM] Calling model={} for {}{}", modelId, step, attemptMsg);
                 
-                String response = chatClient.prompt()
+                String responseContent = chatClient.prompt()
                     .system(systemPrompt)
                     .user(safeInput)
                     .options(options)
@@ -203,39 +221,20 @@ public class LlmClient {
                     .content();
                     
                 long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
-                if (response == null || response.trim().isEmpty()) {
+                if (responseContent == null || responseContent.trim().isEmpty()) {
                     log.warn("[LLM] Empty response from {} (elapsed={}ms) model={}", 
                             step, elapsedMs, modelId);
                     throw new RuntimeException("Empty response from " + modelId + " during " + step);
                 }
                 
-                int len = response.length();
-                String preview = response.substring(0, Math.min(400, len)).replaceAll("\n", "\\n");
+                int len = responseContent.length();
+                String preview = responseContent.substring(0, Math.min(400, len)).replaceAll("\n", "\\n");
                 log.debug("[LLM] {} response length={} elapsed={}ms model={}", 
                          step, len, elapsedMs, modelId);
-                log.trace("[LLM] Full raw response:{}\n{}", System.lineSeparator(), response);
+                log.trace("[LLM] Full raw response:{}\n{}", System.lineSeparator(), responseContent);
                 log.debug("[LLM] Response preview (first {} chars): {}", preview.length(), preview);
 
-                // Log LLM call record
-                llmLog.logCall(
-                    jobId,
-                    step,
-                    "openai-compatible", // provider abstraction
-                    modelId,
-                    options.getTemperature(),
-                    options.getTopP(),
-                    options.getMaxTokens(),
-                    // Prompt metadata
-                    step.equals("chapter-segmentation") ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
-                    systemPrompt,
-                    safeInput.length() <= 1000 ? safeInput : safeInput.substring(0, 1000),
-                    response,
-                    elapsedMs,
-                    estimateTokens(safeInput),
-                    estimateTokens(response)
-                );
-                
-                return response;
+                return responseContent;
                 
             }, recoveryContext -> {
                 Throwable lastError = recoveryContext.getLastThrowable();
@@ -247,6 +246,21 @@ public class LlmClient {
                 throw new RuntimeException(step + " scene detection failed permanently after multiple attempts: " + errorMsg,
                         recoveryContext.getLastThrowable());
             });
+            long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
+            persistLlmCallSafely(
+                    jobId,
+                    step,
+                    modelId,
+                    options.getTemperature(),
+                    options.getTopP(),
+                    options.getMaxTokens(),
+                    step.equals("chapter-segmentation") ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
+                    systemPrompt,
+                    safeInput,
+                    response,
+                    elapsedMs
+            );
+            return response;
             
         } catch (Exception e) {
             log.error("[LLM] Unexpected error during {} scene detection: {}", step, e.getMessage(), e);
@@ -269,7 +283,7 @@ public class LlmClient {
 
         try {
             long start = System.nanoTime();
-            return retryTemplate.execute(retryContext -> {
+            T response = retryTemplate.execute(retryContext -> {
                 int retryCount = retryContext.getRetryCount();
                 String attemptMsg = retryCount > 0 ? " (retry=" + retryCount + ")" : "";
                 if (retryCount > 0) {
@@ -278,7 +292,7 @@ public class LlmClient {
                 }
                 log.debug("[LLM] Calling model={} for {}{}", modelId, step, attemptMsg);
 
-                T response = chatClient.prompt()
+                T structuredResponse = chatClient.prompt()
                         .system(systemPrompt)
                         .user(safeInput)
                         .options(options)
@@ -286,30 +300,13 @@ public class LlmClient {
                         .entity(responseType);
 
                 long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
-                if (response == null) {
+                if (structuredResponse == null) {
                     throw new RuntimeException("Empty structured response from " + modelId + " during " + step);
                 }
 
-                String responseBody = serializeStructuredResponse(response);
+                String responseBody = serializeStructuredResponse(structuredResponse);
 
-                llmLog.logCall(
-                        jobId,
-                        step,
-                        "openai-compatible",
-                        modelId,
-                        options.getTemperature(),
-                        options.getTopP(),
-                        options.getMaxTokens(),
-                    step.equals("chapter-segmentation") ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
-                        systemPrompt,
-                        safeInput.length() <= 1000 ? safeInput : safeInput.substring(0, 1000),
-                        responseBody,
-                        elapsedMs,
-                        estimateTokens(safeInput),
-                        estimateTokens(responseBody)
-                );
-
-                return response;
+                return structuredResponse;
             }, recoveryContext -> {
                 Throwable lastError = recoveryContext.getLastThrowable();
                 String errorMsg = lastError != null ? lastError.getMessage() : "Unknown error";
@@ -318,9 +315,60 @@ public class LlmClient {
                 throw new RuntimeException(step + " scene detection failed permanently after multiple attempts: " + errorMsg,
                         recoveryContext.getLastThrowable());
             });
+            long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
+            String responseBody = serializeStructuredResponse(response);
+            persistLlmCallSafely(
+                    jobId,
+                    step,
+                    modelId,
+                    options.getTemperature(),
+                    options.getTopP(),
+                    options.getMaxTokens(),
+                    step.equals("chapter-segmentation") ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
+                    systemPrompt,
+                    safeInput,
+                    responseBody,
+                    elapsedMs
+            );
+            return response;
         } catch (Exception e) {
             log.error("[LLM] Unexpected error during {} scene detection: {}", step, e.getMessage(), e);
             throw new RuntimeException(step + " scene detection failed: " + e.getMessage(), e);
+        }
+    }
+
+    private void persistLlmCallSafely(UUID jobId,
+                                      String step,
+                                      String modelId,
+                                      Double temperature,
+                                      Double topP,
+                                      Integer maxTokens,
+                                      String promptTemplateId,
+                                      String systemPrompt,
+                                      String input,
+                                      String responseBody,
+                                      long elapsedMs) {
+        try {
+            llmLog.logCall(
+                    jobId,
+                    step,
+                    "openai-compatible",
+                    modelId,
+                    temperature,
+                    topP,
+                    maxTokens,
+                    promptTemplateId,
+                    systemPrompt,
+                    input.length() <= 1000 ? input : input.substring(0, 1000),
+                    responseBody,
+                    elapsedMs,
+                    estimateTokens(input),
+                    estimateTokens(responseBody)
+            );
+        } catch (Exception loggingError) {
+            log.warn("[LLM] Call logging failed after successful model response: jobId={}, step={}, model={}, error={}",
+                    jobId, step, modelId, loggingError.getMessage());
+            log.debug("[LLM] Call logging failure details for jobId={} step={} model={}", jobId, step, modelId, loggingError);
         }
     }
 

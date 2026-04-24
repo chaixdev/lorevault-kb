@@ -5,7 +5,7 @@ import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.IndividualMention;
 import com.lorevault.api.content.entities.IndividualMentionGraphRepository;
 import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
+import com.lorevault.api.ingestion.domain.triad.TriadAnalysisModels;
 import com.lorevault.api.testutil.builders.PublicationCoordinatesBuilder;
 import java.util.List;
 import java.util.UUID;

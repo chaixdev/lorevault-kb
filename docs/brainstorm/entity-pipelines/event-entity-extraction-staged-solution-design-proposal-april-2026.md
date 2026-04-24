@@ -143,24 +143,36 @@ Reason:
 
 That means the new baseline is:
 
-1. rolling-triad semantic likeness analysis forms local aggregates
-2. aggregate cards are built from those local aggregates
-3. ANN retrieves broader candidate merges
+1. a post-persistence rolling-triad LLM co-reference pass builds local co-reference chains from persisted `EventMention` nodes
+2. aggregate cards are built deterministically from those chains
+3. ANN retrieves broader candidate merges over those cards
 4. semantic likeness analysis verifies broader merges
 
 Alias/exact matching may still remain useful as a supporting signal or later optimization, but it is no longer the conceptual backbone of this design.
 
 ### 6. Local semantic grouping should happen before ANN candidate retrieval
 
-Pure rolling triads are not enough to catch long-range recurrence.
+Individual `EventMention` nodes are semantically too thin to cluster reliably with ANN alone.
 
-But they are still the right local semantic reducer because they:
+A single extracted mention carries a name, event type, a scene-relative classifier, and a short evidence phrase.
 
-- give bounded narrative context
-- reuse the existing triad-local reasoning shape
-- avoid immediate chapter-wide semantic cross-product comparison
+That is not enough semantic surface for an embedding model to produce stable, trustworthy clusters — especially when the same event may be named differently across scenes, referred to by consequence rather than name, or described at very different levels of specificity.
 
-So triads should produce the local aggregate layer that the rest of the pipeline operates on.
+This is why a dedicated rolling-triad LLM judgment pass is required before embedding:
+
+- it operates on already-persisted `EventMention` nodes, not mid-ingestion
+- it uses rolling overlapping triad windows so ongoing events mentioned across many consecutive scenes can be knitted into one chapter-local chain
+- it takes a bounded window of mentions within a chapter and asks whether they refer to the same event
+- it outputs same-event grouping links, building a co-reference chain per chapter
+- for mentions up to two adjacent chapters apart, the same judgment mechanism can bridge the gap before handing off to ANN
+
+The chain that results from this pass is what becomes the aggregate card.
+
+That card, built from accumulated co-referent mentions, has enough combined evidence to embed meaningfully.
+
+Without this step, ANN has nothing rich enough to operate on.
+
+So the judgment pass is the semantic bridge between individual thin mentions and embeddable aggregate cards — not an optional optimisation, but the load-bearing step that makes ANN viable at all.
 
 ### 7. No separate always-on LLM summary synthesis stage
 
@@ -269,21 +281,37 @@ Add Event extraction as a persisted evidence lane after scene persistence.
 
 ---
 
-## Stage 2 — Rolling-triad semantic likeness analysis
+## Stage 2 — Post-persistence rolling-triad co-reference pass
 
 ### Goal
 
-Use bounded narrative context to form the first local Event aggregates directly.
+Use bounded narrative context over already-persisted `EventMention` nodes to form the first chapter-local event co-reference chains.
 
 ### Rule
 
-Rolling-triad semantic likeness analysis is the primary grouping mechanism.
+Rolling-triad co-reference judgment is the primary local grouping mechanism.
+
+### Input
+
+Persisted `EventMention` nodes for the current chapter are examined through rolling, overlapping triad windows.
+
+This is a post-persistence pass, not the original scene-temporal triad stage.
 
 ### Output
 
-- mention-to-local-aggregate links as rolling triads progress
-- local aggregate nodes that accumulate the triad-local grouping result
+- same-event links between `EventMention` nodes as rolling triads progress
+- chapter-local co-reference chains built from those links
 - unresolved mentions remain allowed when likeness analysis is uncertain
+
+### Accepted v1 limitation
+
+V1 may produce multiple chapter-local co-reference units that later appear to refer to the same underlying event.
+
+That fragmentation is acceptable in the first implementation slice as long as:
+
+- the links are rebuildable rather than treated as final identity truth
+- later aggregate-card + ANN + semantic verification stages remain free to reunify them
+- a dedicated cleanup pass is deferred until real data shows it is needed
 
 ---
 
@@ -311,6 +339,27 @@ Build the card deterministically from structured fields such as:
 - provenance counts
 - representative evidence snippets
 - scope coordinates (chapter/book/universe as relevant)
+
+### Rendering rule
+
+The card should be rendered as deterministic, readable prose rather than a sparse key-value dump.
+
+Preferred shape:
+
+- stable heading / canonical label
+- normalized aliases or alternate phrasings
+- event type / kind
+- important descriptors
+- participant and location hints when available
+- scene-relative relation distribution
+- provenance counts / scope coordinates
+- 2-4 representative evidence snippets as plain text bullets
+
+Reason:
+
+- embedding models generally perform better on readable text than on flat schema fragments
+- prose-like deterministic rendering preserves more discriminative identity texture
+- it reduces the risk that generic labels such as `battle`, `journey`, or `meeting` dominate the embedding
 
 ### Important rule
 
@@ -352,6 +401,20 @@ That means candidate pools are derived from:
 - cluster-size cap
 - type-specific veto rules
 
+### Threshold policy
+
+The first implementation should make the threshold strategy explicit:
+
+- low similarity scores are rejected directly
+- a middle similarity band is labeled for review / semantic verification
+- very high similarity scores are still verified, but can be prioritized
+
+Do **not** assume one global cosine threshold will work for all event types in narrative fiction.
+
+Thresholds should be type-tuned and empirical.
+
+HITL review tooling is out of scope for the first implementation, but the pipeline may still label borderline candidates for later inspection.
+
 ---
 
 ## Stage 5 — Semantic merge verification
@@ -382,6 +445,18 @@ If A≈B and B≈C, that does **not** make A≈C automatically true.
 
 Each merge pair still needs direct verification.
 
+### Fanout / fanin fit
+
+This verification-and-reduction lane should be treated as part of the same ingestion fanout/fanin architecture already used for embeddings, individual reduction, and location reduction.
+
+The implementation technique differs, but the architectural role is the same:
+
+- `ScenesDetectedEvent` fans out into multiple bounded follow-on branches
+- each branch performs its own scoped reduce operation
+- chapter/book-level completion can fan back in through the existing coordinator pattern
+
+This means Event reduction should be modeled as another reducer branch, not as an ad hoc exception to the current pipeline shape.
+
 ---
 
 ## Stage 6 — Write scoped aggregates
@@ -390,9 +465,24 @@ Each merge pair still needs direct verification.
 
 Persist:
 
-- local aggregate nodes formed by rolling-triad likeness analysis
+- local same-event chains formed by the post-persistence co-reference judgment pass
 - chapter-local rich aggregate state once chapter-level semantic grouping has stabilized enough to support spoiler-safe resolution
 - optionally `Chapter -[:HAS_EVENT]-> ChapterEvent`
+
+### Local chain identity
+
+The cheapest first implementation is to keep Stage 2 chains primarily as relationship-level structure between `EventMention` nodes, with deterministic rebuild semantics.
+
+That means the first write can be as simple as same-event links between mentions, plus deterministic derivation of a chapter-local aggregate card from the connected chain.
+
+If needed later, LoreVault can promote those chains into explicit provisional local aggregate nodes without invalidating the later chapter/book design.
+
+So both representations are valid, but the cheapest first option is:
+
+- relationship-level chain first
+- chapter-scoped aggregate node as the first stable rich resolution boundary
+
+This keeps Stage 2 light while preserving freedom for later promotion.
 
 ### Book layer
 
