@@ -14,7 +14,7 @@
     <packaging>jar</packaging>
 
     <name>LoreVault Web</name>
-    <description>Spring Boot web application and runtime adapters for LoreVault</description>
+    <description>Spring Boot web application and HTTP/UI edge for LoreVault</description>
 
     <properties>
         <jacoco.check.skip>true</jacoco.check.skip>

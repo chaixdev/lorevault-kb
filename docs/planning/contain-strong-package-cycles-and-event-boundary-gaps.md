@@ -1,6 +1,6 @@
 # Contain strong package cycles and event-boundary gaps
 
-**Status:** NOT STARTED
+**Status:** DONE
 
 ## Summary
 
@@ -104,3 +104,118 @@ Relevant architectural context:
 - Relevant source root: `../../lorevault-core/src/main/java/com/lorevault/api/ai`
 - Relevant source root: `../../lorevault-core/src/main/java/com/lorevault/api/ingestion`
 - Relevant source root: `../../lorevault-core/src/main/java/com/lorevault/api/content/timeline`
+
+## Progress Notes
+
+### Pass 1 (bounded first slice) - completed
+
+- Removed direct ingestion lifecycle ownership from `SceneRelationshipAnalysisService` by deleting its `IngestionJobService` dependency and in-method triad status updates.
+- Moved triad-stage status ownership to `SceneDetectionHandler` before triad analysis execution (`IngestionStatus.SCENE_TRIAD_ANALYSIS`).
+- Kept triad analysis behavior intact (targeted unit test suite still green after constructor/test updates).
+
+### Pass 1b (Oracle-guided adjustment) - completed
+
+- Preserved the ownership move but tightened granularity to maintain observability/provenance contracts.
+- `SceneRelationshipAnalysisService` now accepts an ingestion-owned triad-start callback (`Consumer<Map<String,Object>>`) and invokes it once per triad with existing triad metadata (`triadIndex`, `currentSceneId`, scene indexes).
+- `SceneDetectionHandler` now passes the per-triad callback and emits `SCENE_TRIAD_ANALYSIS` status **per triad** (ingestion-owned) instead of a chapter-level single update.
+- Added a focused test asserting per-triad callback metadata emission.
+
+### Verification evidence
+
+- `mvn -pl lorevault-web -am clean test -Dtest=SceneRelationshipAnalysisServiceTest -Dsurefire.failIfNoSpecifiedTests=false` → **PASS** (9 tests, 0 failures).
+- `mvn -pl lorevault-web -am clean test -Dtest=SceneRelationshipAnalysisServiceTest,SceneDetectionHandlerTest -Dsurefire.failIfNoSpecifiedTests=false` → **PASS** (19 tests, 0 failures).
+- `mvn -pl lorevault-web -am clean test -P architecture-tests` → **expected FAIL** in cycle-free architecture test, but with reduced violation count from earlier baseline.
+  - Previous baseline (guardrail pass): **17** cycle violations.
+  - After pass 1 + pass 1b adjustment: **8** cycle violations.
+
+### Pass 2 (bounded ai->content.timeline cut) - completed
+
+- Removed `ai.application -> content.timeline.application` dependency by eliminating `TriadRelationInverter` usage from `SceneRelationshipAnalysisService`.
+- Inlined the inversion logic inside `SceneRelationshipAnalysisService` (`invertPrevToCurr`) so AI no longer imports timeline utility code for triad relation inversion.
+- Preserved behavior and triad contract outputs while reducing one direct cross-package edge.
+
+### Verification evidence (pass 2)
+
+- `mvn -pl lorevault-web -am clean test -Dtest=SceneRelationshipAnalysisServiceTest,SceneDetectionHandlerTest -Dsurefire.failIfNoSpecifiedTests=false` → **PASS** (19 tests, 0 failures).
+- `mvn -pl lorevault-web -am clean test -P architecture-tests` → **expected FAIL** in cycle-free architecture test, with additional reduction:
+  - After pass 1 + pass 1b: **8** cycle violations.
+  - After pass 2: **6** cycle violations.
+
+### Next bounded slice candidates
+
+- Isolate triad DTO contracts out of `SceneRelationshipAnalysisService` nested types into a neutral contract package to reduce both `ingestion.infrastructure -> ai.application` and `content.timeline -> ai.application` coupling.
+- After DTO extraction, reassess if the remaining `ai - infrastructure -> ingestion - infrastructure` logging dependency should be inverted behind an ingestion-owned port/event to further collapse `ai`↔`ingestion` infra cycles.
+
+### Pass 3 (bounded triad contract extraction) - completed
+
+- Extracted normalized triad outcome/extraction contracts from `SceneRelationshipAnalysisService` into a shared triad contract type for downstream consumers.
+- Updated downstream consumers to use the shared normalized contracts:
+  - `SceneTemporalRelationshipPersistenceService`
+  - `IndividualPersistenceService`
+  - `LocationPersistenceService`
+  - `EventPersistenceService`
+  - `SceneDetectionHandler`
+- Migrated affected unit tests to the new `TriadAnalysisModels.*` types.
+- Preserved Oracle-guided boundary: raw AI structured response DTOs (`TriadStructuredResult`, `TriadRelation`, `TriadCurrentSceneEntities`) remain owned by `SceneRelationshipAnalysisService`; only post-normalization handoff contracts were extracted.
+
+### Verification evidence (pass 3)
+
+- `mvn -pl lorevault-web -am clean test-compile -DskipTests` → **PASS**.
+- `mvn -pl lorevault-web -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SceneRelationshipAnalysisServiceTest,SceneDetectionHandlerTest,IndividualPersistenceServiceTest,LocationPersistenceServiceTest,EventPersistenceServiceTest,SceneTemporalRelationshipPersistenceServiceTest test` → **PASS** (36 tests, 0 failures).
+- `mvn -pl lorevault-web -am clean test -P architecture-tests` → **expected FAIL** in cycle-free architecture test, with further reduction:
+  - After pass 2: **6** cycle violations.
+  - After pass 3: **2** cycle violations.
+
+### Remaining cycle theme after pass 3
+
+- Remaining violations are now concentrated in structural ownership seams, not AI triad DTO leakage:
+  - `content.entities ↔ content.timeline` (entity/timeline mutual dependency)
+  - `content.timeline -> ingestion.infrastructure -> content.entities` (timeline observability lookups through ingestion infra repositories, plus ingestion infra writes against content entities)
+
+### Pass 4 (bounded structural seam cut) - completed
+
+- Removed the reverse `content.entities -> content.timeline` edge by deleting `content.timeline.domain.Event` and removing `Scene implements Event` (kept Scene as the current Event carrier via labels and event-oriented getters).
+- Removed direct `content.timeline -> ingestion.infrastructure` repository dependencies by introducing an ingestion-owned lookup seam:
+  - Added `ingestion.domain.TriadAnalysisArtifactLookup`.
+  - Added `ingestion.infrastructure.GraphTriadAnalysisArtifactLookup` delegating to existing ingestion repositories.
+  - Updated `SceneTemporalRelationshipPersistenceService` to depend on the ingestion-owned lookup seam instead of direct ingestion infrastructure repositories.
+- Preserved triad provenance/error behavior by reusing the same underlying repository queries and preserving existing failure semantics in timeline service.
+
+### Verification evidence (pass 4)
+
+- `mvn -pl lorevault-web -am test-compile -DskipTests` → **PASS**.
+- `mvn -pl lorevault-web -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SceneTemporalRelationshipPersistenceServiceTest,SceneDetectionHandlerTest,SceneRelationshipAnalysisServiceTest,IndividualPersistenceServiceTest,LocationPersistenceServiceTest,EventPersistenceServiceTest test` → **PASS** (36 tests, 0 failures).
+- `mvn -pl lorevault-web -am clean test -P architecture-tests` → **PASS** (all architecture tests green; cycle-free rule no longer violated).
+
+### Pass 4 follow-up (ownership + terminology correction) - completed
+
+- Moved normalized triad workflow/result records from `content.entities.triad.TriadAnalysisModels` to `ingestion.application.result.TriadAnalysisModels` so the contracts now live with ingestion workflow ownership rather than canonical graph entity state.
+- Renamed the ingestion-owned provenance seam to remove legacy port/adapter wording from live code:
+  - `TriadAnalysisArtifactLookupPort` → `TriadAnalysisArtifactLookup`
+  - `TriadAnalysisArtifactLookupAdapter` → `GraphTriadAnalysisArtifactLookup`
+- Clarified current Event direction without introducing a new Event implementation:
+  - `Scene` remains the current persisted Event carrier through labels and event-oriented accessors
+  - current docs now describe broader Event modeling as future work rather than implying Scene-as-Event is still only planned.
+- Updated current-surface docs and metadata to remove stale internal port/adapter wording and align rule language with the bounded ingestion-owned lookup seam.
+- Applied Oracle follow-up for current-doc drift:
+  - replaced the stale `ContentPersistencePort` ingestion sequence in `docs/architecture/02-functional-viewpoint.md`
+  - removed remaining current-surface port wording in `docs/PROJECT-STATUS.md`
+  - aligned rules wording so the small same-module lookup seam reads as a justified ownership seam instead of a policy contradiction.
+
+### Verification evidence (pass 4 follow-up)
+
+- `mvn clean compile` → **PASS**.
+- `mvn -pl lorevault-web -am -Dtest=SceneRelationshipAnalysisServiceTest,SceneDetectionHandlerTest,IndividualPersistenceServiceTest,LocationPersistenceServiceTest,EventPersistenceServiceTest,SceneTemporalRelationshipPersistenceServiceTest,SemanticSearchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (41 tests, 0 failures).
+- `lsp_diagnostics` clean for changed production files:
+  - `lorevault-core/src/main/java/com/lorevault/api/ingestion/application/result/TriadAnalysisModels.java`
+  - `lorevault-core/src/main/java/com/lorevault/api/content/entities/Scene.java`
+  - `lorevault-core/src/main/java/com/lorevault/api/content/timeline/application/SceneTemporalRelationshipPersistenceService.java`
+  - `lorevault-core/src/main/java/com/lorevault/api/ingestion/domain/TriadAnalysisArtifactLookup.java`
+  - `lorevault-core/src/main/java/com/lorevault/api/ingestion/infrastructure/GraphTriadAnalysisArtifactLookup.java`
+  - `docs/architecture/02-functional-viewpoint.md`
+  - `docs/PROJECT-STATUS.md`
+  - `docs/rules/service-design-principles.md`
+  - `docs/rules/coding-standards.md`
+- Oracle review completed:
+  - initial review found one MUST_FIX (stale `ContentPersistencePort` sequence doc) and two wording-alignment SHOULD_FIX items
+  - all review findings were applied in the same pass.

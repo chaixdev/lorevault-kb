@@ -5,10 +5,12 @@ import com.lorevault.api.ingestion.domain.*;
 import com.lorevault.api.ingestion.infrastructure.*;
 
 import com.lorevault.api.ai.domain.SceneLocalizationException;
+import com.lorevault.api.ai.domain.SceneDetectionException;
 import com.lorevault.api.ai.domain.SceneWithCoordinates;
 import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Scene;
+import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.content.entities.SceneGraphRepository;
 import com.lorevault.api.ingestion.application.scene.SceneDetectionService;
@@ -34,6 +36,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -102,8 +105,8 @@ class SceneDetectionHandlerTest {
                     new SceneDetectionService.SceneSegmentationOutcome(sceneCoords)
             );
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
-            when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(eq(jobId), any(Chapter.class)))
-                    .thenReturn(new SceneRelationshipAnalysisService.SceneRelationshipOutcome(List.of(), List.of(), List.of()));
+            when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(eq(jobId), any(Chapter.class), any(Consumer.class)))
+                    .thenReturn(new TriadAnalysisModels.SceneRelationshipOutcome(List.of(), List.of(), List.of()));
 
             // When
             handler.handleChapterIngestion(testEvent);
@@ -133,12 +136,12 @@ class SceneDetectionHandlerTest {
             List<SceneWithCoordinates> sceneCoords = List.of(new SceneWithCoordinates(0, 0, 20, "Scene 1"));
             Scene scene = createScene(0);
             List<Scene> persistedScenes = List.of(scene);
-            List<SceneRelationshipAnalysisService.TriadSceneIndividualExtraction> extractions = List.of();
-            List<SceneRelationshipAnalysisService.TriadSceneLocationExtraction> locationExtractions = List.of();
-            List<SceneRelationshipAnalysisService.TriadSceneEventExtraction> eventExtractions = List.of(
-                    new SceneRelationshipAnalysisService.TriadSceneEventExtraction(
+            List<TriadAnalysisModels.SceneIndividualExtraction> extractions = List.of();
+            List<TriadAnalysisModels.SceneLocationExtraction> locationExtractions = List.of();
+            List<TriadAnalysisModels.SceneEventExtraction> eventExtractions = List.of(
+                    new TriadAnalysisModels.SceneEventExtraction(
                             0,
-                            List.of(new SceneRelationshipAnalysisService.TriadEventExtraction(
+                            List.of(new TriadAnalysisModels.EventExtraction(
                                     "The Winter War",
                                     "war",
                                     "R:temporal.before",
@@ -153,8 +156,8 @@ class SceneDetectionHandlerTest {
             when(sceneDetectionService.detectScenesInChapter(jobId, testChapter))
                     .thenReturn(new SceneDetectionService.SceneSegmentationOutcome(sceneCoords));
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
-            when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(eq(jobId), any(Chapter.class)))
-                    .thenReturn(new SceneRelationshipAnalysisService.SceneRelationshipOutcome(List.of(), extractions, locationExtractions, eventExtractions));
+            when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(eq(jobId), any(Chapter.class), any(Consumer.class)))
+                    .thenReturn(new TriadAnalysisModels.SceneRelationshipOutcome(List.of(), extractions, locationExtractions, eventExtractions));
 
             handler.handleChapterIngestion(testEvent);
 
@@ -240,6 +243,34 @@ class SceneDetectionHandlerTest {
                                     .stage("SCENE_SEGMENTATION")
                                     .detail("sceneIndex", 4)
                                     .detail("startAnchor", "anchor")
+                                    .build()
+                    ));
+
+            handler.handleChapterIngestion(testEvent);
+
+            ArgumentCaptor<IngestionFailedEvent> eventCaptor = ArgumentCaptor.forClass(IngestionFailedEvent.class);
+            verify(eventPublisher).publishEvent(eventCaptor.capture());
+
+            IngestionFailedEvent failedEvent = eventCaptor.getValue();
+            assertThat(failedEvent.getJobId()).isEqualTo(jobId);
+            assertThat(failedEvent.getFailedStage()).isEqualTo("SCENE_DETECTION");
+            assertThat(failedEvent.isRetryable()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Should mark typed scene detection retryable code as retryable handled failure")
+        void handleChapterPersisted_sceneDetectionTypedRetryableCode_emitsRetryableFailure() {
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneDetectionService.detectScenesInChapter(any(), any()))
+                    .thenThrow(new SceneDetectionException(
+                            IngestionFailure.builder(
+                                            "SCENE_COORDINATE_LOCALIZATION_DROPPED_SCENES",
+                                            "Scene coordinate localization dropped scenes (parsed=5 localized=4)"
+                                    )
+                                    .exceptionType(SceneDetectionException.class.getSimpleName())
+                                    .stage("SCENE_DETECTION")
+                                    .detail("chapterId", chapterId)
                                     .build()
                     ));
 

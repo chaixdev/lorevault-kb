@@ -1,9 +1,9 @@
 package com.lorevault.api.ingestion.infrastructure;
 
-import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
 import com.lorevault.api.content.entities.EventMention;
 import com.lorevault.api.content.entities.EventMentionGraphRepository;
 import com.lorevault.api.content.entities.Scene;
+import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,7 +24,7 @@ public class EventPersistenceService {
     @Transactional
     public void persistExtractedEvents(
             List<Scene> persistedScenes,
-            List<SceneRelationshipAnalysisService.TriadSceneEventExtraction> sceneExtractions
+            List<TriadAnalysisModels.SceneEventExtraction> sceneExtractions
     ) {
         if (persistedScenes == null || persistedScenes.isEmpty() || sceneExtractions == null || sceneExtractions.isEmpty()) {
             return;
@@ -34,14 +34,14 @@ public class EventPersistenceService {
                 .filter(scene -> scene.getSceneIndex() != null && scene.getEventId() != null)
                 .collect(Collectors.toMap(Scene::getSceneIndex, scene -> scene, (a, b) -> a));
 
-        for (SceneRelationshipAnalysisService.TriadSceneEventExtraction sceneExtraction : sceneExtractions) {
+        for (TriadAnalysisModels.SceneEventExtraction sceneExtraction : sceneExtractions) {
             Scene scene = sceneByIndex.get(sceneExtraction.sceneIndex());
             if (scene == null || sceneExtraction.events() == null || sceneExtraction.events().isEmpty()) {
                 continue;
             }
 
             for (int extractionIndex = 0; extractionIndex < sceneExtraction.events().size(); extractionIndex++) {
-                SceneRelationshipAnalysisService.TriadEventExtraction extracted = sceneExtraction.events().get(extractionIndex);
+                TriadAnalysisModels.EventExtraction extracted = sceneExtraction.events().get(extractionIndex);
                 String displayName = normalizeText(extracted.name());
                 if (displayName == null) {
                     continue;

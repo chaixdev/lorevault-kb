@@ -161,7 +161,7 @@ graph TD
 
 - **Consolidated Design**: Streamlined service areas (Ingestion, Query, System) with clear business capability boundaries
 - **CQRS Structure**: API separation with `/api/command/` and `/api/query/` endpoints
-- **Ports & Adapters**: External dependencies abstracted behind ports for testability and flexibility
+- **Direct boundaries**: Prefer direct services and repositories internally, with narrow abstractions only at real external boundaries
 
 ## Risk Management
 
@@ -171,5 +171,4 @@ graph TD
 | Vector search performance | Query latency | Neo4j native indexing with optimized queries |
 | Graph database failures | System unavailability | Transactional consistency with rollback capability |
 | Content processing errors | Job failures | Comprehensive error handling with detailed status tracking |
-
 

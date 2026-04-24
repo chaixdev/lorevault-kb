@@ -1,11 +1,11 @@
 package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.infrastructure.*;
 
-import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.IndividualMention;
 import com.lorevault.api.content.entities.IndividualMentionGraphRepository;
 import com.lorevault.api.content.entities.Scene;
+import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
 import com.lorevault.api.testutil.builders.PublicationCoordinatesBuilder;
 import java.util.List;
 import java.util.UUID;
@@ -52,15 +52,15 @@ class IndividualPersistenceServiceTest {
                 "hash"
         );
         Scene persistedScene = new Scene(sceneId, 3, 0L, 10L, "ctx", "text", chapterId, null, null, null, null, chapter);
-        SceneRelationshipAnalysisService.TriadIndividualExtraction extracted =
-                new SceneRelationshipAnalysisService.TriadIndividualExtraction(
+        TriadAnalysisModels.IndividualExtraction extracted =
+                new TriadAnalysisModels.IndividualExtraction(
                         List.of("  Nyx  ", "N."),
                         "tall",
                         "20s",
                         "protagonist"
                 );
-        SceneRelationshipAnalysisService.TriadSceneIndividualExtraction byScene =
-                new SceneRelationshipAnalysisService.TriadSceneIndividualExtraction(3, List.of(extracted));
+        TriadAnalysisModels.SceneIndividualExtraction byScene =
+                new TriadAnalysisModels.SceneIndividualExtraction(3, List.of(extracted));
 
         when(individualMentionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -87,15 +87,15 @@ class IndividualPersistenceServiceTest {
     @DisplayName("Skips extracted individuals without non-blank alias")
     void skipsIndividualsWithoutAlias() {
         Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null, null);
-        SceneRelationshipAnalysisService.TriadIndividualExtraction invalid =
-                new SceneRelationshipAnalysisService.TriadIndividualExtraction(
+        TriadAnalysisModels.IndividualExtraction invalid =
+                new TriadAnalysisModels.IndividualExtraction(
                         List.of(" ", "\t", ""),
                         "",
                         "",
                         ""
                 );
-        SceneRelationshipAnalysisService.TriadSceneIndividualExtraction byScene =
-                new SceneRelationshipAnalysisService.TriadSceneIndividualExtraction(0, List.of(invalid));
+        TriadAnalysisModels.SceneIndividualExtraction byScene =
+                new TriadAnalysisModels.SceneIndividualExtraction(0, List.of(invalid));
         service.persistExtractedIndividuals(List.of(persistedScene), List.of(byScene));
 
         verify(individualMentionRepository, never()).save(any());

@@ -1,14 +1,11 @@
 package com.lorevault.api.timeline;
 import com.lorevault.api.content.timeline.application.SceneTemporalRelationshipPersistenceService;
+import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
 import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
 
-import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
 import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.infrastructure.LlmCallRecordGraphRepository;
 import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.infrastructure.StatusRecordGraphRepository;
+import com.lorevault.api.ingestion.domain.TriadAnalysisArtifactLookup;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -36,11 +33,7 @@ class SceneTemporalRelationshipPersistenceServiceTest {
     @Mock
     private TemporalEdgeWriteRepository temporalEdgeWriteRepository;
     @Mock
-    private IngestionJobGraphRepository ingestionJobGraphRepository;
-    @Mock
-    private StatusRecordGraphRepository statusRecordGraphRepository;
-    @Mock
-    private LlmCallRecordGraphRepository llmCallRecordGraphRepository;
+    private TriadAnalysisArtifactLookup triadAnalysisArtifactLookup;
 
     private SceneTemporalRelationshipPersistenceService service;
 
@@ -59,16 +52,11 @@ class SceneTemporalRelationshipPersistenceServiceTest {
     void setUp() {
         service = new SceneTemporalRelationshipPersistenceService(
                 temporalEdgeWriteRepository,
-                ingestionJobGraphRepository,
-                statusRecordGraphRepository,
-                llmCallRecordGraphRepository
+                triadAnalysisArtifactLookup
         );
 
-        IngestionJob job = new IngestionJob();
-        job.setId(jobId);
-
-        when(ingestionJobGraphRepository.findFirstByChapterIdOrderByCreatedAtDesc(chapterId))
-                .thenReturn(Optional.of(job));
+        when(triadAnalysisArtifactLookup.findLatestJobIdByChapterId(chapterId))
+                .thenReturn(Optional.of(jobId));
 
         statusRecord = new StatusRecord();
         statusRecord.setId(statusRecordId);
@@ -82,12 +70,12 @@ class SceneTemporalRelationshipPersistenceServiceTest {
         callRecord.setResponseBody("{\"ok\":true}");
         callRecord.setTruncated(false);
 
-        when(statusRecordGraphRepository.findLatestTriadStatusByCurrentSceneId(jobId, scene1Id.toString()))
+        when(triadAnalysisArtifactLookup.findLatestTriadStatusByCurrentSceneId(jobId, scene1Id))
                 .thenReturn(Optional.of(statusRecord));
 
 
-        when(llmCallRecordGraphRepository.findLatestByJobStepAndStatusRecord(
-                eq(jobId), eq("scene-analysis"), eq(statusRecordId)))
+        when(triadAnalysisArtifactLookup.findLatestTriadCallRecord(
+                eq(jobId), eq(statusRecordId)))
                 .thenReturn(Optional.of(callRecord));
     }
 
@@ -309,19 +297,19 @@ class SceneTemporalRelationshipPersistenceServiceTest {
         );
     }
 
-    private SceneRelationshipAnalysisService.SceneRelationshipAnalysis triad(int prevIndex, int currIndex, String type) {
+    private TriadAnalysisModels.SceneRelationshipAnalysis triad(int prevIndex, int currIndex, String type) {
         return triad(scene0Id, scene1Id, null, prevIndex, currIndex, null, type, null);
     }
 
-    private SceneRelationshipAnalysisService.SceneRelationshipAnalysis triad(UUID prevId,
-                                                                             UUID currId,
-                                                                             UUID nextId,
-                                                                             Integer prevIndex,
-                                                                             Integer currIndex,
-                                                                             Integer nextIndex,
-                                                                             String prevToCurrType,
-                                                                             String currToNextType) {
-        return new SceneRelationshipAnalysisService.SceneRelationshipAnalysis(
+    private TriadAnalysisModels.SceneRelationshipAnalysis triad(UUID prevId,
+                                                                UUID currId,
+                                                                UUID nextId,
+                                                                Integer prevIndex,
+                                                                Integer currIndex,
+                                                                Integer nextIndex,
+                                                                String prevToCurrType,
+                                                                String currToNextType) {
+        return new TriadAnalysisModels.SceneRelationshipAnalysis(
                 prevId,
                 currId,
                 nextId,

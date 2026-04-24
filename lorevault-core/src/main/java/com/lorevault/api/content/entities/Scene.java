@@ -11,7 +11,6 @@ import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Property;
 import org.springframework.data.neo4j.core.schema.Relationship;
 
-import com.lorevault.api.content.timeline.domain.Event;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -21,14 +20,18 @@ import java.util.ArrayList;
  * Represents a semantic scene within a chapter. Scenes are identified by AI analysis
  * based on shifts in time, location, or character focus. They serve as the intermediate
  * level in the hierarchy: Chapter -> Scene -> Chunk.
- * 
+ *
+ * In the current graph model, Scene is also the persisted event carrier. Scenes therefore
+ * keep the Event label and event-oriented accessors while a broader Event -> Entity model
+ * remains future work.
+ *
  * Scenes contain the exact character coordinates within the chapter text and provide
  * contextual boundaries for the chunking process in v0.3.0+.
  */
 @Data
 @NoArgsConstructor
 @Node("Scene")
-public class Scene implements Event {
+public class Scene {
     public static final String EVENT_LABEL = "Event";
     public static final String POTENTIAL_SPLIT_SCENE_START_LABEL = "PotentialSplitSceneStart";
     public static final String POTENTIAL_SPLIT_SCENE_END_LABEL = "PotentialSplitSceneEnd";
@@ -191,28 +194,23 @@ public class Scene implements Event {
         }
     }
 
-    // --- Event interface mapping ---
-    @Override
+    // --- Current event-carrier compatibility methods ---
     public java.util.UUID getEventId() {
         return id;
     }
 
-    @Override
     public UUID getChapterId() {
         return chapterId;
     }
 
-    @Override
     public Integer getSceneIndex() {
         return sceneIndex;
     }
 
-    @Override
     public Long getStartOffset() {
         return startCharacterOffset;
     }
 
-    @Override
     public Long getEndOffset() {
         return endCharacterOffset;
     }

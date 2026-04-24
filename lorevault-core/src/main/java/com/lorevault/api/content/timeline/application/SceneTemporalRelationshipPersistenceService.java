@@ -1,15 +1,12 @@
 package com.lorevault.api.content.timeline.application;
 
 import com.lorevault.api.ai.domain.TriadAnalysisException;
-import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
 import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
+import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
 import com.lorevault.api.ingestion.domain.IngestionFailure;
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
 import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.infrastructure.LlmCallRecordGraphRepository;
 import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.infrastructure.StatusRecordGraphRepository;
+import com.lorevault.api.ingestion.domain.TriadAnalysisArtifactLookup;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,23 +21,17 @@ import java.util.UUID;
 public class SceneTemporalRelationshipPersistenceService {
 
     private final TemporalEdgeWriteRepository temporalEdgeWriteRepository;
-    private final IngestionJobGraphRepository ingestionJobGraphRepository;
-    private final StatusRecordGraphRepository statusRecordGraphRepository;
-    private final LlmCallRecordGraphRepository llmCallRecordGraphRepository;
+    private final TriadAnalysisArtifactLookup triadAnalysisArtifactLookup;
 
     public SceneTemporalRelationshipPersistenceService(TemporalEdgeWriteRepository temporalEdgeWriteRepository,
-                                                       IngestionJobGraphRepository ingestionJobGraphRepository,
-                                                       StatusRecordGraphRepository statusRecordGraphRepository,
-                                                       LlmCallRecordGraphRepository llmCallRecordGraphRepository) {
+                                                       TriadAnalysisArtifactLookup triadAnalysisArtifactLookup) {
         this.temporalEdgeWriteRepository = temporalEdgeWriteRepository;
-        this.ingestionJobGraphRepository = ingestionJobGraphRepository;
-        this.statusRecordGraphRepository = statusRecordGraphRepository;
-        this.llmCallRecordGraphRepository = llmCallRecordGraphRepository;
+        this.triadAnalysisArtifactLookup = triadAnalysisArtifactLookup;
     }
 
     @Transactional
     public void applyTriadAnalysesPostPersistence(UUID chapterId,
-                                                  List<SceneRelationshipAnalysisService.SceneRelationshipAnalysis> analyses,
+                                                  List<TriadAnalysisModels.SceneRelationshipAnalysis> analyses,
                                                   Map<Integer, UUID> sceneIndexToPersistedId) {
         if (analyses == null || analyses.isEmpty()) {
             return;
@@ -182,8 +173,7 @@ public class SceneTemporalRelationshipPersistenceService {
         if (chapterId == null) {
             return null;
         }
-        return ingestionJobGraphRepository.findFirstByChapterIdOrderByCreatedAtDesc(chapterId)
-                .map(IngestionJob::getId)
+        return triadAnalysisArtifactLookup.findLatestJobIdByChapterId(chapterId)
                 .orElse(null);
     }
 
@@ -200,7 +190,7 @@ public class SceneTemporalRelationshipPersistenceService {
             );
         }
 
-        return statusRecordGraphRepository.findLatestTriadStatusByCurrentSceneId(jobId, currentSceneId.toString())
+        return triadAnalysisArtifactLookup.findLatestTriadStatusByCurrentSceneId(jobId, currentSceneId)
                 .orElseThrow(() -> triadArtifactFailure(
                         "TRIAD_STATUS_MISSING",
                         "Missing SCENE_TRIAD_ANALYSIS status for current scene id " + currentSceneId,
@@ -221,8 +211,8 @@ public class SceneTemporalRelationshipPersistenceService {
             );
         }
 
-        return llmCallRecordGraphRepository
-                .findLatestByJobStepAndStatusRecord(jobId, "scene-analysis", statusRecordId)
+        return triadAnalysisArtifactLookup
+                .findLatestTriadCallRecord(jobId, statusRecordId)
                 .orElseThrow(() -> triadArtifactFailure(
                         "TRIAD_ARTIFACT_MISSING",
                         "Missing scene-analysis LlmCallRecord for status " + statusRecordId,

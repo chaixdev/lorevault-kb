@@ -27,7 +27,7 @@ LoreVault currently mixes:
 - targeted infrastructure tests
 - on-demand architecture tests
 
-The active direction is simpler than the older ports-and-adapters testing shape: test business behavior directly, then validate real wiring where it matters.
+The active direction is simpler than the older indirection-heavy testing shape: test business behavior directly, then validate real wiring where it matters.
 
 ## Test Categories
 

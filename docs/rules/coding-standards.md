@@ -294,7 +294,8 @@ benefit. Delete the interface; use the concrete class directly.
 Add an interface only when:
 - Multiple real implementations exist or are imminent.
 - The boundary is an external system and testability requires a mock or stub.
-- It is a true ports-and-adapters boundary between modules.
+- It is a true external or cross-module boundary.
+- It defines a small, explicit ownership seam that would otherwise force the wrong package dependency direction.
 
 **Speculative generality.**
 Do not add extension points, abstract base classes, generic type parameters, or callback

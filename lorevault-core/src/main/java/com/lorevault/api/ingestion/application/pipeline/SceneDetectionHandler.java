@@ -3,6 +3,7 @@ package com.lorevault.api.ingestion.application.pipeline;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 
+import com.lorevault.api.ai.domain.SceneDetectionException;
 import com.lorevault.api.ai.domain.SceneLocalizationException;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Scene;
@@ -16,6 +17,7 @@ import com.lorevault.api.ingestion.application.scene.SceneProcessingService;
 import com.lorevault.api.ingestion.infrastructure.IndividualPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.LocationPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.EventPersistenceService;
+import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
 import com.lorevault.api.content.timeline.application.DefaultTemporalEdgeService;
 import com.lorevault.api.content.timeline.application.SceneTemporalRelationshipPersistenceService;
 import lombok.extern.slf4j.Slf4j;
@@ -139,12 +141,22 @@ public class SceneDetectionHandler {
                             (UUID left, UUID right) -> left
                     ));
 
-            var sceneRelationshipOutcome = new SceneRelationshipAnalysisService.SceneRelationshipOutcome(List.of(), List.of(), List.of(), List.of());
+            var sceneRelationshipOutcome = new TriadAnalysisModels.SceneRelationshipOutcome(List.of(), List.of(), List.of(), List.of());
             if (!scenes.isEmpty()) {
                 Chapter triadChapter = chapterRepo.findById(chapterId)
                         .orElseThrow(() -> new IllegalArgumentException("Chapter not found for triad analysis: " + chapterId));
                 triadChapter.setScenes(List.copyOf(scenes));
-                sceneRelationshipOutcome = sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(jobId, triadChapter);
+
+                sceneRelationshipOutcome = sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
+                        jobId,
+                        triadChapter,
+                        statusProps -> stageSupport.updateJobStatus(
+                                jobId,
+                                IngestionStatus.SCENE_TRIAD_ANALYSIS,
+                                "Triad analysis for scenes [prev, curr, next]",
+                                statusProps
+                        )
+                );
             }
             sceneTemporalRelationshipPersistenceService.applyTriadAnalysesPostPersistence(
                     chapterId,
@@ -213,6 +225,16 @@ public class SceneDetectionHandler {
     private boolean isRetryableError(Exception e) {
         if (e instanceof SceneLocalizationException) {
             return true;
+        }
+        if (e instanceof SceneDetectionException sceneDetectionException
+                && sceneDetectionException.failure() != null) {
+            String code = sceneDetectionException.failure().code();
+            return "SCENE_DETECTION_RETRY_EXHAUSTED".equals(code)
+                    || "SCENE_SEGMENT_NO_LOCALIZABLE_SCENES".equals(code)
+                    || "SCENE_SEGMENTED_FALLBACK_EMPTY".equals(code)
+                    || "SCENE_SEGMENTATION_XML_EMPTY".equals(code)
+                    || "SCENE_COORDINATE_LOCALIZATION_EMPTY".equals(code)
+                    || "SCENE_COORDINATE_LOCALIZATION_DROPPED_SCENES".equals(code);
         }
         String message = e.getMessage();
         return message != null && (
