@@ -82,6 +82,13 @@ class LlmClientTest {
                                 "20s",
                                 "A soldier with a spear"
                         )),
+                        List.of(new SceneRelationshipAnalysisService.TriadObjectExtraction(
+                                List.of("Sylspear"),
+                                "spear",
+                                "invested metal",
+                                "combat",
+                                "A spear formed from living spren"
+                        )),
                         List.of(new SceneRelationshipAnalysisService.TriadLocationExtraction(
                                 "Bridge Four Barracks",
                                 List.of("the barracks"),
@@ -127,6 +134,7 @@ class LlmClientTest {
         assertThat(responseBodyCaptor.getValue()).contains("\"timelineMarker\":\"timeline-marker\"");
         assertThat(responseBodyCaptor.getValue()).contains("\"currentSceneEntities\"");
         assertThat(responseBodyCaptor.getValue()).contains("\"activity\":\"A soldier with a spear\"");
+        assertThat(responseBodyCaptor.getValue()).contains("\"type\":\"spear\"");
         assertThat(responseBodyCaptor.getValue()).contains("\"primaryName\":\"Bridge Four Barracks\"");
         assertThat(responseBodyCaptor.getValue()).doesNotContain("[structured-response:");
         assertThat(outputTokensCaptor.getValue()).isGreaterThan(0);

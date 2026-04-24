@@ -43,6 +43,30 @@ class MentionRecordTest {
     }
 
     @Test
+    @DisplayName("should expose object mention fields through record accessors")
+    void shouldExposeObjectMentionFieldsThroughRecordAccessors() {
+        ObjectMention mention = objectMention(UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                List.of("Nightblood"), "UNRESOLVED");
+
+        assertThat(mention.id()).isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000002"));
+        assertThat(mention.source()).isEqualTo("scene-analysis");
+        assertThat(mention.displayName()).isEqualTo("Nightblood");
+        assertThat(mention.normalizedName()).isEqualTo("nightblood");
+        assertThat(mention.aliases()).containsExactly("Nightblood");
+        assertThat(mention.type()).isEqualTo("sentient sword");
+        assertThat(mention.material()).isEqualTo("black metal");
+        assertThat(mention.purpose()).isEqualTo("destroy evil");
+        assertThat(mention.description()).isEqualTo("A dangerous awakened blade");
+        assertThat(mention.sceneId()).isEqualTo(SCENE_ID);
+        assertThat(mention.chapterId()).isEqualTo(CHAPTER_ID);
+        assertThat(mention.bookId()).isEqualTo(BOOK_ID);
+        assertThat(mention.resolutionStatus()).isEqualTo("UNRESOLVED");
+        assertThat(mention.extractionIndex()).isEqualTo(4);
+        assertThat(mention.createdAt()).isEqualTo(CREATED_AT);
+        assertThat(mention.updatedAt()).isEqualTo(UPDATED_AT);
+    }
+
+    @Test
     @DisplayName("should preserve record equality semantics for mentions")
     void shouldPreserveRecordEqualitySemanticsForMentions() {
         LocationMention first = locationMention(UUID.fromString("00000000-0000-0000-0000-000000000010"),
@@ -76,6 +100,7 @@ class MentionRecordTest {
     void shouldSupportSharedMentionContractAcrossMentionRecordTypes() {
         List<Mention> mentions = List.of(
                 individualMention(UUID.fromString("00000000-0000-0000-0000-000000000031"), List.of("Kal"), "UNRESOLVED"),
+                objectMention(UUID.fromString("00000000-0000-0000-0000-000000000034"), List.of("Nightblood"), "UNRESOLVED"),
                 locationMention(UUID.fromString("00000000-0000-0000-0000-000000000032"), List.of("The Tower"), "RESOLVED"),
                 eventMention(UUID.fromString("00000000-0000-0000-0000-000000000033"), List.of("Contest"), "PENDING")
         );
@@ -91,13 +116,13 @@ class MentionRecordTest {
                 .containsOnly(BOOK_ID);
         assertThat(mentions)
                 .extracting(Mention::displayName)
-                .containsExactly("Kaladin", "Urithiru", "The Duel");
+                .containsExactly("Kaladin", "Nightblood", "Urithiru", "The Duel");
         assertThat(mentions)
                 .extracting(Mention::normalizedName)
-                .containsExactly("kaladin", "urithiru", "the_duel");
+                .containsExactly("kaladin", "nightblood", "urithiru", "the_duel");
         assertThat(mentions)
                 .extracting(Mention::resolutionStatus)
-                .containsExactly("UNRESOLVED", "RESOLVED", "PENDING");
+                .containsExactly("UNRESOLVED", "UNRESOLVED", "RESOLVED", "PENDING");
     }
 
     private static IndividualMention individualMention(UUID id, List<String> aliases, String resolutionStatus) {
@@ -135,6 +160,27 @@ class MentionRecordTest {
                 BOOK_ID,
                 resolutionStatus,
                 5,
+                CREATED_AT,
+                UPDATED_AT
+        );
+    }
+
+    private static ObjectMention objectMention(UUID id, List<String> aliases, String resolutionStatus) {
+        return new ObjectMention(
+                id,
+                "scene-analysis",
+                "Nightblood",
+                "nightblood",
+                aliases,
+                "sentient sword",
+                "black metal",
+                "destroy evil",
+                "A dangerous awakened blade",
+                SCENE_ID,
+                CHAPTER_ID,
+                BOOK_ID,
+                resolutionStatus,
+                4,
                 CREATED_AT,
                 UPDATED_AT
         );

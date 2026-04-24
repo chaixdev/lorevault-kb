@@ -15,6 +15,7 @@ import com.lorevault.api.ingestion.application.triad.SceneRelationshipAnalysisSe
 import com.lorevault.api.ingestion.application.scene.SceneDetectionService;
 import com.lorevault.api.ingestion.application.scene.SceneProcessingService;
 import com.lorevault.api.ingestion.infrastructure.IndividualPersistenceService;
+import com.lorevault.api.ingestion.infrastructure.ObjectPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.LocationPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.EventPersistenceService;
 import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
@@ -54,6 +55,7 @@ public class SceneDetectionHandler {
     private final SceneDetectionService sceneDetectionService;
     private final SceneProcessingService sceneProcessingService;
     private final IndividualPersistenceService individualPersistenceService;
+    private final ObjectPersistenceService objectPersistenceService;
     private final LocationPersistenceService locationPersistenceService;
     private final EventPersistenceService eventPersistenceService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
@@ -68,6 +70,7 @@ public class SceneDetectionHandler {
             SceneDetectionService sceneDetectionService,
             SceneProcessingService sceneProcessingService,
             IndividualPersistenceService individualPersistenceService,
+            ObjectPersistenceService objectPersistenceService,
             LocationPersistenceService locationPersistenceService,
             EventPersistenceService eventPersistenceService,
             IngestionJobService ingestionJobService,
@@ -81,6 +84,7 @@ public class SceneDetectionHandler {
         this.sceneDetectionService = sceneDetectionService;
         this.sceneProcessingService = sceneProcessingService;
         this.individualPersistenceService = individualPersistenceService;
+        this.objectPersistenceService = objectPersistenceService;
         this.locationPersistenceService = locationPersistenceService;
         this.eventPersistenceService = eventPersistenceService;
         this.defaultTemporalEdgeService = defaultTemporalEdgeService;
@@ -168,6 +172,10 @@ public class SceneDetectionHandler {
                 individualPersistenceService.persistExtractedIndividuals(
                         scenes,
                         sceneRelationshipOutcome.sceneIndividualExtractions()
+                );
+                objectPersistenceService.persistExtractedObjects(
+                        scenes,
+                        sceneRelationshipOutcome.sceneObjectExtractions()
                 );
                 locationPersistenceService.persistExtractedLocations(
                         scenes,

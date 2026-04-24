@@ -74,6 +74,8 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE INDEX book_individual_book_name IF NOT EXISTS FOR (bi:BookIndividual) ON (bi.bookId, bi.normalizedName)";
     private static final String LOCATION_MENTION_CHAPTER_NAME_INDEX =
             "CREATE INDEX location_mention_chapter_name IF NOT EXISTS FOR (m:LocationMention) ON (m.chapterId, m.normalizedName)";
+    private static final String OBJECT_MENTION_CHAPTER_NAME_INDEX =
+            "CREATE INDEX object_mention_chapter_name IF NOT EXISTS FOR (m:ObjectMention) ON (m.chapterId, m.normalizedName)";
     private static final String EVENT_MENTION_CHAPTER_NAME_INDEX =
             "CREATE INDEX event_mention_chapter_name IF NOT EXISTS FOR (m:EventMention) ON (m.chapterId, m.normalizedName)";
     private static final String BOOK_LOCATION_BOOK_NAME_INDEX =
@@ -119,6 +121,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(INDIVIDUAL_MENTION_CHAPTER_NAME_INDEX, "IndividualMention(chapterId, normalizedName)"));
         results.add(executeIndex(BOOK_INDIVIDUAL_BOOK_NAME_INDEX, "BookIndividual(bookId, normalizedName)"));
         results.add(executeIndex(LOCATION_MENTION_CHAPTER_NAME_INDEX, "LocationMention(chapterId, normalizedName)"));
+        results.add(executeIndex(OBJECT_MENTION_CHAPTER_NAME_INDEX, "ObjectMention(chapterId, normalizedName)"));
         results.add(executeIndex(EVENT_MENTION_CHAPTER_NAME_INDEX, "EventMention(chapterId, normalizedName)"));
         results.add(executeIndex(BOOK_LOCATION_BOOK_NAME_INDEX, "BookLocation(bookId, normalizedName)"));
         
