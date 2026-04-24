@@ -1,5 +1,6 @@
 package com.lorevault.api.ai.application;
 
+import com.lorevault.api.ai.domain.EmbeddingGenerationException;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Chunk;
 import com.lorevault.api.testutil.fakes.FakeContentRepositories;
@@ -7,6 +8,10 @@ import com.lorevault.api.testutil.fakes.FakeEmbeddingModel;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.embedding.Embedding;
+import org.springframework.ai.embedding.EmbeddingRequest;
+import org.springframework.ai.embedding.EmbeddingResponse;
+import org.springframework.ai.embedding.EmbeddingResponseMetadata;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -16,6 +21,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Tag("service")
 @DisplayName("EmbeddingService")
@@ -133,6 +139,115 @@ class EmbeddingServiceTest {
 
         assertThat(updated).isEqualTo(1);
         assertThat(chunk.getEmbeddingHash()).isEqualTo(sha256("metadata-model:" + chunk.getContentHash()));
+    }
+
+    @Test
+    @DisplayName("should surface embedding backend failure instead of returning zero updates")
+    void shouldSurfaceEmbeddingBackendFailure() {
+        FakeContentRepositories repo = new FakeContentRepositories();
+        var embed = new FakeEmbeddingModel("fake-model", 8) {
+            @Override
+            public org.springframework.ai.embedding.EmbeddingResponse call(org.springframework.ai.embedding.EmbeddingRequest request) {
+                throw new RuntimeException("Connection failed");
+            }
+        };
+        var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
+        svc.setEmbeddingDim(8);
+        svc.setBatchSize(8);
+        svc.setConfiguredEmbeddingModelId("fake-model");
+
+        UUID chapterId = UUID.randomUUID();
+        Chapter chapter = new Chapter();
+        chapter.setId(chapterId);
+        chapter.setRawText("abcdefghijklmnopqrstuvwxyz");
+        repo.createChapter(chapter);
+
+        Chunk chunk = new Chunk();
+        chunk.setId(UUID.randomUUID());
+        chunk.setStartCharInChapter(0);
+        chunk.setEndCharInChapter(10);
+        chunk.setContentHash("hash-fail");
+        repo.addChunksToChapter(chapterId, List.of(chunk));
+
+        assertThatThrownBy(() -> svc.generateEmbeddingsForChapter(chapterId))
+                .isInstanceOf(EmbeddingGenerationException.class)
+                .hasMessageContaining("Embedding backend failed");
+    }
+
+    @Test
+    @DisplayName("should surface empty embedding response instead of returning zero updates")
+    void shouldSurfaceEmptyEmbeddingResponse() {
+        FakeContentRepositories repo = new FakeContentRepositories();
+        var embed = new FakeEmbeddingModel("fake-model", 8) {
+            @Override
+            public EmbeddingResponse call(EmbeddingRequest request) {
+                return new EmbeddingResponse(List.of(), new EmbeddingResponseMetadata());
+            }
+        };
+        var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
+        svc.setEmbeddingDim(8);
+        svc.setBatchSize(8);
+        svc.setConfiguredEmbeddingModelId("fake-model");
+
+        UUID chapterId = UUID.randomUUID();
+        Chapter chapter = new Chapter();
+        chapter.setId(chapterId);
+        chapter.setRawText("abcdefghijklmnopqrstuvwxyz");
+        repo.createChapter(chapter);
+
+        Chunk chunk = new Chunk();
+        chunk.setId(UUID.randomUUID());
+        chunk.setStartCharInChapter(0);
+        chunk.setEndCharInChapter(10);
+        chunk.setContentHash("hash-empty");
+        repo.addChunksToChapter(chapterId, List.of(chunk));
+
+        assertThatThrownBy(() -> svc.generateEmbeddingsForChapter(chapterId))
+                .isInstanceOf(EmbeddingGenerationException.class)
+                .hasMessageContaining("returned no vectors")
+                .hasMessageNotContaining("backend failed");
+    }
+
+    @Test
+    @DisplayName("should surface count-mismatched embedding response instead of returning zero updates")
+    void shouldSurfaceCountMismatchedEmbeddingResponse() {
+        FakeContentRepositories repo = new FakeContentRepositories();
+        var embed = new FakeEmbeddingModel("fake-model", 8) {
+            @Override
+            public EmbeddingResponse call(EmbeddingRequest request) {
+                var metadata = new EmbeddingResponseMetadata();
+                metadata.setModel("fake-model");
+                return new EmbeddingResponse(List.of(new Embedding(new float[]{1f, 2f, 3f}, 0)), metadata);
+            }
+        };
+        var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
+        svc.setEmbeddingDim(8);
+        svc.setBatchSize(8);
+        svc.setConfiguredEmbeddingModelId("fake-model");
+
+        UUID chapterId = UUID.randomUUID();
+        Chapter chapter = new Chapter();
+        chapter.setId(chapterId);
+        chapter.setRawText("abcdefghijklmnopqrstuvwxyz0123456789");
+        repo.createChapter(chapter);
+
+        Chunk first = new Chunk();
+        first.setId(UUID.randomUUID());
+        first.setStartCharInChapter(0);
+        first.setEndCharInChapter(10);
+        first.setContentHash("hash-one");
+
+        Chunk second = new Chunk();
+        second.setId(UUID.randomUUID());
+        second.setStartCharInChapter(10);
+        second.setEndCharInChapter(20);
+        second.setContentHash("hash-two");
+
+        repo.addChunksToChapter(chapterId, List.of(first, second));
+
+        assertThatThrownBy(() -> svc.generateEmbeddingsForChapter(chapterId))
+                .isInstanceOf(EmbeddingGenerationException.class)
+                .hasMessageContaining("different number of vectors");
     }
 
     private static String sha256(String s) throws Exception {

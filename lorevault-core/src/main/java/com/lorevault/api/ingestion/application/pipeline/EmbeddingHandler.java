@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion.application.pipeline;
 
+import com.lorevault.api.ai.domain.EmbeddingGenerationException;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 
@@ -128,6 +129,10 @@ public class EmbeddingHandler {
     }
 
     private boolean isRetryableError(Exception e) {
+        if (e instanceof EmbeddingGenerationException embeddingGenerationException
+                && embeddingGenerationException.failure() != null) {
+            return "EMBEDDING_BACKEND_UNAVAILABLE".equals(embeddingGenerationException.failure().code());
+        }
         String message = e.getMessage();
         return message != null && (
                 message.contains("API") || 

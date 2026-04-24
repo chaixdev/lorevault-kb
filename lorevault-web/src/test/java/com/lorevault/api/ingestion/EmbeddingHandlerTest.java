@@ -1,4 +1,5 @@
 package com.lorevault.api.ingestion;
+import com.lorevault.api.ai.domain.EmbeddingGenerationException;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.application.pipeline.*;
 import com.lorevault.api.ingestion.domain.*;
@@ -166,6 +167,92 @@ class EmbeddingHandlerTest {
                 contains("EMBEDDING failed"),
                 anyMap()
         );
+        verify(eventPublisher, never()).publishEvent(argThat(event -> event instanceof EmbeddingsCompletedEvent));
+    }
+
+    @Test
+    @DisplayName("Marks job failed when embedding backend is unavailable")
+    void handleChunksCreated_whenEmbeddingBackendFails_marksJobFailed() {
+        UUID jobId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+
+        IngestionFailure failure = IngestionFailure.builder(
+                        "EMBEDDING_BACKEND_UNAVAILABLE",
+                        "Embedding backend failed while generating chunk vectors")
+                .exceptionType(EmbeddingGenerationException.class.getSimpleName())
+                .stage("EMBEDDING")
+                .detail("chapterId", chapterId)
+                .build();
+        when(embeddingService.generateEmbeddingsForChapter(chapterId))
+                .thenThrow(new EmbeddingGenerationException(failure, new RuntimeException("Connection failed")));
+
+        EmbeddingHandler handler = new EmbeddingHandler(
+                chapterRepo,
+                chunkRepo,
+                sceneRepo,
+                embeddingService,
+                ingestionJobService,
+                jobRepo,
+                eventPublisher
+        );
+
+        handler.handleChunksCreated(new ChunksCreatedEvent(this, jobId, chapterId, UUID.randomUUID(), 1));
+
+        ArgumentCaptor<IngestionFailedEvent> failureCaptor = ArgumentCaptor.forClass(IngestionFailedEvent.class);
+        verify(eventPublisher).publishEvent(failureCaptor.capture());
+
+        IngestionFailedEvent failedEvent = failureCaptor.getValue();
+        assertThat(failedEvent.getJobId()).isEqualTo(jobId);
+        assertThat(failedEvent.getChapterId()).isEqualTo(chapterId);
+        assertThat(failedEvent.getFailedStage()).isEqualTo("EMBEDDING");
+        assertThat(failedEvent.getErrorMessage()).contains("Embedding backend failed");
+        assertThat(failedEvent.isRetryable()).isTrue();
+
+        verify(ingestionJobService).updateJobStatus(
+                eq(jobId),
+                eq(IngestionStatus.FAILED),
+                contains("EMBEDDING failed"),
+                anyMap()
+        );
+        verify(eventPublisher, never()).publishEvent(argThat(event -> event instanceof EmbeddingsCompletedEvent));
+    }
+
+    @Test
+    @DisplayName("Marks job failed when embedding response is empty for non-empty work")
+    void handleChunksCreated_whenEmbeddingResponseEmpty_marksJobFailed() {
+        UUID jobId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+
+        IngestionFailure failure = IngestionFailure.builder(
+                        "EMBEDDING_RESPONSE_EMPTY",
+                        "Embedding backend returned no vectors for requested chunks")
+                .exceptionType(EmbeddingGenerationException.class.getSimpleName())
+                .stage("EMBEDDING")
+                .detail("chapterId", chapterId)
+                .build();
+        when(embeddingService.generateEmbeddingsForChapter(chapterId))
+                .thenThrow(new EmbeddingGenerationException(failure));
+
+        EmbeddingHandler handler = new EmbeddingHandler(
+                chapterRepo,
+                chunkRepo,
+                sceneRepo,
+                embeddingService,
+                ingestionJobService,
+                jobRepo,
+                eventPublisher
+        );
+
+        handler.handleChunksCreated(new ChunksCreatedEvent(this, jobId, chapterId, UUID.randomUUID(), 1));
+
+        ArgumentCaptor<IngestionFailedEvent> failureCaptor = ArgumentCaptor.forClass(IngestionFailedEvent.class);
+        verify(eventPublisher).publishEvent(failureCaptor.capture());
+
+        IngestionFailedEvent failedEvent = failureCaptor.getValue();
+        assertThat(failedEvent.getFailedStage()).isEqualTo("EMBEDDING");
+        assertThat(failedEvent.getErrorMessage()).contains("returned no vectors");
+        assertThat(failedEvent.isRetryable()).isFalse();
+
         verify(eventPublisher, never()).publishEvent(argThat(event -> event instanceof EmbeddingsCompletedEvent));
     }
 }
