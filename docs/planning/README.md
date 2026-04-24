@@ -92,10 +92,9 @@ At minimum, each planning item should include:
 
 - [Book-location reduction can fail under chained uploads](book-location-reduction-race-under-chained-uploads.md)
 - [Audit generic caught exceptions that should become meaningful business failures](audit-generic-caught-exceptions-for-business-failure-semantics.md)
-- [Architectural hygiene guardrails for modulith boundaries](architectural-hygiene-guardrails-for-modulith-boundaries.md)
 - [Clarify AI package ownership for scene and triad workflows](clarify-ai-package-ownership-for-scene-and-triad-workflows.md)
-- [Contain strong package cycles and event-boundary gaps](contain-strong-package-cycles-and-event-boundary-gaps.md)
 - [HTTP Request ID MDC Propagation](http-request-id-mdc-propagation.md)
 - [Revisit domain modeling with modern Java contracts and value objects](modern-java-domain-modeling-follow-up.md)
 - [Systematically transform package structure toward the target shape](package-shape-transformation-plan.md)
 - [Stuck ingestion status sometimes remains in an intermediate state](stuck-ingestion-status.md)
+- [Tighten web transport boundaries and internal type visibility](tighten-web-transport-boundaries-and-type-visibility.md)

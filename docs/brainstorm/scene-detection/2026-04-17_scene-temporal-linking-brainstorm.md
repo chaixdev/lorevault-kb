@@ -1,13 +1,13 @@
 # Scene Temporal Linking — Converged Design Brainstorm (April 2026)
 
 **Date:** April 2026  
-**Status:** Converged design brainstorm — implementation-guiding, not canonical truth yet
+**Status:** Historical converged design brainstorm — pre-shipment context, not canonical truth
 
 ---
 
 ## 1. Purpose
 
-This document captures the current converged design direction for fixing scene temporal linking.
+This document captures the converged design direction that guided the pre-shipment scene-temporal-linking work.
 
 It is no longer a broad option survey. It records:
 
@@ -16,7 +16,7 @@ It is no longer a broad option survey. It records:
 - the parts explicitly deferred
 - the concrete validation slice for V1
 
-This document should guide implementation discussion, but it is not yet a canonical pattern or ADR.
+This document remains useful as historical implementation context, but it is not a canonical pattern or ADR.
 
 ---
 
@@ -367,7 +367,7 @@ Relevant concept docs:
 
 ## 11. Related Internal Context
 
-- Planning note: `../../planning/scene-temporal-linking-gaps.md`
+- Historical planning note: the earlier temporal-linking planning ticket was removed from `docs/planning/` after the work shipped; see `../../PROJECT-STATUS.md` for current status.
 
 If this design stabilizes through implementation, likely next promotion targets are:
 

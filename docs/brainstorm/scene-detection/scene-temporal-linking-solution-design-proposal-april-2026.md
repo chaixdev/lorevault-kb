@@ -1,20 +1,19 @@
 # Scene Temporal Linking Solution Design Proposal — April 2026
 
 **Date:** April 2026  
-**Status:** Proposed direction  
-**Purpose:** Replace the wider temporal-linking brainstorm with a single implementation-ready V1 design that an agent can execute to completion
+**Status:** Historical proposal — pre-shipment design context  
+**Purpose:** Preserve the implementation-guiding V1 temporal-linking proposal that preceded the shipped scene-temporal-linking work
 
 ---
 
 ## Relationship to Earlier Material
 
-This document consolidates and sharpens the converged decisions from:
+This document consolidates and sharpens the converged decisions from the wider temporal-linking brainstorm and the earlier planning investigation that tracked the original gap before the implementation landed.
 
 - `2026-04-17_scene-temporal-linking-brainstorm.md`
-- `../../planning/scene-temporal-linking-gaps.md`
 
 Those earlier documents remain useful as diagnosis and option-space history.
-This document is the cleaner proposal for the shape we should actually build next.
+This document is preserved as pre-shipment design context. Current shipped status lives in `../../PROJECT-STATUS.md` and any canonical present-state mechanism should be described in the pattern library rather than inferred from this proposal.
 
 ---
 

@@ -72,7 +72,7 @@ Relevant current implementation shape:
 Recent bounded cleanup already reduced part of the problem:
 
 - triad workflow/result contracts were moved out of old AI-owned placement into `ingestion.application.result.TriadAnalysisModels`
-- broader cycle cleanup in `contain-strong-package-cycles-and-event-boundary-gaps.md` is complete
+- broader strong cycle cleanup is complete and reflected in `../PROJECT-STATUS.md`
 
 What remains is a narrower ownership/placement clarification task for the scene/triad workflow cluster itself.
 
@@ -123,7 +123,7 @@ What remains is a narrower ownership/placement clarification task for the scene/
 - Related rules: `../rules/code-organization-guidance.md`
 - Related pattern: `../patterns/codebase-topology.md`
 - Related pattern: `../patterns/ingestion/triad-analysis.md`
-- Related planning: `contain-strong-package-cycles-and-event-boundary-gaps.md`
 - Related planning: `package-shape-transformation-plan.md`
+- Related status snapshot: `../PROJECT-STATUS.md`
 - Relevant source root: `../../lorevault-core/src/main/java/com/lorevault/api/ai`
 - Relevant source root: `../../lorevault-core/src/main/java/com/lorevault/api/ingestion`
