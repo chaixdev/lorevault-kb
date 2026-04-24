@@ -1,9 +1,11 @@
 package com.lorevault.api.ai.application;
 
+import com.lorevault.api.ai.domain.EmbeddingGenerationException;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Chunk;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.content.entities.ChunkGraphRepository;
+import com.lorevault.api.ingestion.domain.IngestionFailure;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingRequest;
@@ -76,10 +78,7 @@ public class EmbeddingService {
         
         List<String> texts = extractTextsForEmbedding(targets, chapterId);
         List<double[]> vectors = generateVectors(texts, context);
-        if (vectors.isEmpty()) {
-            return 0; // Error already logged and metrics recorded
-        }
-        
+
         int updated = updateChunksWithEmbeddings(targets, vectors, context);
         recordFinalMetrics(context, updated, targets.size() - updated);
         
@@ -245,18 +244,71 @@ public class EmbeddingService {
         try {
             List<double[]> vectors = batchEmbed(texts);
             long embedMs = Duration.between(embedStart, Instant.now()).toMillis();
+            validateEmbeddingResult(texts, vectors, context.chapterId, embedMs);
             log.info("[Embeddings] Generated {} vectors in {} ms (chapter {})", 
                     vectors.size(), embedMs, context.chapterId);
             context.recordEmbeddingTime(embedMs);
             return vectors;
+        } catch (EmbeddingGenerationException e) {
+            throw e;
         } catch (Exception e) {
             long elapsed = Duration.between(embedStart, Instant.now()).toMillis();
             log.error("[Embeddings] Batch embedding failed chapter={} stage=embedding elapsedMs={} error={}", 
                     context.chapterId, elapsed, e.getMessage(), e);
             Metrics.counter("embeddings.skipped.count", "reason", "batch_failure").increment(texts.size());
             Metrics.timer("embeddings.process.duration").record(context.elapsedMs(), TimeUnit.MILLISECONDS);
-            return List.of();
+            throw embeddingFailure(
+                    "EMBEDDING_BACKEND_UNAVAILABLE",
+                    "Embedding backend failed while generating chunk vectors",
+                    context.chapterId,
+                    texts.size(),
+                    elapsed,
+                    e
+            );
         }
+    }
+
+    private void validateEmbeddingResult(List<String> texts,
+                                         List<double[]> vectors,
+                                         UUID chapterId,
+                                         long elapsedMs) {
+        if (vectors == null || vectors.isEmpty()) {
+            throw embeddingFailure(
+                    "EMBEDDING_RESPONSE_EMPTY",
+                    "Embedding backend returned no vectors for requested chunks",
+                    chapterId,
+                    texts.size(),
+                    elapsedMs,
+                    null
+            );
+        }
+
+        if (vectors.size() != texts.size()) {
+            throw embeddingFailure(
+                    "EMBEDDING_RESPONSE_COUNT_MISMATCH",
+                    "Embedding backend returned a different number of vectors than requested chunks",
+                    chapterId,
+                    texts.size(),
+                    elapsedMs,
+                    null
+            );
+        }
+    }
+
+    private EmbeddingGenerationException embeddingFailure(String code,
+                                                         String message,
+                                                         UUID chapterId,
+                                                         int chunkCount,
+                                                         long elapsedMs,
+                                                         Throwable cause) {
+        IngestionFailure failure = IngestionFailure.builder(code, message)
+                .exceptionType(EmbeddingGenerationException.class.getSimpleName())
+                .stage("EMBEDDING")
+                .detail("chapterId", chapterId)
+                .detail("chunkCount", chunkCount)
+                .detail("elapsedMs", elapsedMs)
+                .build();
+        return new EmbeddingGenerationException(failure, cause);
     }
 
     private int updateChunksWithEmbeddings(List<Chunk> targets, List<double[]> vectors, EmbeddingContext context) {
