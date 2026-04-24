@@ -4,6 +4,7 @@ import com.lorevault.api.ingestion.application.IngestionService;
 import com.lorevault.api.ingestion.application.pipeline.*;
 import com.lorevault.api.ingestion.application.resolution.*;
 import com.lorevault.api.ingestion.application.result.*;
+import com.lorevault.api.ingestion.domain.IngestionFailure;
 import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.application.CoreSearchRecords.*;
 import com.lorevault.api.ingestion.application.IngestionJobService;
@@ -21,6 +22,8 @@ import com.lorevault.api.web.query.ask.AskDtos;
 import com.lorevault.api.search.application.RagService;
 import com.lorevault.api.web.query.ask.SemanticSearchDtos;
 import com.lorevault.api.search.application.SemanticSearchService;
+import com.lorevault.api.search.domain.EntityLookupException;
+import com.lorevault.api.search.domain.SemanticSearchException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,6 +81,23 @@ class UiQueryControllerTest {
     }
 
     @Test
+    void vectorEndpointSemanticSearchFailureReturnsErrorFragment() throws Exception {
+        when(semanticSearchService.search(any())).thenThrow(new SemanticSearchException(
+                IngestionFailure.builder("SEMANTIC_SEARCH_BACKEND_UNAVAILABLE", "Semantic search unavailable")
+                        .exceptionType("SemanticSearchException")
+                        .stage("SEMANTIC_SEARCH")
+                        .build()
+        ));
+
+        mockMvc.perform(post("/ui/query/ask/vector")
+                        .param("question", "Who is Vin?")
+                        .param("topK", "5"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Search is temporarily unavailable. Please try again.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Vector retrieval")));
+    }
+
+    @Test
     void ragEndpointUsesBaselineMethod() throws Exception {
         when(ragService.askRagBaseline(any())).thenReturn(response("rag baseline"));
 
@@ -103,6 +123,23 @@ class UiQueryControllerTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Graph-aware")));
 
         verify(ragService).askGraphAware(any());
+    }
+
+    @Test
+    void graphAwareEndpointEntityLookupFailureReturnsErrorFragment() throws Exception {
+        when(ragService.askGraphAware(any())).thenThrow(new EntityLookupException(
+                IngestionFailure.builder("ENTITY_LOOKUP_QUERY_FAILED", "Entity lookup unavailable")
+                        .exceptionType("EntityLookupException")
+                        .stage("ENTITY_LOOKUP")
+                        .build()
+        ));
+
+        mockMvc.perform(post("/ui/query/ask/graph-aware")
+                        .param("question", "Who is Kelsier?")
+                        .param("topK", "5"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Search is temporarily unavailable. Please try again.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Graph-aware")));
     }
 
     @Test

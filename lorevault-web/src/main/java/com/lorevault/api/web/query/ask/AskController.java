@@ -22,10 +22,13 @@ import com.lorevault.api.search.application.CoreSearchRecords.CoreSearchMetadata
 import com.lorevault.api.search.application.CoreSearchRecords.CoreSemanticSearchFilters;
 import com.lorevault.api.search.application.RagService;
 import com.lorevault.api.search.application.SemanticSearchService;
+import com.lorevault.api.search.domain.EntityLookupException;
+import com.lorevault.api.search.domain.SemanticSearchException;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -61,7 +64,8 @@ public class AskController {
                     response.getResults().size(), response.getMetadata().getProcessingTimeMs());
             
             return ResponseEntity.ok(response);
-            
+        } catch (SemanticSearchException e) {
+            return serviceUnavailable("Semantic search", request.getQuery(), e);
         } catch (Exception e) {
             log.error("Semantic search failed for query '{}': {}", request.getQuery(), e.getMessage());
             log.debug("Semantic search failure details for query '{}'", request.getQuery(), e);
@@ -88,7 +92,8 @@ public class AskController {
                     response.getMetadata().getProcessingTimeMs());
             
             return ResponseEntity.ok(response);
-            
+        } catch (SemanticSearchException | EntityLookupException e) {
+            return serviceUnavailable("RAG", request.getQuestion(), e);
         } catch (Exception e) {
             log.error("RAG failed for question '{}': {}", request.getQuestion(), e.getMessage());
             log.debug("RAG failure details for question '{}'", request.getQuestion(), e);
@@ -115,7 +120,8 @@ public class AskController {
                     response.getMetadata().getProcessingTimeMs());
 
             return ResponseEntity.ok(response);
-
+        } catch (SemanticSearchException | EntityLookupException e) {
+            return serviceUnavailable("Graph-aware QA", request.getQuestion(), e);
         } catch (Exception e) {
             log.error("Graph-aware QA failed for question '{}': {}", request.getQuestion(), e.getMessage());
             log.debug("Graph-aware QA failure details for question '{}'", request.getQuestion(), e);
@@ -143,12 +149,19 @@ public class AskController {
                     response.getMetadata().getProcessingTimeMs());
 
             return ResponseEntity.ok(response);
-
+        } catch (SemanticSearchException | EntityLookupException e) {
+            return serviceUnavailable("Hybrid QA", request.getQuestion(), e);
         } catch (Exception e) {
             log.error("Hybrid QA failed for question '{}': {}", request.getQuestion(), e.getMessage());
             log.debug("Hybrid QA failure details for question '{}'", request.getQuestion(), e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    private <T> ResponseEntity<T> serviceUnavailable(String operation, String query, RuntimeException e) {
+        log.warn("{} unavailable for query '{}': {}", operation, query, e.getMessage());
+        log.debug("{} business failure details for query '{}'", operation, query, e);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
     }
 
     // --- Mappers ---

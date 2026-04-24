@@ -3,6 +3,9 @@ import com.lorevault.api.search.application.*;
 import com.lorevault.api.search.application.CoreSearchRecords.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lorevault.api.ingestion.domain.IngestionFailure;
+import com.lorevault.api.search.domain.EntityLookupException;
+import com.lorevault.api.search.domain.SemanticSearchException;
 import com.lorevault.api.web.query.ask.AskDtos.AskMetadata;
 import com.lorevault.api.web.query.ask.AskDtos.AskRequest;
 import com.lorevault.api.web.query.ask.AskDtos.CitationDto;
@@ -95,6 +98,27 @@ class AskControllerWebMvcTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void askVector_semanticSearchFailure_returns503() throws Exception {
+        SemanticSearchRequest request = new SemanticSearchRequest();
+        request.setQuery("who is gandalf?");
+        request.setTopK(3);
+
+        IngestionFailure failure = IngestionFailure.builder(
+                        "SEMANTIC_SEARCH_BACKEND_UNAVAILABLE",
+                        "Search backend unavailable")
+                .exceptionType(SemanticSearchException.class.getSimpleName())
+                .stage("SEMANTIC_SEARCH")
+                .build();
+        Mockito.when(semanticSearchService.search(any()))
+                .thenThrow(new SemanticSearchException(failure));
+
+        mockMvc.perform(post("/api/query/ask/vector")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isServiceUnavailable());
     }
 
     @Test
@@ -270,5 +294,26 @@ class AskControllerWebMvcTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void askGraphAware_entityLookupFailure_returns503() throws Exception {
+        AskRequest request = new AskRequest();
+        request.setQuestion("who is kelsier?");
+        request.setTopK(3);
+
+        IngestionFailure failure = IngestionFailure.builder(
+                        "ENTITY_LOOKUP_QUERY_FAILED",
+                        "Entity lookup query failed")
+                .exceptionType(EntityLookupException.class.getSimpleName())
+                .stage("ENTITY_LOOKUP")
+                .build();
+        Mockito.when(ragService.askGraphAware(any()))
+                .thenThrow(new EntityLookupException(failure));
+
+        mockMvc.perform(post("/api/query/ask/graph-aware")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isServiceUnavailable());
     }
 }
