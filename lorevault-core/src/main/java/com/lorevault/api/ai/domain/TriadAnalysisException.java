@@ -1,11 +1,12 @@
 package com.lorevault.api.ai.domain;
 
 import com.lorevault.api.ingestion.domain.IngestionFailure;
+import com.lorevault.api.ingestion.domain.IngestionFailureCarrier;
 
 /**
  * Domain exception for malformed or incomplete triad analysis output.
  */
-public class TriadAnalysisException extends RuntimeException {
+public class TriadAnalysisException extends RuntimeException implements IngestionFailureCarrier {
 
     private final IngestionFailure failure;
 

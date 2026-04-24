@@ -102,13 +102,9 @@ public class PipelineStageSupport {
     }
 
     private IngestionFailure extractFailure(String stage, Exception e) {
-        if (e instanceof com.lorevault.api.ai.domain.TriadAnalysisException triadAnalysisException
-                && triadAnalysisException.failure() != null) {
-            return triadAnalysisException.failure();
-        }
-        if (e instanceof com.lorevault.api.ai.domain.SceneLocalizationException sceneLocalizationException
-                && sceneLocalizationException.failure() != null) {
-            return sceneLocalizationException.failure();
+        if (e instanceof com.lorevault.api.ingestion.domain.IngestionFailureCarrier carrier
+                && carrier.failure() != null) {
+            return carrier.failure();
         }
         return IngestionFailure.fromException(stage, e);
     }
