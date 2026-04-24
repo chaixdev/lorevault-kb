@@ -29,8 +29,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -379,6 +381,29 @@ class RagServiceTest {
         }
 
         @Test
+        void shouldNotFallBackToNarrativeQaWhenEntityLookupTemplateFails() {
+            when(intentClassifier.classify(any())).thenReturn(QuestionIntent.ENTITY_LOOKUP);
+
+            EntityLookupException lookupFailure = new EntityLookupException(
+                    com.lorevault.api.ingestion.domain.IngestionFailure.builder(
+                                    "ENTITY_LOOKUP_QUERY_FAILED",
+                                    "Entity lookup query failed for template: individual-lookup")
+                            .stage("ENTITY_LOOKUP")
+                            .build());
+
+            when(templateRegistry.execute(eq("individual-lookup"), any(), any())).thenThrow(lookupFailure);
+
+            CoreAskRequest request = new CoreAskRequest("Who is Vin?", 3, null, null, null);
+
+            assertThatThrownBy(() -> ragService.ask(request))
+                    .isInstanceOf(EntityLookupException.class)
+                    .hasMessageContaining("Entity lookup query failed");
+
+            verify(semanticSearchService, never()).search(any());
+            verify(chatClient, never()).prompt();
+        }
+
+        @Test
         void shouldReturnEntityAnswerWhenTemplateRegistryHasResults() {
             // Arrange — entity lookup intent, template returns a result
             when(intentClassifier.classify(any())).thenReturn(QuestionIntent.ENTITY_LOOKUP);
@@ -471,5 +496,111 @@ class RagServiceTest {
             assertThat(response.metadata().chunksRetrieved()).isEqualTo(1);
             assertThat(response.metadata().chunksUsed()).isEqualTo(1);
         }
+
+        @Test
+        void shouldReturnSearchFailureResponseWhenBothHybridBranchesFail() {
+            // Arrange
+            ReflectionTestUtils.setField(ragService, "hybridEnabled", true);
+            ReflectionTestUtils.setField(ragService, "hybridRagOnly", true);
+
+            when(intentClassifier.classify(any())).thenReturn(QuestionIntent.NARRATIVE_QA);
+
+            CoreAskRequest request = new CoreAskRequest("What happened in chapter one?", 2, null, null, null);
+
+            when(semanticSearchService.search(any(CoreSemanticSearchRequest.class)))
+                    .thenThrow(new RuntimeException("Vector backend unavailable"));
+            when(templateRegistry.execute(eq("individual-scenes"), any(), any()))
+                    .thenThrow(new RuntimeException("Graph backend unavailable"));
+
+            // Act
+            CoreAskResponse response = ragService.ask(request);
+
+            // Assert
+            assertThat(response).isNotNull();
+            assertThat(response.answer())
+                    .isEqualTo("Search backend failures prevented retrieval for this question.");
+            assertThat(response.citations()).isEmpty();
+            assertThat(response.metadata().chunksRetrieved()).isZero();
+            assertThat(response.metadata().chunksUsed()).isZero();
+
+            verify(chatClient, never()).prompt();
+        }
+
+        @Test
+        void shouldReturnSearchFailureWhenOneHybridBranchFailsAndOtherHasNoEvidence() {
+            // Arrange
+            ReflectionTestUtils.setField(ragService, "hybridEnabled", true);
+            ReflectionTestUtils.setField(ragService, "hybridRagOnly", true);
+
+            when(intentClassifier.classify(any())).thenReturn(QuestionIntent.NARRATIVE_QA);
+
+            CoreAskRequest request = new CoreAskRequest("What happened in chapter one?", 2, null, null, null);
+
+            when(semanticSearchService.search(any(CoreSemanticSearchRequest.class)))
+                    .thenThrow(new RuntimeException("Vector backend unavailable"));
+            when(templateRegistry.execute(eq("individual-scenes"), any(), any()))
+                    .thenReturn(List.of());
+
+            // Act
+            CoreAskResponse response = ragService.ask(request);
+
+            // Assert
+            assertThat(response).isNotNull();
+            assertThat(response.answer())
+                    .isEqualTo("Search backend failures prevented retrieval for this question.");
+            assertThat(response.citations()).isEmpty();
+            assertThat(response.metadata().chunksRetrieved()).isZero();
+            assertThat(response.metadata().chunksUsed()).isZero();
+
+            verify(chatClient, never()).prompt();
+        }
+
+        @Test
+        void shouldStillReturnDegradedHybridSuccessWhenOneBranchFailsButOtherHasEvidence() {
+            // Arrange
+            ReflectionTestUtils.setField(ragService, "hybridEnabled", true);
+            ReflectionTestUtils.setField(ragService, "hybridRagOnly", true);
+            ReflectionTestUtils.setField(ragService, "hybridBranchN", 20);
+            ReflectionTestUtils.setField(ragService, "hybridRrfK", 60);
+
+            when(intentClassifier.classify(any())).thenReturn(QuestionIntent.NARRATIVE_QA);
+            when(chatClient.prompt()).thenReturn(requestSpec);
+            when(requestSpec.system(any(String.class))).thenReturn(systemSpec);
+            when(systemSpec.user(any(String.class))).thenReturn(requestSpec);
+            when(requestSpec.call()).thenReturn(callSpec);
+            when(callSpec.content()).thenReturn("Evidence answer from surviving branch.");
+            when(mockPromptRepository.get("rag-answer-generation"))
+                    .thenReturn(new PromptTemplate("You are a helpful assistant."));
+
+            CoreAskRequest request = new CoreAskRequest("What happened in chapter one?", 2, null, null, null);
+            UUID chunkId = UUID.randomUUID();
+            UUID chapterId = UUID.randomUUID();
+
+            CoreSearchResult vectorResult = new CoreSearchResult(
+                    chunkId, 0.93, "Vector evidence", chapterId, 1, 1,
+                    UUID.randomUUID(), "Scene summary", List.of(), List.of());
+
+            when(semanticSearchService.search(any(CoreSemanticSearchRequest.class)))
+                    .thenReturn(searchResponseOf(List.of(vectorResult)));
+            when(templateRegistry.execute(eq("individual-scenes"), any(), any()))
+                    .thenThrow(new RuntimeException("Graph backend unavailable"));
+
+            Chunk chunk = new Chunk();
+            chunk.setId(chunkId);
+            chunk.setText("Vector evidence");
+            when(chunkRepo.findById(chunkId)).thenReturn(Optional.of(chunk));
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.empty());
+
+            // Act
+            CoreAskResponse response = ragService.ask(request);
+
+            // Assert
+            assertThat(response).isNotNull();
+            assertThat(response.answer()).isEqualTo("Evidence answer from surviving branch.");
+            assertThat(response.citations()).hasSize(1);
+            assertThat(response.metadata().chunksRetrieved()).isEqualTo(1);
+            assertThat(response.metadata().chunksUsed()).isEqualTo(1);
+        }
+
     }
 }

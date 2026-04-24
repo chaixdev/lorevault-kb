@@ -2,9 +2,13 @@ package com.lorevault.api.search.infrastructure;
 import com.lorevault.api.search.domain.SpoilerVisibility;
 import com.lorevault.api.search.domain.UnconfiguredSeriesPolicy;
 import com.lorevault.api.search.domain.SeriesProgress;
+import com.lorevault.api.search.domain.EntityLookupException;
+import com.lorevault.api.ingestion.domain.IngestionFailure;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.neo4j.driver.exceptions.Neo4jException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Component;
 
@@ -180,8 +184,7 @@ public class CypherTemplateRegistry {
                                             SpoilerVisibility visibility) {
         String cypher = TEMPLATES.get(templateId);
         if (cypher == null) {
-            log.warn("Unknown template ID: {}", templateId);
-            return List.of();
+            throw new IllegalStateException("Unknown entity lookup template: " + templateId);
         }
 
         Map<String, Object> allParams = new HashMap<>(params);
@@ -209,10 +212,27 @@ public class CypherTemplateRegistry {
                     .all()
                     .stream()
                     .toList();
-        } catch (Exception e) {
+        } catch (DataAccessException | Neo4jException e) {
             log.warn("Template '{}' execution failed: {}", templateId, e.getMessage());
-            return List.of();
+            throw buildEntityLookupFailure(
+                    "ENTITY_LOOKUP_QUERY_FAILED",
+                    "Entity lookup query failed for template: " + templateId,
+                    templateId,
+                    e
+            );
         }
+    }
+
+    private EntityLookupException buildEntityLookupFailure(String code,
+                                                           String message,
+                                                           String templateId,
+                                                           Throwable cause) {
+        IngestionFailure failure = IngestionFailure.builder(code, message)
+                .exceptionType(cause != null ? cause.getClass().getSimpleName() : null)
+                .stage("ENTITY_LOOKUP")
+                .detail("templateId", templateId)
+                .build();
+        return new EntityLookupException(failure, cause);
     }
 
     // -------------------------------------------------------------------------

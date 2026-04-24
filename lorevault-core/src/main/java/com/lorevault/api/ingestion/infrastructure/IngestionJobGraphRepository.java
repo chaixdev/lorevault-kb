@@ -17,6 +17,14 @@ public interface IngestionJobGraphRepository extends Neo4jRepository<IngestionJo
 
     Optional<IngestionJob> findFirstByChapterIdOrderByCreatedAtDesc(UUID chapterId);
 
+    @Query("""
+            MATCH (j:IngestionJob {chapterId: $chapterId})
+            RETURN j.id
+            ORDER BY j.createdAt DESC
+            LIMIT 1
+            """)
+    Optional<UUID> findLatestJobIdByChapterId(UUID chapterId);
+
     List<IngestionJob> findByChapterIdIn(List<UUID> chapterIds);
 
     @Query("""

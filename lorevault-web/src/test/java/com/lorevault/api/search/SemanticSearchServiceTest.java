@@ -88,7 +88,7 @@ class SemanticSearchServiceTest {
     }
 
     @Test
-    @DisplayName("should report availability via port")
+    @DisplayName("should report availability via search backend")
     void shouldReportAvailability() {
 
         var embedding = new FakeEmbeddingModel();
@@ -175,4 +175,5 @@ class SemanticSearchServiceTest {
         assertThat(resp.results().get(0).chunkId()).isEqualTo(c1);
         assertThat(resp.results().get(1).chunkId()).isEqualTo(c2);
     }
+
 }

@@ -2,6 +2,10 @@ package com.lorevault.api.search.infrastructure;
 import com.lorevault.api.search.domain.SpoilerVisibility;
 import com.lorevault.api.search.domain.UnconfiguredSeriesPolicy;
 import com.lorevault.api.search.domain.SeriesProgress;
+import com.lorevault.api.search.domain.SemanticSearchException;
+import com.lorevault.api.ingestion.domain.IngestionFailure;
+import org.neo4j.driver.exceptions.Neo4jException;
+import org.springframework.dao.DataAccessException;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -132,10 +136,18 @@ public class Neo4jSemanticSearch {
 
             return results;
 
-        } catch (Exception e) {
+        } catch (DataAccessException | Neo4jException e) {
             log.warn("Neo4j vector search failed: {}. Ensure vector index '{}' exists.",
                     e.getMessage(), VECTOR_INDEX_NAME);
-            return List.of();
+            IngestionFailure failure = IngestionFailure.builder(
+                            "SEMANTIC_SEARCH_BACKEND_UNAVAILABLE",
+                            "Neo4j vector search backend failed")
+                    .exceptionType(e.getClass().getSimpleName())
+                    .stage("SEMANTIC_SEARCH")
+                    .detail("indexName", VECTOR_INDEX_NAME)
+                    .detail("topK", topK)
+                    .build();
+            throw new SemanticSearchException(failure, e);
         }
     }
 
