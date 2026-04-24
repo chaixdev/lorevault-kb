@@ -86,6 +86,12 @@ Apply:
 
 ---
 
+## Code Navigation and Refactoring
+
+For any structural operation — find references, go to definition, rename, safe delete, move file,
+call hierarchy, type hierarchy — prefer IDE Index MCP tools over grep/find/sed.
+Load the `ide-index-mcp` skill when performing these operations.
+
 ## When Injecting Rules into a Sub-task
 
 When an orchestrating agent prepares a parallel track sub-task prompt, extract only

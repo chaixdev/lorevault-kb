@@ -64,21 +64,20 @@ sequenceDiagram
     participant Client
     participant API as CommandIngestionController
     participant Ing as IngestionService
-    participant Scene as SceneProcessingService
-    participant Persist as ContentPersistencePort
+    participant Jobs as IngestionJobService
+    participant Scene as SceneDetectionHandler
+    participant Process as SceneProcessingService
     Client->>API: POST /api/command/ingest (content)
     API->>Ing: submitChapter(request)
-    Ing->>Persist: findOrCreateChapter(hash)
-    Ing->>Persist: createJob + QUEUED status
-    Ing->>Persist: updateJobStatus(PROCESSING)
-    Ing->>Scene: detectScenes(chapterText)
-    Scene-->>Ing: scenes
-    Ing->>Ing: chunkScenes()
-    Ing->>Persist: addScenesToChapter()
-    Ing->>Persist: addChunksToChapter()
-    Ing->>Persist: updateJobStatus(COMPLETED)
-    Ing-->>API: Job summary
+    Ing->>Jobs: create job + QUEUED status
+    Ing-->>API: submission result
     API-->>Client: 202 Accepted (job id)
+    Ing-->>Scene: publish ChapterIngestionEvent
+    Scene->>Jobs: update status(PROCESSING / SCENE_SEGMENTATION)
+    Scene->>Process: persist detected scenes
+    Process-->>Scene: persisted scenes
+    Scene->>Jobs: append downstream status updates
+    Ing-->>API: Job summary
 ```
 
 ## Quality Attributes
@@ -93,6 +92,6 @@ sequenceDiagram
 
 - **Consolidated Services**: Streamlined from 7+ services to 3 main areas (Ingestion, Query, System) for reduced complexity
 - **CQRS Pattern**: Clear command/query separation provides scalable API patterns
-- **Ports & Adapters**: External dependencies abstracted behind ports for testability
+- **Direct boundaries**: Prefer direct services and repositories internally, with narrow abstractions only where a real external boundary exists
 - **Graph-First Persistence**: Neo4j native storage with embedded vector indexing for unified data access
 - **Asynchronous Processing**: Job-based ingestion workflow enables reliable background processing

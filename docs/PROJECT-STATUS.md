@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
 **Last Updated:** April 23, 2026  
-**Reviewed Through Commit:** `46034f7`  
+**Reviewed Through Commit:** `working tree (uncommitted)`  
 **Status:** Active — core ingestion and retrieval slices are stable enough to iterate on event extraction and aggregation  
 **Functional Goals:** Expand event extraction, aggregation, and downstream event-aware retrieval while continuing targeted ingestion hardening  
 **Technical Goals:** Guard the architecture now that the codebase is split into separate `core` and `web` Maven modules
@@ -15,7 +15,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Core pipeline works end to end
 - Stack: Java 21, Spring Boot 3.5.4, Spring AI 1.1.4, Neo4j 5.26
 - All domain content entities annotated `@Node` directly (no mirror Node classes)
-- Internal port/adapter indirection removed — services inject concrete beans/repositories directly
+- Internal indirection layers removed — services inject concrete beans/repositories directly
 - Maven structure: `lorevault-core` contains the feature-oriented core packages, and `lorevault-web` contains the HTTP/UI edge
 - Core package structure: 7 top-level feature-oriented packages under `com.lorevault.api` in `lorevault-core` (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`)
 - Edge package structure: `com.lorevault.api.web/**` lives in `lorevault-web`, with `web.command/`, `web.query/`, and `web.ui/` as the canonical edge shape
@@ -59,10 +59,11 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Recent ingestion/runtime hardening shipped** — recent fixes serialized follow-up execution for stability, shifted triad-status correlation to stable scene IDs (with scene indexes retained as ordering metadata), aligned chunking with content-property configuration, and kept temporal-edge persistence mechanically consistent
 - **Code organization addressed** - refactored code organisation, core/web modules, semantic package structure.
 - **Modern domain-modeling follow-up started** — added a narrow `Mention` capability contract implemented by `IndividualMention`, `LocationMention`, and `EventMention`; added focused mention-contract tests; and wired a first concrete search-side consumer path while keeping persisted mention fields flat (no SDN nested value-object migration)
+- **Architectural hygiene follow-up slice completed (strong cycle containment)** — completed four bounded passes on `contain-strong-package-cycles-and-event-boundary-gaps`: moved triad-status ownership to ingestion handler with per-triad callback semantics, removed AI→timeline inverter coupling, extracted normalized triad result contracts for ingestion workflows, removed `Scene implements timeline.Event` reverse edge while keeping Scene as the current Event carrier, introduced an ingestion-owned triad artifact lookup seam for timeline provenance reads, and turned architecture profile cycle test from failing (17→8→6→2) to passing (0 current violations in `CorePackageBoundaryArchitectureTest`)
 
 ## What Is Next
 
-M1–M4 are complete. The architecture is now a two-module, feature-oriented modulith with direct Spring AI integration and no port/adapter indirection. Recent work has shifted from structural cleanup to operator-facing product slices, retrieval-mode expansion, timeline correctness, ingestion/runtime hardening, and follow-up boundary hygiene.
+M1–M4 are complete. The architecture is now a two-module, feature-oriented modulith with direct Spring AI integration and no leftover hexagonal-style indirection. Recent work has shifted from structural cleanup to operator-facing product slices, retrieval-mode expansion, timeline correctness, ingestion/runtime hardening, and follow-up boundary hygiene.
 
 Current focus:
 - Iterate on event extraction and event aggregation while preserving ingestion reliability and retrieval grounding
@@ -77,13 +78,13 @@ Near-term execution slices:
 4. **Retrieval and timeline quality follow-up**
    - Continue validating temporal-linking behavior and explore how event-aware retrieval should interact with existing baseline, graph-aware, and hybrid modes
 5. **Architectural hygiene follow-up**
-   - Add executable guardrails for the current `web -> core` split, prevent new top-level package cycles inside `core`, and reduce documentation drift around the present package map
+   - Maintain and extend executable guardrails now that top-level cycle checks are green; focus on preventing regressions and tightening boundary semantics around newly introduced workflow seams
 6. **Domain-modeling follow-up continuation**
    - Continue the bounded modern-Java modeling pass by validating where additional narrow capability contracts are justified, while deferring value-object extraction until an explicit SDN-compatible migration path is planned
 
 Broader planned directions remain intact after these slices:
 - Broader entity extraction (Collectives and later claims)
-- Timeline modeling with Scene-as-Event entities
+- Broader event modeling beyond the current Scene-as-Event carrier
 - Production hardening (observability, rate limiting, error budgets)
 - Improved candidate generation and scoring for identity resolution after the current deterministic ladder
 
@@ -91,7 +92,7 @@ Broader planned directions remain intact after these slices:
 
 - Keep Neo4j for graph + vectors
 - Keep Spring AI current
-- Prefer direct services and repositories over internal port/adapter indirection
+- Prefer direct services and repositories over internal indirection layers
 - Flatten toward feature-oriented packages
 - Keep event-driven ingestion where it adds real value
 

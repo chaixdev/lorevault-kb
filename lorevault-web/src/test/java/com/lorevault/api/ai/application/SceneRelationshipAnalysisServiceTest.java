@@ -2,17 +2,15 @@ package com.lorevault.api.ai.application;
 import com.lorevault.api.ai.domain.TriadAnalysisException;
 import com.lorevault.api.ai.infrastructure.SceneDetectionClient;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
-import com.lorevault.api.ingestion.application.IngestionJobService;
 
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.ingestion.domain.IngestionStatus;
+import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -20,6 +18,7 @@ import org.springframework.ai.chat.prompt.PromptTemplate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -39,21 +38,6 @@ class SceneRelationshipAnalysisServiceTest {
 
     @Mock
     private PromptRepository promptRepository;
-    
-    @Mock
-    private IngestionJobService ingestionJobService;
-
-    @Captor
-    private ArgumentCaptor<UUID> jobIdCaptor;
-    
-    @Captor
-    private ArgumentCaptor<IngestionStatus> statusCaptor;
-    
-    @Captor
-    private ArgumentCaptor<String> descriptionCaptor;
-    
-    @Captor
-    private ArgumentCaptor<Map<String, Object>> propertiesCaptor;
 
     private SceneRelationshipAnalysisService sceneRelationshipAnalysisService;
 
@@ -68,14 +52,13 @@ class SceneRelationshipAnalysisServiceTest {
         sceneRelationshipAnalysisService = new SceneRelationshipAnalysisService(
             triadBuilderService,
             sceneDetectionClient,
-            promptRepository,
-            ingestionJobService
+            promptRepository
         );
     }
 
     @Test
-    @DisplayName("Should create status record before each triad LLM call with proper metadata")
-    void shouldCreateStatusRecordBeforeEachTriadLlmCall() {
+    @DisplayName("Should analyze each triad and return relationship results")
+    void shouldAnalyzeEachTriadAndReturnRelationshipResults() {
         Chapter testChapter = createTestChapter();
         List<TriadBuilderService.SceneTriad> triads = createTestTriads();
         
@@ -87,41 +70,50 @@ class SceneRelationshipAnalysisServiceTest {
         when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
-        List<SceneRelationshipAnalysisService.SceneRelationshipAnalysis> result =
+        List<TriadAnalysisModels.SceneRelationshipAnalysis> result =
             sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         assertThat(result).hasSize(2);
-        verify(ingestionJobService, times(2)).updateJobStatus(
-            jobIdCaptor.capture(),
-            statusCaptor.capture(),
-            descriptionCaptor.capture(),
-            propertiesCaptor.capture()
+        verify(sceneDetectionClient, times(2)).detectSceneAnalysisTriad(
+                eq(testJobId),
+                eq("mock system prompt"),
+                any(),
+                eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)
         );
+    }
 
-        List<UUID> capturedJobIds = jobIdCaptor.getAllValues();
-        List<IngestionStatus> capturedStatuses = statusCaptor.getAllValues();
-        List<String> capturedDescriptions = descriptionCaptor.getAllValues();
-        List<Map<String, Object>> capturedProperties = propertiesCaptor.getAllValues();
+    @Test
+    @DisplayName("Should call triad start callback with per-triad status properties")
+    void shouldCallTriadStartCallbackWithPerTriadStatusProperties() {
+        Chapter testChapter = createTestChapter();
+        List<TriadBuilderService.SceneTriad> triads = createTestTriads();
 
-        assertThat(capturedJobIds.get(0)).isEqualTo(testJobId);
-        assertThat(capturedStatuses.get(0)).isEqualTo(IngestionStatus.SCENE_TRIAD_ANALYSIS);
-        assertThat(capturedDescriptions.get(0)).isEqualTo("Triad analysis for scenes [prev, curr, next]");
-        
-        Map<String, Object> firstTriadProps = capturedProperties.get(0);
-        assertThat(firstTriadProps).containsEntry("triadIndex", 0);
-        assertThat(firstTriadProps).containsEntry("prevSceneIndex", null);
-        assertThat(firstTriadProps).containsEntry("currentSceneIndex", 0);
-        assertThat(firstTriadProps).containsEntry("nextSceneIndex", 1);
+        PromptTemplate mockTemplate = mock(PromptTemplate.class);
+        when(promptRepository.get("scene-analysis")).thenReturn(mockTemplate);
+        when(mockTemplate.render(any())).thenReturn("mock system prompt");
+        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
+                .thenReturn(createMockTriadResult());
 
-        assertThat(capturedJobIds.get(1)).isEqualTo(testJobId);
-        assertThat(capturedStatuses.get(1)).isEqualTo(IngestionStatus.SCENE_TRIAD_ANALYSIS);
-        assertThat(capturedDescriptions.get(1)).isEqualTo("Triad analysis for scenes [prev, curr, next]");
-        
-        Map<String, Object> secondTriadProps = capturedProperties.get(1);
-        assertThat(secondTriadProps).containsEntry("triadIndex", 1);
-        assertThat(secondTriadProps).containsEntry("prevSceneIndex", 0);
-        assertThat(secondTriadProps).containsEntry("currentSceneIndex", 1);
-        assertThat(secondTriadProps).containsEntry("nextSceneIndex", 2);
+        @SuppressWarnings("unchecked")
+        Consumer<Map<String, Object>> onTriadStart = mock(Consumer.class);
+
+        sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(testJobId, testChapter, onTriadStart);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> triadStatusCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(onTriadStart, times(2)).accept(triadStatusCaptor.capture());
+
+        List<Map<String, Object>> statusMaps = triadStatusCaptor.getAllValues();
+        assertThat(statusMaps.get(0)).containsEntry("triadIndex", 0);
+        assertThat(statusMaps.get(0)).containsEntry("prevSceneIndex", null);
+        assertThat(statusMaps.get(0)).containsEntry("currentSceneIndex", 0);
+        assertThat(statusMaps.get(0)).containsEntry("nextSceneIndex", 1);
+
+        assertThat(statusMaps.get(1)).containsEntry("triadIndex", 1);
+        assertThat(statusMaps.get(1)).containsEntry("prevSceneIndex", 0);
+        assertThat(statusMaps.get(1)).containsEntry("currentSceneIndex", 1);
+        assertThat(statusMaps.get(1)).containsEntry("nextSceneIndex", 2);
     }
 
     @Test
@@ -130,17 +122,16 @@ class SceneRelationshipAnalysisServiceTest {
         Chapter testChapter = createTestChapter();
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(List.of());
 
-        List<SceneRelationshipAnalysisService.SceneRelationshipAnalysis> result =
+        List<TriadAnalysisModels.SceneRelationshipAnalysis> result =
             sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         assertThat(result).isEmpty();
-        verify(ingestionJobService, never()).updateJobStatus(any(), any(), any(), any());
         verify(sceneDetectionClient, never()).detectSceneAnalysisTriad(any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("Should call SceneDetectionClient after creating status record")
-    void shouldCallSceneDetectionClientAfterCreatingStatusRecord() {
+    @DisplayName("Should call SceneDetectionClient for triad analysis")
+    void shouldCallSceneDetectionClientForTriadAnalysis() {
         Chapter testChapter = createTestChapter();
         List<TriadBuilderService.SceneTriad> triads = List.of(createSingleTriad());
         
@@ -154,9 +145,7 @@ class SceneRelationshipAnalysisServiceTest {
 
         sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
-        var inOrder = inOrder(ingestionJobService, sceneDetectionClient);
-        inOrder.verify(ingestionJobService).updateJobStatus(any(), any(), any(), any());
-        inOrder.verify(sceneDetectionClient).detectSceneAnalysisTriad(
+        verify(sceneDetectionClient).detectSceneAnalysisTriad(
                 eq(testJobId),
                 eq("mock system prompt"),
                 any(),
@@ -242,7 +231,7 @@ class SceneRelationshipAnalysisServiceTest {
         when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(legacy);
 
-        List<SceneRelationshipAnalysisService.SceneRelationshipAnalysis> result =
+        List<TriadAnalysisModels.SceneRelationshipAnalysis> result =
                 sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         assertThat(result).singleElement().satisfies(analysis -> {
@@ -272,7 +261,7 @@ class SceneRelationshipAnalysisServiceTest {
         when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(parsed);
 
-        List<SceneRelationshipAnalysisService.SceneRelationshipAnalysis> result =
+        List<TriadAnalysisModels.SceneRelationshipAnalysis> result =
                 sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         assertThat(result).singleElement().satisfies(analysis -> {
@@ -328,7 +317,7 @@ class SceneRelationshipAnalysisServiceTest {
         when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(legacy);
 
-        List<SceneRelationshipAnalysisService.SceneRelationshipAnalysis> result =
+        List<TriadAnalysisModels.SceneRelationshipAnalysis> result =
                 sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         assertThat(result).singleElement().satisfies(analysis -> {

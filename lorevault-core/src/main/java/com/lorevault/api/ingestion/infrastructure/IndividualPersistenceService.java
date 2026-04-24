@@ -1,9 +1,9 @@
 package com.lorevault.api.ingestion.infrastructure;
 
-import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
 import com.lorevault.api.content.entities.IndividualMention;
 import com.lorevault.api.content.entities.IndividualMentionGraphRepository;
 import com.lorevault.api.content.entities.Scene;
+import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,7 +24,7 @@ public class IndividualPersistenceService {
     @Transactional
     public void persistExtractedIndividuals(
             List<Scene> persistedScenes,
-            List<SceneRelationshipAnalysisService.TriadSceneIndividualExtraction> sceneExtractions
+            List<TriadAnalysisModels.SceneIndividualExtraction> sceneExtractions
     ) {
         if (persistedScenes == null || persistedScenes.isEmpty() || sceneExtractions == null || sceneExtractions.isEmpty()) {
             return;
@@ -34,14 +34,14 @@ public class IndividualPersistenceService {
                 .filter(scene -> scene.getSceneIndex() != null && scene.getEventId() != null)
                 .collect(Collectors.toMap(Scene::getSceneIndex, scene -> scene, (a, b) -> a));
 
-        for (SceneRelationshipAnalysisService.TriadSceneIndividualExtraction sceneExtraction : sceneExtractions) {
+        for (TriadAnalysisModels.SceneIndividualExtraction sceneExtraction : sceneExtractions) {
             Scene scene = sceneByIndex.get(sceneExtraction.sceneIndex());
             if (scene == null || sceneExtraction.individuals() == null || sceneExtraction.individuals().isEmpty()) {
                 continue;
             }
 
             for (int extractionIndex = 0; extractionIndex < sceneExtraction.individuals().size(); extractionIndex++) {
-                SceneRelationshipAnalysisService.TriadIndividualExtraction extracted = sceneExtraction.individuals().get(extractionIndex);
+                TriadAnalysisModels.IndividualExtraction extracted = sceneExtraction.individuals().get(extractionIndex);
                 String displayName = firstNonBlankAlias(extracted.aliases());
                 if (displayName == null) {
                     continue;

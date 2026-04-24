@@ -1,11 +1,11 @@
-# ADR 003: Prefer Direct Services Over Ports and Mappers
+# ADR 003: Prefer Direct Services Over Internal Indirection
 
 **Status:** Accepted  
 **Date:** April 2026
 
 ## Decision
 
-LoreVault should remove internal port/adapter/mapper layers where they do not represent a real boundary.
+LoreVault should remove internal indirection layers where they do not represent a real boundary.
 
 ## Why
 

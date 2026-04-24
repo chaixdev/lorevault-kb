@@ -5,7 +5,7 @@
 ## Core Rules
 
 - create services for business capabilities, not incidental helper logic
-- extract ports only for real external boundaries
+- extract narrow interfaces only for real external boundaries or tightly bounded ownership seams
 - keep closely related workflow logic together
 - prefer private methods over creating thin delegating services
 
@@ -20,7 +20,7 @@
 
 - if a user could describe the operation as a meaningful capability, a service may be justified
 - if the logic only supports one larger workflow internally, keep it inside that workflow's service
-- if the boundary is Neo4j, an LLM provider, or another external system, abstraction may be justified
+- if the boundary is Neo4j, an LLM provider, another external system, or a tightly bounded ownership seam with clear semantic value, abstraction may be justified
 
 ## Additional Heuristics
 
@@ -57,7 +57,7 @@ When consolidating existing code:
 1. identify service clusters that always work together
 2. merge them into the primary business workflow service
 3. convert thin helpers back into private methods when appropriate
-4. keep only ports that represent real external systems
+4. keep only boundary abstractions that represent real external systems or clearly justified ownership seams
 
 ## Testing Implication
 
