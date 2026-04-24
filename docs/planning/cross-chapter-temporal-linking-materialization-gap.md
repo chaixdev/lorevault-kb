@@ -1,6 +1,17 @@
 # Cross-chapter temporal linking is analyzed but not materialized
 
-**Status:** PARKED
+**Status:** DONE
+
+## Resolution Note
+
+This planning gap has been addressed by the temporal-linking refactors already merged in the modularized core/web codebase.
+
+Current implemented behavior now preserves cross-chapter temporal continuity through both:
+
+- triad analysis/persistence handling that can materialize cross-chapter temporal links, and
+- read-side ordering paths that can consume cross-chapter temporal edges for book-level event ordering.
+
+This item is therefore no longer an active planning ticket.
 
 ## Summary
 
