@@ -41,7 +41,9 @@ graph LR
 7. `Neo4jSemanticSearch` builds and executes a Cypher query using `db.index.vector.queryNodes()`. This query includes publication coordinate filters and a spoiler clause, ordering by similarity score and applying the topK limit.
 8. Results return to the `RagService`.
 9. `RagService` applies `filterByThreshold()`, removing any results that fall below the specified similarity score.
-10. If no results remain after filtering, the service returns a "No evidence found" response to the controller.
+10. If no results remain after filtering, the service distinguishes between two terminal outcomes:
+    - legitimate no-evidence / no-hit retrieval, which returns the normal "No evidence found" style response
+    - backend/search failure conditions, which return a dedicated retrieval-failure response instead of pretending the corpus was simply empty.
 11. `RagService` calls `buildContextFromEvidence()`. This step fetches the full text for each chunk from the `ChunkGraphRepository` and constructs a numbered context string with book and chapter annotations.
 12. `RagService` calls `generateAnswer()`:
     - It retrieves the `rag-answer-generation` system prompt from the `PromptRepository`.
@@ -84,6 +86,14 @@ When preparing the prompt for the LLM, the `RagService` does not rely on the sni
 
 Each chunk is assigned a number in the context string, such as `[1]` or `[2]`. This helps the LLM reference specific pieces of evidence. When available, book and chapter annotations like `(Book 2, Chapter 5)` are appended to the chunk text. This assembled context is then passed to the LLM as part of the user prompt to ensure the generated answer is grounded in specific, verifiable locations in the text.
 
+## Failure and Degradation Semantics
+
+- Semantic retrieval failures are treated differently from true zero-hit outcomes.
+- `RagService` now preserves a dedicated backend-failure path when vector/entity-lookup retrieval cannot be completed reliably.
+- In hybrid mode, partial degradation remains tolerant when one branch still produces usable evidence.
+- If both retrieval branches fail, or one branch fails and the surviving branch yields no evidence, the chain returns a retrieval-failure response rather than a misleading no-evidence answer.
+- Direct entity-lookup failures are no longer silently converted into narrative-QA fallback when the lookup itself failed; fallback remains only for genuine empty lookup results.
+
 ## Boundaries
 
 - **Spoiler filtering details** — The logic for the spoiler-aware query is defined in the Spoiler-Aware Retrieval Pattern.
@@ -91,6 +101,7 @@ Each chunk is assigned a number in the context string, such as `[1]` or `[2]`. T
 - **Vector index management** — The creation and maintenance of the Neo4j vector index is an infrastructure concern.
 - **Prompt engineering** — The specific templates for answer generation are managed by the `PromptRepository`.
 - **Semantic search standalone** — The `POST /api/query/ask/vector` endpoint uses the `SemanticSearchService` directly, skipping the generation step.
+- **Transport boundary classification** — API/UI controllers may classify typed retrieval failures at the edge, but the retrieval-chain contract itself is responsible for preserving backend-failure vs no-evidence meaning before transport mapping occurs.
 
 ## Primary References
 

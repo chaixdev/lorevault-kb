@@ -102,6 +102,8 @@ sequenceDiagram
 
 **Stage 1: Chapter Submission** (`IngestionService`)
 - Validates the incoming chapter and deduplicates based on a content hash to prevent redundant processing.
+- Treats submission-critical lookups as fail-closed workflow boundaries rather than best-effort fallbacks.
+- Uses typed submission exceptions for lookup/persistence failures so duplicate-work creation does not proceed from ambiguous repository state.
 - Creates an `IngestionJob` with an initial `QUEUED` status to track the lifecycle of the request.
 - Publishes a `ChapterIngestionEvent` within a Spring `@Transactional` context.
 - The downstream listeners only fire after the initial transaction commits, ensuring the job record is visible to background threads.
@@ -124,6 +126,8 @@ sequenceDiagram
 
 **Stage 4: Embedding branch** (`EmbeddingHandler`)
 - Generates vector embeddings for every chunk created in the previous stage using the configured embedding model.
+- Treats backend embedding failures and malformed non-empty embedding responses as typed stage failures instead of silently returning `0` updated embeddings.
+- Preserves legitimate no-work semantics only when there are no chunks to embed or all embeddings are already current.
 - Publishes `EmbeddingsCompletedEvent` with the final scene/chunk/embedding counts and processed chapter length.
 - Handles retries for external API failures or network-related connection errors.
 
@@ -199,6 +203,12 @@ The important contract is not just that an event was emitted, but what downstrea
 **`IngestionFailedEvent`**
 - Means the current stage failed and the job was transitioned to a terminal failed state with structured failure details.
 - It is a terminal branch outcome, not a retry command.
+
+### Failure Semantics
+
+- `PipelineStageSupport` treats typed workflow failures carrying structured `IngestionFailure` payloads as first-class stage outcomes.
+- Known business failures are preserved into status/failure events instead of being flattened into generic runtime errors or false-success counters.
+- This is especially important for chapter submission, scene detection/localization, and embedding generation, where the current implementation now fails closed for ambiguous or malformed outcomes.
 
 ### Fan-out and Join Shape
 
