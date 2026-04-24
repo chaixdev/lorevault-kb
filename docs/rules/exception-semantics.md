@@ -110,9 +110,22 @@ If the answer to any of those is yes, prefer a meaningful business exception or 
 Use these as the baseline pattern to extend rather than inventing ad hoc wrappers:
 
 - `TriadAnalysisException`
+- `SceneDetectionException`
+- `SemanticSearchException`
+- `EntityLookupException`
+- `ChapterSubmissionLookupException`
+- `EmbeddingGenerationException`
 - `IngestionFailure`
+- `IngestionFailureCarrier`
 - `PipelineStageSupport`
 - `IngestionFailedEvent`
+
+Current boundary application examples:
+
+- chapter-submission lookup failures fail closed instead of degrading into duplicate-work creation
+- search/entity-lookup backend failures stay distinct from legitimate empty/no-evidence retrieval outcomes
+- JSON query endpoints may map typed retrieval failures to service-unavailable responses while preserving generic defects as `500`
+- HTMX/UI query endpoints may render typed retrieval failures as user-facing error fragments without pretending the request succeeded semantically
 
 ## Anti-Patterns
 

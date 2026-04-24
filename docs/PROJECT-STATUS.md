@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
-**Last Updated:** April 23, 2026  
-**Reviewed Through Commit:** `working tree (uncommitted)`  
+**Last Updated:** April 24, 2026  
+**Reviewed Through Commit:** `18c2309`  
 **Status:** Active — core ingestion and retrieval slices are stable enough to iterate on event extraction and aggregation  
 **Functional Goals:** Expand event extraction, aggregation, and downstream event-aware retrieval while continuing targeted ingestion hardening  
 **Technical Goals:** Guard the architecture now that the codebase is split into separate `core` and `web` Maven modules
@@ -28,6 +28,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Stage-1 event extraction now persists event-mention evidence as groundwork for a future event-resolution lane
 - Ingestion completion is coordinated across required post-scene branches: embedding completion, book-level Individual reduction, and book-level Location reduction
 - Query routing now distinguishes direct entity lookup from broader narrative Q&A, with entity-aware RAG grounded in scene-level individual and location context
+- Search and submission workflows now fail closed more consistently: typed lookup/backend failures remain distinct from legitimate empty retrieval outcomes or new-work creation paths
 - Retrieval now supports baseline, graph-aware, and hybrid modes, with reciprocal-rank-fusion-style hybrid composition available through the ask surface and operator UI
 - Temporal relation handling now uses a practical canonical vocabulary, and scene temporal linking preserves cross-chapter signals through both materialization and read-time ordering
 - SSE job streaming is live at `/api/query/jobs/stream`, with keepalives and normalized status-update payloads for ingestion lifecycle events
@@ -57,6 +58,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Event extraction groundwork shipped** — stage-1 scene analysis now persists event-mention evidence so event-oriented extraction has a durable foothold in the ingestion pipeline
 - **Practical temporal semantics and scene temporal linking shipped** — temporal relation handling now uses a canonical practical vocabulary, triad-edge persistence is normalized, cross-chapter scene context is preserved during temporal analysis, and book-level ordering can now use cross-chapter temporal edges instead of chapter-local concatenation alone
 - **Recent ingestion/runtime hardening shipped** — recent fixes serialized follow-up execution for stability, shifted triad-status correlation to stable scene IDs (with scene indexes retained as ordering metadata), aligned chunking with content-property configuration, and kept temporal-edge persistence mechanically consistent
+- **Exception-semantics hardening shipped** — scene detection, chapter submission, semantic search/entity lookup, embedding generation, and query/UI boundaries now preserve typed business-failure meaning instead of collapsing known failure modes into generic runtime errors, false-success counters, or misleading no-evidence responses
 - **Code organization addressed** - refactored code organisation, core/web modules, semantic package structure.
 - **Modern domain-modeling follow-up started** — added a narrow `Mention` capability contract implemented by `IndividualMention`, `LocationMention`, and `EventMention`; added focused mention-contract tests; and wired a first concrete search-side consumer path while keeping persisted mention fields flat (no SDN nested value-object migration)
 - **Architectural hygiene follow-up slice completed (strong cycle containment)** — completed four bounded passes on `contain-strong-package-cycles-and-event-boundary-gaps`: moved triad-status ownership to ingestion handler with per-triad callback semantics, removed AI→timeline inverter coupling, extracted normalized triad result contracts for ingestion workflows, removed `Scene implements timeline.Event` reverse edge while keeping Scene as the current Event carrier, introduced an ingestion-owned triad artifact lookup seam for timeline provenance reads, and turned architecture profile cycle test from failing (17→8→6→2) to passing (0 current violations in `CorePackageBoundaryArchitectureTest`)
