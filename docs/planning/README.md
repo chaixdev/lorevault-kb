@@ -92,7 +92,6 @@ At minimum, each planning item should include:
 
 - [Book-location reduction can fail under chained uploads](book-location-reduction-race-under-chained-uploads.md)
 - [Audit generic caught exceptions that should become meaningful business failures](audit-generic-caught-exceptions-for-business-failure-semantics.md)
-- [Clarify AI package ownership for scene and triad workflows](clarify-ai-package-ownership-for-scene-and-triad-workflows.md)
 - [HTTP Request ID MDC Propagation](http-request-id-mdc-propagation.md)
 - [Revisit domain modeling with modern Java contracts and value objects](modern-java-domain-modeling-follow-up.md)
 - [Systematically transform package structure toward the target shape](package-shape-transformation-plan.md)

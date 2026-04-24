@@ -18,7 +18,7 @@ graph TD
     SDH -->|"Post-persistence triad orchestration"| TOService["TriadOrchestrationService"]
     TOService -->|"Builds triads"| TBService["TriadBuilderService"]
     TBService -->|"Resolves previous chapter"| CRRepo["ChapterReadRepository"]
-    TOService -->|"LLM call"| SDClient["SceneDetectionClient"]
+    TOService -->|"LLM call"| SDClient["LlmClient"]
     TOService -->|"Inverts relations"| TRInverter["TriadRelationInverter"]
     TOService -->|"Status update"| IJService["IngestionJobService"]
     SDH -->|"Upserts edges"| TEPService["TriadEdgePersistenceService"]
@@ -33,7 +33,7 @@ sequenceDiagram
     participant SDS as "SceneDetectionService"
     participant TOS as "TriadOrchestrationService"
     participant TBS as "TriadBuilderService"
-    participant SDC as "SceneDetectionClient"
+    participant SDC as "LlmClient"
     participant TRI as "TriadRelationInverter"
     participant TEPS as "TriadEdgePersistenceService"
 

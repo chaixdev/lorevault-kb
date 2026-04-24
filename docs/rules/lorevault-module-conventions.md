@@ -20,11 +20,13 @@ is a build cycle and a defect. This includes: Spring MVC annotations in core,
 
 ## Known Coupling Risks and Shared Model Constraints
 
-The current topology — including bidirectional coupling between `ai ↔ ingestion` and
-`library ↔ content`, and the `Chapter`/`Scene`/`Chunk` shared model constraint — is
-documented with context in [codebase-topology.md](../patterns/codebase-topology.md).
+The current topology — including bidirectional coupling between `library ↔ content`
+and the `Chapter`/`Scene`/`Chunk` shared model constraint — is documented with context
+in [codebase-topology.md](../patterns/codebase-topology.md).
 
 Do not add new cross-package method calls between the known coupled packages.
+Do not re-expand `ai` into feature-owned ingestion workflow; keep it focused on
+generic LLM infrastructure.
 Do not add new shared domain models. See the topology doc for the current state
 and rationale.
 

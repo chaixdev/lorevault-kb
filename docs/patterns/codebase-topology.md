@@ -20,8 +20,6 @@ on `lorevault-core`. There is no third module.
 These bidirectional couplings exist within `lorevault-core` and are tracked as
 technical debt:
 
-- `ai ↔ ingestion` — the AI package and the ingestion pipeline package reference each
-  other directly.
 - `library ↔ content` — the library management and content management packages reference
   each other.
 
@@ -46,8 +44,9 @@ includes Spring MVC annotations in core, `@RestController` in core, or any impor
 `lorevault-web` class from within `lorevault-core`.
 
 **Do not deepen known couplings** — Do not add new cross-package method calls between
-`ai ↔ ingestion` or `library ↔ content`. If new coordination is needed, introduce an
-event instead.
+known coupled areas such as `library ↔ content`. Keep `ai` narrow to generic LLM
+infrastructure rather than feature-owned ingestion workflow. If new coordination is
+needed, introduce an event instead.
 
 **Do not add new shared domain models** — When new pipeline stages or services need to
 communicate about domain concepts, pass IDs or minimal DTOs across package boundaries

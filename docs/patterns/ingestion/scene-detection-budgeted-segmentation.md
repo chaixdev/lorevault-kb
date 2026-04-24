@@ -20,7 +20,7 @@ Chapter segmentation previously sent full chapter text without a preflight conte
 
 ### 1) Budget check preflight
 
-Before chapter segmentation calls the LLM, `SceneDetectionClient` computes a `SegmentationBudgetCheck`:
+Before chapter segmentation calls the LLM, `LlmClient` computes a `SegmentationBudgetCheck`:
 
 - `estimatedPromptTokens = estimate(systemPrompt)`
 - `estimatedInputTokens = estimate(chapterText)`
@@ -90,21 +90,20 @@ Chapter-segmentation call output caps remain hardcoded in code (`maxTokens=6000`
 
 ## Key Code References
 
-- `lorevault-api/src/main/java/com/lorevault/api/config/LoreVaultModelsProperties.java`
-- `lorevault-api/src/main/resources/application.yml`
-- `lorevault-api/src/main/java/com/lorevault/api/ai/SceneDetectionClient.java`
-- `lorevault-api/src/main/java/com/lorevault/api/ai/SceneDetectionService.java`
-- `lorevault-api/src/main/java/com/lorevault/api/ai/SceneWithCoordinates.java`
-- `lorevault-api/src/main/java/com/lorevault/api/ai/SceneProcessingService.java`
-- `lorevault-api/src/main/java/com/lorevault/api/content/Scene.java`
+- `../../lorevault-core/src/main/java/com/lorevault/api/config/LoreVaultModelsProperties.java`
+- `../../lorevault-web/src/main/resources/application.yml`
+- `../../lorevault-core/src/main/java/com/lorevault/api/ai/infrastructure/LlmClient.java`
+- `../../lorevault-core/src/main/java/com/lorevault/api/ingestion/application/scene/SceneDetectionService.java`
+- `../../lorevault-core/src/main/java/com/lorevault/api/ingestion/application/scene/SceneWithCoordinates.java`
+- `../../lorevault-core/src/main/java/com/lorevault/api/ingestion/application/scene/SceneProcessingService.java`
+- `../../lorevault-core/src/main/java/com/lorevault/api/content/entities/Scene.java`
 
 ## Validation Evidence
 
 Validated during implementation with:
 
-- `mvn -pl lorevault-api clean compile -DskipTests`
-- `mvn -pl lorevault-api -Dtest=SceneDetectionServiceTest,SceneDetectionHandlerTest,TriadOrchestrationServiceTest test`
-- `mvn -pl lorevault-api test`
+- `mvn -pl lorevault-web,lorevault-core clean compile -DskipTests`
+- `mvn -pl lorevault-web -am -Dtest=SceneDetectionServiceTest,SceneDetectionHandlerTest,SceneProcessingServiceTest test`
 
 Latest full-module result at implementation time: `188` tests, `0` failures, `0` errors.
 

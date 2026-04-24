@@ -91,7 +91,6 @@ Relevant areas likely include:
 ## Links
 
 - Related planning: `package-shape-transformation-plan.md`
-- Related planning: `clarify-ai-package-ownership-for-scene-and-triad-workflows.md`
 - Related rules: `../rules/code-organization-guidance.md`
 - Related rules: `../rules/lorevault-module-conventions.md`
 - Related pattern: `../patterns/codebase-topology.md`

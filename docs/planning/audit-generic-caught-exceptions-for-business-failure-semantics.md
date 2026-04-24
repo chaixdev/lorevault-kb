@@ -47,11 +47,11 @@ Concrete patterns observed during initial scan include:
 
 Representative candidate hotspots from the initial scan include:
 
-- `lorevault-core/src/main/java/com/lorevault/api/ai/SceneProcessingService.java`
-- `lorevault-core/src/main/java/com/lorevault/api/ai/SceneDetectionService.java`
-- `lorevault-core/src/main/java/com/lorevault/api/ai/SceneDetectionClient.java`
+- `lorevault-core/src/main/java/com/lorevault/api/ingestion/application/scene/SceneProcessingService.java`
+- `lorevault-core/src/main/java/com/lorevault/api/ingestion/application/scene/SceneDetectionService.java`
+- `lorevault-core/src/main/java/com/lorevault/api/ai/infrastructure/LlmClient.java`
 - `lorevault-core/src/main/java/com/lorevault/api/ai/EmbeddingService.java`
-- `lorevault-core/src/main/java/com/lorevault/api/ai/TriadOrchestrationService.java`
+- `lorevault-core/src/main/java/com/lorevault/api/ingestion/application/triad/SceneRelationshipAnalysisService.java`
 - `lorevault-core/src/main/java/com/lorevault/api/ingestion/PipelineStageSupport.java`
 - `lorevault-core/src/main/java/com/lorevault/api/ingestion/IngestionService.java`
 - `lorevault-core/src/main/java/com/lorevault/api/ingestion/IngestionJobService.java`
@@ -62,13 +62,13 @@ Representative candidate hotspots from the initial scan include:
 Notable findings from the initial scan:
 
 - `SceneDetectionService` is currently the strongest hotspot: broad catch/rethrow, retry semantics inferred partly from message text, and several business-meaningful failure modes flattened into `RuntimeException`.
-- `SceneDetectionClient` also encodes AI failure meaning through message text (`empty response`, `failed permanently`, etc.) rather than typed semantics.
+- `LlmClient` also encodes AI failure meaning through message text (`empty response`, `failed permanently`, etc.) rather than typed semantics.
 - `IngestionService` mixes broad catch/wrap and fallback behavior (`bestEffortLookup`) that may hide some meaningful business-state failures.
 - `RagService`, `Neo4jSemanticSearch`, and `CypherTemplateRegistry` include places where failures degrade to empty/false results, potentially blurring “no result” vs “backend/business failure.”
 
 Strong current precedent already exists and should guide the audit baseline:
 
-- `lorevault-core/src/main/java/com/lorevault/api/ai/TriadAnalysisException.java`
+- `lorevault-core/src/main/java/com/lorevault/api/ingestion/domain/TriadAnalysisException.java`
 - `lorevault-core/src/main/java/com/lorevault/api/ingestion/IngestionFailure.java`
 - `lorevault-core/src/main/java/com/lorevault/api/ingestion/PipelineStageSupport.java`
 - `lorevault-core/src/main/java/com/lorevault/api/ingestion/events/IngestionFailedEvent.java`
@@ -123,7 +123,7 @@ Strong current precedent already exists and should guide the audit baseline:
 
 ### Pass 1 (scene-detection semantics hardening) - completed
 
-- Added typed business exception `SceneDetectionException` in `ai.domain` with `IngestionFailure` payload.
+- Added typed business exception `SceneDetectionException` in `ingestion.domain` with `IngestionFailure` payload.
 - Refactored `ingestion.application.scene.SceneDetectionService` to surface business-meaningful scene-detection failures through `SceneDetectionException` rather than flattening key paths into generic runtime wrappers.
 - Updated `ingestion.application.pipeline.PipelineStageSupport.extractFailure(...)` to understand `SceneDetectionException` payload semantics for stable stage-level failure extraction.
 - Updated targeted scene detection tests to assert typed-failure behavior where applicable.
@@ -412,7 +412,7 @@ Strong current precedent already exists and should guide the audit baseline:
 
 - Related rule: `../rules/exception-semantics.md`
 - Related planning: `stuck-ingestion-status.md`
-- Related implementation: `../../lorevault-core/src/main/java/com/lorevault/api/ai/SceneProcessingService.java`
-- Related implementation: `../../lorevault-core/src/main/java/com/lorevault/api/ai/SceneDetectionService.java`
+- Related implementation: `../../lorevault-core/src/main/java/com/lorevault/api/ingestion/application/scene/SceneProcessingService.java`
+- Related implementation: `../../lorevault-core/src/main/java/com/lorevault/api/ingestion/application/scene/SceneDetectionService.java`
 - Related implementation: `../../lorevault-core/src/main/java/com/lorevault/api/ingestion/IngestionFailure.java`
 - Related implementation: `../../lorevault-core/src/main/java/com/lorevault/api/ingestion/PipelineStageSupport.java`
