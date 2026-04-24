@@ -372,7 +372,7 @@ public class IngestionJobService {
     private List<IngestionJob> loadJobsWithUniverseFilter(JobFilterContext filterContext) {
         if (filterContext.hasUniverseFilter()) {
             List<Chapter> chapters = chapterRepo.findAll().stream()
-                    .filter(c -> filterContext.getUniverse().equals(c.getUniverse()))
+                    .filter(c -> filterContext.universe().equals(c.getUniverse()))
                     .toList();
             List<UUID> chapterIds = chapters.stream().map(Chapter::getId).toList();
             return jobRepo.findByChapterIdIn(chapterIds);
@@ -386,7 +386,7 @@ public class IngestionJobService {
             return jobs;
         }
 
-        StatusFilterStrategy filterStrategy = createStatusFilterStrategy(filterContext.getStatus());
+        StatusFilterStrategy filterStrategy = createStatusFilterStrategy(filterContext.status());
         
         return jobs.stream()
                 .filter(filterStrategy::matches)
@@ -414,15 +414,15 @@ public class IngestionJobService {
 
     private PaginatedJobSummaries buildPaginatedResponse(List<IngestionJob> sortedJobs, JobFilterContext filterContext) {
         long total = sortedJobs.size();
-        int from = Math.min(filterContext.getOffset(), sortedJobs.size());
-        int to = Math.min(from + filterContext.getLimit(), sortedJobs.size());
+        int from = Math.min(filterContext.offset(), sortedJobs.size());
+        int to = Math.min(from + filterContext.limit(), sortedJobs.size());
         
         List<IngestionJob> pageSlice = sortedJobs.subList(from, to);
         List<JobSummary> summaries = buildJobSummaries(pageSlice);
         
-        boolean hasMore = (long) (filterContext.getOffset() + filterContext.getLimit()) < total;
+        boolean hasMore = (long) (filterContext.offset() + filterContext.limit()) < total;
         PaginatedJobSummaries.Pagination pagination = new PaginatedJobSummaries.Pagination(
-                total, filterContext.getLimit(), filterContext.getOffset(), hasMore);
+                total, filterContext.limit(), filterContext.offset(), hasMore);
         
         return new PaginatedJobSummaries(summaries, pagination);
     }
@@ -490,34 +490,18 @@ public class IngestionJobService {
     // ================================
 
     /**
-     * Context object for job filtering parameters
-     */
-    public static class JobFilterContext {
-        private final String universe;
-        private final String status;
-        private final int limit;
-        private final int offset;
-
-        public JobFilterContext(String universe, String status, int limit, int offset) {
-            this.universe = universe;
-            this.status = status;
-            this.limit = limit;
-            this.offset = offset;
-        }
-
-        public String getUniverse() { return universe; }
-        public String getStatus() { return status; }
-        public int getLimit() { return limit; }
-        public int getOffset() { return offset; }
+         * Context object for job filtering parameters
+         */
+        public record JobFilterContext(String universe, String status, int limit, int offset) {
 
         public boolean hasUniverseFilter() {
-            return universe != null && !universe.isBlank();
-        }
+                return universe != null && ! universe.isBlank();
+            }
 
-        public boolean hasStatusFilter() {
-            return status != null && !status.isBlank();
+            public boolean hasStatusFilter() {
+                return status != null && ! status.isBlank();
+            }
         }
-    }
 
     // Strategy pattern for different status filtering approaches
     private interface StatusFilterStrategy {
@@ -534,17 +518,12 @@ public class IngestionJobService {
         }
     }
 
-    private static class SpecificStatusFilterStrategy implements StatusFilterStrategy {
-        private final IngestionStatus targetStatus;
-
-        public SpecificStatusFilterStrategy(IngestionStatus targetStatus) {
-            this.targetStatus = targetStatus;
-        }
+    private record SpecificStatusFilterStrategy(IngestionStatus targetStatus) implements StatusFilterStrategy {
 
         @Override
-        public boolean matches(IngestionJob job) {
-            var currentStatus = job.getCurrentStatus();
-            return currentStatus != null && targetStatus.equals(currentStatus.getStatus());
+            public boolean matches(IngestionJob job) {
+                var currentStatus = job.getCurrentStatus();
+                return currentStatus != null && targetStatus.equals(currentStatus.getStatus());
+            }
         }
-    }
 }

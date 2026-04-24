@@ -26,7 +26,7 @@ import java.util.UUID;
 @Component
 @Slf4j
 @RequiredArgsConstructor
-public class SceneDetectionClient {
+public class LlmClient {
     
     private final ChatClient nlpSmallChatClient;
     private final ChatClient nlpBigChatClient;

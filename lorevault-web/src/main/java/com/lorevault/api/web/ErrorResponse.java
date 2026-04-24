@@ -46,7 +46,7 @@ public class ErrorResponse {
     public static class ErrorResponseBuilder {
         private String code;
         private String message;
-        private Map<String, Object> details = new HashMap<>();
+        private final Map<String, Object> details = new HashMap<>();
         private LocalDateTime timestamp;
         private String path;
 

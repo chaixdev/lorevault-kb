@@ -120,25 +120,9 @@ public class FileUploadValidator {
     }
 
     // Error detail classes for structured error information
-    @Getter
-    public static class FileTypeError {
-        private final List<String> supportedTypes;
-        private final String receivedType;
-
-        public FileTypeError(List<String> supportedTypes, String receivedType) {
-            this.supportedTypes = supportedTypes;
-            this.receivedType = receivedType;
-        }
+        public record FileTypeError(List<String> supportedTypes, String receivedType) {
     }
 
-    @Getter
-    public static class FileSizeError {
-        private final long fileSize;
-        private final long maxSize;
-
-        public FileSizeError(long fileSize, long maxSize) {
-            this.fileSize = fileSize;
-            this.maxSize = maxSize;
-        }
+    public record FileSizeError(long fileSize, long maxSize) {
     }
 }

@@ -3,11 +3,9 @@ package com.lorevault.api.ingestion.application.scene;
 import com.lorevault.api.ai.domain.LlmRetryStrategy;
 import com.lorevault.api.ai.domain.LlmRetryStrategy.LlmRetryConfig;
 import com.lorevault.api.ai.domain.LlmRetryStrategy.LlmRetryResult;
-import com.lorevault.api.ai.domain.SceneDetectionException;
-import com.lorevault.api.ai.domain.SceneDetectionResult;
-import com.lorevault.api.ai.domain.SceneLocalizationException;
-import com.lorevault.api.ai.domain.SceneWithCoordinates;
-import com.lorevault.api.ai.infrastructure.SceneDetectionClient;
+import com.lorevault.api.ai.infrastructure.LlmClient;
+import com.lorevault.api.ingestion.domain.SceneDetectionException;
+import com.lorevault.api.ingestion.domain.SceneLocalizationException;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.ingestion.domain.IngestionFailure;
 import java.util.ArrayList;
@@ -29,7 +27,7 @@ public class SceneDetectionService {
 
     public record SceneSegmentationOutcome(List<SceneWithCoordinates> scenes) {}
 
-    private final SceneDetectionClient sceneDetectionClient;
+    private final LlmClient llmClient;
     private final SceneProcessingService sceneProcessingService;
     private final LlmRetryStrategy llmRetryStrategy;
 
@@ -150,7 +148,7 @@ public class SceneDetectionService {
         try {
             log.info("Chapter segmentation: starting for job {} chapter {}", jobId, chapterId);
 
-            SceneDetectionClient.SegmentationBudgetCheck budgetCheck = sceneDetectionClient.evaluateSegmentationBudget(chapterText);
+            LlmClient.SegmentationBudgetCheck budgetCheck = llmClient.evaluateSegmentationBudget(chapterText);
             List<SegmentWindow> segments = createDeterministicSegments(
                     chapterText,
                     budgetCheck.estimatedTotalInput(),
@@ -322,7 +320,7 @@ public class SceneDetectionService {
     }
 
     private List<SceneWithCoordinates> detectScenesInSingleSegment(UUID jobId, UUID chapterId, String segmentText) {
-        String segmentationXmlResponse = sceneDetectionClient.detectChapterSegmentation(jobId, segmentText);
+        String segmentationXmlResponse = llmClient.detectChapterSegmentation(jobId, segmentText);
         List<SceneDetectionResult> sceneResults = sceneProcessingService.parseSceneDetectionXml(segmentationXmlResponse, segmentText.length());
         if (sceneResults.isEmpty()) {
             throw buildSceneDetectionFailure(

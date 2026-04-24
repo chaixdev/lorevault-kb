@@ -8,7 +8,7 @@ import com.lorevault.api.ingestion.infrastructure.*;
 
 import com.lorevault.api.ingestion.application.scene.SceneDetectionService;
 import com.lorevault.api.ingestion.application.scene.SceneProcessingService;
-import com.lorevault.api.ai.domain.SceneWithCoordinates;
+import com.lorevault.api.ingestion.application.scene.SceneWithCoordinates;
 import com.lorevault.api.library.domain.Book;
 import com.lorevault.api.library.infrastructure.BookGraphRepository;
 import com.lorevault.api.content.entities.ChapterGraphRepository;

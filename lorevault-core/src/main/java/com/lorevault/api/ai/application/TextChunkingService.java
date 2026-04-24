@@ -205,16 +205,7 @@ public class TextChunkingService {
         END
     }
 
-    private static class ChunkBoundary {
-        final int startChar;
-        final int endChar;
-        final int nextStart;
-
-        ChunkBoundary(int startChar, int endChar, int nextStart) {
-            this.startChar = startChar;
-            this.endChar = endChar;
-            this.nextStart = nextStart;
-        }
+    private record ChunkBoundary(int startChar, int endChar, int nextStart) {
     }
 
     /**

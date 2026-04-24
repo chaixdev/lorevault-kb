@@ -1,4 +1,4 @@
-package com.lorevault.api.ai.domain;
+package com.lorevault.api.ingestion.application.scene;
 
 /**
  * Data transfer object representing the result of AI scene detection.

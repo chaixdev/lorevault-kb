@@ -216,8 +216,6 @@ class AskControllerWebMvcTest {
         coordinates.setChapterTitle("Test Chapter");
         coordinates.setBookNumber(1);
         coordinates.setChapterNumber(1);
-        CitationDto citation = CitationDto.of(chunkId, 0.028, "vin appears in both branches", coordinates);
-        AskMetadata metadata = AskMetadata.of("who is vin?", 6, 3, 33, "test-model");
         CoreSearchRecords.CoreCitation coreCitation = new CoreSearchRecords.CoreCitation(chunkId, 0.028, "vin appears in both branches", coordinates);
         CoreSearchRecords.CoreAskMetadata coreMetadata = new CoreSearchRecords.CoreAskMetadata("who is vin?", 6, 3, 33, "test-model");
         CoreSearchRecords.CoreAskResponse response = new CoreSearchRecords.CoreAskResponse("Vin appears in both vector and graph evidence.", List.of(coreCitation), coreMetadata);
@@ -265,7 +263,6 @@ class AskControllerWebMvcTest {
         coordinates.setChapterTitle("Test Chapter");
         coordinates.setBookNumber(1);
         coordinates.setChapterNumber(1);
-        CitationDto citation = CitationDto.of(chunkId, 0.73, "kelsier leads the crew", coordinates);
         CoreSearchRecords.CoreCitation coreCitation = new CoreSearchRecords.CoreCitation(chunkId, 0.73, "kelsier leads the crew", coordinates);
         CoreSearchRecords.CoreAskMetadata coreMetadata = new CoreSearchRecords.CoreAskMetadata("who is kelsier?", 4, 2, 31, "test-model");
         CoreSearchRecords.CoreAskResponse response = new CoreSearchRecords.CoreAskResponse("Kelsier is the Survivor of Hathsin.", List.of(coreCitation), coreMetadata);

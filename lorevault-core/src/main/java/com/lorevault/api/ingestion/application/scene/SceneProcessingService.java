@@ -1,9 +1,7 @@
 package com.lorevault.api.ingestion.application.scene;
 
 import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.ai.domain.SceneLocalizationException;
-import com.lorevault.api.ai.domain.SceneDetectionResult;
-import com.lorevault.api.ai.domain.SceneWithCoordinates;
+import com.lorevault.api.ingestion.domain.SceneLocalizationException;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.content.entities.SceneGraphRepository;
 import com.lorevault.api.ingestion.domain.IngestionFailure;

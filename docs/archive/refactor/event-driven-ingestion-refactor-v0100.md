@@ -152,8 +152,8 @@ public class XyzHandler {
             saveOutputs(result);
             
             // 5. Publish result
-            eventPublisher.publishEvent(new XyzCompleted(...));
-            
+            eventPublisher.publishEvent(new XyzCompleted(...))
+
         } catch (RetryableException e) {
             handleRetry(event, e);
         } catch (Exception e) {

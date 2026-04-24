@@ -46,31 +46,18 @@ public class ModelHealthValidator {
     }
 
     /**
-     * Configuration for health check behavior
-     */
-    public static class ValidationConfig {
-        private final String healthCheckPrompt;
-        private final boolean requireNonEmptyResponse;
-        private final boolean logRawResponse;
-
-        public ValidationConfig(String healthCheckPrompt, boolean requireNonEmptyResponse, boolean logRawResponse) {
-            this.healthCheckPrompt = healthCheckPrompt;
-            this.requireNonEmptyResponse = requireNonEmptyResponse;
-            this.logRawResponse = logRawResponse;
-        }
+         * Configuration for health check behavior
+         */
+        public record ValidationConfig(String healthCheckPrompt, boolean requireNonEmptyResponse, boolean logRawResponse) {
 
         public static ValidationConfig defaultConfig() {
-            return new ValidationConfig(
-                "Respond with 'OK' if you can process this message.", 
-                true, 
-                false
-            );
+                return new ValidationConfig(
+                        "Respond with 'OK' if you can process this message.",
+                        true,
+                        false
+                );
+            }
         }
-
-        public String getHealthCheckPrompt() { return healthCheckPrompt; }
-        public boolean isRequireNonEmptyResponse() { return requireNonEmptyResponse; }
-        public boolean isLogRawResponse() { return logRawResponse; }
-    }
 
     /**
      * Perform a health validation check against the model
@@ -78,15 +65,15 @@ public class ModelHealthValidator {
      */
     public HealthCheckResult validateModelHealth(String modelId, ValidationConfig config) throws Exception {
         log.trace("[Health-Validator] Sending health check to model: {}", modelId);
-        Prompt healthCheckPrompt = new Prompt(config.getHealthCheckPrompt());
+        Prompt healthCheckPrompt = new Prompt(config.healthCheckPrompt());
         String response = chatClient.prompt(healthCheckPrompt).call().content();
         
-        if (config.isLogRawResponse()) {
+        if (config.logRawResponse()) {
             log.trace("[Health-Validator] Raw response from model {}: {}", modelId, response);
         }
         
         // Validate response according to configuration
-        if (config.isRequireNonEmptyResponse() && (response == null || response.trim().isEmpty())) {
+        if (config.requireNonEmptyResponse() && (response == null || response.trim().isEmpty())) {
             throw new RuntimeException("Empty or null response received from model");
         }
         
@@ -100,12 +87,12 @@ public class ModelHealthValidator {
      */
     public HealthCheckResult validateModelHealthWithClient(ChatClient client, String modelId, ValidationConfig config) throws Exception {
         log.trace("[Health-Validator] (with-client) Sending health check to model: {}", modelId);
-        Prompt healthCheckPrompt = new Prompt(config.getHealthCheckPrompt());
+        Prompt healthCheckPrompt = new Prompt(config.healthCheckPrompt());
         String response = client.prompt(healthCheckPrompt).call().content();
-        if (config.isLogRawResponse()) {
+        if (config.logRawResponse()) {
             log.trace("[Health-Validator] Raw response from model {}: {}", modelId, response);
         }
-        if (config.isRequireNonEmptyResponse() && (response == null || response.trim().isEmpty())) {
+        if (config.requireNonEmptyResponse() && (response == null || response.trim().isEmpty())) {
             throw new RuntimeException("Empty or null response received from model");
         }
         String trimmedResponse = response != null ? response.trim() : null;

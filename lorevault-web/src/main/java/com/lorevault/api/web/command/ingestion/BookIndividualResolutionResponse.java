@@ -1,7 +1,12 @@
 package com.lorevault.api.web.command.ingestion;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.UUID;
 
+@Setter
+@Getter
 public class BookIndividualResolutionResponse {
 
     private UUID bookId;
@@ -9,9 +14,6 @@ public class BookIndividualResolutionResponse {
     private int chapterIndividualCount;
     private int bookIndividualCount;
     private String message;
-
-    public BookIndividualResolutionResponse() {
-    }
 
     public BookIndividualResolutionResponse(
             UUID bookId,
@@ -27,43 +29,4 @@ public class BookIndividualResolutionResponse {
         this.message = message;
     }
 
-    public UUID getBookId() {
-        return bookId;
-    }
-
-    public void setBookId(UUID bookId) {
-        this.bookId = bookId;
-    }
-
-    public boolean isProcessed() {
-        return processed;
-    }
-
-    public void setProcessed(boolean processed) {
-        this.processed = processed;
-    }
-
-    public int getChapterIndividualCount() {
-        return chapterIndividualCount;
-    }
-
-    public void setChapterIndividualCount(int chapterIndividualCount) {
-        this.chapterIndividualCount = chapterIndividualCount;
-    }
-
-    public int getBookIndividualCount() {
-        return bookIndividualCount;
-    }
-
-    public void setBookIndividualCount(int bookIndividualCount) {
-        this.bookIndividualCount = bookIndividualCount;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
 }

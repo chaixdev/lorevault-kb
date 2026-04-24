@@ -1,4 +1,4 @@
-package com.lorevault.api.ai.application;
+package com.lorevault.api.ingestion.application.triad;
 
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Scene;

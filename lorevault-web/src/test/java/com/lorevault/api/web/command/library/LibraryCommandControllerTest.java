@@ -139,7 +139,7 @@ class LibraryCommandControllerTest {
         Book book = new Book(TestIds.BOOK_ID, TestIds.UNIVERSE_ID, null, "Cosmere", null, null, "Warbreaker", LocalDateTime.now(), LocalDateTime.now());
         LibraryResult<Book> result = new LibraryResult<>(book, true);
 
-        when(catalogService.createBook(eq(TestIds.UNIVERSE_ID), org.mockito.ArgumentMatchers.<UUID>isNull(), eq("Warbreaker"), org.mockito.ArgumentMatchers.<Integer>isNull())).thenReturn(result);
+        when(catalogService.createBook(eq(TestIds.UNIVERSE_ID), org.mockito.ArgumentMatchers.isNull(), eq("Warbreaker"), org.mockito.ArgumentMatchers.<Integer>isNull())).thenReturn(result);
 
         mockMvc.perform(post("/api/command/library/create-book")
                         .contentType(MediaType.APPLICATION_JSON)

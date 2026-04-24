@@ -27,17 +27,15 @@ public class ErrorResponseFactory {
         
         // Add error details if present
         if (result.getErrorDetails() != null) {
-            if (result.getErrorDetails() instanceof FileUploadValidator.FileTypeError) {
-                FileUploadValidator.FileTypeError error = (FileUploadValidator.FileTypeError) result.getErrorDetails();
+            if (result.getErrorDetails() instanceof FileUploadValidator.FileTypeError error) {
                 details.put("fileType", Map.of(
-                    "received", error.getReceivedType(),
-                    "supported", error.getSupportedTypes()
+                    "received", error.receivedType(),
+                    "supported", error.supportedTypes()
                 ));
-            } else if (result.getErrorDetails() instanceof FileUploadValidator.FileSizeError) {
-                FileUploadValidator.FileSizeError error = (FileUploadValidator.FileSizeError) result.getErrorDetails();
+            } else if (result.getErrorDetails() instanceof FileUploadValidator.FileSizeError error) {
                 details.put("fileSize", Map.of(
-                    "actual", error.getFileSize(),
-                    "maximum", error.getMaxSize()
+                    "actual", error.fileSize(),
+                    "maximum", error.maxSize()
                 ));
             }
         }

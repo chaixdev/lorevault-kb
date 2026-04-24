@@ -19,30 +19,14 @@ import java.util.function.Supplier;
 public class RetryableHealthChecker {
 
     /**
-     * Configuration for retry behavior
-     */
-    public static class RetryConfig {
-        private final int maxAttempts;
-        private final long baseDelayMs;
-        private final double backoffMultiplier;
-        private final long maxDelayMs;
-
-        public RetryConfig(int maxAttempts, long baseDelayMs, double backoffMultiplier, long maxDelayMs) {
-            this.maxAttempts = maxAttempts;
-            this.baseDelayMs = baseDelayMs;
-            this.backoffMultiplier = backoffMultiplier;
-            this.maxDelayMs = maxDelayMs;
-        }
+         * Configuration for retry behavior
+         */
+        public record RetryConfig(int maxAttempts, long baseDelayMs, double backoffMultiplier, long maxDelayMs) {
 
         public static RetryConfig defaultConfig() {
-            return new RetryConfig(3, 1000, 2.0, 10000);
+                return new RetryConfig(3, 1000, 2.0, 10000);
+            }
         }
-
-        public int getMaxAttempts() { return maxAttempts; }
-        public long getBaseDelayMs() { return baseDelayMs; }
-        public double getBackoffMultiplier() { return backoffMultiplier; }
-        public long getMaxDelayMs() { return maxDelayMs; }
-    }
 
     /**
      * Result of a retry operation with timing and attempt metadata
@@ -92,18 +76,18 @@ public class RetryableHealthChecker {
         Exception lastException = null;
         long lastAttemptDuration = 0;
 
-        for (int attempt = 1; attempt <= config.getMaxAttempts(); attempt++) {
+        for (int attempt = 1; attempt <= config.maxAttempts(); attempt++) {
             Instant attemptStart = Instant.now();
             
             try {
-                log.debug("[Retry] Executing {} attempt={}/{}", operationName, attempt, config.getMaxAttempts());
+                log.debug("[Retry] Executing {} attempt={}/{}", operationName, attempt, config.maxAttempts());
                 
                 T result = operation.get();
                 lastAttemptDuration = Duration.between(attemptStart, Instant.now()).toMillis();
                 long totalDuration = Duration.between(overallStart, Instant.now()).toMillis();
                 
                 log.debug("✅ {} succeeded on attempt {}/{} in {} ms", 
-                         operationName, attempt, config.getMaxAttempts(), lastAttemptDuration);
+                         operationName, attempt, config.maxAttempts(), lastAttemptDuration);
                 
                 return RetryResult.success(result, attempt, lastAttemptDuration, totalDuration);
                 
@@ -112,10 +96,10 @@ public class RetryableHealthChecker {
                 lastException = e;
                 
                 log.warn("[Retry] {} attempt {}/{} failed in {} ms: {}", 
-                        operationName, attempt, config.getMaxAttempts(), lastAttemptDuration, e.getMessage());
+                        operationName, attempt, config.maxAttempts(), lastAttemptDuration, e.getMessage());
                 
                 // If this is the last attempt, don't wait
-                if (attempt == config.getMaxAttempts()) {
+                if (attempt == config.maxAttempts()) {
                     long totalDuration = Duration.between(overallStart, Instant.now()).toMillis();
                     return RetryResult.failure(lastException, attempt, lastAttemptDuration, totalDuration);
                 }
@@ -141,7 +125,7 @@ public class RetryableHealthChecker {
         long totalDuration = Duration.between(overallStart, Instant.now()).toMillis();
         return RetryResult.failure(
             new RuntimeException("Unexpected end of retry loop"), 
-            config.getMaxAttempts(), lastAttemptDuration, totalDuration
+            config.maxAttempts(), lastAttemptDuration, totalDuration
         );
     }
 
@@ -149,7 +133,7 @@ public class RetryableHealthChecker {
      * Calculate exponential backoff delay with maximum cap
      */
     private long calculateDelay(RetryConfig config, int attempt) {
-        long delay = (long) (config.getBaseDelayMs() * Math.pow(config.getBackoffMultiplier(), attempt - 1));
-        return Math.min(delay, config.getMaxDelayMs());
+        long delay = (long) (config.baseDelayMs() * Math.pow(config.backoffMultiplier(), attempt - 1));
+        return Math.min(delay, config.maxDelayMs());
     }
 }

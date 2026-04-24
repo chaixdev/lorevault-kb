@@ -4,10 +4,10 @@ import com.lorevault.api.ingestion.application.pipeline.*;
 import com.lorevault.api.ingestion.domain.*;
 import com.lorevault.api.ingestion.infrastructure.*;
 
-import com.lorevault.api.ai.domain.SceneLocalizationException;
-import com.lorevault.api.ai.domain.SceneDetectionException;
-import com.lorevault.api.ai.domain.SceneWithCoordinates;
-import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
+import com.lorevault.api.ingestion.domain.SceneLocalizationException;
+import com.lorevault.api.ingestion.domain.SceneDetectionException;
+import com.lorevault.api.ingestion.application.scene.SceneWithCoordinates;
+import com.lorevault.api.ingestion.application.triad.SceneRelationshipAnalysisService;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Scene;
 import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;

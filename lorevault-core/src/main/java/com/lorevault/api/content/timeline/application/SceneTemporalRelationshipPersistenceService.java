@@ -1,6 +1,6 @@
 package com.lorevault.api.content.timeline.application;
 
-import com.lorevault.api.ai.domain.TriadAnalysisException;
+import com.lorevault.api.ingestion.domain.TriadAnalysisException;
 import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
 import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
 import com.lorevault.api.ingestion.domain.IngestionFailure;

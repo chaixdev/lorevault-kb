@@ -1,5 +1,5 @@
 package com.lorevault.api.ai.infrastructure;
-import com.lorevault.api.ai.application.SceneRelationshipAnalysisService;
+import com.lorevault.api.ingestion.application.triad.SceneRelationshipAnalysisService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.config.LoreVaultModelsProperties;
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class SceneDetectionClientTest {
+class LlmClientTest {
 
     @Mock
     private ChatClient nlpSmallChatClient;
@@ -52,11 +52,11 @@ class SceneDetectionClientTest {
     @Mock
     private ChatClient.CallResponseSpec callSpec;
 
-    private SceneDetectionClient client;
+    private LlmClient client;
 
     @BeforeEach
     void setUp() {
-        client = new SceneDetectionClient(
+        client = new LlmClient(
                 nlpSmallChatClient,
                 nlpBigChatClient,
                 promptRepository,

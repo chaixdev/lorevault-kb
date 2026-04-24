@@ -36,7 +36,7 @@ public class ClasspathPromptRepository implements PromptRepository {
     private final PromptLocationResolver locationResolver; // resolves logical names > resource paths
 
     public String get(String name) {
-        return cache.getOrLoad(name, () -> loadFromClasspath(locationResolver.resolvename)));
+        return cache.getOrLoad(name, () -> loadFromClasspath(locationResolver.resolvename)))
     }
 }
 

@@ -1,8 +1,8 @@
-package com.lorevault.api.ai.application;
+package com.lorevault.api.ingestion.application.triad;
 
+import com.lorevault.api.ai.infrastructure.LlmClient;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
-import com.lorevault.api.ai.infrastructure.SceneDetectionClient;
-import com.lorevault.api.ai.domain.TriadAnalysisException;
+import com.lorevault.api.ingestion.domain.TriadAnalysisException;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Scene;
 import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
@@ -89,14 +89,14 @@ public class SceneRelationshipAnalysisService {
     }
 
     private final TriadBuilderService triadBuilder;
-    private final SceneDetectionClient sceneDetectionClient;
+    private final LlmClient llmClient;
     private final PromptRepository promptRepository;
 
     public SceneRelationshipAnalysisService(TriadBuilderService triadBuilder,
-                                            SceneDetectionClient sceneDetectionClient,
+                                            LlmClient llmClient,
                                             PromptRepository promptRepository) {
         this.triadBuilder = triadBuilder;
-        this.sceneDetectionClient = sceneDetectionClient;
+        this.llmClient = llmClient;
         this.promptRepository = promptRepository;
     }
 
@@ -139,7 +139,7 @@ public class SceneRelationshipAnalysisService {
 
             onTriadStart.accept(new HashMap<>(statusProps));
 
-            TriadStructuredResult parsed = sceneDetectionClient.detectSceneAnalysisTriad(
+            TriadStructuredResult parsed = llmClient.detectSceneAnalysisTriad(
                     jobId,
                     systemPrompt,
                     vars,

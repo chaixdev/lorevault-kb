@@ -1,11 +1,13 @@
 package com.lorevault.api.ai.application;
-import com.lorevault.api.ai.domain.TriadAnalysisException;
-import com.lorevault.api.ai.infrastructure.SceneDetectionClient;
+import com.lorevault.api.ai.infrastructure.LlmClient;
+import com.lorevault.api.ingestion.domain.TriadAnalysisException;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Scene;
 import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
+import com.lorevault.api.ingestion.application.triad.SceneRelationshipAnalysisService;
+import com.lorevault.api.ingestion.application.triad.TriadBuilderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,7 +36,7 @@ class SceneRelationshipAnalysisServiceTest {
     private TriadBuilderService triadBuilderService;
     
     @Mock
-    private SceneDetectionClient sceneDetectionClient;
+    private LlmClient llmClient;
 
     @Mock
     private PromptRepository promptRepository;
@@ -51,7 +53,7 @@ class SceneRelationshipAnalysisServiceTest {
     void setUp() {
         sceneRelationshipAnalysisService = new SceneRelationshipAnalysisService(
             triadBuilderService,
-            sceneDetectionClient,
+                llmClient,
             promptRepository
         );
     }
@@ -67,14 +69,14 @@ class SceneRelationshipAnalysisServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
+        when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
         List<TriadAnalysisModels.SceneRelationshipAnalysis> result =
             sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         assertThat(result).hasSize(2);
-        verify(sceneDetectionClient, times(2)).detectSceneAnalysisTriad(
+        verify(llmClient, times(2)).detectSceneAnalysisTriad(
                 eq(testJobId),
                 eq("mock system prompt"),
                 any(),
@@ -92,7 +94,7 @@ class SceneRelationshipAnalysisServiceTest {
         when(promptRepository.get("scene-analysis")).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
+        when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
         @SuppressWarnings("unchecked")
@@ -126,7 +128,7 @@ class SceneRelationshipAnalysisServiceTest {
             sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
         assertThat(result).isEmpty();
-        verify(sceneDetectionClient, never()).detectSceneAnalysisTriad(any(), any(), any(), any());
+        verify(llmClient, never()).detectSceneAnalysisTriad(any(), any(), any(), any());
     }
 
     @Test
@@ -140,12 +142,12 @@ class SceneRelationshipAnalysisServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
+        when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
         sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
-        verify(sceneDetectionClient).detectSceneAnalysisTriad(
+        verify(llmClient).detectSceneAnalysisTriad(
                 eq(testJobId),
                 eq("mock system prompt"),
                 any(),
@@ -164,7 +166,7 @@ class SceneRelationshipAnalysisServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
         when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
+        when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
         @SuppressWarnings("unchecked")
@@ -172,7 +174,7 @@ class SceneRelationshipAnalysisServiceTest {
 
         sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
 
-        verify(sceneDetectionClient).detectSceneAnalysisTriad(
+        verify(llmClient).detectSceneAnalysisTriad(
                 eq(testJobId),
                 eq("mock system prompt"),
                 userVarsCaptor.capture(),
@@ -202,7 +204,7 @@ class SceneRelationshipAnalysisServiceTest {
                 new SceneRelationshipAnalysisService.TriadStructuredResult("marker", null,
                         new SceneRelationshipAnalysisService.TriadRelation("BEFORE", "Explicit", "evidence"));
 
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
+        when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(invalid);
 
         assertThatThrownBy(() -> sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter))
@@ -228,7 +230,7 @@ class SceneRelationshipAnalysisServiceTest {
                         null
                 );
 
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
+        when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(legacy);
 
         List<TriadAnalysisModels.SceneRelationshipAnalysis> result =
@@ -258,7 +260,7 @@ class SceneRelationshipAnalysisServiceTest {
                         null
                 );
 
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
+        when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(parsed);
 
         List<TriadAnalysisModels.SceneRelationshipAnalysis> result =
@@ -288,7 +290,7 @@ class SceneRelationshipAnalysisServiceTest {
                         null
                 );
 
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
+        when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(invalid);
 
         assertThatThrownBy(() -> sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter))
@@ -314,7 +316,7 @@ class SceneRelationshipAnalysisServiceTest {
                         null
                 );
 
-        when(sceneDetectionClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
+        when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(legacy);
 
         List<TriadAnalysisModels.SceneRelationshipAnalysis> result =
