@@ -3,7 +3,7 @@ package com.lorevault.api.ingestion;
 import com.lorevault.api.content.entities.ObjectMention;
 import com.lorevault.api.content.entities.ObjectMentionGraphRepository;
 import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
+import com.lorevault.api.ingestion.domain.triad.TriadAnalysisModels;
 import com.lorevault.api.ingestion.infrastructure.ObjectPersistenceService;
 import java.util.List;
 import java.util.UUID;
