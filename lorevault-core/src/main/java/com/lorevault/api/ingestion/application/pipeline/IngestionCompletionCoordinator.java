@@ -36,7 +36,7 @@ public class IngestionCompletionCoordinator {
 
     private final ConcurrentHashMap<CompletionKey, CompletionState> completionStates = new ConcurrentHashMap<>();
 
-    @Async
+    @Async("ingestionTaskExecutor")
     @EventListener
     public void handleEmbeddingsCompleted(EmbeddingsCompletedEvent event) {
         CompletionKey key = new CompletionKey(
@@ -64,7 +64,7 @@ public class IngestionCompletionCoordinator {
         completeIfReady(key);
     }
 
-    @Async
+    @Async("ingestionTaskExecutor")
     @EventListener
     public void handleBookIndividualsReduced(BookIndividualsReducedEvent event) {
         CompletionKey key = new CompletionKey(
@@ -91,7 +91,7 @@ public class IngestionCompletionCoordinator {
         completeIfReady(key);
     }
 
-    @Async
+    @Async("ingestionTaskExecutor")
     @EventListener
     public void handleBookLocationsReduced(BookLocationsReducedEvent event) {
         CompletionKey key = new CompletionKey(

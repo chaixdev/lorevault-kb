@@ -24,7 +24,7 @@ public class ChapterLocationResolutionHandler {
     private final ChapterLocationResolutionService chapterLocationResolutionService;
     private final ApplicationEventPublisher eventPublisher;
 
-    @Async
+    @Async("ingestionTaskExecutor")
     @EventListener
     public void handleScenesDetected(ScenesDetectedEvent event) {
         UUID chapterId = event.getChapterId();

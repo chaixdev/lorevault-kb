@@ -54,11 +54,11 @@ public class DefaultTemporalEdgeService {
     /**
      * Create structural adjacency edges within chapters (scene-to-scene within same chapter).
      * Safe to call multiple times - uses MERGE for idempotency.
-     * 
+     * Called internally by {@link #createAllDefaults(UUID)} — transaction is inherited from the caller.
+     *
      * @param bookId the book to create in-chapter edges for
      * @return number of edges created
      */
-    @Transactional
     public int createInChapterDefaults(UUID bookId) {
         log.debug("Creating default in-chapter NEXT_IN_READING_ORDER edges for book {}", bookId);
         
@@ -77,11 +77,11 @@ public class DefaultTemporalEdgeService {
      * Create structural adjacency edges between chapters
      * (last scene of chapter to first scene of next).
      * Safe to call multiple times - uses MERGE for idempotency.
-     * 
-     * @param bookId the book to create cross-chapter edges for  
+     * Called internally by {@link #createAllDefaults(UUID)} — transaction is inherited from the caller.
+     *
+     * @param bookId the book to create cross-chapter edges for
      * @return number of edges created
      */
-    @Transactional
     public int createCrossChapterDefault(UUID bookId) {
         log.debug("Creating default cross-chapter NEXT_IN_READING_ORDER edges for book {}", bookId);
         

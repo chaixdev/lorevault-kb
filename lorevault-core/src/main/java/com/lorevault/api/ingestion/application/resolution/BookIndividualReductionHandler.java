@@ -25,7 +25,7 @@ public class BookIndividualReductionHandler {
     private final BookIndividualReductionService bookIndividualReductionService;
     private final ApplicationEventPublisher eventPublisher;
 
-    @Async
+    @Async("ingestionTaskExecutor")
     @EventListener
     public void handleChapterIndividualsResolved(ChapterIndividualsResolvedEvent event) {
         UUID jobId = event.getJobId();

@@ -24,7 +24,7 @@ public class BookLocationReductionHandler {
     private final BookLocationReductionService bookLocationReductionService;
     private final ApplicationEventPublisher eventPublisher;
 
-    @Async
+    @Async("ingestionTaskExecutor")
     @EventListener
     public void handleChapterLocationsResolved(ChapterLocationsResolvedEvent event) {
         UUID jobId = event.getJobId();

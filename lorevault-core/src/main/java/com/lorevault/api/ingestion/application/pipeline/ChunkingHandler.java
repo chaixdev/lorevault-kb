@@ -62,7 +62,7 @@ public class ChunkingHandler {
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
 
-    @Async
+    @Async("ingestionTaskExecutor")
     @EventListener
     public void handleScenesDetected(ScenesDetectedEvent event) {
         UUID jobId = event.getJobId();

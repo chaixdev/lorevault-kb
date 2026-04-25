@@ -6,30 +6,20 @@ import com.lorevault.api.ingestion.application.result.PaginatedJobSummaries;
 import com.lorevault.api.ingestion.domain.ChapterPersistenceException;
 import com.lorevault.api.ingestion.domain.ChapterSubmissionLookupException;
 import com.lorevault.api.ingestion.domain.IngestionFailure;
-
 import com.lorevault.api.ingestion.domain.IngestionJob;
 
-import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
-import com.lorevault.api.library.domain.PublicationCoordinates;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.library.domain.Book;
+import com.lorevault.api.library.domain.PublicationCoordinates;
 import com.lorevault.api.library.infrastructure.BookGraphRepository;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 
-import jakarta.annotation.PostConstruct;
-
-import java.util.function.Supplier;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,14 +27,19 @@ import static com.lorevault.api.ingestion.infrastructure.HashUtils.generateSha25
 
 /**
  * Service for chapter submission and job management.
- * 
+ *
  * Responsibilities:
  * - Chapter validation and duplicate detection
  * - Ingestion job creation and query
  * - Publishing events to trigger async processing pipeline
- * 
+ *
  * Processing is handled by event-driven handlers:
  * SceneDetectionHandler → ChunkingHandler → EmbeddingHandler
+ *
+ * Best-effort lookups (content-hash, active-job, recent-job) are delegated to
+ * {@link IngestionIsolatedLookupService}, which runs each query in its own
+ * REQUIRES_NEW read-only transaction.  This prevents a Neo4j session failure
+ * during a lookup from poisoning the caller's submit transaction.
  */
 @Service
 @RequiredArgsConstructor
@@ -54,62 +49,8 @@ public class IngestionService {
     private final ChapterGraphRepository chapterRepo;
     private final BookGraphRepository bookRepo;
     private final IngestionJobService ingestionJobService;
-    private final IngestionJobGraphRepository jobRepo;
     private final ApplicationEventPublisher eventPublisher;
-
-    /**
-     * Optional transaction manager used to isolate best-effort lookup queries.
-     *
-     * Why: some Neo4j/SDN failures terminate the *current* transaction; if we swallow that exception and
-     * keep executing more queries in the same transaction, we can hit "Cannot run more queries in this transaction".
-     * Running these lookups in a REQUIRES_NEW read-only transaction prevents poisoning the submit transaction.
-     */
-    @Autowired(required = false)
-    @Nullable
-    private PlatformTransactionManager transactionManager;
-
-    private TransactionTemplate requiresNewReadOnlyTx;
-
-    @PostConstruct
-    void initTransactionTemplates() {
-        PlatformTransactionManager tm = this.transactionManager;
-        if (tm == null) {
-            return;
-        }
-        TransactionTemplate template = new TransactionTemplate(tm);
-        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        template.setReadOnly(true);
-        this.requiresNewReadOnlyTx = template;
-    }
-
-    private <T> T requiredLookup(String operation,
-                                 Supplier<T> supplier,
-                                 String failureCode,
-                                 UUID chapterId,
-                                 ThrowableDetailsAppender detailsAppender) {
-        try {
-            if (requiresNewReadOnlyTx != null) {
-                return requiresNewReadOnlyTx.execute(status -> supplier.get());
-            }
-            return supplier.get();
-        } catch (Exception e) {
-            log.warn("Required lookup failed ({}): {}", operation, e.getMessage());
-            log.debug("Required lookup failure details ({}):", operation, e);
-
-            IngestionFailure.Builder failureBuilder = IngestionFailure.builder(
-                            failureCode,
-                            "Chapter submission lookup failed during " + operation + ": " + safeMessage(e))
-                    .exceptionType(e.getClass().getSimpleName())
-                    .stage("CHAPTER_SUBMISSION");
-            if (chapterId != null) {
-                failureBuilder.detail("chapterId", chapterId);
-            }
-            if (detailsAppender != null) {
-                detailsAppender.append(failureBuilder);
-            }
-            throw new ChapterSubmissionLookupException(failureBuilder.build(), e);
-        }
-    }
+    private final IngestionIsolatedLookupService isolatedLookup;
 
     /**
      * Context object for chapter validation results
@@ -158,7 +99,7 @@ public class IngestionService {
         // Handle existing chapter case
         if (validationResult.isExistingChapter()) {
             if (validationResult.hasActiveJob()) {
-                Optional<UUID> activeJobId = findMostRecentJobId(chapterId);
+                Optional<UUID> activeJobId = isolatedLookup.findMostRecentJobId(chapterId);
                 if (activeJobId.isPresent()) {
                     return new IngestionSubmissionResult(activeJobId.get(), chapterId);
                 }
@@ -169,7 +110,7 @@ public class IngestionService {
                         builder -> builder.detail("lookupType", "recentJob")
                 );
             }
-            
+
             // Create new job for existing chapter
             IngestionJob job = ingestionJobService.createIngestionJob(chapterId);
             eventPublisher.publishEvent(new ChapterIngestionEvent(this, job.getId(), chapterId));
@@ -199,66 +140,28 @@ public class IngestionService {
     // ========== Private Chapter Validation Methods ==========
 
     /**
-     * Validate chapter submission and handle duplicate detection
+     * Validate chapter submission and handle duplicate detection.
+     * Lookup queries are delegated to {@link IngestionIsolatedLookupService}
+     * so that they run in isolated read-only transactions.
      */
-    @Transactional
     private ChapterValidationResult validateAndProcessChapter(UUID bookId, Integer chapterNumber, String chapterTitle, String chapterText) {
         log.info("Validating chapter submission: bookId={}, chapterNumber={}, title={}",
             bookId, chapterNumber, chapterTitle);
 
         String contentHash = generateSha256Hash(chapterText);
 
-        // Check for existing chapter with same content
-        Optional<Chapter> existingChapter = findExistingChapterByHash(contentHash);
+        // Check for existing chapter with same content — isolated REQUIRES_NEW read-only tx
+        Optional<Chapter> existingChapter = isolatedLookup.findChapterByContentHash(contentHash);
         if (existingChapter.isPresent()) {
             UUID chapterId = existingChapter.get().getId();
-            boolean hasActiveJob = checkForActiveJob(chapterId);
+            // Isolated REQUIRES_NEW read-only tx
+            boolean hasActiveJob = isolatedLookup.existsActiveForChapter(chapterId);
             return ChapterValidationResult.existingChapter(chapterId, contentHash, hasActiveJob);
         }
 
         // Create new chapter
         UUID newChapterId = createNewChapter(bookId, chapterNumber, chapterTitle, chapterText, contentHash);
         return ChapterValidationResult.newChapter(newChapterId, contentHash);
-    }
-
-    /**
-     * Check if a chapter has an active processing job
-     */
-    private boolean checkForActiveJob(UUID chapterId) {
-        return requiredLookup(
-            "hasActiveJobForChapter chapterId=" + chapterId,
-            () -> jobRepo.existsActiveForChapter(chapterId),
-            "CHAPTER_ACTIVE_JOB_LOOKUP_FAILED",
-            chapterId,
-            builder -> builder.detail("lookupType", "activeJob")
-        );
-    }
-
-    /**
-     * Find the most recent job for a chapter
-     */
-    private Optional<UUID> findMostRecentJobId(UUID chapterId) {
-        return requiredLookup(
-            "findMostRecentJobForChapter chapterId=" + chapterId,
-            () -> jobRepo.findFirstByChapterIdOrderByCreatedAtDesc(chapterId)
-                .map(IngestionJob::getId),
-            "CHAPTER_RECENT_JOB_LOOKUP_FAILED",
-            chapterId,
-            builder -> builder.detail("lookupType", "recentJob")
-        );
-    }
-
-    private Optional<Chapter> findExistingChapterByHash(String contentHash) {
-        return requiredLookup(
-            "findChapterByContentHash hash=" + contentHash,
-            () -> chapterRepo.findByContentHash(contentHash),
-            "CHAPTER_HASH_LOOKUP_FAILED",
-            null,
-            builder -> {
-                builder.detail("lookupType", "contentHash");
-                builder.detail("contentHash", contentHash);
-            }
-        );
     }
 
     private UUID createNewChapter(UUID bookId, Integer chapterNumber, String chapterTitle, String chapterText, String contentHash) {
@@ -271,13 +174,13 @@ public class IngestionService {
                 bookRepo.findById(chapter.getBookId()).ifPresent(chapter::setBook);
             }
             Chapter persisted = chapterRepo.save(chapter);
-            
+
             // Handle mock scenarios where createChapter might return null
             UUID chapterId = (persisted != null) ? persisted.getId() : chapter.getId();
-            
+
             log.debug("Created new chapter with ID: {}", chapterId);
             return chapterId;
-            
+
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
