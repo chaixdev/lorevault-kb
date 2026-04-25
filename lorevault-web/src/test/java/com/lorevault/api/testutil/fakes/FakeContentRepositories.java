@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  *   FakeContentRepositories fake = new FakeContentRepositories();
  *
  *   // Pass the right typed view to each constructor arg:
- *   new EmbeddingService(fake.asChapterRepo(), fake.asChunkRepo(), embeddingModel)
+  *   new EmbeddingService(new EmbeddingTransactionSupport(fake.asChapterRepo(), fake.asChunkRepo()), embeddingModel)
  *   new SceneProcessingService(fake.asChapterRepo(), fake.asSceneRepo())
  *   new LibraryService(fake.asUniverseRepo(), fake.asSeriesRepo(), fake.asBookRepo())
  *

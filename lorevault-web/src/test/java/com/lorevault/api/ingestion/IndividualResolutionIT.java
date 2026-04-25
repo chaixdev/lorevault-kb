@@ -7,8 +7,11 @@ import com.lorevault.api.ingestion.application.result.*;
 import com.lorevault.api.ingestion.infrastructure.*;
 
 import com.lorevault.api.ingestion.application.scene.SceneDetectionService;
+import com.lorevault.api.ingestion.application.triad.TriadTemporalEdgeRequestFactory;
+import com.lorevault.api.ingestion.application.triad.SceneRelationshipAnalysisService;
 import com.lorevault.api.ingestion.application.scene.SceneProcessingService;
 import com.lorevault.api.ingestion.application.scene.SceneWithCoordinates;
+import com.lorevault.api.ingestion.domain.triad.TriadAnalysisModels;
 import com.lorevault.api.library.domain.Book;
 import com.lorevault.api.library.infrastructure.BookGraphRepository;
 import com.lorevault.api.content.entities.ChapterGraphRepository;
@@ -112,12 +115,23 @@ class IndividualResolutionIT {
     @MockitoBean
     private SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService;
 
+    @MockitoBean
+    private TriadTemporalEdgeRequestFactory triadTemporalEdgeRequestFactory;
+
+    @MockitoBean
+    private SceneRelationshipAnalysisService sceneRelationshipAnalysisService;
+
     @BeforeEach
     void setUp() {
         reset(eventPublisher, defaultTemporalEdgeService, sceneDetectionService);
         neo4jClient.query("MATCH (n) DETACH DELETE n").run();
         persistDeathworldersBook();
         doNothing().when(defaultTemporalEdgeService).createAllDefaults(org.mockito.ArgumentMatchers.any());
+        when(triadTemporalEdgeRequestFactory.buildRequests(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of());
     }
 
     @Test
@@ -127,6 +141,11 @@ class IndividualResolutionIT {
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(com.lorevault.api.content.entities.Chapter.class)))
                 .thenReturn(outcomeWithRepeatedNyx());
+        when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(triadOutcomeWithNyxAndOrion());
 
         IngestionSubmissionResult response = ingestionService.submitChapter(
                 request.getBookId(), request.getChapterNumber(), request.getChapterTitle(), request.getChapterText());
@@ -172,10 +191,15 @@ class IndividualResolutionIT {
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(com.lorevault.api.content.entities.Chapter.class)))
                 .thenReturn(
-                        outcomeWithSingleIndividual("Kevin Jenkins"),
-                        outcomeWithSingleIndividual("Kevin Jenkins"),
-                        outcomeWithSingleIndividual("Kevin Jenkins")
+                        outcomeWithSingleIndividual("Kevin"),
+                        outcomeWithSingleIndividual("Kevin"),
+                        outcomeWithSingleIndividual("Kevin")
                 );
+        when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(triadOutcomeWithSingleIndividual("Kevin Jenkins"));
 
         UUID chapterIdOne = ingestAndResolveChapter(chapterOne);
         UUID chapterIdTwo = ingestAndResolveChapter(chapterTwo);
@@ -242,6 +266,65 @@ class IndividualResolutionIT {
                 new SceneWithCoordinates(0, 0, 120, displayName + " scene")
         );
         return new SceneDetectionService.SceneSegmentationOutcome(scenes);
+    }
+
+    private TriadAnalysisModels.SceneRelationshipOutcome triadOutcomeWithNyxAndOrion() {
+        return new TriadAnalysisModels.SceneRelationshipOutcome(
+                List.of(),
+                List.of(
+                        new TriadAnalysisModels.SceneIndividualExtraction(
+                                0,
+                                List.of(
+                                        new TriadAnalysisModels.IndividualExtraction(
+                                                List.of("Nyx"),
+                                                null,
+                                                null,
+                                                null
+                                        )
+                                )
+                        ),
+                        new TriadAnalysisModels.SceneIndividualExtraction(
+                                1,
+                                List.of(
+                                        new TriadAnalysisModels.IndividualExtraction(
+                                                List.of("Nyx"),
+                                                null,
+                                                null,
+                                                null
+                                        ),
+                                        new TriadAnalysisModels.IndividualExtraction(
+                                                List.of("Orion"),
+                                                null,
+                                                null,
+                                                null
+                                        )
+                                )
+                        )
+                ),
+                List.of(),
+                List.of()
+        );
+    }
+
+    private TriadAnalysisModels.SceneRelationshipOutcome triadOutcomeWithSingleIndividual(String displayName) {
+        return new TriadAnalysisModels.SceneRelationshipOutcome(
+                List.of(),
+                List.of(
+                        new TriadAnalysisModels.SceneIndividualExtraction(
+                                0,
+                                List.of(
+                                        new TriadAnalysisModels.IndividualExtraction(
+                                                List.of(displayName),
+                                                null,
+                                                null,
+                                                null
+                                        )
+                                )
+                        )
+                ),
+                List.of(),
+                List.of()
+        );
     }
 
     private long countNodes(String label) {
