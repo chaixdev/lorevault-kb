@@ -154,11 +154,11 @@ public class Neo4jSemanticSearch {
     public boolean isAvailable() {
         try {
             Long count = neo4jClient.query("""
-                CALL db.indexes() YIELD name, type, state
-                WHERE name = $indexName AND type = 'VECTOR' AND state = 'ONLINE'
+                SHOW INDEXES YIELD name
+                WHERE name = $indexName
                 RETURN count(*) as indexCount
                 """)
-                    .bind("indexName").to(VECTOR_INDEX_NAME)
+                    .bind(VECTOR_INDEX_NAME).to("indexName")
                     .fetchAs(Long.class)
                     .one()
                     .orElse(0L);
@@ -204,8 +204,9 @@ public class Neo4jSemanticSearch {
             OPTIONAL MATCH (chapterViaScene:Chapter)-[:HAS_SCENE]->(sceneViaChunk)
             WITH chunk, score,
                  coalesce(chapterViaScene, chapterDirect) AS chapter,
-                 sceneViaChunk AS scene
-            WHERE score > 0.0
+                 sceneViaChunk AS scene,
+                 vector.similarity.cosine(chunk.embedding, $embedding) AS cosineScore
+            WHERE cosineScore > 0.0
               AND ($universe      IS NULL OR chapter.universe      = $universe)
               AND ($series        IS NULL OR chapter.series        = $series)
               AND ($bookNumber    IS NULL OR chapter.bookNumber    = $bookNumber)
@@ -213,7 +214,7 @@ public class Neo4jSemanticSearch {
             """ + spoilerClause + """
             OPTIONAL MATCH (scene)-[:MENTIONS]->(im:IndividualMention)
             OPTIONAL MATCH (scene)-[:MENTIONS]->(lm:LocationMention)
-            WITH chunk, score, chapter, scene,
+            WITH chunk, cosineScore AS score, chapter, scene,
                  collect(DISTINCT im.displayName) AS individualsPresent,
                  collect(DISTINCT lm.displayName) AS locationsPresent
             RETURN
