@@ -2,6 +2,7 @@ package com.lorevault.api.ingestion.infrastructure;
 
 import com.lorevault.api.ai.domain.LlmCallLogger;
 import com.lorevault.api.config.LoreVaultLlmLoggingProperties;
+import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.domain.LlmCallRecord;
 import com.lorevault.api.ingestion.domain.StatusRecord;
 import org.slf4j.Logger;
@@ -12,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -59,6 +61,13 @@ public class LlmCallLoggingService implements LlmCallLogger {
             return;
         }
 
+        Optional<IngestionJob> jobOpt = jobRepo.findById(jobId);
+        if (jobOpt.isEmpty()) {
+            log.debug("[LLM-LOG] Job {} not found; skipping persistence for step={}", jobId, step);
+            return;
+        }
+        IngestionJob job = jobOpt.orElseThrow();
+
         LlmCallRecord rec = new LlmCallRecord();
         rec.setId(UUID.randomUUID());
         rec.setJobId(jobId);
@@ -93,24 +102,22 @@ public class LlmCallLoggingService implements LlmCallLogger {
 
         // Attach to current StatusRecord if available
         try {
-            jobRepo.findById(jobId).ifPresent(job -> {
-                rec.setJob(job);
-                StatusRecord cur = job.getCurrentStatus();
-                if (cur != null) {
-                    rec.setStatusRecordId(cur.getId());
-                    rec.setStatus(cur);
-                    log.debug("[LLM-LOG] Linking LLM call step={} to current status {}", step, cur.getId());
-                } else {
-                    // Fallback: use most recent status from history if current is not populated
-                    var history = statusRepo.findStatusHistoryForJob(jobId);
-                    if (history != null && !history.isEmpty()) {
-                        StatusRecord last = history.get(history.size() - 1);
-                        rec.setStatusRecordId(last.getId());
-                        rec.setStatus(last);
-                        log.debug("[LLM-LOG] Linking LLM call step={} to last status {} (fallback)", step, last.getId());
-                    }
+            rec.setJob(job);
+            StatusRecord cur = job.getCurrentStatus();
+            if (cur != null) {
+                rec.setStatusRecordId(cur.getId());
+                rec.setStatus(cur);
+                log.debug("[LLM-LOG] Linking LLM call step={} to current status {}", step, cur.getId());
+            } else {
+                // Fallback: use most recent status from history if current is not populated
+                var history = statusRepo.findStatusHistoryForJob(jobId);
+                if (history != null && !history.isEmpty()) {
+                    StatusRecord last = history.get(history.size() - 1);
+                    rec.setStatusRecordId(last.getId());
+                    rec.setStatus(last);
+                    log.debug("[LLM-LOG] Linking LLM call step={} to last status {} (fallback)", step, last.getId());
                 }
-            });
+            }
         } catch (Exception e) {
             log.debug("[LLM-LOG] Unable to resolve current status for job {}: {}", jobId, e.getMessage());
         }

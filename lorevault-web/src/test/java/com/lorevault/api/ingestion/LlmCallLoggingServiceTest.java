@@ -141,7 +141,7 @@ class LlmCallLoggingServiceTest {
     void logCall_withBodiesDisabled_shouldOmitResponseBody() {
         service = new LlmCallLoggingService(new LoreVaultLlmLoggingProperties(true, false, -1, true), jobRepo, statusRepo, llmCallRepo);
         UUID jobId = UUID.randomUUID();
-        when(jobRepo.findById(jobId)).thenReturn(Optional.empty());
+        when(jobRepo.findById(jobId)).thenReturn(Optional.of(jobWithCurrentStatus(jobId)));
         when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.logCall(
@@ -173,7 +173,7 @@ class LlmCallLoggingServiceTest {
     void logCall_withRenderedPromptDisabled_shouldOmitRenderedPrompt() {
         service = new LlmCallLoggingService(new LoreVaultLlmLoggingProperties(true, true, -1, false), jobRepo, statusRepo, llmCallRepo);
         UUID jobId = UUID.randomUUID();
-        when(jobRepo.findById(jobId)).thenReturn(Optional.empty());
+        when(jobRepo.findById(jobId)).thenReturn(Optional.of(jobWithCurrentStatus(jobId)));
         when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.logCall(
@@ -203,7 +203,7 @@ class LlmCallLoggingServiceTest {
     void logCall_withTruncation_shouldTruncateAndSetFlag() {
         service = new LlmCallLoggingService(new LoreVaultLlmLoggingProperties(true, true, 20, true), jobRepo, statusRepo, llmCallRepo);
         UUID jobId = UUID.randomUUID();
-        when(jobRepo.findById(jobId)).thenReturn(Optional.empty());
+        when(jobRepo.findById(jobId)).thenReturn(Optional.of(jobWithCurrentStatus(jobId)));
         when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.logCall(
@@ -235,7 +235,7 @@ class LlmCallLoggingServiceTest {
     void logCall_withSceneAnalysisStep_shouldNotTruncateEvenWhenOverLimit() {
         service = new LlmCallLoggingService(new LoreVaultLlmLoggingProperties(true, true, 20, true), jobRepo, statusRepo, llmCallRepo);
         UUID jobId = UUID.randomUUID();
-        when(jobRepo.findById(jobId)).thenReturn(Optional.empty());
+        when(jobRepo.findById(jobId)).thenReturn(Optional.of(jobWithCurrentStatus(jobId)));
         when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         String longResponse = "This is a very long response that exceeds 20 characters and should not be truncated for scene-analysis";
@@ -265,7 +265,7 @@ class LlmCallLoggingServiceTest {
     @Test
     void logCall_withInputPreviewTruncation_shouldTruncateInputPreview() {
         UUID jobId = UUID.randomUUID();
-        when(jobRepo.findById(jobId)).thenReturn(Optional.empty());
+        when(jobRepo.findById(jobId)).thenReturn(Optional.of(jobWithCurrentStatus(jobId)));
         when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.logCall(
@@ -326,10 +326,9 @@ class LlmCallLoggingServiceTest {
     }
 
     @Test
-    void logCall_withJobNotFound_shouldStillPersistWithoutStatusLink() {
+    void logCall_withJobNotFound_shouldSkipPersistenceWithoutStatusLookup() {
         UUID jobId = UUID.randomUUID();
         when(jobRepo.findById(jobId)).thenReturn(Optional.empty());
-        when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.logCall(
                 jobId,
@@ -348,10 +347,16 @@ class LlmCallLoggingServiceTest {
                 150
         );
 
-        ArgumentCaptor<LlmCallRecord> captor = ArgumentCaptor.forClass(LlmCallRecord.class);
-        verify(llmCallRepo).save(captor.capture());
-        assertThat(captor.getValue().getJobId()).isEqualTo(jobId);
-        assertThat(captor.getValue().getStatusRecordId()).isNull();
+        verify(llmCallRepo, never()).save(any());
         verify(statusRepo, never()).findStatusHistoryForJob(jobId);
+    }
+
+    private IngestionJob jobWithCurrentStatus(UUID jobId) {
+        IngestionJob job = new IngestionJob();
+        job.setId(jobId);
+        StatusRecord currentStatus = new StatusRecord();
+        currentStatus.setId(UUID.randomUUID());
+        job.setCurrentStatus(currentStatus);
+        return job;
     }
 }

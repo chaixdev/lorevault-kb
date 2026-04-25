@@ -15,7 +15,6 @@ import com.lorevault.api.content.entities.ChunkGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
 import com.lorevault.api.content.entities.SceneGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.StatusRecordGraphRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -38,7 +37,6 @@ import java.util.stream.Collectors;
  * to eliminate artificial service boundaries and simplify the codebase.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class IngestionJobService {
 
@@ -47,6 +45,20 @@ public class IngestionJobService {
     private final ChapterGraphRepository chapterRepo;
     private final IngestionJobGraphRepository jobRepo;
     private final StatusRecordGraphRepository statusRepo;
+
+    public IngestionJobService(
+        ChunkGraphRepository chunkRepo,
+        SceneGraphRepository sceneRepo,
+        ChapterGraphRepository chapterRepo,
+        IngestionJobGraphRepository jobRepo,
+        StatusRecordGraphRepository statusRepo
+    ) {
+        this.chunkRepo = chunkRepo;
+        this.sceneRepo = sceneRepo;
+        this.chapterRepo = chapterRepo;
+        this.jobRepo = jobRepo;
+        this.statusRepo = statusRepo;
+    }
 
     // ================================
     // JOB LIFECYCLE OPERATIONS

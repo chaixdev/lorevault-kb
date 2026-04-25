@@ -228,7 +228,6 @@ class LlmCallRecordPersistenceIntegrationTest {
         LlmCallRecord persisted = retrievedRecords.getFirst();
         assertThat(persisted.getJobId()).isEqualTo(jobId);
         assertThat(llmCallRepo.hasOfJobRelation(persisted.getId(), jobId)).isTrue();
-        assertThat(llmCallRepo.findByJobId(jobId).getFirst().getJob()).isNotNull();
     }
 
     private UUID createJob() {

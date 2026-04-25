@@ -23,6 +23,7 @@ public interface StatusRecordGraphRepository extends Neo4jRepository<StatusRecor
             WITH head, nodes(p) AS chain
             UNWIND chain AS sr
             WITH head, sr, length(shortestPath((head)-[:HAS_NEXT_STATUS*0..]->(sr))) AS idx
+            WITH DISTINCT sr, idx
             RETURN sr
             ORDER BY idx
     """)

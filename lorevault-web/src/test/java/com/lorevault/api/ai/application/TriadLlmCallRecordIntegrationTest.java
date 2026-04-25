@@ -24,14 +24,15 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import com.lorevault.api.testing.TestImages;
+import com.lorevault.api.integration.TestConfig;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -50,6 +51,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Tag("integration")
 @Testcontainers
 @DisplayName("Triad LLM Call Record Integration")
+@Import(TestConfig.class)
 class TriadLlmCallRecordIntegrationTest {
 
     @SuppressWarnings("resource") // Testcontainers manages lifecycle
@@ -101,7 +103,6 @@ class TriadLlmCallRecordIntegrationTest {
     }
 
     @Test
-    @Transactional
     @DisplayName("Should link LlmCallRecord to SCENE_TRIAD_ANALYSIS StatusRecord with triad metadata")
     void shouldLinkLlmCallRecordToTriadStatusRecord() {
         // Arrange - Create a SCENE_TRIAD_ANALYSIS status record with triad metadata
@@ -186,7 +187,6 @@ class TriadLlmCallRecordIntegrationTest {
     }
 
     @Test
-    @Transactional
     @DisplayName("Should handle multiple triad LLM calls with different status records")
     void shouldHandleMultipleTriadLlmCallsWithDifferentStatusRecords() {
         // Arrange - Create two SCENE_TRIAD_ANALYSIS status records
@@ -259,7 +259,6 @@ class TriadLlmCallRecordIntegrationTest {
     }
 
     @Test
-    @Transactional
     @DisplayName("Should persist triad metadata in status properties for query and debugging")
     void shouldPersistTriadMetadataInStatusProperties() {
         // Arrange
