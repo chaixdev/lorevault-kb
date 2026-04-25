@@ -25,6 +25,15 @@ public final class TriadAnalysisModels {
     ) {
     }
 
+    public record ObjectExtraction(
+            List<String> aliases,
+            String type,
+            String material,
+            String purpose,
+            String description
+    ) {
+    }
+
     public record EventExtraction(
             String name,
             String eventType,
@@ -38,6 +47,9 @@ public final class TriadAnalysisModels {
     }
 
     public record SceneLocationExtraction(int sceneIndex, List<LocationExtraction> locations) {
+    }
+
+    public record SceneObjectExtraction(int sceneIndex, List<ObjectExtraction> objects) {
     }
 
     public record SceneEventExtraction(int sceneIndex, List<EventExtraction> events) {
@@ -64,6 +76,7 @@ public final class TriadAnalysisModels {
     public record SceneRelationshipOutcome(
             List<SceneRelationshipAnalysis> triadAnalyses,
             List<SceneIndividualExtraction> sceneIndividualExtractions,
+            List<SceneObjectExtraction> sceneObjectExtractions,
             List<SceneLocationExtraction> sceneLocationExtractions,
             List<SceneEventExtraction> sceneEventExtractions
     ) {
@@ -72,7 +85,16 @@ public final class TriadAnalysisModels {
                 List<SceneIndividualExtraction> sceneIndividualExtractions,
                 List<SceneLocationExtraction> sceneLocationExtractions
         ) {
-            this(triadAnalyses, sceneIndividualExtractions, sceneLocationExtractions, List.of());
+            this(triadAnalyses, sceneIndividualExtractions, List.of(), sceneLocationExtractions, List.of());
+        }
+
+        public SceneRelationshipOutcome(
+                List<SceneRelationshipAnalysis> triadAnalyses,
+                List<SceneIndividualExtraction> sceneIndividualExtractions,
+                List<SceneLocationExtraction> sceneLocationExtractions,
+                List<SceneEventExtraction> sceneEventExtractions
+        ) {
+            this(triadAnalyses, sceneIndividualExtractions, List.of(), sceneLocationExtractions, sceneEventExtractions);
         }
     }
 }

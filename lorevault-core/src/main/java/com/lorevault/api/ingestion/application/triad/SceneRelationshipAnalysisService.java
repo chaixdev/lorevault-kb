@@ -54,6 +54,14 @@ public class SceneRelationshipAnalysisService {
             String description
     ) {}
 
+    public record TriadObjectExtraction(
+            List<String> aliases,
+            String type,
+            String material,
+            String purpose,
+            String description
+    ) {}
+
     public record TriadEventExtraction(
             String name,
             String eventType,
@@ -64,6 +72,7 @@ public class SceneRelationshipAnalysisService {
 
     public record TriadCurrentSceneEntities(
             List<TriadIndividualExtraction> individuals,
+            List<TriadObjectExtraction> objects,
             List<TriadLocationExtraction> locations,
             List<TriadEventExtraction> events
     ) {
@@ -71,7 +80,15 @@ public class SceneRelationshipAnalysisService {
                 List<TriadIndividualExtraction> individuals,
                 List<TriadLocationExtraction> locations
         ) {
-            this(individuals, locations, List.of());
+            this(individuals, List.of(), locations, List.of());
+        }
+
+        public TriadCurrentSceneEntities(
+                List<TriadIndividualExtraction> individuals,
+                List<TriadObjectExtraction> objects,
+                List<TriadLocationExtraction> locations
+        ) {
+            this(individuals, objects, locations, List.of());
         }
     }
 
@@ -121,6 +138,7 @@ public class SceneRelationshipAnalysisService {
 
         List<TriadAnalysisModels.SceneRelationshipAnalysis> analyses = new ArrayList<>();
         Map<Integer, List<TriadAnalysisModels.IndividualExtraction>> extractedIndividualsBySceneIndex = new HashMap<>();
+        Map<Integer, List<TriadAnalysisModels.ObjectExtraction>> extractedObjectsBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadAnalysisModels.LocationExtraction>> extractedLocationsBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadAnalysisModels.EventExtraction>> extractedEventsBySceneIndex = new HashMap<>();
 
@@ -184,6 +202,13 @@ public class SceneRelationshipAnalysisService {
                             .addAll(triadLocations);
                 }
 
+                List<TriadAnalysisModels.ObjectExtraction> triadObjects = normalizeObjects(normalized);
+                if (!triadObjects.isEmpty()) {
+                    extractedObjectsBySceneIndex
+                            .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
+                            .addAll(triadObjects);
+                }
+
                 List<TriadAnalysisModels.EventExtraction> triadEvents = normalizeEvents(normalized);
                 if (!triadEvents.isEmpty()) {
                     extractedEventsBySceneIndex
@@ -203,12 +228,23 @@ public class SceneRelationshipAnalysisService {
                 .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneLocationExtraction::sceneIndex))
                 .toList();
 
+        List<TriadAnalysisModels.SceneObjectExtraction> sceneObjectExtractions = extractedObjectsBySceneIndex.entrySet().stream()
+                .map(e -> new TriadAnalysisModels.SceneObjectExtraction(e.getKey(), List.copyOf(e.getValue())))
+                .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneObjectExtraction::sceneIndex))
+                .toList();
+
         List<TriadAnalysisModels.SceneEventExtraction> sceneEventExtractions = extractedEventsBySceneIndex.entrySet().stream()
                 .map(e -> new TriadAnalysisModels.SceneEventExtraction(e.getKey(), List.copyOf(e.getValue())))
                 .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneEventExtraction::sceneIndex))
                 .toList();
 
-        return new TriadAnalysisModels.SceneRelationshipOutcome(analyses, sceneExtractions, sceneLocationExtractions, sceneEventExtractions);
+        return new TriadAnalysisModels.SceneRelationshipOutcome(
+                analyses,
+                sceneExtractions,
+                sceneObjectExtractions,
+                sceneLocationExtractions,
+                sceneEventExtractions
+        );
     }
 
     public List<TriadAnalysisModels.SceneRelationshipAnalysis> analyzeChapterTriads(UUID jobId, Chapter chapter) {
@@ -243,6 +279,23 @@ public class SceneRelationshipAnalysisService {
                         normalizeText(location.region()),
                         normalizeText(location.description())
                 ))
+                .toList();
+    }
+
+    private List<TriadAnalysisModels.ObjectExtraction> normalizeObjects(TriadStructuredResult parsed) {
+        if (parsed == null || parsed.currentSceneEntities() == null || parsed.currentSceneEntities().objects() == null) {
+            return List.of();
+        }
+        return parsed.currentSceneEntities().objects().stream()
+                .filter(object -> object != null)
+                .map(object -> new TriadAnalysisModels.ObjectExtraction(
+                        normalizeAliases(object.aliases()),
+                        normalizeText(object.type()),
+                        normalizeText(object.material()),
+                        normalizeText(object.purpose()),
+                        normalizeText(object.description())
+                ))
+                .filter(object -> object.type() != null || !object.aliases().isEmpty())
                 .toList();
     }
 
