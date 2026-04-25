@@ -14,8 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,16 +23,18 @@ public class BookLocationReductionService {
     private final BookLocationGraphRepository bookLocationRepository;
     private final BookGraphRepository bookGraphRepository;
     private final ChapterLocationGraphRepository chapterLocationRepository;
-    private final ConcurrentHashMap<UUID, ReentrantLock> bookLocks = new ConcurrentHashMap<>();
+    private final BookReductionClaimService claimService;
 
     public BookLocationReductionService(
             BookLocationGraphRepository bookLocationRepository,
             BookGraphRepository bookGraphRepository,
-            ChapterLocationGraphRepository chapterLocationRepository
+            ChapterLocationGraphRepository chapterLocationRepository,
+            BookReductionClaimService claimService
     ) {
         this.bookLocationRepository = bookLocationRepository;
         this.bookGraphRepository = bookGraphRepository;
         this.chapterLocationRepository = chapterLocationRepository;
+        this.claimService = claimService;
     }
 
     @Transactional(readOnly = true)
@@ -42,25 +42,25 @@ public class BookLocationReductionService {
         return bookId != null && bookGraphRepository.findById(bookId).isPresent();
     }
 
-    @Transactional
     public BookLocationResolutionResult resolveBook(UUID bookId) {
         if (bookId == null) {
             return new BookLocationResolutionResult(null, false, 0, 0, "Book ID is required");
         }
 
-        ReentrantLock lock = bookLocks.computeIfAbsent(bookId, ignored -> new ReentrantLock());
-        lock.lock();
+        if (!claimService.tryAcquireClaimWithRetry(bookId, 6, 500)) {
+            return new BookLocationResolutionResult(bookId, false, 0, 0, "Reduction already in progress for book");
+        }
         try {
             return resolveBookLocked(bookId);
         } finally {
-            lock.unlock();
-            if (!lock.hasQueuedThreads()) {
-                bookLocks.remove(bookId, lock);
-            }
+            // releaseClaim uses REQUIRES_NEW and runs outside the resolveBookLocked transaction,
+            // so the claim is only released after the reduction work has committed.
+            claimService.releaseClaim(bookId);
         }
     }
 
-    private BookLocationResolutionResult resolveBookLocked(UUID bookId) {
+    @Transactional
+    BookLocationResolutionResult resolveBookLocked(UUID bookId) {
         List<ChapterLocation> chapterLocations = chapterLocationRepository.findByBookId(bookId).stream()
                 .filter(this::isResolvable)
                 .sorted(Comparator

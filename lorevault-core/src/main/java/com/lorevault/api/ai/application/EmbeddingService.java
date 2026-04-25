@@ -2,10 +2,7 @@ package com.lorevault.api.ai.application;
 
 import com.lorevault.api.ai.domain.EmbeddingFailure;
 import com.lorevault.api.ai.domain.EmbeddingGenerationException;
-import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Chunk;
-import com.lorevault.api.content.entities.ChapterGraphRepository;
-import com.lorevault.api.content.entities.ChunkGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingRequest;
@@ -33,8 +30,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class EmbeddingService {
 
-    private final ChapterGraphRepository chapterRepo;
-    private final ChunkGraphRepository chunkRepo;
+    private final EmbeddingTransactionSupport txSupport;
     private final EmbeddingModel embeddingModel;
 
     @Value("${lorevault.embedding.model.dimensions:3072}")
@@ -56,7 +52,6 @@ public class EmbeddingService {
     // Public API
     // =====================================
 
-    @Transactional
     public int generateEmbeddingsForChapter(UUID chapterId) {
         normalizeConfiguration();
         
@@ -123,8 +118,7 @@ public class EmbeddingService {
     }
 
     private List<Chunk> loadChunks(EmbeddingContext context) {
-        List<Chunk> viaScenes = chunkRepo.findByChapterIdViaScenes(context.chapterId);
-        List<Chunk> chunks = !viaScenes.isEmpty() ? viaScenes : chunkRepo.findByChapterId(context.chapterId);
+        List<Chunk> chunks = txSupport.loadChunks(context.chapterId);
         long elapsed = context.elapsedMs();
         log.debug("[Embeddings] Loaded {} chunks ({} ms) chapter={}", chunks.size(), elapsed, context.chapterId);
         return chunks;
@@ -190,14 +184,7 @@ public class EmbeddingService {
     }
 
     private String loadChapterRawText(UUID chapterId) {
-        try {
-            return chapterRepo.findById(chapterId)
-                    .map(Chapter::getRawText)
-                    .orElse(null);
-        } catch (Exception e) {
-            log.warn("[Embeddings] Failed to load chapter rawText chapter={} error={}", chapterId, e.getMessage());
-            return null;
-        }
+        return txSupport.loadChapterRawText(chapterId);
     }
 
     private String extractTextForChunk(Chunk chunk, String rawText) {
@@ -325,7 +312,7 @@ public class EmbeddingService {
             }
         }
         
-        chunkRepo.saveAll(targets);
+        txSupport.saveChunks(targets);
         
         long persistMs = Duration.between(persistStart, Instant.now()).toMillis();
         long totalMs = context.elapsedMs();

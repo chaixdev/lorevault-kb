@@ -18,7 +18,6 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     private static final Logger log = LoggerFactory.getLogger(Neo4jSchemaInitializer.class);
 
     private final Neo4jClient neo4jClient;
-
     public Neo4jSchemaInitializer(Neo4jClient neo4jClient) {
         this.neo4jClient = neo4jClient;
     }
@@ -53,6 +52,10 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     private static final String BOOK_LOCATION_SCOPE_UNIQUE =
             "CREATE CONSTRAINT book_location_scope_unique IF NOT EXISTS FOR (bl:BookLocation) REQUIRE (bl.bookId, bl.normalizedName) IS UNIQUE";
 
+    // Book reduction claim uniqueness (mutex for concurrent book-level reduction)
+    private static final String BOOK_REDUCTION_CLAIM_BOOK_ID_UNIQUE =
+            "CREATE CONSTRAINT book_reduction_claim_book_id_unique IF NOT EXISTS FOR (c:BookReductionClaim) REQUIRE c.bookId IS UNIQUE";
+
     // Content hash uniqueness
     private static final String CHAPTER_CONTENT_HASH_UNIQUE =
             "CREATE CONSTRAINT chapter_contentHash_unique IF NOT EXISTS FOR (c:Chapter) REQUIRE c.contentHash IS UNIQUE";
@@ -83,11 +86,6 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     private static final String EVENT_PER_CHAPTER_SCENE_INDEX =
             "CREATE INDEX event_per_chapter_scene_idx IF NOT EXISTS FOR (e:Event) ON (e.chapterId, e.sceneIndex)";
 
-    // Vector search index - Neo4j 5.x vector index for semantic search
-    private static final String CHUNK_VECTOR_INDEX =
-            "CREATE VECTOR INDEX chunk_embedding_idx IF NOT EXISTS FOR (ch:Chunk) ON (ch.embedding) " +
-            "OPTIONS {indexConfig: {`vector.dimensions`: 3072, `vector.similarity_function`: 'cosine'}}";
-
     @Override
     public void ensureMinimalSchema() {
         List<String> results = new ArrayList<>();
@@ -108,6 +106,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(BOOK_LOCATION_ID_UNIQUE, "BookLocation.id unique"));
         results.add(executeConstraint(BOOK_LOCATION_SCOPE_UNIQUE, "BookLocation(bookId, normalizedName) unique"));
         results.add(executeConstraint(CHAPTER_CONTENT_HASH_UNIQUE, "Chapter.contentHash unique"));
+        results.add(executeConstraint(BOOK_REDUCTION_CLAIM_BOOK_ID_UNIQUE, "BookReductionClaim.bookId unique"));
         
         // Event identity constraint
         results.add(executeConstraint(EVENT_ID_UNIQUE, "Event.id unique"));
@@ -176,4 +175,9 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             return "failed: " + description;
         }
     }
+
+    // Vector search index - Neo4j 5.x vector index for semantic search
+    private static final String CHUNK_VECTOR_INDEX =
+            "CREATE VECTOR INDEX chunk_embedding_idx IF NOT EXISTS FOR (ch:Chunk) ON (ch.embedding) " +
+            "OPTIONS {indexConfig: {`vector.dimensions`: 3072, `vector.similarity_function`: 'cosine'}}";
 }

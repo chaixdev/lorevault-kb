@@ -1,6 +1,7 @@
 package com.lorevault.api.ai.application;
 
 import com.lorevault.api.ai.domain.EmbeddingGenerationException;
+import com.lorevault.api.ai.application.EmbeddingTransactionSupport;
 import com.lorevault.api.content.entities.Chapter;
 import com.lorevault.api.content.entities.Chunk;
 import com.lorevault.api.testutil.fakes.FakeContentRepositories;
@@ -32,7 +33,8 @@ class EmbeddingServiceTest {
     void shouldReturnZeroWhenNoChunks() {
         FakeContentRepositories repo = new FakeContentRepositories();
         var embed = new FakeEmbeddingModel("fake-model", 8);
-        var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
+        var txSupport = new EmbeddingTransactionSupport(repo.asChapterRepo(), repo.asChunkRepo());
+        var svc = new EmbeddingService(txSupport, embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);
         svc.setConfiguredEmbeddingModelId("fake-model");
@@ -53,7 +55,7 @@ class EmbeddingServiceTest {
     void shouldEmbedOnlyWhenNeeded() throws Exception {
         FakeContentRepositories repo = new FakeContentRepositories();
         var embed = new FakeEmbeddingModel("fake-model", 8);
-        var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
+        var svc = new EmbeddingService(new EmbeddingTransactionSupport(repo.asChapterRepo(), repo.asChunkRepo()), embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);
         svc.setConfiguredEmbeddingModelId("fake-model");
@@ -118,7 +120,7 @@ class EmbeddingServiceTest {
     void shouldUseEmbeddingResponseMetadataModelWhenConfigUnset() throws Exception {
         FakeContentRepositories repo = new FakeContentRepositories();
         var embed = new FakeEmbeddingModel("metadata-model", 8);
-        var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
+        var svc = new EmbeddingService(new EmbeddingTransactionSupport(repo.asChapterRepo(), repo.asChunkRepo()), embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);
 
@@ -151,7 +153,7 @@ class EmbeddingServiceTest {
                 throw new RuntimeException("Connection failed");
             }
         };
-        var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
+        var svc = new EmbeddingService(new EmbeddingTransactionSupport(repo.asChapterRepo(), repo.asChunkRepo()), embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);
         svc.setConfiguredEmbeddingModelId("fake-model");
@@ -184,7 +186,7 @@ class EmbeddingServiceTest {
                 return new EmbeddingResponse(List.of(), new EmbeddingResponseMetadata());
             }
         };
-        var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
+        var svc = new EmbeddingService(new EmbeddingTransactionSupport(repo.asChapterRepo(), repo.asChunkRepo()), embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);
         svc.setConfiguredEmbeddingModelId("fake-model");
@@ -220,7 +222,7 @@ class EmbeddingServiceTest {
                 return new EmbeddingResponse(List.of(new Embedding(new float[]{1f, 2f, 3f}, 0)), metadata);
             }
         };
-        var svc = new EmbeddingService(repo.asChapterRepo(), repo.asChunkRepo(), embed);
+        var svc = new EmbeddingService(new EmbeddingTransactionSupport(repo.asChapterRepo(), repo.asChunkRepo()), embed);
         svc.setEmbeddingDim(8);
         svc.setBatchSize(8);
         svc.setConfiguredEmbeddingModelId("fake-model");

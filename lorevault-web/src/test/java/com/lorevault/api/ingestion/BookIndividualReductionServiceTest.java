@@ -4,9 +4,11 @@ import com.lorevault.api.ingestion.application.resolution.*;
 import com.lorevault.api.content.entities.BookIndividual;
 import com.lorevault.api.content.entities.BookIndividualGraphRepository;
 import com.lorevault.api.ingestion.application.result.BookIndividualResolutionResult;
+import com.lorevault.api.library.infrastructure.BookGraphRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +20,8 @@ import org.springframework.data.neo4j.core.Neo4jClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,6 +30,9 @@ class BookIndividualReductionServiceTest {
 
     @Mock
     private BookIndividualGraphRepository bookIndividualRepository;
+
+    @Mock
+    private BookGraphRepository bookGraphRepository;
 
     @Mock
     private Neo4jClient neo4jClient;
@@ -42,8 +49,16 @@ class BookIndividualReductionServiceTest {
     @Mock
     private Neo4jClient.RecordFetchSpec<Map<String, Object>> recordFetchSpec;
 
+    @Mock
+    private BookReductionClaimService claimService;
+
     @InjectMocks
     private BookIndividualReductionService service;
+
+    @BeforeEach
+    void setUp() {
+        when(claimService.tryAcquireClaimWithRetry(any(), anyInt(), anyLong())).thenReturn(true);
+    }
 
     @Test
     @DisplayName("Rebuilds one BookIndividual per normalized name and links chapter individuals")

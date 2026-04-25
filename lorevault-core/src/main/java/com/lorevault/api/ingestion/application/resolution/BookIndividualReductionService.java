@@ -8,8 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Service;
@@ -21,16 +19,18 @@ public class BookIndividualReductionService {
     private final BookIndividualGraphRepository bookIndividualRepository;
     private final BookGraphRepository bookGraphRepository;
     private final Neo4jClient neo4jClient;
-    private final ConcurrentHashMap<UUID, ReentrantLock> bookLocks = new ConcurrentHashMap<>();
+    private final BookReductionClaimService claimService;
 
     public BookIndividualReductionService(
             BookIndividualGraphRepository bookIndividualRepository,
             BookGraphRepository bookGraphRepository,
-            Neo4jClient neo4jClient
+            Neo4jClient neo4jClient,
+            BookReductionClaimService claimService
     ) {
         this.bookIndividualRepository = bookIndividualRepository;
         this.bookGraphRepository = bookGraphRepository;
         this.neo4jClient = neo4jClient;
+        this.claimService = claimService;
     }
 
     @Transactional(readOnly = true)
@@ -38,25 +38,25 @@ public class BookIndividualReductionService {
         return bookId != null && bookGraphRepository.findById(bookId).isPresent();
     }
 
-    @Transactional
     public BookIndividualResolutionResult resolveBook(UUID bookId) {
         if (bookId == null) {
             return new BookIndividualResolutionResult(null, false, 0, 0, "Book ID is required");
         }
 
-        ReentrantLock lock = bookLocks.computeIfAbsent(bookId, ignored -> new ReentrantLock());
-        lock.lock();
+        if (!claimService.tryAcquireClaimWithRetry(bookId, 6, 500)) {
+            return new BookIndividualResolutionResult(bookId, false, 0, 0, "Reduction already in progress for book");
+        }
         try {
             return resolveBookLocked(bookId);
         } finally {
-            lock.unlock();
-            if (!lock.hasQueuedThreads()) {
-                bookLocks.remove(bookId, lock);
-            }
+            // releaseClaim uses REQUIRES_NEW and runs outside the resolveBookLocked transaction,
+            // so the claim is only released after the reduction work has committed.
+            claimService.releaseClaim(bookId);
         }
     }
 
-    private BookIndividualResolutionResult resolveBookLocked(UUID bookId) {
+    @Transactional
+    BookIndividualResolutionResult resolveBookLocked(UUID bookId) {
 
         List<BookReductionCandidate> candidates = findReductionCandidates(bookId);
         if (candidates.isEmpty()) {

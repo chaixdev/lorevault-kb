@@ -6,8 +6,10 @@ import com.lorevault.api.content.entities.BookLocationGraphRepository;
 import com.lorevault.api.content.entities.ChapterLocation;
 import com.lorevault.api.content.entities.ChapterLocationGraphRepository;
 import com.lorevault.api.ingestion.application.result.BookLocationResolutionResult;
+import com.lorevault.api.library.infrastructure.BookGraphRepository;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +20,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,10 +34,21 @@ class BookLocationReductionServiceTest {
     private BookLocationGraphRepository bookLocationRepository;
 
     @Mock
+    private BookGraphRepository bookGraphRepository;
+
+    @Mock
     private ChapterLocationGraphRepository chapterLocationRepository;
+
+    @Mock
+    private BookReductionClaimService claimService;
 
     @InjectMocks
     private BookLocationReductionService service;
+
+    @BeforeEach
+    void setUp() {
+        when(claimService.tryAcquireClaimWithRetry(any(), anyInt(), anyLong())).thenReturn(true);
+    }
 
     @Test
     @DisplayName("Rebuilds one BookLocation per exact normalized name cluster and alias bridge")
