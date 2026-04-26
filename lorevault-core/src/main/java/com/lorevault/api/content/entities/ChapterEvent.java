@@ -11,6 +11,12 @@ import org.springframework.data.neo4j.core.schema.Node;
 public record ChapterEvent(
         @Id UUID id,
         UUID chapterId,
+        /**
+         * The co-reference component representative ID (lexicographically smallest member UUID string).
+         * Used as a stable lookup key after {@code saveAll} — positional correlation is not reliable.
+         * Null for singleton events that had no SAME_EVENT links.
+         */
+        String componentId,
         String displayName,
         String normalizedName,
         String representativeEventType,

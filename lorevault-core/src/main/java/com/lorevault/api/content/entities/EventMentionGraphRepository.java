@@ -42,13 +42,17 @@ public interface EventMentionGraphRepository extends Neo4jRepository<EventMentio
      * Create a SAME_EVENT link between two EventMention nodes.
      * Direction is intentionally undirected-style (MERGE both ways via min/max id ordering) —
      * the relationship carries symmetric semantics.
-     * Properties: confidence (0.0-1.0), passId (UUID string), model (string).
+     *
+     * <p>MERGE matches only on the endpoint nodes and relationship type — metadata fields
+     * (confidence, passId, model) are SET after the MERGE so that overlapping windows
+     * assessing the same pair update an existing edge rather than producing duplicates.</p>
      */
     @Query("""
             MATCH (a:EventMention {id: $mentionIdA})
             WITH a
             MATCH (b:EventMention {id: $mentionIdB})
-            MERGE (a)-[:SAME_EVENT {confidence: $confidence, passId: $passId, model: $model}]->(b)
+            MERGE (a)-[r:SAME_EVENT]->(b)
+            SET r.confidence = $confidence, r.passId = $passId, r.model = $model
             """)
     void createSameEventLink(UUID mentionIdA, UUID mentionIdB, double confidence, String passId, String model);
 
@@ -64,7 +68,8 @@ public interface EventMentionGraphRepository extends Neo4jRepository<EventMentio
      */
     @Query("""
             MATCH (root:EventMention {chapterId: $chapterId})
-            OPTIONAL MATCH (root)-[:SAME_EVENT*0..]-(peer:EventMention {chapterId: $chapterId})
+            OPTIONAL MATCH path = (root)-[:SAME_EVENT*0..]-(peer:EventMention {chapterId: $chapterId})
+            WHERE all(n IN nodes(path) WHERE n.chapterId = $chapterId)
             WITH root, collect(DISTINCT coalesce(peer.id, root.id)) AS componentMemberIds
             WITH root,
                  [x IN componentMemberIds | toString(x)] AS componentMemberStrings

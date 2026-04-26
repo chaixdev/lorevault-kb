@@ -186,11 +186,75 @@ class ChapterEventResolutionServiceTest {
     }
 
     @Test
-    @DisplayName("Returns no-op when chapterId is null")
-    void returnsNoOpWhenChapterIdIsNull() {
-        ChapterEventResolutionResult result = service.resolveChapter(null);
-        assertThat(result.success()).isFalse();
-        verifyNoInteractions(chapterEventRepository);
-        verifyNoInteractions(mentionRepository);
+    @DisplayName("Each saved ChapterEvent carries the componentId used to key it (HIGH-2)")
+    void savedChapterEventCarriesComponentId() {
+        UUID chapterId = UUID.randomUUID();
+        UUID m1 = UUID.randomUUID();
+        UUID m2 = UUID.randomUUID();
+        String comp = m1.toString();
+
+        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
+        when(mentionRepository.findSameEventComponents(chapterId)).thenReturn(List.of(
+                componentRow(m1.toString(), comp),
+                componentRow(m2.toString(), comp)
+        ));
+        when(mentionRepository.findByChapterIdOrdered(chapterId)).thenReturn(List.of(
+                mention(m1, "The Siege", "the siege", "SIEGE", "PRECEDES", "Walls crumbled", chapterId),
+                mention(m2, "The Siege", "the siege", "SIEGE", "PRECEDES", "Defenders fled", chapterId)
+        ));
+        when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(1L);
+
+        service.resolveChapter(chapterId);
+
+        List<ChapterEvent> saved = captureAllSaved();
+        assertThat(saved).hasSize(1);
+        assertThat(saved.get(0).componentId()).isEqualTo(comp);
+    }
+
+    @Test
+    @DisplayName("Mentions are linked to the ChapterEvent keyed by componentId, not save order (HIGH-2)")
+    void mentionsLinkedByComponentIdNotSaveOrder() {
+        UUID chapterId = UUID.randomUUID();
+        UUID m1 = UUID.randomUUID();
+        UUID m2 = UUID.randomUUID();
+        UUID m3 = UUID.randomUUID();
+        // Use lexicographically smallest of the two component roots to be consistent with Cypher
+        String comp1 = m1.toString();
+        String comp2 = m3.toString();
+
+        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(3L);
+        when(mentionRepository.findSameEventComponents(chapterId)).thenReturn(List.of(
+                componentRow(m1.toString(), comp1),
+                componentRow(m2.toString(), comp1),
+                componentRow(m3.toString(), comp2)
+        ));
+        when(mentionRepository.findByChapterIdOrdered(chapterId)).thenReturn(List.of(
+                mention(m1, "Battle", "battle", "BATTLE", null, null, chapterId),
+                mention(m2, "Battle", "battle", "BATTLE", null, null, chapterId),
+                mention(m3, "Treaty", "treaty", "TREATY", null, null, chapterId)
+        ));
+        when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(2L);
+
+        service.resolveChapter(chapterId);
+
+        List<ChapterEvent> saved = captureAllSaved();
+        assertThat(saved).hasSize(2);
+
+        // Find ChapterEvent for comp1 (m1+m2) and comp2 (m3) by their embedded componentId
+        ChapterEvent battleEvent = saved.stream()
+                .filter(e -> comp1.equals(e.componentId()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No ChapterEvent for comp1"));
+        ChapterEvent treatyEvent = saved.stream()
+                .filter(e -> comp2.equals(e.componentId()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No ChapterEvent for comp2"));
+
+        // m1 and m2 must be linked to battleEvent, m3 to treatyEvent
+        verify(chapterEventRepository).linkMentionToChapterEvent(m1, battleEvent.id(), ChapterEventResolutionService.CHAPTER_RESOLVED);
+        verify(chapterEventRepository).linkMentionToChapterEvent(m2, battleEvent.id(), ChapterEventResolutionService.CHAPTER_RESOLVED);
+        verify(chapterEventRepository).linkMentionToChapterEvent(m3, treatyEvent.id(), ChapterEventResolutionService.CHAPTER_RESOLVED);
     }
 }

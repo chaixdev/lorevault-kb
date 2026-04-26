@@ -47,6 +47,8 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE CONSTRAINT chapter_event_id_unique IF NOT EXISTS FOR (ce:ChapterEvent) REQUIRE ce.id IS UNIQUE";
     // ChapterEvent identity is derived from co-reference chains (SAME_EVENT links), not lexical name.
     // No (chapterId, normalizedName) scope-unique constraint — that would bake lexical sameness into storage.
+    private static final String EVENT_MENTION_ID_UNIQUE =
+            "CREATE CONSTRAINT event_mention_id_unique IF NOT EXISTS FOR (m:EventMention) REQUIRE m.id IS UNIQUE";
     private static final String CHAPTER_LOCATION_ID_UNIQUE =
             "CREATE CONSTRAINT chapter_location_id_unique IF NOT EXISTS FOR (cl:ChapterLocation) REQUIRE cl.id IS UNIQUE";
     private static final String CHAPTER_LOCATION_SCOPE_UNIQUE =
@@ -110,6 +112,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(BOOK_INDIVIDUAL_ID_UNIQUE, "BookIndividual.id unique"));
         results.add(executeConstraint(BOOK_INDIVIDUAL_SCOPE_UNIQUE, "BookIndividual(bookId, normalizedName) unique"));
         results.add(executeConstraint(CHAPTER_EVENT_ID_UNIQUE, "ChapterEvent.id unique"));
+        results.add(executeConstraint(EVENT_MENTION_ID_UNIQUE, "EventMention.id unique"));
         results.add(executeConstraint(CHAPTER_LOCATION_ID_UNIQUE, "ChapterLocation.id unique"));
         results.add(executeConstraint(CHAPTER_LOCATION_SCOPE_UNIQUE, "ChapterLocation(chapterId, normalizedName) unique"));
         results.add(executeConstraint(BOOK_LOCATION_ID_UNIQUE, "BookLocation.id unique"));

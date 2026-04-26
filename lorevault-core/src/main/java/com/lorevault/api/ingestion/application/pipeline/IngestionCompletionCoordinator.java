@@ -181,6 +181,9 @@ public class IngestionCompletionCoordinator {
                             bookId,
                             satisfiedBranches(state)
                     );
+                    // Do not return the state — returning null removes the key so failed
+                    // jobs do not accumulate in completionStates indefinitely (MED-1).
+                    state.completed = true;
                     return;
                 }
 

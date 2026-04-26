@@ -81,6 +81,7 @@ public class ChapterEventResolutionService {
 
         List<ChapterEvent> chapterEvents = new ArrayList<>();
         for (Map.Entry<String, List<String>> entry : componentMap.entrySet()) {
+            String componentId = entry.getKey();
             List<String> componentMentionIds = entry.getValue();
             List<EventMention> componentMentions = componentMentionIds.stream()
                     .map(mentionsById::get)
@@ -91,7 +92,7 @@ public class ChapterEventResolutionService {
                 continue;
             }
 
-            ChapterEvent chapterEvent = buildChapterEvent(chapterId, componentMentions);
+            ChapterEvent chapterEvent = buildChapterEvent(chapterId, componentId, componentMentions);
             chapterEvents.add(chapterEvent);
         }
 
@@ -102,18 +103,25 @@ public class ChapterEventResolutionService {
         }
 
         // Persist all ChapterEvent nodes, then link chapter + mentions
+        // Build a stable lookup by componentId — do NOT rely on saveAll order
         List<ChapterEvent> savedEvents = new ArrayList<>();
         chapterEventRepository.saveAll(chapterEvents).forEach(savedEvents::add);
 
-        // Build reverse lookup: componentId -> ChapterEvent id
-        // We rely on order preservation: savedEvents mirrors chapterEvents order
-        List<Map.Entry<String, List<String>>> componentEntries = new ArrayList<>(componentMap.entrySet());
-        for (int i = 0; i < savedEvents.size(); i++) {
-            ChapterEvent saved = savedEvents.get(i);
+        Map<String, ChapterEvent> savedByComponentId = savedEvents.stream()
+                .filter(e -> e.componentId() != null)
+                .collect(Collectors.toMap(ChapterEvent::componentId, e -> e));
+
+        for (Map.Entry<String, List<String>> entry : componentMap.entrySet()) {
+            String componentId = entry.getKey();
+            ChapterEvent saved = savedByComponentId.get(componentId);
+            if (saved == null) {
+                log.warn("[CHAPTER_EVENT_AGGREGATION] No saved ChapterEvent for componentId={}, skipping links", componentId);
+                continue;
+            }
+
             chapterEventRepository.linkChapterToEvent(chapterId, saved.id());
 
-            List<String> memberIds = componentEntries.get(i).getValue();
-            for (String mentionId : memberIds) {
+            for (String mentionId : entry.getValue()) {
                 try {
                     chapterEventRepository.linkMentionToChapterEvent(
                             UUID.fromString(mentionId), saved.id(), CHAPTER_RESOLVED);
@@ -136,8 +144,10 @@ public class ChapterEventResolutionService {
      * Builds a {@link ChapterEvent} from all mentions in a connected component.
      * The canonical label is the most-frequent displayName in the component.
      * The aggregate card is derived from all mention fields, not a single representative.
+     *
+     * @param componentId the stable co-reference component representative ID (used as lookup key post-save)
      */
-    private ChapterEvent buildChapterEvent(UUID chapterId, List<EventMention> mentions) {
+    private ChapterEvent buildChapterEvent(UUID chapterId, String componentId, List<EventMention> mentions) {
         String displayName = mostFrequent(mentions.stream()
                 .map(EventMention::displayName)
                 .filter(Objects::nonNull)
@@ -161,6 +171,7 @@ public class ChapterEventResolutionService {
         return new ChapterEvent(
                 UUID.randomUUID(),
                 chapterId,
+                componentId,
                 displayName,
                 normalizedName,
                 representativeEventType,
