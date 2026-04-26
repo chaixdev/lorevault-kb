@@ -27,6 +27,8 @@ public class PromptLocationResolver {
             case "scene-analysis" -> getSceneAnalysisPath();
             case "scene-analysis-user" -> getSceneAnalysisUserPath();
             case "rag-answer-generation" -> getRagAnswerGenerationPath();
+            case "event-coref-system" -> promptProperties.getPromptPath("event-coref-system.st");
+            case "event-coref-user" -> promptProperties.getPromptPath("event-coref-usertemplate.st");
             default -> throw new IllegalArgumentException("Unknown prompt name: " + logicalName);
         };
     }

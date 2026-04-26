@@ -136,6 +136,37 @@ public class LlmClient {
     }
 
     /**
+     * Executes a single event co-reference window call.
+     * Sends the system prompt (loaded from event-coref-system.st) plus the rendered
+     * user template (event-coref-usertemplate.st) and returns a structured response.
+     *
+     * @param jobId     correlation id for logging
+     * @param userInput rendered user message (window of 2-3 mention descriptions)
+     * @return structured co-reference judgment response
+     */
+    public com.lorevault.api.ingestion.domain.coref.EventCorefModels.CorefWindowResponse runEventCoref(
+            UUID jobId,
+            String userInput
+    ) {
+        PromptTemplate systemTemplate = promptRepository.get("event-coref-system");
+        String systemPrompt = systemTemplate.render(Map.of());
+
+        String modelId = promptProperties.getSceneAnalysisModel();
+        ChatClient chatClient = getChatClientForModel(modelId);
+        String actualModelId = getModelIdForStage("analysis");
+
+        return executeSceneDetectionStructuredCall(
+                jobId,
+                "event-coref",
+                systemPrompt,
+                userInput,
+                chatClient,
+                actualModelId,
+                com.lorevault.api.ingestion.domain.coref.EventCorefModels.CorefWindowResponse.class
+        );
+    }
+
+    /**
      * Legacy method: single-pass scene detection using the v2 prompt.
      * 
      * @param chapterText The full chapter text to analyze

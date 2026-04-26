@@ -2,6 +2,8 @@ package com.lorevault.api.ingestion;
 
 import com.lorevault.api.content.entities.ChapterEvent;
 import com.lorevault.api.content.entities.ChapterEventGraphRepository;
+import com.lorevault.api.content.entities.EventMention;
+import com.lorevault.api.content.entities.EventMentionGraphRepository;
 import com.lorevault.api.ingestion.application.resolution.ChapterEventResolutionService;
 import com.lorevault.api.ingestion.application.result.ChapterEventResolutionResult;
 
@@ -26,134 +28,42 @@ class ChapterEventResolutionServiceTest {
     @Mock
     private ChapterEventGraphRepository chapterEventRepository;
 
+    @Mock
+    private EventMentionGraphRepository mentionRepository;
+
     @InjectMocks
     private ChapterEventResolutionService service;
 
-    @Test
-    @DisplayName("Rebuilds one ChapterEvent per normalized name and relinks mentions")
-    void rebuildsChapterEventsFromCandidates() {
-        UUID chapterId = UUID.randomUUID();
-        ChapterEventGraphRepository.ChapterEventCandidateView coronation = candidate(
-                "The Coronation", "the coronation", "CEREMONY", 3L,
-                List.of("Nyx was crowned", "The ceremony began"),
-                List.of("CEREMONY"),
-                List.of("PRECEDES")
-        );
-        ChapterEventGraphRepository.ChapterEventCandidateView battle = candidate(
-                "Battle of the Vale", "battle of the vale", "BATTLE", 2L,
-                List.of("Swords clashed at dawn"),
-                List.of("BATTLE"),
-                List.of("FOLLOWS")
-        );
+    // ---------------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------------
 
-        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(5L);
-        when(chapterEventRepository.findResolutionCandidates(chapterId)).thenReturn(List.of(coronation, battle));
-        when(chapterEventRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(2L);
+    private EventMentionGraphRepository.SameEventComponentRow componentRow(String mentionId, String componentId) {
+        return new EventMentionGraphRepository.SameEventComponentRow() {
+            @Override public String getMentionId() { return mentionId; }
+            @Override public String getComponentId() { return componentId; }
+        };
+    }
 
-        ChapterEventResolutionResult result = service.resolveChapter(chapterId);
+    private EventMention mention(UUID id, String displayName, String normalizedName,
+                                  String eventType, String relation, String evidence, UUID chapterId) {
+        return new EventMention(id, null, displayName, normalizedName, List.of(),
+                eventType, relation, null, evidence, null, chapterId, null, null, null, null, null);
+    }
 
-        assertThat(result.success()).isTrue();
-        assertThat(result.rawMentionsProcessed()).isEqualTo(5);
-        assertThat(result.chapterEventsCreated()).isEqualTo(2);
-
-        verify(chapterEventRepository).deleteByChapterId(chapterId);
-
+    private List<ChapterEvent> captureAllSaved() {
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<Iterable<ChapterEvent>> savedCaptor = ArgumentCaptor.forClass(Iterable.class);
-        verify(chapterEventRepository).saveAll(savedCaptor.capture());
-        List<ChapterEvent> saved = toList(savedCaptor.getValue());
-        assertThat(saved)
-                .hasSize(2)
-                .extracting(ChapterEvent::normalizedName)
-                .containsExactlyInAnyOrder("the coronation", "battle of the vale");
-
-        // Each saved event should have an aggregate card
-        for (ChapterEvent ce : saved) {
-            assertThat(ce.aggregateCard()).isNotBlank();
-            assertThat(ce.aggregateCard()).contains(ce.displayName());
-        }
-
-        for (ChapterEvent ce : saved) {
-            verify(chapterEventRepository).linkChapterToEvent(chapterId, ce.id());
-            verify(chapterEventRepository).linkMentionsToChapterEvent(
-                    chapterId,
-                    ce.normalizedName(),
-                    ce.id(),
-                    ChapterEventResolutionService.CHAPTER_RESOLVED
-            );
-        }
+        ArgumentCaptor<Iterable<ChapterEvent>> captor = ArgumentCaptor.forClass(Iterable.class);
+        verify(chapterEventRepository).saveAll(captor.capture());
+        return org.assertj.core.util.Lists.newArrayList(captor.getValue());
     }
 
-    @Test
-    @DisplayName("Aggregate card includes event type and evidence snippets")
-    void aggregateCardContainsEventTypeAndEvidence() {
-        UUID chapterId = UUID.randomUUID();
-        ChapterEventGraphRepository.ChapterEventCandidateView c = candidate(
-                "The Betrayal", "the betrayal", "BETRAYAL", 1L,
-                List.of("He turned his blade on his own king"),
-                List.of("BETRAYAL"),
-                List.of("FOLLOWS")
-        );
-
-        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(1L);
-        when(chapterEventRepository.findResolutionCandidates(chapterId)).thenReturn(List.of(c));
-        when(chapterEventRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(1L);
-
-        service.resolveChapter(chapterId);
-
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<Iterable<ChapterEvent>> savedCaptor = ArgumentCaptor.forClass(Iterable.class);
-        verify(chapterEventRepository).saveAll(savedCaptor.capture());
-        ChapterEvent saved = toList(savedCaptor.getValue()).get(0);
-
-        assertThat(saved.aggregateCard()).contains("BETRAYAL");
-        assertThat(saved.aggregateCard()).contains("He turned his blade on his own king");
-        assertThat(saved.aggregateCard()).contains("FOLLOWS");
-    }
+    // ---------------------------------------------------------------------------
+    // Tests
+    // ---------------------------------------------------------------------------
 
     @Test
-    @DisplayName("Skips save when there are no candidates")
-    void skipsSaveWhenNoCandidates() {
-        UUID chapterId = UUID.randomUUID();
-        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
-        when(chapterEventRepository.findResolutionCandidates(chapterId)).thenReturn(List.of());
-
-        ChapterEventResolutionResult result = service.resolveChapter(chapterId);
-
-        assertThat(result.success()).isFalse();
-        assertThat(result.rawMentionsProcessed()).isEqualTo(2);
-        assertThat(result.chapterEventsCreated()).isZero();
-
-        verify(chapterEventRepository).deleteByChapterId(chapterId);
-        verify(chapterEventRepository, never()).saveAll(any());
-        verify(chapterEventRepository, never()).linkChapterToEvent(any(), any());
-        verify(chapterEventRepository, never()).linkMentionsToChapterEvent(any(), any(), any(), any());
-    }
-
-    @Test
-    @DisplayName("Ignores blank normalized names from candidates")
-    void ignoresBlankNormalizedNames() {
-        UUID chapterId = UUID.randomUUID();
-        ChapterEventGraphRepository.ChapterEventCandidateView blank = candidate(
-                "Unknown event", "   ", null, 1L, List.of(), List.of(), List.of()
-        );
-        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(1L);
-        when(chapterEventRepository.findResolutionCandidates(chapterId)).thenReturn(List.of(blank));
-
-        ChapterEventResolutionResult result = service.resolveChapter(chapterId);
-
-        assertThat(result.success()).isFalse();
-        assertThat(result.rawMentionsProcessed()).isEqualTo(1);
-
-        verify(chapterEventRepository).deleteByChapterId(chapterId);
-        verify(chapterEventRepository, never()).saveAll(any());
-        verify(chapterEventRepository, never()).linkMentionsToChapterEvent(any(), any(), any(), any());
-    }
-
-    @Test
-    @DisplayName("Returns no-op response when chapter has no event mentions")
+    @DisplayName("Returns no-op when chapter has no event mentions")
     void returnsNoOpWhenChapterHasNoMentions() {
         UUID chapterId = UUID.randomUUID();
         when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(0L);
@@ -166,27 +76,121 @@ class ChapterEventResolutionServiceTest {
         verify(chapterEventRepository, never()).deleteByChapterId(any());
     }
 
-    private ChapterEventGraphRepository.ChapterEventCandidateView candidate(
-            String displayName,
-            String normalizedName,
-            String representativeEventType,
-            Long mentionCount,
-            List<String> evidenceSnippets,
-            List<String> eventTypes,
-            List<String> sceneRelativeRelations
-    ) {
-        return new ChapterEventGraphRepository.ChapterEventCandidateView() {
-            @Override public String getDisplayName() { return displayName; }
-            @Override public String getNormalizedName() { return normalizedName; }
-            @Override public String getRepresentativeEventType() { return representativeEventType; }
-            @Override public Long getMentionCount() { return mentionCount; }
-            @Override public List<String> getEvidenceSnippets() { return evidenceSnippets; }
-            @Override public List<String> getEventTypes() { return eventTypes; }
-            @Override public List<String> getSceneRelativeRelations() { return sceneRelativeRelations; }
-        };
+    @Test
+    @DisplayName("Builds one ChapterEvent per connected component from SAME_EVENT links")
+    void buildsOneChapterEventPerComponent() {
+        UUID chapterId = UUID.randomUUID();
+        UUID m1 = UUID.randomUUID();
+        UUID m2 = UUID.randomUUID();
+        UUID m3 = UUID.randomUUID();
+        String comp1 = m1.toString();
+        String comp2 = m3.toString();
+
+        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(3L);
+        when(mentionRepository.findSameEventComponents(chapterId)).thenReturn(List.of(
+                componentRow(m1.toString(), comp1),
+                componentRow(m2.toString(), comp1),
+                componentRow(m3.toString(), comp2)
+        ));
+        when(mentionRepository.findByChapterIdOrdered(chapterId)).thenReturn(List.of(
+                mention(m1, "The Coronation", "the coronation", "CEREMONY", "PRECEDES", "She was crowned", chapterId),
+                mention(m2, "The Coronation", "the coronation", "CEREMONY", "PRECEDES", "The ceremony ended", chapterId),
+                mention(m3, "The Betrayal", "the betrayal", "BETRAYAL", "FOLLOWS", "He drew his blade", chapterId)
+        ));
+        when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(2L);
+
+        ChapterEventResolutionResult result = service.resolveChapter(chapterId);
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.rawMentionsProcessed()).isEqualTo(3);
+        assertThat(result.chapterEventsCreated()).isEqualTo(2);
+
+        List<ChapterEvent> saved = captureAllSaved();
+        assertThat(saved).hasSize(2);
+
+        // Each node gets a chapter link
+        for (ChapterEvent ce : saved) {
+            verify(chapterEventRepository).linkChapterToEvent(chapterId, ce.id());
+        }
+
+        verify(chapterEventRepository).deleteByChapterId(chapterId);
     }
 
-    private List<ChapterEvent> toList(Iterable<ChapterEvent> iterable) {
-        return iterable == null ? List.of() : org.assertj.core.util.Lists.newArrayList(iterable);
+    @Test
+    @DisplayName("Canonical label is the most-frequent displayName in the component")
+    void canonicalLabelIsMostFrequent() {
+        UUID chapterId = UUID.randomUUID();
+        UUID m1 = UUID.randomUUID();
+        UUID m2 = UUID.randomUUID();
+        UUID m3 = UUID.randomUUID();
+        String comp = m1.toString();
+
+        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(3L);
+        when(mentionRepository.findSameEventComponents(chapterId)).thenReturn(List.of(
+                componentRow(m1.toString(), comp),
+                componentRow(m2.toString(), comp),
+                componentRow(m3.toString(), comp)
+        ));
+        when(mentionRepository.findByChapterIdOrdered(chapterId)).thenReturn(List.of(
+                mention(m1, "Battle", "battle", "BATTLE", "PRECEDES", null, chapterId),
+                mention(m2, "Great Battle", "great battle", "BATTLE", "PRECEDES", null, chapterId),
+                mention(m3, "Great Battle", "great battle", "BATTLE", "PRECEDES", null, chapterId)
+        ));
+        when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(1L);
+
+        service.resolveChapter(chapterId);
+
+        List<ChapterEvent> saved = captureAllSaved();
+        assertThat(saved).hasSize(1);
+        assertThat(saved.get(0).displayName()).isEqualTo("Great Battle");
+    }
+
+    @Test
+    @DisplayName("Aggregate card includes event type and evidence")
+    void aggregateCardIncludesTypeAndEvidence() {
+        UUID chapterId = UUID.randomUUID();
+        UUID m1 = UUID.randomUUID();
+        String comp = m1.toString();
+
+        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(1L);
+        when(mentionRepository.findSameEventComponents(chapterId)).thenReturn(List.of(
+                componentRow(m1.toString(), comp)
+        ));
+        when(mentionRepository.findByChapterIdOrdered(chapterId)).thenReturn(List.of(
+                mention(m1, "The Betrayal", "the betrayal", "BETRAYAL", "FOLLOWS", "He turned his blade on his king", chapterId)
+        ));
+        when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(1L);
+
+        service.resolveChapter(chapterId);
+
+        List<ChapterEvent> saved = captureAllSaved();
+        assertThat(saved.get(0).aggregateCard()).contains("BETRAYAL");
+        assertThat(saved.get(0).aggregateCard()).contains("He turned his blade on his king");
+    }
+
+    @Test
+    @DisplayName("Returns failure result when no components found after mentions exist")
+    void returnsFailureWhenNoComponents() {
+        UUID chapterId = UUID.randomUUID();
+        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
+        when(mentionRepository.findSameEventComponents(chapterId)).thenReturn(List.of());
+
+        ChapterEventResolutionResult result = service.resolveChapter(chapterId);
+
+        assertThat(result.success()).isFalse();
+        verify(chapterEventRepository).deleteByChapterId(chapterId);
+        verify(chapterEventRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("Returns no-op when chapterId is null")
+    void returnsNoOpWhenChapterIdIsNull() {
+        ChapterEventResolutionResult result = service.resolveChapter(null);
+        assertThat(result.success()).isFalse();
+        verifyNoInteractions(chapterEventRepository);
+        verifyNoInteractions(mentionRepository);
     }
 }

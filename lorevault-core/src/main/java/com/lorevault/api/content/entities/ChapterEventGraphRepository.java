@@ -1,6 +1,5 @@
 package com.lorevault.api.content.entities;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.neo4j.repository.Neo4jRepository;
@@ -20,40 +19,10 @@ public interface ChapterEventGraphRepository extends Neo4jRepository<ChapterEven
             """)
     long countChapterEventsByChapterId(UUID chapterId);
 
-    interface ChapterEventCandidateView {
-        String getDisplayName();
-
-        String getNormalizedName();
-
-        String getRepresentativeEventType();
-
-        Long getMentionCount();
-
-        List<String> getEvidenceSnippets();
-
-        List<String> getEventTypes();
-
-        List<String> getSceneRelativeRelations();
-    }
-
-    @Query("""
-            MATCH (m:EventMention {chapterId: $chapterId})
-            WHERE m.normalizedName IS NOT NULL AND trim(m.normalizedName) <> ''
-            WITH m
-            ORDER BY m.normalizedName, coalesce(m.displayName, ''), coalesce(m.extractionIndex, 0)
-            WITH m.normalizedName AS normalizedName, collect(m) AS mentions
-            WITH normalizedName, mentions, head(mentions) AS representative
-            RETURN representative.displayName                                           AS displayName,
-                   normalizedName                                                       AS normalizedName,
-                   representative.eventType                                             AS representativeEventType,
-                   size(mentions)                                                       AS mentionCount,
-                   [x IN mentions[0..4] WHERE x.evidence IS NOT NULL | x.evidence]     AS evidenceSnippets,
-                   [x IN mentions | x.eventType]                                        AS eventTypes,
-                   [x IN mentions | x.sceneRelativeRelation]                            AS sceneRelativeRelations
-            ORDER BY normalizedName
-            """)
-    List<ChapterEventCandidateView> findResolutionCandidates(UUID chapterId);
-
+    /**
+     * Delete all ChapterEvent nodes for a chapter and their inbound REFERS_TO edges.
+     * Resets mention resolutionStatus to 'unresolved' so the resolution pass is idempotent.
+     */
     @Query("""
             MATCH (m:EventMention {chapterId: $chapterId})
             OPTIONAL MATCH (m)-[r:REFERS_TO]->(:ChapterEvent {chapterId: $chapterId})
@@ -73,17 +42,16 @@ public interface ChapterEventGraphRepository extends Neo4jRepository<ChapterEven
             """)
     void linkChapterToEvent(UUID chapterId, UUID chapterEventId);
 
+    /**
+     * Link a specific EventMention to a ChapterEvent by mention id.
+     * Used by Stage 3 after connected-component aggregation.
+     */
     @Query("""
-            MATCH (m:EventMention {chapterId: $chapterId, normalizedName: $normalizedName})
+            MATCH (m:EventMention {id: $mentionId})
             WITH m
             MATCH (ce:ChapterEvent {id: $chapterEventId})
             MERGE (m)-[:REFERS_TO]->(ce)
             SET m.resolutionStatus = $resolutionStatus
             """)
-    void linkMentionsToChapterEvent(
-            UUID chapterId,
-            String normalizedName,
-            UUID chapterEventId,
-            String resolutionStatus
-    );
+    void linkMentionToChapterEvent(UUID mentionId, UUID chapterEventId, String resolutionStatus);
 }

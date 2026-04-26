@@ -13,6 +13,7 @@ import com.lorevault.api.ingestion.domain.StatusRecord;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
 import com.lorevault.api.ingestion.events.BookIndividualsReducedEvent;
 import com.lorevault.api.ingestion.events.BookLocationsReducedEvent;
+import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
 import com.lorevault.api.ingestion.events.EmbeddingsCompletedEvent;
 import com.lorevault.api.ingestion.events.IngestionCompletedEvent;
 import java.util.UUID;
@@ -93,8 +94,7 @@ public class IngestionCompletionCoordinator {
 
     @Async("ingestionTaskExecutor")
     @EventListener
-    public void handleBookLocationsReduced(BookLocationsReducedEvent event) {
-        CompletionKey key = new CompletionKey(
+    public void handleBookLocationsReduced(BookLocationsReducedEvent event) {        CompletionKey key = new CompletionKey(
                 event.getJobId(),
                 event.getChapterId()
         );
@@ -118,12 +118,40 @@ public class IngestionCompletionCoordinator {
         completeIfReady(key);
     }
 
+    @Async("ingestionTaskExecutor")
+    @EventListener
+    public void handleChapterEventsResolved(ChapterEventsResolvedEvent event) {
+        CompletionKey key = new CompletionKey(
+                event.getJobId(),
+                event.getChapterId()
+        );
+        logBranchArrival(
+                "CHAPTER_EVENTS_RESOLVED",
+                key,
+                event.getBookId(),
+                "processed=" + event.isProcessed()
+                        + ", mentionCount=" + event.getMentionCount()
+                        + ", chapterEventCount=" + event.getChapterEventCount()
+        );
+
+        completionStates.compute(key, (ignored, current) -> {
+            CompletionState next = current == null ? new CompletionState() : current;
+            next.chapterEventsResolvedEvent = event;
+            return next;
+        });
+
+        logCoordinatorState("CHAPTER_EVENTS_RESOLVED", key);
+
+        completeIfReady(key);
+    }
+
     private void completeIfReady(CompletionKey key) {
         completionStates.computeIfPresent(key, (ignored, state) -> {
             if (state.completed
                     || state.embeddingsCompletedEvent == null
                     || state.bookIndividualsReducedEvent == null
-                    || state.bookLocationsReducedEvent == null) {
+                    || state.bookLocationsReducedEvent == null
+                    || state.chapterEventsResolvedEvent == null) {
                 return state;
             }
 
@@ -221,6 +249,7 @@ public class IngestionCompletionCoordinator {
         appendBranch(builder, state.embeddingsCompletedEvent != null, "EMBEDDINGS_COMPLETED");
         appendBranch(builder, state.bookIndividualsReducedEvent != null, "BOOK_INDIVIDUALS_REDUCED");
         appendBranch(builder, state.bookLocationsReducedEvent != null, "BOOK_LOCATIONS_REDUCED");
+        appendBranch(builder, state.chapterEventsResolvedEvent != null, "CHAPTER_EVENTS_RESOLVED");
         builder.append("]");
         return builder.toString();
     }
@@ -230,6 +259,7 @@ public class IngestionCompletionCoordinator {
         appendBranch(builder, state.embeddingsCompletedEvent == null, "EMBEDDINGS_COMPLETED");
         appendBranch(builder, state.bookIndividualsReducedEvent == null, "BOOK_INDIVIDUALS_REDUCED");
         appendBranch(builder, state.bookLocationsReducedEvent == null, "BOOK_LOCATIONS_REDUCED");
+        appendBranch(builder, state.chapterEventsResolvedEvent == null, "CHAPTER_EVENTS_RESOLVED");
         builder.append("]");
         return builder.toString();
     }
@@ -248,6 +278,7 @@ public class IngestionCompletionCoordinator {
         private EmbeddingsCompletedEvent embeddingsCompletedEvent;
         private BookIndividualsReducedEvent bookIndividualsReducedEvent;
         private BookLocationsReducedEvent bookLocationsReducedEvent;
+        private ChapterEventsResolvedEvent chapterEventsResolvedEvent;
         private boolean completed;
     }
 }
