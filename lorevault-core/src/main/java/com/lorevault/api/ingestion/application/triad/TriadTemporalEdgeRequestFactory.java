@@ -128,10 +128,10 @@ public class TriadTemporalEdgeRequestFactory {
         UUID statusRecordId = statusRecord.getId();
         LlmCallRecord callRecord = findRequiredTriadCall(jobId, statusRecordId);
 
-        if (callRecord.getResponseBody() == null || Boolean.TRUE.equals(callRecord.getTruncated())) {
+        if (callRecord.getResponse() == null || callRecord.getResponse().getBody() == null) {
             throw triadArtifactFailure(
                     "TRIAD_ARTIFACT_UNRECOVERABLE",
-                    "Triad structured output is missing or truncated for scene index " + currentSceneIndex,
+                    "Triad structured output is missing for scene index " + currentSceneIndex,
                     currentSceneIndex,
                     statusRecord,
                     callRecord

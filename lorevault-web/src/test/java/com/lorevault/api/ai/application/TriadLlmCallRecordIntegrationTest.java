@@ -13,6 +13,8 @@ import com.lorevault.api.search.infrastructure.*;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.domain.LlmCallRecord;
+import com.lorevault.api.ingestion.domain.LlmCallRequest;
+import com.lorevault.api.ingestion.domain.LlmCallResponse;
 import com.lorevault.api.ingestion.domain.StatusRecord;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.LlmCallRecordGraphRepository;
@@ -141,9 +143,16 @@ class TriadLlmCallRecordIntegrationTest {
         llmCallRecord.setTopP(0.9);
         llmCallRecord.setMaxTokens(6000);
         llmCallRecord.setPromptTemplateId("scene-analysis.txt");
-        llmCallRecord.setRenderedPrompt("System prompt for triad analysis");
-        llmCallRecord.setInputPreview("[userTemplate=scene-analysis-user] Triad user input...");
-        llmCallRecord.setResponseBody("<scene_analysis>...</scene_analysis>");
+        llmCallRecord.setStoreRenderedPrompt(true);
+        llmCallRecord.setRequest(new LlmCallRequest(
+                UUID.randomUUID(),
+                "System prompt for triad analysis",
+                "[userTemplate=scene-analysis-user] Triad user input..."
+        ));
+        llmCallRecord.setResponse(new LlmCallResponse(
+                UUID.randomUUID(),
+                "<scene_analysis>...</scene_analysis>"
+        ));
         llmCallRecord.setLatencyMs(1500L);
         llmCallRecord.setCreatedAt(LocalDateTime.now());
 
@@ -158,7 +167,8 @@ class TriadLlmCallRecordIntegrationTest {
         LlmCallRecord savedRecord = callRecords.get(0);
         assertThat(savedRecord.getStatusRecordId()).isEqualTo(currentStatus.getId());
         assertThat(savedRecord.getStep()).isEqualTo("scene-analysis");
-        assertThat(savedRecord.getInputPreview()).startsWith("[userTemplate=scene-analysis-user]");
+        assertThat(savedRecord.getRequest()).isNotNull();
+        assertThat(savedRecord.getRequest().getInputBody()).startsWith("[userTemplate=scene-analysis-user]");
 
         // Verify graph relationships exist
         assertThat(llmCallRepo.hasOfJobRelation(savedRecord.getId(), testJobId)).isTrue();
@@ -322,9 +332,16 @@ class TriadLlmCallRecordIntegrationTest {
         record.setTopP(0.9);
         record.setMaxTokens(6000);
         record.setPromptTemplateId("scene-analysis.txt");
-        record.setRenderedPrompt("System prompt content");
-        record.setInputPreview("[userTemplate=scene-analysis-user] User content preview");
-        record.setResponseBody("<scene_analysis>mock response</scene_analysis>");
+        record.setStoreRenderedPrompt(true);
+        record.setRequest(new LlmCallRequest(
+                UUID.randomUUID(),
+                "System prompt content",
+                "[userTemplate=scene-analysis-user] User content preview"
+        ));
+        record.setResponse(new LlmCallResponse(
+                UUID.randomUUID(),
+                "<scene_analysis>mock response</scene_analysis>"
+        ));
         record.setLatencyMs(1200L);
         record.setCreatedAt(LocalDateTime.now());
         return record;

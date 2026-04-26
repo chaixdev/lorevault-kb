@@ -13,7 +13,7 @@ import java.util.UUID;
 
 /**
  * Domain model capturing a single LLM call made during an ingestion job step.
- * Records request/response payload previews and telemetry for observability/tracing.
+ * Request/response payloads are owned by dedicated child nodes.
  */
 @Data
 @NoArgsConstructor
@@ -45,17 +45,16 @@ public class LlmCallRecord {
 
     // Prompt metadata
     private String promptTemplateId; // identifier/path of the prompt template
-    private Boolean storeRenderedPrompt; // whether rendered prompt is stored
-    private String renderedPrompt; // optional, may be omitted
-
-    // Payloads (capped per configuration)
-    private String inputPreview; // first N chars of input
-    private String responseBody; // full/capped response
-    private String responseHash; // SHA-256 of response for integrity when truncated
-    private Boolean truncated; // whether response was truncated to max size
+    private Boolean storeRenderedPrompt; // whether rendered prompt is stored in request node
 
     @CreatedDate
     private LocalDateTime createdAt; // set by persistence layer
+
+    @Relationship(type = "WITH_REQUEST", direction = Relationship.Direction.OUTGOING)
+    private LlmCallRequest request;
+
+    @Relationship(type = "WITH_RESPONSE", direction = Relationship.Direction.OUTGOING)
+    private LlmCallResponse response;
 
     // Optional convenience relationships (not required for queries but useful visually)
     @Relationship(type = "OF_JOB", direction = Relationship.Direction.OUTGOING)

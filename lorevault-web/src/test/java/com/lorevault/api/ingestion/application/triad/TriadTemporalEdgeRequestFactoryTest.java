@@ -3,6 +3,7 @@ package com.lorevault.api.ingestion.application.triad;
 import com.lorevault.api.content.timeline.application.TemporalEdgeWriteRequest;
 import com.lorevault.api.ingestion.domain.triad.TriadAnalysisModels;
 import com.lorevault.api.ingestion.domain.LlmCallRecord;
+import com.lorevault.api.ingestion.domain.LlmCallResponse;
 import com.lorevault.api.ingestion.domain.StatusRecord;
 import com.lorevault.api.ingestion.domain.TriadAnalysisArtifactLookup;
 import com.lorevault.api.ingestion.domain.TriadAnalysisException;
@@ -51,8 +52,7 @@ class TriadTemporalEdgeRequestFactoryTest {
     void buildRequests_shouldCreateContentOwnedWriteRequestWithProvenance() {
         LlmCallRecord callRecord = new LlmCallRecord();
         callRecord.setId(callRecordId);
-        callRecord.setResponseBody("{\"ok\":true}");
-        callRecord.setTruncated(false);
+        callRecord.setResponse(new LlmCallResponse(UUID.randomUUID(), "{\"ok\":true}"));
         when(triadAnalysisArtifactLookup.findLatestTriadCallRecord(eq(jobId), eq(statusRecordId)))
                 .thenReturn(Optional.of(callRecord));
 
@@ -89,13 +89,12 @@ class TriadTemporalEdgeRequestFactoryTest {
     }
 
     @Test
-    void buildRequests_shouldFailWhenTriadArtifactsAreTruncated() {
-        LlmCallRecord truncated = new LlmCallRecord();
-        truncated.setId(callRecordId);
-        truncated.setResponseBody(null);
-        truncated.setTruncated(true);
+    void buildRequests_shouldFailWhenTriadArtifactsAreMissing() {
+        LlmCallRecord missingResponse = new LlmCallRecord();
+        missingResponse.setId(callRecordId);
+        missingResponse.setResponse(new LlmCallResponse(UUID.randomUUID(), null));
         when(triadAnalysisArtifactLookup.findLatestTriadCallRecord(eq(jobId), eq(statusRecordId)))
-                .thenReturn(Optional.of(truncated));
+                .thenReturn(Optional.of(missingResponse));
 
         assertThatThrownBy(() -> factory.buildRequests(
                 chapterId,
@@ -119,6 +118,6 @@ class TriadTemporalEdgeRequestFactoryTest {
         )).isInstanceOf(TriadAnalysisException.class)
                 .extracting(Throwable::getMessage)
                 .asString()
-                .contains("missing or truncated");
+                .contains("missing");
     }
 }

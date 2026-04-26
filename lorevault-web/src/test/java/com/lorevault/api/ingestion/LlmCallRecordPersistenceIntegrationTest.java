@@ -84,7 +84,7 @@ class LlmCallRecordPersistenceIntegrationTest {
                 "chapter-segmentation.txt",
                 "You are an AI assistant that detects scenes in narrative text...",
                 "Chapter 1: The hero begins their journey in a small village...",
-                "This is a test response that is longer than 50 characters and should be truncated in the integration test",
+                "This is a test response that is longer than 50 characters and should be persisted fully in the integration test",
                 1250L,
                 500,
                 150
@@ -97,9 +97,11 @@ class LlmCallRecordPersistenceIntegrationTest {
         assertThat(record.getJobId()).isEqualTo(jobId);
         assertThat(record.getStatusRecordId()).isNull();
         assertThat(record.getStep()).isEqualTo("chapter-segmentation");
-        assertThat(record.getResponseBody()).hasSize(50);
-        assertThat(record.getTruncated()).isTrue();
-        assertThat(record.getResponseHash()).isNotNull().hasSize(64);
+        assertThat(record.getRequest()).isNotNull();
+        assertThat(record.getRequest().getInputBody()).isEqualTo("Chapter 1: The hero begins their journey in a small village...");
+        assertThat(record.getResponse()).isNotNull();
+        assertThat(record.getResponse().getBody())
+                .isEqualTo("This is a test response that is longer than 50 characters and should be persisted fully in the integration test");
     }
 
     @Test
@@ -196,9 +198,8 @@ class LlmCallRecordPersistenceIntegrationTest {
         );
 
         LlmCallRecord logged = llmCallRepo.findByJobId(jobId).getFirst();
-        assertThat(logged.getResponseBody()).isEqualTo(exactSize50Response);
-        assertThat(logged.getTruncated()).isFalse();
-        assertThat(logged.getResponseHash()).isNotNull();
+        assertThat(logged.getResponse()).isNotNull();
+        assertThat(logged.getResponse().getBody()).isEqualTo(exactSize50Response);
     }
 
     @Test

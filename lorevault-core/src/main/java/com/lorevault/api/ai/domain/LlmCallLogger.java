@@ -14,7 +14,7 @@ public interface LlmCallLogger {
             Integer maxTokens,
             String promptTemplateId,
             String renderedPrompt,
-            String inputPreview,
+            String inputBody,
             String responseBody,
             long latencyMs,
             Integer inputTokensEst,

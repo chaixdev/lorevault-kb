@@ -4,14 +4,13 @@ import com.lorevault.api.ai.domain.LlmCallLogger;
 import com.lorevault.api.config.LoreVaultLlmLoggingProperties;
 import com.lorevault.api.ingestion.domain.IngestionJob;
 import com.lorevault.api.ingestion.domain.LlmCallRecord;
+import com.lorevault.api.ingestion.domain.LlmCallRequest;
+import com.lorevault.api.ingestion.domain.LlmCallResponse;
 import com.lorevault.api.ingestion.domain.StatusRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,7 +46,7 @@ public class LlmCallLoggingService implements LlmCallLogger {
             Integer maxTokens,
             String promptTemplateId,
             String renderedPrompt,
-            String inputPreview,
+            String inputBody,
             String responseBody,
             long latencyMs,
             Integer inputTokensEst,
@@ -83,20 +82,16 @@ public class LlmCallLoggingService implements LlmCallLogger {
         rec.setTokensEstimated(Boolean.TRUE);
         rec.setPromptTemplateId(promptTemplateId);
         rec.setStoreRenderedPrompt(props.storeRenderedPrompt());
-        rec.setRenderedPrompt(props.storeRenderedPrompt() ? renderedPrompt : null);
-        rec.setInputPreview(safePreview(inputPreview));
+        LlmCallRequest request = new LlmCallRequest();
+        request.setId(UUID.randomUUID());
+        request.setRenderedPrompt(props.storeRenderedPrompt() ? renderedPrompt : null);
+        request.setInputBody(inputBody);
+        rec.setRequest(request);
 
-        if (props.persistBodiesEnabled() == Boolean.TRUE) {
-            Integer maxBodyChars = shouldSkipBodyTruncation(step) ? null : props.maxBodyChars();
-            TruncationResult tr = maybeTruncate(responseBody, maxBodyChars);
-            rec.setResponseBody(tr.body());
-            rec.setTruncated(tr.truncated());
-            rec.setResponseHash(tr.hash());
-        } else {
-            rec.setResponseBody(null);
-            rec.setTruncated(null);
-            rec.setResponseHash(null);
-        }
+        LlmCallResponse response = new LlmCallResponse();
+        response.setId(UUID.randomUUID());
+        response.setBody(props.persistBodiesEnabled() == Boolean.TRUE ? responseBody : null);
+        rec.setResponse(response);
 
         rec.setCreatedAt(LocalDateTime.now());
 
@@ -124,40 +119,4 @@ public class LlmCallLoggingService implements LlmCallLogger {
 
         llmCallRepo.save(rec);
     }
-
-    private String safePreview(String s) {
-        if (s == null) return null;
-        int limit = 1000; // fixed preview cap for inputs
-        return s.length() <= limit ? s : s.substring(0, limit);
-    }
-
-    private TruncationResult maybeTruncate(String body, Integer maxChars) {
-        if (body == null) return new TruncationResult(null, null, false);
-        if (maxChars == null || maxChars < 0) {
-            return new TruncationResult(body, sha256(body), false);
-        }
-        if (body.length() <= maxChars) {
-            return new TruncationResult(body, sha256(body), false);
-        }
-        String truncated = body.substring(0, maxChars);
-        return new TruncationResult(truncated, sha256(body), true);
-    }
-
-    private boolean shouldSkipBodyTruncation(String step) {
-        return "scene-analysis".equals(step);
-    }
-
-    private String sha256(String input) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashed = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder(hashed.length * 2);
-            for (byte b : hashed) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
-    }
-
-    private record TruncationResult(String body, String hash, boolean truncated) {}
 }

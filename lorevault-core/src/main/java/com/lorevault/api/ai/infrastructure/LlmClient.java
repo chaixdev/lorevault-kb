@@ -390,7 +390,7 @@ public class LlmClient {
                     maxTokens,
                     promptTemplateId,
                     systemPrompt,
-                    input.length() <= 1000 ? input : input.substring(0, 1000),
+                    input,
                     responseBody,
                     elapsedMs,
                     estimateTokens(input),
