@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress
+Paused
 
 ## Summary
 
@@ -115,6 +115,26 @@ The goal is not generic deduplication. The goal is a clearer and more intention-
 - Which candidate contracts would have more than one meaningful consumer or implementation, rather than becoming single-implementation interfaces?
 - Should contract exploration stay inside `content` and closely related timeline code only, rather than treating the entire model layer as one design surface?
 - Is there a minimal naming vocabulary for capability interfaces that reads clearly in this codebase, such as `BookScoped` rather than `BookScope`?
+
+## Revisit Conditions
+
+Resume this work only if at least one of these becomes true:
+
+- A concrete feature needs shared behavior across multiple mention or resolution families, and the flat model starts producing duplicated logic or bugs.
+- `IndividualMention`, `LocationMention`, `EventMention`, `BookIndividual`, or `BookLocation` start changing together often enough that the duplication becomes a real maintenance cost.
+- There is an explicit, low-risk Spring Data Neo4j mapping path for a candidate value object, with a migration plan that avoids speculative refactoring.
+- A new closed family is clearly identifiable and justified for a narrow sealed or capability-contract treatment.
+- Search or ingestion code benefits from a reusable contract that has more than one meaningful consumer and stays feature-owned.
+
+## Implementation note: reducer persistence boundaries
+
+The book-level individual and location reducers now use narrow aggregate persistence services rather than one-method delete services or repository-level transaction policy.
+
+- `BookIndividualPersistenceService` and `BookLocationPersistenceService` own the transactional graph write units for aggregate rebuilds.
+- The reducers keep candidate selection, clustering, and aggregate construction logic.
+- The repositories remain low-level graph operations and do not encode use-case transaction propagation.
+
+This is not a generic persistence abstraction direction for the whole model. It is a bounded compromise for use cases where a Spring-managed service proxy is needed to express transaction boundaries such as `REQUIRES_NEW` delete-before-rebuild behavior without pushing orchestration policy into repository methods.
 
 ## Success Criteria
 

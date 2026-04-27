@@ -1,12 +1,12 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.resolution.*;
 
 import com.lorevault.api.content.entities.BookLocation;
-import com.lorevault.api.content.entities.BookLocationGraphRepository;
 import com.lorevault.api.content.entities.ChapterLocation;
 import com.lorevault.api.content.entities.ChapterLocationGraphRepository;
+import com.lorevault.api.ingestion.application.resolution.BookLocationPersistenceService;
+import com.lorevault.api.ingestion.application.resolution.BookLocationReductionService;
+import com.lorevault.api.ingestion.application.resolution.BookReductionClaimService;
 import com.lorevault.api.ingestion.application.result.BookLocationResolutionResult;
-import com.lorevault.api.library.infrastructure.BookGraphRepository;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,16 +32,13 @@ import static org.mockito.Mockito.when;
 class BookLocationReductionServiceTest {
 
     @Mock
-    private BookLocationGraphRepository bookLocationRepository;
-
-    @Mock
-    private BookGraphRepository bookGraphRepository;
-
-    @Mock
     private ChapterLocationGraphRepository chapterLocationRepository;
 
     @Mock
     private BookReductionClaimService claimService;
+
+    @Mock
+    private BookLocationPersistenceService bookLocationPersistenceService;
 
     @InjectMocks
     private BookLocationReductionService service;
@@ -68,8 +66,9 @@ class BookLocationReductionServiceTest {
         ChapterLocation shire = chapterLocation(shireId, chapterAId, "The Shire", "the shire", List.of(), 1);
 
         when(chapterLocationRepository.findByBookId(bookId)).thenReturn(List.of(lastHomelyHouse, shire, imladris, rivendell));
-        when(bookLocationRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(bookLocationRepository.countBookLocationsByBookId(bookId)).thenReturn(2L);
+        when(bookLocationPersistenceService.saveAndLinkBookLocations(any(), any(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(1));
+        when(bookLocationPersistenceService.countByBookId(bookId)).thenReturn(2L);
 
         BookLocationResolutionResult response = service.resolveBook(bookId);
 
@@ -77,12 +76,14 @@ class BookLocationReductionServiceTest {
         assertThat(response.chapterLocationsProcessed()).isEqualTo(4);
         assertThat(response.bookLocationsCreated()).isEqualTo(2);
 
-        verify(bookLocationRepository).deleteByBookId(bookId);
+        verify(bookLocationPersistenceService).deleteByBookId(bookId);
 
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<Iterable<BookLocation>> savedCaptor = ArgumentCaptor.forClass(Iterable.class);
-        verify(bookLocationRepository).saveAll(savedCaptor.capture());
-        List<BookLocation> saved = org.assertj.core.util.Lists.newArrayList(savedCaptor.getValue());
+        ArgumentCaptor<List<BookLocation>> savedCaptor = ArgumentCaptor.forClass(List.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<List<UUID>>> linkedIdsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(bookLocationPersistenceService).saveAndLinkBookLocations(eq(bookId), savedCaptor.capture(), linkedIdsCaptor.capture());
+        List<BookLocation> saved = savedCaptor.getValue();
 
         assertThat(saved).hasSize(2);
         assertThat(saved)
@@ -108,11 +109,11 @@ class BookLocationReductionServiceTest {
         assertThat(shireCluster.representativeChapterLocationId()).isEqualTo(shireId);
         assertThat(shireCluster.firstSeenChapterId()).isEqualTo(chapterAId);
 
-        for (BookLocation bookLocation : saved) {
-            verify(bookLocationRepository).linkBookToLocation(bookId, bookLocation.id());
-        }
-        verify(bookLocationRepository).linkChapterLocationsToBookLocation(List.of(imladrisId, rivendellId, lastHomelyHouseId), mergedCluster.id());
-        verify(bookLocationRepository).linkChapterLocationsToBookLocation(List.of(shireId), shireCluster.id());
+        assertThat(linkedIdsCaptor.getValue())
+                .containsExactly(
+                        List.of(imladrisId, rivendellId, lastHomelyHouseId),
+                        List.of(shireId)
+                );
     }
 
     @Test
@@ -138,10 +139,8 @@ class BookLocationReductionServiceTest {
         assertThat(response.chapterLocationsProcessed()).isZero();
         assertThat(response.bookLocationsCreated()).isZero();
 
-        verify(bookLocationRepository, never()).deleteByBookId(any());
-        verify(bookLocationRepository, never()).saveAll(any());
-        verify(bookLocationRepository, never()).linkBookToLocation(any(), any());
-        verify(bookLocationRepository, never()).linkChapterLocationsToBookLocation(any(), any());
+        verify(bookLocationPersistenceService, never()).deleteByBookId(any());
+        verify(bookLocationPersistenceService, never()).saveAndLinkBookLocations(any(), any(), any());
     }
 
     @Test
@@ -156,8 +155,8 @@ class BookLocationReductionServiceTest {
         assertThat(response.chapterLocationsProcessed()).isZero();
         assertThat(response.bookLocationsCreated()).isZero();
 
-        verify(bookLocationRepository, never()).deleteByBookId(any());
-        verify(bookLocationRepository, never()).saveAll(any());
+        verify(bookLocationPersistenceService, never()).deleteByBookId(any());
+        verify(bookLocationPersistenceService, never()).saveAndLinkBookLocations(any(), any(), any());
     }
 
     private ChapterLocation chapterLocation(

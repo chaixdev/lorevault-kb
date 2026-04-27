@@ -20,17 +20,20 @@ public class BookIndividualReductionService {
     private final BookGraphRepository bookGraphRepository;
     private final Neo4jClient neo4jClient;
     private final BookReductionClaimService claimService;
+    private final BookIndividualPersistenceService bookIndividualPersistenceService;
 
     public BookIndividualReductionService(
             BookIndividualGraphRepository bookIndividualRepository,
             BookGraphRepository bookGraphRepository,
             Neo4jClient neo4jClient,
-            BookReductionClaimService claimService
+            BookReductionClaimService claimService,
+            BookIndividualPersistenceService bookIndividualPersistenceService
     ) {
         this.bookIndividualRepository = bookIndividualRepository;
         this.bookGraphRepository = bookGraphRepository;
         this.neo4jClient = neo4jClient;
         this.claimService = claimService;
+        this.bookIndividualPersistenceService = bookIndividualPersistenceService;
     }
 
     @Transactional(readOnly = true)
@@ -47,23 +50,22 @@ public class BookIndividualReductionService {
             return new BookIndividualResolutionResult(bookId, false, 0, 0, "Reduction already in progress for book");
         }
         try {
-            return resolveBookLocked(bookId);
+            List<BookReductionCandidate> candidates = findReductionCandidates(bookId);
+            if (candidates.isEmpty()) {
+                return new BookIndividualResolutionResult(bookId, false, 0, 0, "No chapter individuals found for book");
+            }
+            // Delete stale nodes in a separate committed transaction so the unique constraint on
+            // (bookId, normalizedName) is clear before the subsequent save transaction begins.
+            bookIndividualPersistenceService.deleteByBookId(bookId);
+            return resolveBook(bookId, candidates);
         } finally {
-            // releaseClaim uses REQUIRES_NEW and runs outside the resolveBookLocked transaction,
-            // so the claim is only released after the reduction work has committed.
+            // releaseClaim uses REQUIRES_NEW so claim cleanup commits independently of the
+            // aggregate rebuild transaction owned by BookIndividualPersistenceService.
             claimService.releaseClaim(bookId);
         }
     }
 
-    @Transactional
-    BookIndividualResolutionResult resolveBookLocked(UUID bookId) {
-
-        List<BookReductionCandidate> candidates = findReductionCandidates(bookId);
-        if (candidates.isEmpty()) {
-            return new BookIndividualResolutionResult(bookId, false, 0, 0, "No chapter individuals found for book");
-        }
-
-        bookIndividualRepository.deleteByBookId(bookId);
+    BookIndividualResolutionResult resolveBook(UUID bookId, List<BookReductionCandidate> candidates) {
 
         List<BookIndividual> bookIndividuals = new ArrayList<>();
         for (BookReductionCandidate candidate : candidates) {
@@ -87,23 +89,13 @@ public class BookIndividualReductionService {
             return new BookIndividualResolutionResult(bookId, false, candidates.size(), 0, "No resolvable chapter individuals found for book");
         }
 
-        List<BookIndividual> savedIndividuals = new ArrayList<>();
-        bookIndividualRepository.saveAll(bookIndividuals).forEach(savedIndividuals::add);
-
-        for (BookIndividual bookIndividual : savedIndividuals) {
-            bookIndividualRepository.linkBookToIndividual(bookId, bookIndividual.id());
-            bookIndividualRepository.linkChapterIndividualsForBookAndNameToBookIndividual(
-                    bookId,
-                    bookIndividual.normalizedName(),
-                    bookIndividual.id()
-            );
-        }
+        bookIndividualPersistenceService.saveAndLinkBookIndividuals(bookId, bookIndividuals);
 
         return new BookIndividualResolutionResult(
                 bookId,
                 true,
                 candidates.size(),
-                safeCount(bookIndividualRepository.countBookIndividualsByBookId(bookId)),
+                safeCount(bookIndividualPersistenceService.countByBookId(bookId)),
                 "Resolved book-level individuals"
         );
     }

@@ -1,10 +1,11 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.resolution.*;
 
 import com.lorevault.api.content.entities.BookIndividual;
 import com.lorevault.api.content.entities.BookIndividualGraphRepository;
+import com.lorevault.api.ingestion.application.resolution.BookIndividualPersistenceService;
+import com.lorevault.api.ingestion.application.resolution.BookIndividualReductionService;
+import com.lorevault.api.ingestion.application.resolution.BookReductionClaimService;
 import com.lorevault.api.ingestion.application.result.BookIndividualResolutionResult;
-import com.lorevault.api.library.infrastructure.BookGraphRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,9 +32,6 @@ class BookIndividualReductionServiceTest {
 
     @Mock
     private BookIndividualGraphRepository bookIndividualRepository;
-
-    @Mock
-    private BookGraphRepository bookGraphRepository;
 
     @Mock
     private Neo4jClient neo4jClient;
@@ -51,6 +50,9 @@ class BookIndividualReductionServiceTest {
 
     @Mock
     private BookReductionClaimService claimService;
+
+    @Mock
+    private BookIndividualPersistenceService bookIndividualPersistenceService;
 
     @InjectMocks
     private BookIndividualReductionService service;
@@ -77,8 +79,9 @@ class BookIndividualReductionServiceTest {
         ));
         when(bookIndividualRepository.countChapterIndividualsForBookAndName(bookId, "nyx")).thenReturn(2L);
         when(bookIndividualRepository.countChapterIndividualsForBookAndName(bookId, "orion")).thenReturn(1L);
-        when(bookIndividualRepository.countBookIndividualsByBookId(bookId)).thenReturn(2L);
-        when(bookIndividualRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(bookIndividualPersistenceService.countByBookId(bookId)).thenReturn(2L);
+        when(bookIndividualPersistenceService.saveAndLinkBookIndividuals(any(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(1));
 
         BookIndividualResolutionResult response = service.resolveBook(bookId);
 
@@ -86,12 +89,12 @@ class BookIndividualReductionServiceTest {
         assertThat(response.chapterIndividualsProcessed()).isEqualTo(2);
         assertThat(response.bookIndividualsCreated()).isEqualTo(2);
 
-        verify(bookIndividualRepository).deleteByBookId(bookId);
+        verify(bookIndividualPersistenceService).deleteByBookId(bookId);
 
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<Iterable<BookIndividual>> savedCaptor = ArgumentCaptor.forClass(Iterable.class);
-        verify(bookIndividualRepository).saveAll(savedCaptor.capture());
-        List<BookIndividual> saved = org.assertj.core.util.Lists.newArrayList(savedCaptor.getValue());
+        ArgumentCaptor<List<BookIndividual>> savedCaptor = ArgumentCaptor.forClass(List.class);
+        verify(bookIndividualPersistenceService).saveAndLinkBookIndividuals(eq(bookId), savedCaptor.capture());
+        List<BookIndividual> saved = savedCaptor.getValue();
         assertThat(saved)
                 .extracting(BookIndividual::displayName, BookIndividual::normalizedName, BookIndividual::chapterIndividualCount)
                 .containsExactlyInAnyOrder(
@@ -99,14 +102,6 @@ class BookIndividualReductionServiceTest {
                         org.assertj.core.groups.Tuple.tuple("Orion", "orion", 1)
                 );
 
-        for (BookIndividual bookIndividual : saved) {
-            verify(bookIndividualRepository).linkBookToIndividual(bookId, bookIndividual.id());
-            verify(bookIndividualRepository).linkChapterIndividualsForBookAndNameToBookIndividual(
-                    bookId,
-                    bookIndividual.normalizedName(),
-                    bookIndividual.id()
-            );
-        }
         verify(bookIndividualRepository, never()).linkChapterIndividualToBookIndividual(any(), any());
     }
 
@@ -125,8 +120,8 @@ class BookIndividualReductionServiceTest {
         assertThat(response.success()).isFalse();
         assertThat(response.chapterIndividualsProcessed()).isZero();
         assertThat(response.bookIndividualsCreated()).isZero();
-        verify(bookIndividualRepository, never()).deleteByBookId(any());
-        verify(bookIndividualRepository, never()).saveAll(any());
+        verify(bookIndividualPersistenceService, never()).deleteByBookId(any());
+        verify(bookIndividualPersistenceService, never()).saveAndLinkBookIndividuals(any(), any());
     }
 
     private Map<String, Object> row(

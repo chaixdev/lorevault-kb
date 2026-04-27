@@ -24,17 +24,20 @@ public class BookLocationReductionService {
     private final BookGraphRepository bookGraphRepository;
     private final ChapterLocationGraphRepository chapterLocationRepository;
     private final BookReductionClaimService claimService;
+    private final BookLocationPersistenceService bookLocationPersistenceService;
 
     public BookLocationReductionService(
             BookLocationGraphRepository bookLocationRepository,
             BookGraphRepository bookGraphRepository,
             ChapterLocationGraphRepository chapterLocationRepository,
-            BookReductionClaimService claimService
+            BookReductionClaimService claimService,
+            BookLocationPersistenceService bookLocationPersistenceService
     ) {
         this.bookLocationRepository = bookLocationRepository;
         this.bookGraphRepository = bookGraphRepository;
         this.chapterLocationRepository = chapterLocationRepository;
         this.claimService = claimService;
+        this.bookLocationPersistenceService = bookLocationPersistenceService;
     }
 
     @Transactional(readOnly = true)
@@ -51,28 +54,28 @@ public class BookLocationReductionService {
             return new BookLocationResolutionResult(bookId, false, 0, 0, "Reduction already in progress for book");
         }
         try {
-            return resolveBookLocked(bookId);
+            List<ChapterLocation> chapterLocations = chapterLocationRepository.findByBookId(bookId).stream()
+                    .filter(this::isResolvable)
+                    .sorted(Comparator
+                            .comparing(ChapterLocation::normalizedName, Comparator.nullsLast(String::compareTo))
+                            .thenComparing(ChapterLocation::displayName, Comparator.nullsLast(String::compareTo)))
+                    .toList();
+
+            if (chapterLocations.isEmpty()) {
+                return new BookLocationResolutionResult(bookId, false, 0, 0, "No chapter locations found for book");
+            }
+            // Delete stale nodes in a separate committed transaction so the unique constraint on
+            // (bookId, normalizedName) is clear before the subsequent save transaction begins.
+            bookLocationPersistenceService.deleteByBookId(bookId);
+            return resolveBook(bookId, chapterLocations);
         } finally {
-            // releaseClaim uses REQUIRES_NEW and runs outside the resolveBookLocked transaction,
-            // so the claim is only released after the reduction work has committed.
+            // releaseClaim uses REQUIRES_NEW so claim cleanup commits independently of the
+            // aggregate rebuild transaction owned by BookLocationPersistenceService.
             claimService.releaseClaim(bookId);
         }
     }
 
-    @Transactional
-    BookLocationResolutionResult resolveBookLocked(UUID bookId) {
-        List<ChapterLocation> chapterLocations = chapterLocationRepository.findByBookId(bookId).stream()
-                .filter(this::isResolvable)
-                .sorted(Comparator
-                        .comparing(ChapterLocation::normalizedName, Comparator.nullsLast(String::compareTo))
-                        .thenComparing(ChapterLocation::displayName, Comparator.nullsLast(String::compareTo)))
-                .toList();
-
-        if (chapterLocations.isEmpty()) {
-            return new BookLocationResolutionResult(bookId, false, 0, 0, "No chapter locations found for book");
-        }
-
-        bookLocationRepository.deleteByBookId(bookId);
+    BookLocationResolutionResult resolveBook(UUID bookId, List<ChapterLocation> chapterLocations) {
 
         List<LocationCluster> clusters = clusterLocations(chapterLocations);
         if (clusters.isEmpty()) {
@@ -95,21 +98,16 @@ public class BookLocationReductionService {
             ));
         }
 
-        List<BookLocation> savedLocations = new ArrayList<>();
-        bookLocationRepository.saveAll(bookLocations).forEach(savedLocations::add);
-
-        for (int i = 0; i < savedLocations.size(); i++) {
-            BookLocation bookLocation = savedLocations.get(i);
-            LocationCluster cluster = clusters.get(i);
-            bookLocationRepository.linkBookToLocation(bookId, bookLocation.id());
-            bookLocationRepository.linkChapterLocationsToBookLocation(cluster.chapterLocationIds(), bookLocation.id());
-        }
+        List<List<UUID>> chapterLocationIdsByBookLocation = clusters.stream()
+                .map(LocationCluster::chapterLocationIds)
+                .toList();
+        bookLocationPersistenceService.saveAndLinkBookLocations(bookId, bookLocations, chapterLocationIdsByBookLocation);
 
         return new BookLocationResolutionResult(
                 bookId,
                 true,
                 chapterLocations.size(),
-                Math.toIntExact(bookLocationRepository.countBookLocationsByBookId(bookId)),
+                Math.toIntExact(bookLocationPersistenceService.countByBookId(bookId)),
                 "Resolved book-level locations"
         );
     }
