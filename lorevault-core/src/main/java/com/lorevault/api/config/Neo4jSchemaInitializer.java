@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Neo4j implementation of GraphSchemaInitializer.
@@ -16,10 +17,14 @@ import java.util.List;
 public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
 
     private static final Logger log = LoggerFactory.getLogger(Neo4jSchemaInitializer.class);
+    private static final String CHUNK_VECTOR_INDEX_NAME = "chunk_embedding_idx";
 
     private final Neo4jClient neo4jClient;
-    public Neo4jSchemaInitializer(Neo4jClient neo4jClient) {
+    private final LoreVaultEmbeddingProperties embeddingProperties;
+
+    public Neo4jSchemaInitializer(Neo4jClient neo4jClient, LoreVaultEmbeddingProperties embeddingProperties) {
         this.neo4jClient = neo4jClient;
+        this.embeddingProperties = embeddingProperties;
     }
 
     // Unique constraints on business IDs
@@ -148,7 +153,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(EVENT_PER_CHAPTER_SCENE_INDEX, "Event(chapterId, sceneIndex)"));
         
         // Create vector search index
-        results.add(executeVectorIndex(CHUNK_VECTOR_INDEX, "Chunk embedding vector index"));
+        results.add(ensureChunkVectorIndex());
         
         long successful = results.stream().filter(r -> r.contains("ensured")).count();
         long failed = results.stream().filter(r -> r.contains("failed")).count();
@@ -187,9 +192,23 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         }
     }
 
-    private String executeVectorIndex(String cypher, String description) {
+    private String ensureChunkVectorIndex() {
+        String description = "Chunk embedding vector index";
         try {
-            neo4jClient.query(cypher).run();
+            Integer existingDimensions = existingChunkVectorDimensions();
+            int expectedDimensions = embeddingProperties.model().dimensions();
+
+            if (existingDimensions != null && existingDimensions != expectedDimensions) {
+                log.warn(
+                        "Rebuilding vector index {} due to dimension drift: existing={}, expected={}",
+                        CHUNK_VECTOR_INDEX_NAME,
+                        existingDimensions,
+                        expectedDimensions
+                );
+                neo4jClient.query("DROP INDEX " + CHUNK_VECTOR_INDEX_NAME + " IF EXISTS").run();
+            }
+
+            neo4jClient.query(chunkVectorIndexCypher(expectedDimensions)).run();
             log.debug("Ensured vector index: {}", description);
             return "ensured: " + description;
         } catch (Exception e) {
@@ -199,8 +218,25 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         }
     }
 
-    // Vector search index - Neo4j 5.x vector index for semantic search
-    private static final String CHUNK_VECTOR_INDEX =
-            "CREATE VECTOR INDEX chunk_embedding_idx IF NOT EXISTS FOR (ch:Chunk) ON (ch.embedding) " +
-            "OPTIONS {indexConfig: {`vector.dimensions`: 2560, `vector.similarity_function`: 'cosine'}}";
+    private Integer existingChunkVectorDimensions() {
+        return neo4jClient.query(
+                        "SHOW VECTOR INDEXES YIELD name, options " +
+                        "WHERE name = $indexName " +
+                        "RETURN options.indexConfig.`vector.dimensions` AS dimensions"
+                )
+                .bind(CHUNK_VECTOR_INDEX_NAME).to("indexName")
+                .fetch()
+                .one()
+                .map(row -> row.get("dimensions"))
+                .filter(Number.class::isInstance)
+                .map(Number.class::cast)
+                .map(Number::intValue)
+                .orElse(null);
+    }
+
+    private String chunkVectorIndexCypher(int dimensions) {
+        return "CREATE VECTOR INDEX " + CHUNK_VECTOR_INDEX_NAME + " IF NOT EXISTS FOR (ch:Chunk) ON (ch.embedding) " +
+               "OPTIONS {indexConfig: {`vector.dimensions`: " + dimensions + ", `vector.similarity_function`: 'cosine'}}";
+    }
+
 }

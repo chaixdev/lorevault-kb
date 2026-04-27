@@ -65,6 +65,21 @@ class Neo4jSchemaInitializerVectorIndexTest {
     }
 
     @Test
+    void ensureMinimalSchema_rebuildsVectorIndexWhenDimensionsDrift() {
+        neo4jClient.query(
+                "CREATE VECTOR INDEX chunk_embedding_idx IF NOT EXISTS FOR (ch:Chunk) ON (ch.embedding) " +
+                "OPTIONS {indexConfig: {`vector.dimensions`: 3072, `vector.similarity_function`: 'cosine'}}"
+        ).run();
+
+        assertThat(vectorIndexDimensions("chunk_embedding_idx")).isEqualTo(3072);
+
+        assertDoesNotThrow(() -> schemaInitializer.ensureMinimalSchema());
+
+        assertThat(vectorIndexExists("chunk_embedding_idx")).isTrue();
+        assertThat(vectorIndexDimensions("chunk_embedding_idx")).isEqualTo(2560);
+    }
+
+    @Test
     void ensureMinimalSchema_handlesErrorsGracefully() {
         // Given: Invalid Neo4j state (simulate error condition)
         // This test ensures non-fatal behavior on schema creation errors
