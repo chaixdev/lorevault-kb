@@ -143,7 +143,7 @@ Reason:
 
 That means the new baseline is:
 
-1. a post-persistence rolling-triad LLM co-reference pass builds local co-reference chains from persisted `EventMention` nodes
+1. a post-persistence rolling-triad LLM co-reference pass builds local co-reference chains from persisted `EventMention` nodes using scene-windowed input
 2. aggregate cards are built deterministically from those chains
 3. ANN retrieves broader candidate merges over those cards
 4. semantic likeness analysis verifies broader merges
@@ -161,10 +161,13 @@ That is not enough semantic surface for an embedding model to produce stable, tr
 This is why a dedicated rolling-triad LLM judgment pass is required before embedding:
 
 - it operates on already-persisted `EventMention` nodes, not mid-ingestion
-- it uses rolling overlapping triad windows so ongoing events mentioned across many consecutive scenes can be knitted into one chapter-local chain
-- it takes a bounded window of mentions within a chapter and asks whether they refer to the same event
+- it uses rolling overlapping windows of three consecutive scenes so ongoing events mentioned across many consecutive scenes can be knitted into one chapter-local chain
+- it presents all `EventMention` nodes from those scenes together, grouped by scene rather than flattened into one undifferentiated list
+- it asks whether mentions across that bounded scene window refer to the same event
 - it outputs same-event grouping links, building a co-reference chain per chapter
-- for mentions up to two adjacent chapters apart, the same judgment mechanism can bridge the gap before handing off to ANN
+- later slices may apply the same judgment style to carefully bounded cross-chapter handoff windows before ANN, but that is not required for the first implementation
+
+The implementation target here is important: the triad unit is the persisted scene window, not a sliding list of individual mentions. Scene boundaries are part of the evidence, because the model needs to know whether two mentions were extracted from the same scene, an adjacent scene, or the edge of the local narrative window.
 
 The chain that results from this pass is what becomes the aggregate card.
 
@@ -293,15 +296,50 @@ Rolling-triad co-reference judgment is the primary local grouping mechanism.
 
 ### Input
 
-Persisted `EventMention` nodes for the current chapter are examined through rolling, overlapping triad windows.
+Persisted scenes for the current chapter are examined through rolling, overlapping triad windows.
+
+For each window, the pass gathers all persisted `EventMention` nodes attached to the three scene ids in that window and sends them to the model grouped by scene.
 
 This is a post-persistence pass, not the original scene-temporal triad stage.
 
+### Shared building blocks with scene analysis
+
+This stage should intentionally reuse the same triad-scene processing shape already used by scene analysis, but with a different payload and prompt:
+
+- scene analysis uses a rolling three-scene window over chapter-local scene order to reason about temporal relations and extract entities
+- event co-reference should use that same rolling three-scene window as its local context boundary
+- the reusable unit is therefore the ordered scene window, not a flat list of `EventMention` ids
+
+What is shared:
+
+- ordered scene ids from the persisted chapter scene sequence
+- rolling window construction over those scene ids
+- per-scene grouping as part of the LLM input contract
+- bounded async fanout from `ScenesDetectedEvent`
+
+What remains type-specific:
+
+- the co-reference prompt and response schema
+- mention-field rendering
+- pair judgment validation rules
+- confidence thresholds and later merge verification rules
+
 ### Output
 
-- same-event links between `EventMention` nodes as rolling triads progress
+- same-event links between `EventMention` nodes as rolling scene triads progress
 - chapter-local co-reference chains built from those links
 - unresolved mentions remain allowed when likeness analysis is uncertain
+
+### Implementation notes for the next slice
+
+The immediate implementation target should keep the building blocks clean before the new Stage 2 lands:
+
+- keep `EventMention` persistence intact as the Stage 1 evidence lane
+- keep Stage 3 chapter aggregation intact as the consumer of `SAME_EVENT` chains
+- delete the misleading mention-windowed Stage 2 implementation rather than incrementally mutating it
+- reintroduce Stage 2 around the correct contract: `ScenesDetectedEvent` provides ordered scene ids, Stage 2 windows those ids in groups of three, then loads mentions for those scenes
+
+This matters because the event branch does not need to reconstruct chapter triads from scratch once scenes are already persisted. By the time `ScenesDetectedEvent` fires, the scene ordering needed for Stage 2 is already available in the event payload.
 
 ### Accepted v1 limitation
 
@@ -454,6 +492,8 @@ The implementation technique differs, but the architectural role is the same:
 - `ScenesDetectedEvent` fans out into multiple bounded follow-on branches
 - each branch performs its own scoped reduce operation
 - chapter/book-level completion can fan back in through the existing coordinator pattern
+
+For the event branch specifically, this means `ScenesDetectedEvent` is also the right trigger for the local co-reference pass because it already carries the ordered scene ids that define the Stage 2 rolling scene windows.
 
 This means Event reduction should be modeled as another reducer branch, not as an ad hoc exception to the current pipeline shape.
 
@@ -699,9 +739,15 @@ This design fits the repo because LoreVault already has:
 - vector infrastructure that can be extended beyond chunks
 - query traversal that already benefits from scoped aggregate roots
 
+It also now fits more concretely than the earlier draft suggested because the repo already has:
+
+- a `ScenesDetectedEvent` fanout point carrying ordered scene ids for a chapter
+- scene analysis that already treats a three-scene window as a bounded reasoning unit
+- event persistence that already writes `EventMention` evidence after scene analysis and before downstream reducer branches
+
 So this Event design is not a greenfield reinvention.
 
-It is a stronger hybridization of patterns the repo already uses.
+It is a stronger hybridization of patterns the repo already uses, with Stage 2 now explicitly aligned to the same scene-windowed processing shape rather than a flat mention-window approximation.
 
 ---
 
@@ -711,8 +757,9 @@ It is a stronger hybridization of patterns the repo already uses.
 
 - `EventMention` persistence
 - mention-level scene-relative temporal classifier
-- rolling-triad entity likeness analysis
-- local aggregate links + local aggregate nodes
+- clean removal of the misleading mention-windowed Stage 2 implementation
+- scene-windowed rolling-triad entity likeness analysis
+- local same-event links as rebuildable chain structure
 
 ### Slice 2
 
@@ -746,7 +793,7 @@ The exact file list should be refined during implementation planning, but the ex
 - scene analysis prompt(s)
 - event persistence service and repository layer
 - event mention domain nodes / graph repositories
-- local Event grouping service(s)
+- local Event grouping service(s) aligned to ordered three-scene windows
 - chapter-level event aggregation service + handler
 - higher-scope event aggregation service + handler
 - aggregate-card serialization / embedding code
@@ -762,8 +809,9 @@ LoreVault should now move forward with an **event-first hybrid entity-resolution
 
 - preserve `EventMention` as evidence
 - keep scene-relative temporal semantics on the mention
-- use rolling-triad semantic likeness analysis as the primary grouping mechanism
-- append mentions to local aggregates as triads progress
+- use scene-windowed rolling-triad semantic likeness analysis as the primary grouping mechanism
+- treat ordered three-scene windows as the reusable local processing unit shared with scene analysis
+- append mentions to local same-event chains as scene triads progress
 - build deterministic aggregate cards instead of separate summary calls
 - use ANN book-wide first for long-range candidate generation
 - use semantic verification as the final merge gate
@@ -772,3 +820,80 @@ LoreVault should now move forward with an **event-first hybrid entity-resolution
 - generalize this pipeline later only after the Event lane works on real data
 
 This path gives LoreVault a strong, practical next implementation shape without forcing premature commitment to a final universe-wide `ResolvedEvent` architecture.
+
+---
+
+## Implementation Notes Since This Proposal
+
+Since this proposal was first written, implementation work made one important mismatch visible: a first Stage 2 pass was briefly shaped as a rolling window over individual `EventMention` nodes rather than over persisted scene triads.
+
+That implementation shape has now been explicitly rejected and cleaned out.
+
+What stayed aligned with the proposal:
+
+- `EventMention` remains the Stage 1 evidence unit
+- scene-relative temporal semantics remain mention-level truth
+- `SAME_EVENT` links remain the light-weight rebuildable local chain representation
+- `ChapterEvent` remains the first stable rich aggregate boundary
+
+What changed in the implementation understanding:
+
+- the Stage 2 rolling unit is now explicitly the ordered three-scene window, not a flat list of mentions
+- the right trigger for the event branch is still `ScenesDetectedEvent`, but now for a stronger reason: it already carries the ordered scene ids needed to form Stage 2 windows
+- the reusable building block shared between scene analysis and event resolution is the persisted scene-window shape, while prompts and judgment logic stay type-specific
+
+What remains intentionally unimplemented:
+
+- the new scene-windowed `EventCoreferenceService`
+- the repository query that loads mentions by a supplied ordered scene-id window
+- validation rules that ensure only mention ids from the active scene window can be linked
+- the transaction split that keeps LLM calls out of long-lived graph transactions
+
+This proposal should therefore now be read as the target architecture for the next implementation slice, not as a description of a currently shipped Stage 2 mechanism.
+
+---
+
+## Open Design Question: Chapter Scope vs Book Scope for SAME_EVENT Windowing
+
+### The tension
+
+The current Stage 2 implementation is chapter-scoped in two places:
+
+1. **The windowing input** — `runCorefPass` receives `orderedSceneIds` from a single `ScenesDetectedEvent`, which is chapter-bounded by the ingestion trigger unit.
+2. **The write/invalidation step** — `deleteCoreferenceLinks(chapterId)` uses `chapterId` as the deletion unit before rewriting `SAME_EVENT` links.
+
+This means an event that begins in chapter N and is referenced in chapter N+1 will never be co-referenced across that boundary by Stage 2 — the windows are closed at chapter edges.
+
+### The precedent from scene analysis
+
+Scene analysis already resolves this for scene-level temporal reference: when processing the first scenes of a new chapter, the scene analysis triad includes the previous chapter's last scene as a boundary anchor. This is precisely what gives LoreVault cross-chapter temporal grounding at the scene level.
+
+The same logic applies to event mentions. A battle that began in chapter 3 and is referenced again in chapter 4 is the *same battle*. The windowing mechanism, if left chapter-bounded, will never connect those two mentions even if they are adjacent scenes with the same event description.
+
+### The spoiler-gating constraint
+
+Dissolving chapter scope entirely is not safe. The `ChapterEvent` aggregate node is the boundary unit for spoiler gating: "what events has this reader seen?" is a chapter-boundary question. That means:
+
+- **`SAME_EVENT` links can be book-scoped** — they are a lightweight rebuildable chain, not the visibility boundary.
+- **`ChapterEvent` must remain chapter-scoped** — Stage 3 reads `SAME_EVENT` components and builds one `ChapterEvent` per component per chapter, which is the correct spoiler-gating anchor.
+
+### Proposed resolution direction
+
+| Concern | Scope |
+|---|---|
+| Rolling triad window | Book-scoped — extend first window of a chapter backward to include tail scenes from prior chapter (same pattern as scene analysis) |
+| `SAME_EVENT` links | Book-scoped — keyed on mention-pair only, not chapter |
+| Invalidation unit | Job-scoped or mention-scoped — not chapter-scoped deletion |
+| `ChapterEvent` aggregate | Chapter-scoped — Stage 3 unchanged, spoiler gating preserved |
+| `ChapterEventsResolvedEvent` | Chapter-scoped — fan-in and completion coordinator unchanged |
+
+### What must change to implement this
+
+1. `runCorefPass` would need access to the ordered tail scenes of the previous chapter (or a configured lookback count) to build its first window.
+2. `EventMentionGraphRepository.deleteCoreferenceLinks(chapterId)` would be replaced with a job-scoped or mention-id-scoped invalidation strategy.
+3. `SAME_EVENT` relationship schema would drop `chapterId` as a property (or demote it to a soft annotation).
+4. Stage 3 (`ChapterEventResolutionService`) remains unchanged in contract — it still queries `SAME_EVENT` components scoped by chapter for aggregation.
+
+### Current status
+
+Not yet implemented. The current Stage 2 is chapter-scoped throughout. This question should be resolved before the Stage 2 design is considered stable, but it does not block the current implementation slice — it is a known scope limitation rather than a defect.
