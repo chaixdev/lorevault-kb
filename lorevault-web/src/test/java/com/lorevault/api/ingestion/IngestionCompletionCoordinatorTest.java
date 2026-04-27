@@ -1,24 +1,17 @@
 package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
-
+import com.lorevault.api.ingestion.application.pipeline.IngestionCompletionCoordinator;
+import com.lorevault.api.ingestion.domain.IngestionJob;
+import com.lorevault.api.ingestion.domain.IngestionStatus;
+import com.lorevault.api.ingestion.domain.StatusRecord;
 import com.lorevault.api.ingestion.events.BookIndividualsReducedEvent;
 import com.lorevault.api.ingestion.events.BookLocationsReducedEvent;
-import com.lorevault.api.ingestion.events.EmbeddingsCompletedEvent;
+import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
+import com.lorevault.api.ingestion.events.BookIndividualsReducedEvent;
+import com.lorevault.api.ingestion.events.BookLocationsReducedEvent;
 import com.lorevault.api.ingestion.events.IngestionCompletedEvent;
+import com.lorevault.api.ingestion.events.EmbeddingsCompletedEvent;
+import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -71,6 +64,18 @@ class IngestionCompletionCoordinatorTest {
 
         coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 2, 1));
 
+        verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));
+
+        coordinator.handleChapterEventsResolved(new ChapterEventsResolvedEvent(
+                this,
+                jobId,
+                chapterId,
+                UUID.randomUUID(),
+                true,
+                5,
+                2
+        ));
+
         verify(ingestionJobService).completeJob(job, chapterId, 1200);
         verify(eventPublisher).publishEvent(any(IngestionCompletedEvent.class));
     }
@@ -93,6 +98,15 @@ class IngestionCompletionCoordinatorTest {
         coordinator.handleBookIndividualsReduced(new BookIndividualsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 3, 1));
         coordinator.handleEmbeddingsCompleted(new EmbeddingsCompletedEvent(this, jobId, chapterId, 2, 4, 4, 1200));
         coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 2, 1));
+        coordinator.handleChapterEventsResolved(new ChapterEventsResolvedEvent(
+                this,
+                jobId,
+                chapterId,
+                UUID.randomUUID(),
+                true,
+                5,
+                2
+        ));
 
         verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));
         verify(eventPublisher, never()).publishEvent(any(IngestionCompletedEvent.class));

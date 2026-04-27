@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface EventMentionGraphRepository extends Neo4jRepository<EventMention, UUID> {
 
@@ -19,7 +20,7 @@ public interface EventMentionGraphRepository extends Neo4jRepository<EventMentio
     /**
      * Returns all EventMention nodes for a chapter in deterministic order:
      * by scene extraction order first, then by extractionIndex within each scene.
-     * This ordering is required for the rolling-triad co-reference pass (Stage 2).
+     * Used by Stage 3 (ChapterEventResolutionService) to load all mentions for aggregation.
      */
     @Query("""
             MATCH (s:Scene {chapterId: $chapterId})-[:MENTIONS]->(m:EventMention {chapterId: $chapterId})
@@ -27,6 +28,14 @@ public interface EventMentionGraphRepository extends Neo4jRepository<EventMentio
             ORDER BY coalesce(s.sceneIndex, 0), coalesce(m.extractionIndex, 0)
             """)
     List<EventMention> findByChapterIdOrdered(UUID chapterId);
+
+    @Query("""
+            MATCH (s:Scene)-[:MENTIONS]->(m:EventMention)
+            WHERE s.id IN $sceneIds
+            RETURN m
+            ORDER BY m.sceneId, m.extractionIndex
+            """)
+    List<EventMention> findMentionsBySceneIds(@Param("sceneIds") List<String> sceneIds);
 
     /**
      * Delete all SAME_EVENT co-reference links between EventMention nodes in a chapter.
@@ -52,38 +61,7 @@ public interface EventMentionGraphRepository extends Neo4jRepository<EventMentio
             WITH a
             MATCH (b:EventMention {id: $mentionIdB})
             MERGE (a)-[r:SAME_EVENT]->(b)
-            SET r.confidence = $confidence, r.passId = $passId, r.model = $model
+            SET r.confidence = $confidence, r.passId = $passId, r.source = $source, r.model = $model
             """)
-    void createSameEventLink(UUID mentionIdA, UUID mentionIdB, double confidence, String passId, String model);
-
-    /**
-     * Find connected components (clusters) of EventMention nodes linked by SAME_EVENT.
-     * Returns rows of [componentId (the lowest UUID in each component), mentionId].
-     * Callers group by componentId to get each chain.
-     *
-     * Note: Cypher does not have native connected-component traversal, so this uses
-     * a bounded variable-length path match scoped to a single chapter.
-     * The canonical component representative is the mention with the lexicographically
-     * smallest id string — used only as a stable grouping key, not as a logical head.
-     */
-    @Query("""
-            MATCH (root:EventMention {chapterId: $chapterId})
-            OPTIONAL MATCH path = (root)-[:SAME_EVENT*0..]-(peer:EventMention {chapterId: $chapterId})
-            WHERE all(n IN nodes(path) WHERE n.chapterId = $chapterId)
-            WITH root, collect(DISTINCT coalesce(peer.id, root.id)) AS componentMemberIds
-            WITH root,
-                 [x IN componentMemberIds | toString(x)] AS componentMemberStrings
-            WITH root,
-                 componentMemberStrings,
-                 reduce(minId = componentMemberStrings[0], x IN componentMemberStrings |
-                     CASE WHEN x < minId THEN x ELSE minId END
-                 ) AS componentId
-            RETURN toString(root.id) AS mentionId, componentId
-            """)
-    List<SameEventComponentRow> findSameEventComponents(UUID chapterId);
-
-    interface SameEventComponentRow {
-        String getMentionId();
-        String getComponentId();
-    }
+    void createSameEventLink(UUID mentionIdA, UUID mentionIdB, double confidence, String passId, String source, String model);
 }

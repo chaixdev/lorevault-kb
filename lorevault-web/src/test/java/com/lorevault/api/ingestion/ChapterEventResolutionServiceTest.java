@@ -3,6 +3,7 @@ package com.lorevault.api.ingestion;
 import com.lorevault.api.content.entities.ChapterEvent;
 import com.lorevault.api.content.entities.ChapterEventGraphRepository;
 import com.lorevault.api.content.entities.EventMention;
+import com.lorevault.api.content.entities.EventMentionComponentLookup;
 import com.lorevault.api.content.entities.EventMentionGraphRepository;
 import com.lorevault.api.ingestion.application.resolution.ChapterEventResolutionService;
 import com.lorevault.api.ingestion.application.result.ChapterEventResolutionResult;
@@ -31,6 +32,9 @@ class ChapterEventResolutionServiceTest {
     @Mock
     private EventMentionGraphRepository mentionRepository;
 
+    @Mock
+    private EventMentionComponentLookup componentLookup;
+
     @InjectMocks
     private ChapterEventResolutionService service;
 
@@ -38,17 +42,14 @@ class ChapterEventResolutionServiceTest {
     // Helpers
     // ---------------------------------------------------------------------------
 
-    private EventMentionGraphRepository.SameEventComponentRow componentRow(String mentionId, String componentId) {
-        return new EventMentionGraphRepository.SameEventComponentRow() {
-            @Override public String getMentionId() { return mentionId; }
-            @Override public String getComponentId() { return componentId; }
-        };
+    private EventMentionComponentLookup.SameEventComponentRow componentRow(String mentionId, String componentId) {
+        return new EventMentionComponentLookup.SameEventComponentRow(mentionId, componentId);
     }
 
     private EventMention mention(UUID id, String displayName, String normalizedName,
                                   String eventType, String relation, String evidence, UUID chapterId) {
         return new EventMention(id, null, displayName, normalizedName, List.of(),
-                eventType, relation, null, evidence, null, chapterId, null, null, null, null, null);
+                eventType, displayName + " description", relation, null, evidence, null, chapterId, null, null, null, null, null);
     }
 
     private List<ChapterEvent> captureAllSaved() {
@@ -87,7 +88,7 @@ class ChapterEventResolutionServiceTest {
         String comp2 = m3.toString();
 
         when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(3L);
-        when(mentionRepository.findSameEventComponents(chapterId)).thenReturn(List.of(
+        when(componentLookup.findSameEventComponents(chapterId)).thenReturn(List.of(
                 componentRow(m1.toString(), comp1),
                 componentRow(m2.toString(), comp1),
                 componentRow(m3.toString(), comp2)
@@ -127,7 +128,7 @@ class ChapterEventResolutionServiceTest {
         String comp = m1.toString();
 
         when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(3L);
-        when(mentionRepository.findSameEventComponents(chapterId)).thenReturn(List.of(
+        when(componentLookup.findSameEventComponents(chapterId)).thenReturn(List.of(
                 componentRow(m1.toString(), comp),
                 componentRow(m2.toString(), comp),
                 componentRow(m3.toString(), comp)
@@ -155,7 +156,7 @@ class ChapterEventResolutionServiceTest {
         String comp = m1.toString();
 
         when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(1L);
-        when(mentionRepository.findSameEventComponents(chapterId)).thenReturn(List.of(
+        when(componentLookup.findSameEventComponents(chapterId)).thenReturn(List.of(
                 componentRow(m1.toString(), comp)
         ));
         when(mentionRepository.findByChapterIdOrdered(chapterId)).thenReturn(List.of(
@@ -176,7 +177,7 @@ class ChapterEventResolutionServiceTest {
     void returnsFailureWhenNoComponents() {
         UUID chapterId = UUID.randomUUID();
         when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
-        when(mentionRepository.findSameEventComponents(chapterId)).thenReturn(List.of());
+        when(componentLookup.findSameEventComponents(chapterId)).thenReturn(List.of());
 
         ChapterEventResolutionResult result = service.resolveChapter(chapterId);
 
@@ -194,7 +195,7 @@ class ChapterEventResolutionServiceTest {
         String comp = m1.toString();
 
         when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
-        when(mentionRepository.findSameEventComponents(chapterId)).thenReturn(List.of(
+        when(componentLookup.findSameEventComponents(chapterId)).thenReturn(List.of(
                 componentRow(m1.toString(), comp),
                 componentRow(m2.toString(), comp)
         ));
@@ -224,7 +225,7 @@ class ChapterEventResolutionServiceTest {
         String comp2 = m3.toString();
 
         when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(3L);
-        when(mentionRepository.findSameEventComponents(chapterId)).thenReturn(List.of(
+        when(componentLookup.findSameEventComponents(chapterId)).thenReturn(List.of(
                 componentRow(m1.toString(), comp1),
                 componentRow(m2.toString(), comp1),
                 componentRow(m3.toString(), comp2)

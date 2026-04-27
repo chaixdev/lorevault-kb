@@ -135,6 +135,8 @@ public class FakeContentRepositories {
 
     final class ChapterDelegate implements ChapterGraphRepository {
 
+        private final Map<UUID, UUID> completedEventResolutionJobsByChapter = new HashMap<>();
+
         @Override
         public Optional<Chapter> findByContentHash(String contentHash) {
             return chapters.values().stream()
@@ -153,6 +155,16 @@ public class FakeContentRepositories {
                     .filter(c -> Objects.equals(c.getBookId(), bookId))
                     .sorted(Comparator.comparingInt(c -> c.getChapterNumber() == null ? 0 : c.getChapterNumber()))
                     .collect(Collectors.toList());
+        }
+
+        @Override
+        public boolean hasCompletedEventResolutionForJob(UUID chapterId, UUID jobId) {
+            return Objects.equals(completedEventResolutionJobsByChapter.get(chapterId), jobId);
+        }
+
+        @Override
+        public void markEventResolutionCompleted(UUID chapterId, UUID jobId) {
+            completedEventResolutionJobsByChapter.put(chapterId, jobId);
         }
 
         @Override

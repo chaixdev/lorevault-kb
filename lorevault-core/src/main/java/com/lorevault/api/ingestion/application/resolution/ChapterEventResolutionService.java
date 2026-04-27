@@ -3,6 +3,7 @@ package com.lorevault.api.ingestion.application.resolution;
 import com.lorevault.api.content.entities.ChapterEvent;
 import com.lorevault.api.content.entities.ChapterEventGraphRepository;
 import com.lorevault.api.content.entities.EventMention;
+import com.lorevault.api.content.entities.EventMentionComponentLookup;
 import com.lorevault.api.content.entities.EventMentionGraphRepository;
 import com.lorevault.api.ingestion.application.result.ChapterEventResolutionResult;
 
@@ -38,6 +39,7 @@ public class ChapterEventResolutionService {
 
     private final ChapterEventGraphRepository chapterEventRepository;
     private final EventMentionGraphRepository mentionRepository;
+    private final EventMentionComponentLookup componentLookup;
 
     @Transactional
     public ChapterEventResolutionResult resolveChapter(UUID chapterId) {
@@ -55,15 +57,15 @@ public class ChapterEventResolutionService {
         chapterEventRepository.deleteByChapterId(chapterId);
 
         // Derive connected components from SAME_EVENT links
-        List<EventMentionGraphRepository.SameEventComponentRow> componentRows =
-                mentionRepository.findSameEventComponents(chapterId);
+        List<EventMentionComponentLookup.SameEventComponentRow> componentRows =
+                componentLookup.findSameEventComponents(chapterId);
 
         // Group mention ids by their component representative id
         Map<String, List<String>> componentMap = componentRows.stream()
                 .collect(Collectors.groupingBy(
-                        EventMentionGraphRepository.SameEventComponentRow::getComponentId,
+                        EventMentionComponentLookup.SameEventComponentRow::componentId,
                         Collectors.mapping(
-                                EventMentionGraphRepository.SameEventComponentRow::getMentionId,
+                                EventMentionComponentLookup.SameEventComponentRow::mentionId,
                                 Collectors.toList()
                         )
                 ));

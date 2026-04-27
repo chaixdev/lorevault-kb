@@ -17,7 +17,18 @@ public class ScenesDetectedEvent extends IngestionEvent {
     private final int sceneCount;
     
     public ScenesDetectedEvent(Object source, UUID jobId, UUID chapterId, UUID bookId, List<UUID> sceneIds) {
-        super(source, jobId, chapterId);
+        this(source, jobId, jobId, chapterId, bookId, sceneIds);
+    }
+
+    public ScenesDetectedEvent(
+            Object source,
+            UUID jobId,
+            UUID correlationId,
+            UUID chapterId,
+            UUID bookId,
+            List<UUID> sceneIds
+    ) {
+        super(source, jobId, correlationId, chapterId);
         this.bookId = bookId;
         this.sceneIds = sceneIds;
         this.sceneCount = sceneIds.size();

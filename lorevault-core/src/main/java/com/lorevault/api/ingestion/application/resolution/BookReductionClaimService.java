@@ -3,11 +3,10 @@ package com.lorevault.api.ingestion.application.resolution;
 import com.lorevault.api.ingestion.infrastructure.BookReductionClaimRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.net.InetAddress;
 import java.time.Duration;
@@ -36,28 +35,27 @@ public class BookReductionClaimService {
     private static final Duration STALE_CLAIM_MAX_AGE = Duration.ofMinutes(30);
 
     private final BookReductionClaimRepository claimRepository;
+    private final TransactionTemplate requiredTransactionTemplate;
+    private final TransactionTemplate requiresNewTransactionTemplate;
 
-    /**
-     * Self-reference injected lazily so that {@link #releaseStaleClaimsOnStartup()}
-     * can invoke {@link #releaseStaleClaimsOlderThan(Duration)} through the Spring
-     * proxy, ensuring the {@code @Transactional} advice is applied.
-     */
-    @Lazy
-    @Autowired
-    private BookReductionClaimService self;
-
-    public BookReductionClaimService(BookReductionClaimRepository claimRepository) {
+    public BookReductionClaimService(
+            BookReductionClaimRepository claimRepository,
+            PlatformTransactionManager transactionManager
+    ) {
         this.claimRepository = claimRepository;
+        this.requiredTransactionTemplate = new TransactionTemplate(transactionManager);
+        this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
+        this.requiresNewTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     /**
      * On startup, release any stale claims left by a previous crashed process.
-     * Delegates through {@link #self} so the proxy-backed {@code @Transactional}
-     * on {@link #releaseStaleClaimsOlderThan} is honoured.
+     * Runs in an explicit transaction without requiring a self-proxy, which would
+     * introduce a bean cycle during context startup.
      */
     @PostConstruct
     public void releaseStaleClaimsOnStartup() {
-        self.releaseStaleClaimsOlderThan(STALE_CLAIM_MAX_AGE);
+        releaseStaleClaimsOlderThan(STALE_CLAIM_MAX_AGE);
     }
 
     /**
@@ -103,20 +101,21 @@ public class BookReductionClaimService {
      * @return {@code true} if this call acquired the claim; {@code false} if another
      *         worker already holds it
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean tryAcquireClaim(UUID bookId) {
-        String workerId = workerId();
-        boolean acquired = claimRepository.tryAcquireClaim(
-                bookId.toString(),
-                LocalDateTime.now(),
-                workerId
-        );
-        if (acquired) {
-            log.debug("[BookClaim] Acquired claim bookId={} worker={}", bookId, workerId);
-        } else {
-            log.debug("[BookClaim] Claim already held bookId={}", bookId);
-        }
-        return acquired;
+        return Boolean.TRUE.equals(requiresNewTransactionTemplate.execute(status -> {
+            String workerId = workerId();
+            boolean acquired = claimRepository.tryAcquireClaim(
+                    bookId.toString(),
+                    LocalDateTime.now(),
+                    workerId
+            );
+            if (acquired) {
+                log.debug("[BookClaim] Acquired claim bookId={} worker={}", bookId, workerId);
+            } else {
+                log.debug("[BookClaim] Claim already held bookId={}", bookId);
+            }
+            return acquired;
+        }));
     }
 
     /**
@@ -128,11 +127,12 @@ public class BookReductionClaimService {
      *
      * @param bookId the book whose claim should be released
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void releaseClaim(UUID bookId) {
-        String workerId = workerId();
-        claimRepository.releaseClaim(bookId.toString(), workerId);
-        log.debug("[BookClaim] Released claim bookId={} worker={}", bookId, workerId);
+        requiresNewTransactionTemplate.executeWithoutResult(status -> {
+            String workerId = workerId();
+            claimRepository.releaseClaim(bookId.toString(), workerId);
+            log.debug("[BookClaim] Released claim bookId={} worker={}", bookId, workerId);
+        });
     }
 
     /**
@@ -141,11 +141,12 @@ public class BookReductionClaimService {
      *
      * @param maxAge maximum acceptable claim age; claims older than this are deleted
      */
-    @Transactional
     public void releaseStaleClaimsOlderThan(Duration maxAge) {
-        LocalDateTime threshold = LocalDateTime.now().minus(maxAge);
-        claimRepository.deleteStaleClaimsOlderThan(threshold);
-        log.info("[BookClaim] Released stale claims older than {}", maxAge);
+        requiredTransactionTemplate.executeWithoutResult(status -> {
+            LocalDateTime threshold = LocalDateTime.now().minus(maxAge);
+            claimRepository.deleteStaleClaimsOlderThan(threshold);
+            log.info("[BookClaim] Released stale claims older than {}", maxAge);
+        });
     }
 
     // -------------------------------------------------------------------------

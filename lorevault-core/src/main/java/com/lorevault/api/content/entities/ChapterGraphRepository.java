@@ -23,4 +23,17 @@ public interface ChapterGraphRepository extends Neo4jRepository<Chapter, UUID> {
             """)
     List<Chapter> findByBookId(UUID bookId);
 
+    @Query("""
+            MATCH (c:Chapter {id: $chapterId})
+            RETURN coalesce(c.eventResolutionCompletedJobId, '') = toString($jobId)
+            """)
+    boolean hasCompletedEventResolutionForJob(UUID chapterId, UUID jobId);
+
+    @Query("""
+            MATCH (c:Chapter {id: $chapterId})
+            SET c.eventResolutionCompletedJobId = toString($jobId),
+                c.eventResolutionCompletedAt = datetime()
+            """)
+    void markEventResolutionCompleted(UUID chapterId, UUID jobId);
+
 }
