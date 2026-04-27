@@ -29,7 +29,7 @@ public interface IngestionJobGraphRepository extends Neo4jRepository<IngestionJo
 
     @Query("""
             MATCH (j:IngestionJob {chapterId: $chapterId})-[:HAS_CURRENT_STATUS]->(s:StatusRecord)
-            WHERE s.status NOT IN ['COMPLETE','FAILED']
+            WHERE NOT (s.status IN ['COMPLETE','FAILED'])
             RETURN count(j) > 0
             """)
     boolean existsActiveForChapter(UUID chapterId);
