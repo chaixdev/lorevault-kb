@@ -142,8 +142,8 @@ class ChapterEventResolutionHandlerTest {
     }
 
     @Test
-    @DisplayName("eventPublicationFailure_doesNotWriteSyntheticCompletionMarker")
-    void eventPublicationFailureDoesNotWriteSyntheticCompletionMarker() {
+    @DisplayName("eventPublicationFailure_marksJobFailedAndDoesNotPropagate")
+    void eventPublicationFailureMarksJobFailedAndDoesNotPropagate() {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         UUID bookId = UUID.randomUUID();
@@ -153,12 +153,15 @@ class ChapterEventResolutionHandlerTest {
                 .thenReturn(new ChapterEventResolutionResult(chapterId, true, 3, 2, 0, "ok"));
         doThrow(new RuntimeException("event bus unavailable")).when(eventPublisher).publishEvent(any(ChapterEventsResolvedEvent.class));
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+        // Publish failure is now inside runStage — must NOT propagate
+        org.assertj.core.api.Assertions.assertThatCode(() ->
                 handler.handleScenesDetected(scenesDetectedEvent(jobId, chapterId, bookId))
-        ).isInstanceOf(RuntimeException.class).hasMessageContaining("event bus unavailable");
+        ).doesNotThrowAnyException();
 
         verify(eventCoreferenceService).runCorefPass(anyList(), eq(chapterId), eq(jobId));
         verify(chapterEventResolutionService).resolveChapter(chapterId);
         verify(eventPublisher).publishEvent(any(ChapterEventsResolvedEvent.class));
+        // Job must be marked FAILED due to publish failure
+        verify(ingestionJobService).updateJobStatus(eq(jobId), eq(IngestionStatus.FAILED), anyString(), anyMap());
     }
 }

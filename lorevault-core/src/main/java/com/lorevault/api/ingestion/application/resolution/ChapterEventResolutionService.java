@@ -211,22 +211,19 @@ public class ChapterEventResolutionService {
 
         card.append("**Mention count:** ").append(mentions.size()).append("\n");
 
-        List<String> relations = distinct(mentions.stream().map(EventMention::sceneRelativeRelation).toList());
-        if (!relations.isEmpty()) {
-            card.append("**Scene-relative relations:** ").append(String.join(", ", relations)).append("\n");
-        }
-
-        List<String> snippets = mentions.stream()
-                .map(EventMention::evidence)
+        List<String> descriptions = mentions.stream()
+                .map(EventMention::description)
                 .filter(Objects::nonNull)
+                .map(String::trim)
                 .filter(s -> !s.isBlank())
+                .distinct()
                 .limit(4)
                 .toList();
 
-        if (!snippets.isEmpty()) {
-            card.append("\n**Evidence:**\n");
-            for (String snippet : snippets) {
-                card.append("- ").append(snippet.trim()).append("\n");
+        if (!descriptions.isEmpty()) {
+            card.append("\n**Descriptions:**\n");
+            for (String description : descriptions) {
+                card.append("- ").append(description).append("\n");
             }
         }
 

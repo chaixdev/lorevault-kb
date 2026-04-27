@@ -179,18 +179,21 @@ class ChapterEventResolutionServiceTest {
     }
 
     @Test
-    @DisplayName("Aggregate card includes event type and evidence")
-    void aggregateCardIncludesTypeAndEvidence() {
+    @DisplayName("Aggregate card promotes descriptions and keeps temporal context secondary")
+    void aggregateCardPromotesDescriptionsAndKeepsTemporalContextSecondary() {
         UUID chapterId = UUID.randomUUID();
         UUID m1 = UUID.randomUUID();
+        UUID m2 = UUID.randomUUID();
         String comp = m1.toString();
 
-        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(1L);
+        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
         when(componentLookup.findSameEventComponents(chapterId)).thenReturn(List.of(
-                componentRow(m1.toString(), comp)
+                componentRow(m1.toString(), comp),
+                componentRow(m2.toString(), comp)
         ));
         when(mentionRepository.findByChapterIdOrdered(chapterId)).thenReturn(List.of(
-                mention(m1, "The Betrayal", "the betrayal", "BETRAYAL", "FOLLOWS", "He turned his blade on his king", chapterId)
+                mention(m1, "The Betrayal", "the betrayal", "BETRAYAL", "FOLLOWS", "He turned his blade on his king", chapterId),
+                mention(m2, "The Betrayal", "the betrayal", "BETRAYAL", "PRECEDES", "The king's guard answered too late", chapterId)
         ));
         when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
         when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(1L);
@@ -199,7 +202,12 @@ class ChapterEventResolutionServiceTest {
 
         List<ChapterEvent> saved = captureAllSaved();
         assertThat(saved.get(0).aggregateCard()).contains("BETRAYAL");
-        assertThat(saved.get(0).aggregateCard()).contains("He turned his blade on his king");
+        assertThat(saved.get(0).aggregateCard()).contains("**Descriptions:**");
+        assertThat(saved.get(0).aggregateCard()).contains("The Betrayal description");
+        assertThat(saved.get(0).aggregateCard()).doesNotContain("Scene-relative relations");
+        assertThat(saved.get(0).aggregateCard()).doesNotContain("Evidence");
+        assertThat(saved.get(0).aggregateCard()).doesNotContain("He turned his blade on his king");
+        assertThat(saved.get(0).aggregateCard()).doesNotContain("The king's guard answered too late");
     }
 
     @Test

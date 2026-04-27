@@ -34,6 +34,7 @@ public class ChapterEventResolutionHandler {
 
     static final String STAGE_EVENT_COREF = "EVENT_COREF";
     static final String STAGE_CHAPTER_EVENT_AGGREGATION = "CHAPTER_EVENT_AGGREGATION";
+    static final String STAGE_EVENT_RESOLUTION_PUBLISH = "EVENT_RESOLUTION_PUBLISH";
 
     private final EventCoreferenceService eventCoreferenceService;
     private final ChapterEventResolutionService chapterEventResolutionService;
@@ -141,17 +142,28 @@ public class ChapterEventResolutionHandler {
             );
         }
 
-        eventPublisher.publishEvent(new ChapterEventsResolvedEvent(
-                 this,
-                 jobId,
-                 correlationId,
-                 chapterId,
-                 bookId,
-                 aggregationResult.success(),
-                 aggregationResult.rawMentionsProcessed(),
-                 aggregationResult.chapterEventsCreated(),
-                 aggregationResult.failedCorefWindowCount()
-        ));
+        ChapterEventResolutionResult finalResult = aggregationResult;
+        pipelineStageSupport.runStage(
+                this,
+                STAGE_EVENT_RESOLUTION_PUBLISH,
+                jobId,
+                chapterId,
+                () -> {
+                    eventPublisher.publishEvent(new ChapterEventsResolvedEvent(
+                            this,
+                            jobId,
+                            correlationId,
+                            chapterId,
+                            bookId,
+                            finalResult.success(),
+                            finalResult.rawMentionsProcessed(),
+                            finalResult.chapterEventsCreated(),
+                            finalResult.failedCorefWindowCount()
+                    ));
+                    return null;
+                },
+                e -> false
+        );
     }
 
     private List<UUID> sceneIdsOrEmpty(List<UUID> sceneIds) {

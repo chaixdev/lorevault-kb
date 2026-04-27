@@ -91,6 +91,12 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE INDEX chapter_event_chapter_name IF NOT EXISTS FOR (ce:ChapterEvent) ON (ce.chapterId, ce.normalizedName)";
     private static final String BOOK_LOCATION_BOOK_NAME_INDEX =
             "CREATE INDEX book_location_book_name IF NOT EXISTS FOR (bl:BookLocation) ON (bl.bookId, bl.normalizedName)";
+    private static final String LLM_CALL_RECORD_JOB_ID_INDEX =
+            "CREATE INDEX llm_call_record_job_id IF NOT EXISTS FOR (r:LlmCallRecord) ON (r.jobId)";
+    private static final String LLM_CALL_RECORD_JOB_STEP_INDEX =
+            "CREATE INDEX llm_call_record_job_step IF NOT EXISTS FOR (r:LlmCallRecord) ON (r.jobId, r.step)";
+    private static final String LLM_CALL_RECORD_JOB_STEP_STATUS_INDEX =
+            "CREATE INDEX llm_call_record_job_step_status IF NOT EXISTS FOR (r:LlmCallRecord) ON (r.jobId, r.step, r.statusRecordId)";
 
     // Per-chapter ordering index for events
     private static final String EVENT_PER_CHAPTER_SCENE_INDEX =
@@ -134,6 +140,9 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(EVENT_MENTION_CHAPTER_NAME_INDEX, "EventMention(chapterId, normalizedName)"));
         results.add(executeIndex(CHAPTER_EVENT_CHAPTER_NAME_INDEX, "ChapterEvent(chapterId, normalizedName)"));
         results.add(executeIndex(BOOK_LOCATION_BOOK_NAME_INDEX, "BookLocation(bookId, normalizedName)"));
+        results.add(executeIndex(LLM_CALL_RECORD_JOB_ID_INDEX, "LlmCallRecord(jobId)"));
+        results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_INDEX, "LlmCallRecord(jobId, step)"));
+        results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_STATUS_INDEX, "LlmCallRecord(jobId, step, statusRecordId)"));
         
         // Event per-chapter ordering index
         results.add(executeIndex(EVENT_PER_CHAPTER_SCENE_INDEX, "Event(chapterId, sceneIndex)"));

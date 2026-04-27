@@ -70,6 +70,7 @@ sequenceDiagram
     SDH->>CH : "publish ScenesDetectedEvent"
     SDH->>CIRH : "publish ScenesDetectedEvent"
     SDH->>CLRH : "publish ScenesDetectedEvent"
+    SDH->>ICC : "publish ChapterEventsResolvedEvent"
     
     CH->>TCS : "createChunks(scenes)"
     TCS-->>CH : "return chunks"
@@ -143,6 +144,7 @@ sequenceDiagram
   - `EmbeddingsCompletedEvent`
   - `BookIndividualsReducedEvent`
   - `BookLocationsReducedEvent`
+  - `ChapterEventsResolvedEvent`
 - Only then is the job marked complete and `IngestionCompletedEvent` emitted.
 
 ### Abstract Orchestration Model
@@ -161,7 +163,7 @@ This means the pipeline is not a single long-running transaction and not a sched
 | Completed task | Success event emitted | Downstream task(s) triggered |
 |---|---|---|
 | Chapter submission and job creation (`IngestionService`) | `ChapterIngestionEvent` | Scene detection (`SceneDetectionHandler`) |
-| Scene detection, scene persistence, temporal-edge materialization, scene-local evidence persistence (`SceneDetectionHandler`) | `ScenesDetectedEvent` | Chunk creation (`ChunkingHandler`), chapter individual resolution (`ChapterIndividualResolutionHandler`), chapter location resolution (`ChapterLocationResolutionHandler`) |
+| Scene detection, scene persistence, temporal-edge materialization, scene-local evidence persistence (`SceneDetectionHandler`) | `ScenesDetectedEvent` | Chunk creation (`ChunkingHandler`), chapter individual resolution (`ChapterIndividualResolutionHandler`), chapter location resolution (`ChapterLocationResolutionHandler`), chapter event resolution (`ChapterEventResolutionHandler`) |
 | Chunk creation and persistence (`ChunkingHandler`) | `ChunksCreatedEvent` | Embedding generation (`EmbeddingHandler`) |
 | Embedding generation (`EmbeddingHandler`) | `EmbeddingsCompletedEvent` | Completion coordination state update (`IngestionCompletionCoordinator`) |
 | Chapter-level individual resolution (`ChapterIndividualResolutionHandler`) | `ChapterIndividualsResolvedEvent` | Book-level individual reduction (`BookIndividualReductionHandler`) |
@@ -192,7 +194,7 @@ The important contract is not just that an event was emitted, but what downstrea
 - Mean the chapter-scoped reduction pass is complete for that evidence type.
 - Allow the corresponding book-scoped reduction step to rebuild the book-level aggregate.
 
-**`BookIndividualsReducedEvent` / `BookLocationsReducedEvent` / `EmbeddingsCompletedEvent`**
+**`BookIndividualsReducedEvent` / `BookLocationsReducedEvent` / `EmbeddingsCompletedEvent` / `ChapterEventsResolvedEvent`**
 - Mean one of the required post-scene branches has finished.
 - Do not individually complete the ingestion job.
 - Instead, they contribute to the completion barrier tracked by `IngestionCompletionCoordinator`.
@@ -220,6 +222,7 @@ The runtime shape is:
    - chunk/embedding branch
    - individual resolution branch
    - location resolution branch
+   - chapter event resolution branch
 4. **Join** inside `IngestionCompletionCoordinator`, which waits for the required terminal branch events.
 5. **Single terminal outcome**, either `IngestionCompletedEvent` or `IngestionFailedEvent`.
 
@@ -247,6 +250,7 @@ gantt
     "Chunk creation" :chunks, after scenes, 2
     "Chapter individual resolution" :chapterIndividuals, after scenes, 3
     "Chapter location resolution" :chapterLocations, after scenes, 3
+    "Chapter event resolution" :chapterEvents, after scenes, 3
 
     section "Downstream branch work"
     "Embedding generation" :embeddings, after chunks, 3
@@ -257,6 +261,7 @@ gantt
     "Completion coordination" :join, after embeddings, 1
     "Completion coordination waits for individual branch" :milestone, after bookIndividuals, 0
     "Completion coordination waits for location branch" :milestone, after bookLocations, 0
+    "Completion coordination waits for chapter event branch" :milestone, after chapterEvents, 0
     "Ingestion completed" :milestone, complete, after join, 0
 ```
 
@@ -264,7 +269,7 @@ Read this diagram as:
 
 - scene detection is the first substantial worker stage
 - `ScenesDetectedEvent` creates the main parallel fan-out
-- chunking, chapter individual resolution, and chapter location resolution can overlap
+- chunking, chapter individual resolution, chapter location resolution, and chapter event resolution can overlap
 - embedding generation depends on chunking only
 - book-level reductions depend on their corresponding chapter-level reductions only
 - overall completion still waits for all required terminal branch events, even if one branch finished much earlier than the others
@@ -355,12 +360,13 @@ transaction guarantee. Do not propagate `AFTER_COMMIT` further downstream.
 
 ### Fan-In Coordinator
 
-`IngestionCompletionCoordinator` expects exactly three branches to complete before
+`IngestionCompletionCoordinator` expects exactly four branches to complete before
 firing `IngestionCompletedEvent`:
 
 1. Embedding path: `ChunkingHandler → EmbeddingHandler`
 2. Location path: `ChapterLocationResolutionHandler → BookLocationReductionHandler`
 3. Individual path: `ChapterIndividualResolutionHandler → BookIndividualReductionHandler`
+4. Chapter event path: `ChapterEventResolutionHandler`
 
 **Do not add a new pipeline branch without updating the coordinator's expected count.**
 The coordinator uses an atomic counter. Adding a branch without incrementing the expected
@@ -368,3 +374,4 @@ count causes premature completion — the job completes before all work is done.
 
 If a branch fails, the coordinator must still reach a terminal state. Unhandled branch
 failures leave the job permanently in `IN_PROGRESS`.
+| Chapter event co-reference and chapter event aggregation (`ChapterEventResolutionHandler`) | `ChapterEventsResolvedEvent` | Completion coordination state update (`IngestionCompletionCoordinator`) |

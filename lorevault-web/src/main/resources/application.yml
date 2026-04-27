@@ -56,6 +56,12 @@ management:
 
 # LoreVault Configuration (cleaned)
 lorevault:
+  web:
+    multipart:
+      # Batch ingestion sends several multipart fields per file, so Tomcat's default
+      # 50-part parser limit is too low for medium-sized chapter batches.
+      max-part-count: 200
+
   # Schema initialization - disabled by default (enabled in dev profile)
   schema:
     enabled: true
