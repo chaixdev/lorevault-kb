@@ -81,7 +81,7 @@ The shared behavior across lanes:
 
 `BookEntity` is deliberately thin in both lanes. It is a continuity structure for retrieval and navigation, not a rich aggregate facts model.
 
-Book reduction is serialized per book using a per-book lock to prevent concurrent delete-and-rebuild races when multiple chapter completions for the same book arrive close together.
+Book reduction is serialized per book using a persisted `BookReductionClaim` in Neo4j so concurrent delete-and-rebuild runs for the same `bookId` do not overlap, even across multiple JVM instances.
 
 ---
 
@@ -236,7 +236,7 @@ Both `ChapterIndividualResolutionService` and `ChapterLocationResolutionService`
 
 ### Book reduction (both lanes)
 
-Both book reduction services use delete-and-rebuild semantics. Automatic triggering is serialized per book via a per-book `ReentrantLock` keyed by `bookId` to prevent concurrent reduction races from violating unique constraints.
+Both book reduction services use delete-and-rebuild semantics. Automatic triggering is serialized per book via the persisted `BookReductionClaim` guard keyed by `bookId`, which prevents overlapping reduction runs and avoids the old single-JVM-only lock limitation.
 
 ## Manual Trigger Points
 

@@ -146,6 +146,7 @@ sequenceDiagram
   - `BookLocationsReducedEvent`
   - `ChapterEventsResolvedEvent`
 - Only then is the job marked complete and `IngestionCompletedEvent` emitted.
+- On `IngestionFailedEvent`, the coordinator now removes retained fan-in state for that `(jobId, chapterId)` and treats the key as terminal-failed so late success-branch events cannot recreate stale completion state after a failure.
 
 ### Abstract Orchestration Model
 

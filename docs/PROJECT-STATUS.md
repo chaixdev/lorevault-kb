@@ -63,7 +63,7 @@ Near-term execution slices:
 3. **Event aggregation and graph shaping**
     - Define and implement the next aggregation layer that groups extracted event evidence into more useful chapter/book-level structures without overcommitting to premature ontology complexity
 4. **Ingestion reliability follow-up**
-    - Resolve remaining cases where ingestion state can stick in intermediate states, especially around async completion signaling and status persistence alignment
+    - Continue bounded reliability hardening where new evidence appears, while treating the recently mitigated stuck-status and chained-reduction race investigations as retired unless they reappear in fresh UAT/runtime evidence
 5. **Retrieval and timeline quality follow-up**
     - Validate temporal-linking behavior and explore how event-aware retrieval should interact with existing baseline, graph-aware, and hybrid modes
 6. **Web transport boundaries and type visibility**

@@ -129,4 +129,3 @@ The goal is not generic deduplication. The goal is a clearer and more intention-
 
 - [Code organization guidance](../rules/code-organization-guidance.md)
 - [Service design principles](../rules/service-design-principles.md)
-- [Systematically transform package structure toward the target shape](package-shape-transformation-plan.md)
