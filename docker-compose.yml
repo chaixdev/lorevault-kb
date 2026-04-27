@@ -4,6 +4,7 @@ services:
     container_name: lorevault-neo4j
     environment:
       NEO4J_AUTH: neo4j/neosecret
+      NEO4J_PLUGINS: '["apoc"]'
     ports:
       - "7474:7474"   # HTTP Browser
       - "7687:7687"   # Bolt

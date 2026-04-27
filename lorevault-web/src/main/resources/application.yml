@@ -74,12 +74,12 @@ lorevault:
       jitter-factor: 0.1
 
     models:
-    # Embedding model configuration (Gemini OpenAI-compatible)
+    # Embedding model configuration (OpenRouter - perplexity/pplx-embed-v1-4b, 2560 dims)
       embedding:
         provider: openai-compatible
-        base-url: https://generativelanguage.googleapis.com/v1beta/openai
-        api-key: ${GEMINI_AI_API_KEY:}
-        model: gemini-embedding-001
+        base-url: https://openrouter.ai/api
+        api-key: ${OPENROUTER_API_KEY:}
+        model: perplexity/pplx-embed-v1-4b
         # Embedding-specific options can be added here in the future if needed
 
       # Small/cheap chat model slot
@@ -132,15 +132,15 @@ lorevault:
       min-chunk-size: 400      # Allow smaller chunks for scene boundaries (was 2000)
       max-chunk-size: 1200     # Upper bound with padding (was 4000)
 
-  # Embedding configuration standardized on 3072 dimensions
+  # Embedding configuration standardized on 2560 dimensions (perplexity/pplx-embed-v1-4b via OpenRouter)
   embedding:
     model:
       provider: openai-compatible
-      model: gemini-embedding-001
-      dimensions: 3072
+      model: perplexity/pplx-embed-v1-4b
+      dimensions: 2560
       batch-size: 32
     health:
-      expected-dim: 3072
+      expected-dim: 2560
 
   # Semantic search configuration
   search:
@@ -158,6 +158,6 @@ lorevault:
     neo4j:
       vector-index-name: chunk_embedding_idx
       similarity-function: cosine
-      dimensions: 3072
+      dimensions: 2560
 
   

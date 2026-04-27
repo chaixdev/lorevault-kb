@@ -1,39 +1,29 @@
 package com.lorevault.api.ai.application;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
-
+import com.lorevault.api.config.LoreVaultContentProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.TestPropertySource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Test to verify the new chunking configuration with 800-character chunks and 200-character overlap.
  */
-@SpringBootTest
-@TestPropertySource(properties = {
-    "lorevault.content.chunking.target-size=800",
-    "lorevault.content.chunking.overlap-percentage=25",
-    "lorevault.content.chunking.min-chunk-size=400", 
-    "lorevault.content.chunking.max-chunk-size=1200",
-    "lorevault.content.chunking.decision-threshold=1600"
-})
 @DisplayName("TextChunkingService Configuration")
 class TextChunkingServiceConfigurationTest {
 
-    @Autowired
-    private TextChunkingService textChunkingService;
+    private final TextChunkingService textChunkingService = new TextChunkingService(
+            new LoreVaultContentProperties(
+                    new LoreVaultContentProperties.ChunkingProperties(
+                            1600,
+                            800,
+                            25,
+                            400,
+                            1200,
+                            "sentence-aware",
+                            new LoreVaultContentProperties.SentenceSplitterProperties(300, true)
+                    )
+            )
+    );
 
     @Test
     @DisplayName("should use 800-character target chunks with 200-character overlap")

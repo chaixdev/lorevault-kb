@@ -193,5 +193,5 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     // Vector search index - Neo4j 5.x vector index for semantic search
     private static final String CHUNK_VECTOR_INDEX =
             "CREATE VECTOR INDEX chunk_embedding_idx IF NOT EXISTS FOR (ch:Chunk) ON (ch.embedding) " +
-            "OPTIONS {indexConfig: {`vector.dimensions`: 3072, `vector.similarity_function`: 'cosine'}}";
+            "OPTIONS {indexConfig: {`vector.dimensions`: 2560, `vector.similarity_function`: 'cosine'}}";
 }

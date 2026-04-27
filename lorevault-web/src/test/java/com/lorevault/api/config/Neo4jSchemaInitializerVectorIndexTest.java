@@ -1,13 +1,4 @@
 package com.lorevault.api.config;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -62,8 +53,9 @@ class Neo4jSchemaInitializerVectorIndexTest {
         // When: Running schema initialization
         assertDoesNotThrow(() -> schemaInitializer.ensureMinimalSchema());
         
-        // Then: Vector index should be created
+        // Then: Vector index should be created with correct dimensions
         assertThat(vectorIndexExists("chunk_embedding_idx")).isTrue();
+        assertThat(vectorIndexDimensions("chunk_embedding_idx")).isEqualTo(2560);
         
         // When: Running again (idempotent)
         assertDoesNotThrow(() -> schemaInitializer.ensureMinimalSchema());
@@ -93,6 +85,18 @@ class Neo4jSchemaInitializerVectorIndexTest {
         .fetchAs(Boolean.class)
         .one()
         .orElse(false);
+    }
+
+    private int vectorIndexDimensions(String indexName) {
+        return neo4jClient.query(
+            "SHOW INDEXES YIELD name, options WHERE name = $indexName " +
+            "RETURN options.indexConfig.`vector.dimensions` AS dimensions"
+        )
+        .bind("indexName").to(indexName)
+        .fetchAs(Long.class)
+        .one()
+        .map(Long::intValue)
+        .orElse(-1);
     }
 
     private boolean constraintExists(String constraintName) {
