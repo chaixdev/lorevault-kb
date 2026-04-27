@@ -825,9 +825,9 @@ This path gives LoreVault a strong, practical next implementation shape without 
 
 ## Implementation Notes Since This Proposal
 
-Since this proposal was first written, implementation work made one important mismatch visible: a first Stage 2 pass was briefly shaped as a rolling window over individual `EventMention` nodes rather than over persisted scene triads.
+This section is partly stale relative to current code. Stage 1 `EventMention` persistence is shipped, Stage 2 is now implemented around ordered scene ids and rolling scene windows, and Stage 3 reduction now persists a richer `ChapterEvent` support surface, though broader book-level event resolution is still intentionally unimplemented.
 
-That implementation shape has now been explicitly rejected and cleaned out.
+The notes below are retained as design context, but the Stage 2 "not yet implemented" statements are superseded by the current `EventCoreferenceService` shape.
 
 What stayed aligned with the proposal:
 
@@ -841,15 +841,25 @@ What changed in the implementation understanding:
 - the Stage 2 rolling unit is now explicitly the ordered three-scene window, not a flat list of mentions
 - the right trigger for the event branch is still `ScenesDetectedEvent`, but now for a stronger reason: it already carries the ordered scene ids needed to form Stage 2 windows
 - the reusable building block shared between scene analysis and event resolution is the persisted scene-window shape, while prompts and judgment logic stay type-specific
+- Stage 3 aggregate reduction is present and now carries support metadata on `ChapterEvent`: `supportedAliases`, `supportedEventTypes`, and `evidenceSnippets`
+
+Implementation review notes worth preserving:
+
+- The new `ChapterEvent` support fields are aggregate metadata, not new extraction behavior. They preserve the evidence variation that contributed to the chapter aggregate without pretending that one representative label or event type is canonical truth.
+- `ChapterEventResolutionService` populates `supportedAliases` from the representative names plus all mention aliases, `supportedEventTypes` from nonblank mention event types, and `evidenceSnippets` from distinct mention evidence capped to a small inspection-friendly set.
+- These fields are currently persisted for graph inspection and future reducers. They are not yet retrieval inputs, except that `supportedEventTypes` and `evidenceSnippets` contribute to the deterministic aggregate card.
+- Runtime validation against the 18-chapter Deathworlders sample showed all produced `ChapterEvent` nodes populated the support fields, while book-wide ANN, semantic verification, and `BookEvent` remain outside this slice.
 
 What remains intentionally unimplemented:
 
-- the new scene-windowed `EventCoreferenceService`
-- the repository query that loads mentions by a supplied ordered scene-id window
-- validation rules that ensure only mention ids from the active scene window can be linked
-- the transaction split that keeps LLM calls out of long-lived graph transactions
+- book-wide ANN candidate generation
+- semantic merge verification
+- `BookEvent`
+- event embeddings
+- event-aware retrieval integration
+- cross-chapter `SAME_EVENT` handoff and book-wide event identity
 
-This proposal should therefore now be read as the target architecture for the next implementation slice, not as a description of a currently shipped Stage 2 mechanism.
+This proposal should therefore now be read as the target architecture for the next implementation slice, with the Stage 2 notes above superseded where they describe the mechanism as future work.
 
 ---
 

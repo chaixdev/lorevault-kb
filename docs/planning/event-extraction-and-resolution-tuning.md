@@ -1,7 +1,7 @@
 # Event Extraction and Resolution Tuning
 
 **Status:** Planning  
-**Last Updated:** April 26, 2026  
+**Last Updated:** April 28, 2026  
 **Scope:** `scene-analysis` extraction, event coreference, and chapter event reduction (Stage 1–3 of the event pipeline)  
 **Reference:** `docs/concepts/evidence-vs-interpretation-layer.md`, `docs/concepts/core-domain-model-and-graph-process-restructured.md`, `docs/concepts/temporal-relation-semantics.md`
 
@@ -54,6 +54,13 @@ chapter reduction (Stage 3)
 | `ChapterEventResolutionService` | Builds ChapterEvent from components |
 
 ---
+
+## Current implementation status
+
+- Stage 1 `EventMention` persistence is shipped.
+- Stage 2 chapter-scoped scene-windowed `SAME_EVENT` coreference is implemented: `EventCoreferenceService` now accepts ordered scene ids, builds rolling 3-scene windows, validates active-window pairs, writes rebuildable chapter-scoped `SAME_EVENT` links, deletes and rebuilds chapter links, uses a 0.75 confidence threshold, and escalates failures.
+- Stage 3 `ChapterEvent` reduction is shipped for chapter-local aggregates and now preserves support metadata: aliases, event-type variants, and evidence snippets.
+- Stage 4+ book-wide ANN candidate generation, semantic verification, `BookEvent`, and retrieval integration remain unimplemented.
 
 ## Live data examined
 
@@ -207,6 +214,7 @@ After rolling-window coref completes, add a chapter-level second pass: compare m
 
 #### T2-B: Improve reduction to store aliases/support rather than single canonical
 **Target:** `ChapterEventResolutionService`, `ChapterEvent`  
+**Status:** Implemented for chapter-local `ChapterEvent` aggregates.  
 `ChapterEvent` should store:
 - A representative `displayName` (deterministic from most-supported or first-seen, not a frequency tie-break on a small set)
 - A `supportedAliases` list (all distinct member display names)
@@ -214,6 +222,8 @@ After rolling-window coref completes, add a chapter-level second pass: compare m
 - The existing `aggregateCard` for evidence snippets
 
 Remove the illusion that the canonical fields are "true" — they are serving conveniences.
+
+Implementation note: the shipped reducer keeps `displayName`, `normalizedName`, and `representativeEventType` as representative conveniences, while `supportedAliases`, `supportedEventTypes`, and `evidenceSnippets` preserve the supporting variation. Current consumers should treat the support lists as provenance/inspection metadata unless and until a later retrieval or book-event reducer explicitly promotes them into query behavior.
 
 #### T2-C: Keep SAME_EVENT as interpretation, not durable evidence
 **Target:** Conceptual — already in place mechanically, but make it explicit in the codebase and coref cleanup logic  

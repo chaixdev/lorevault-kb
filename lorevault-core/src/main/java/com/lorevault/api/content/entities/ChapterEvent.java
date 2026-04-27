@@ -1,6 +1,7 @@
 package com.lorevault.api.content.entities;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
@@ -22,6 +23,9 @@ public record ChapterEvent(
         String representativeEventType,
         Integer mentionCount,
         String aggregateCard,
+        List<String> supportedAliases,
+        List<String> supportedEventTypes,
+        List<String> evidenceSnippets,
         @CreatedDate LocalDateTime createdAt,
         @LastModifiedDate LocalDateTime updatedAt
 ) {}

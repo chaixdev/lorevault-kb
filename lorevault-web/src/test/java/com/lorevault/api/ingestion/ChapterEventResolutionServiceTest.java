@@ -10,6 +10,9 @@ import com.lorevault.api.ingestion.application.result.ChapterEventResolutionResu
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Arrays;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,8 +50,13 @@ class ChapterEventResolutionServiceTest {
     }
 
     private EventMention mention(UUID id, String displayName, String normalizedName,
-                                  String eventType, String relation, String evidence, UUID chapterId) {
-        return new EventMention(id, null, displayName, normalizedName, List.of(),
+                                   String eventType, String relation, String evidence, UUID chapterId) {
+        return mention(id, displayName, normalizedName, List.of(), eventType, relation, evidence, chapterId);
+    }
+
+    private EventMention mention(UUID id, String displayName, String normalizedName, List<String> aliases,
+                                 String eventType, String relation, String evidence, UUID chapterId) {
+        return new EventMention(id, null, displayName, normalizedName, aliases,
                 eventType, displayName + " description", relation, null, evidence, null, chapterId, null, null, null, null, null);
     }
 
@@ -57,6 +65,16 @@ class ChapterEventResolutionServiceTest {
         ArgumentCaptor<Iterable<ChapterEvent>> captor = ArgumentCaptor.forClass(Iterable.class);
         verify(chapterEventRepository).saveAll(captor.capture());
         return org.assertj.core.util.Lists.newArrayList(captor.getValue());
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> recordStringList(ChapterEvent chapterEvent, String accessor) {
+        try {
+            Method method = ChapterEvent.class.getMethod(accessor);
+            return (List<String>) method.invoke(chapterEvent);
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            throw new AssertionError("Unable to read ChapterEvent." + accessor, e);
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -179,8 +197,8 @@ class ChapterEventResolutionServiceTest {
     }
 
     @Test
-    @DisplayName("Aggregate card promotes descriptions and keeps temporal context secondary")
-    void aggregateCardPromotesDescriptionsAndKeepsTemporalContextSecondary() {
+    @DisplayName("Aggregate card includes supported variants, evidence, and scene-relative distribution")
+    void aggregateCardIncludesEnrichedEvidence() {
         UUID chapterId = UUID.randomUUID();
         UUID m1 = UUID.randomUUID();
         UUID m2 = UUID.randomUUID();
@@ -192,8 +210,8 @@ class ChapterEventResolutionServiceTest {
                 componentRow(m2.toString(), comp)
         ));
         when(mentionRepository.findByChapterIdOrdered(chapterId)).thenReturn(List.of(
-                mention(m1, "The Betrayal", "the betrayal", "BETRAYAL", "FOLLOWS", "He turned his blade on his king", chapterId),
-                mention(m2, "The Betrayal", "the betrayal", "BETRAYAL", "PRECEDES", "The king's guard answered too late", chapterId)
+                mention(m1, "The Betrayal", "the betrayal", List.of("The Coup", "betrayal"), "BETRAYAL", "FOLLOWS", "He turned his blade on his king", chapterId),
+                mention(m2, "The Betrayal", "the betrayal", List.of("the betrayal", "The Coup"), "AMBUSH", "PRECEDES", "The king's guard answered too late", chapterId)
         ));
         when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
         when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(1L);
@@ -201,13 +219,55 @@ class ChapterEventResolutionServiceTest {
         service.resolveChapter(chapterId);
 
         List<ChapterEvent> saved = captureAllSaved();
-        assertThat(saved.get(0).aggregateCard()).contains("BETRAYAL");
+        ChapterEvent savedEvent = saved.get(0);
+        assertThat(savedEvent.aggregateCard()).contains("BETRAYAL");
+        assertThat(savedEvent.aggregateCard()).contains("**Supported event type variants:** AMBUSH, BETRAYAL");
+        assertThat(savedEvent.aggregateCard()).contains("**Scene-relative relation distribution:**");
+        assertThat(savedEvent.aggregateCard()).contains("- FOLLOWS: 1");
+        assertThat(savedEvent.aggregateCard()).contains("- PRECEDES: 1");
+        assertThat(savedEvent.aggregateCard()).contains("**Evidence snippets:**");
+        assertThat(savedEvent.aggregateCard()).contains("He turned his blade on his king");
+        assertThat(savedEvent.aggregateCard()).contains("The king's guard answered too late");
         assertThat(saved.get(0).aggregateCard()).contains("**Descriptions:**");
         assertThat(saved.get(0).aggregateCard()).contains("The Betrayal description");
-        assertThat(saved.get(0).aggregateCard()).doesNotContain("Scene-relative relations");
-        assertThat(saved.get(0).aggregateCard()).doesNotContain("Evidence");
-        assertThat(saved.get(0).aggregateCard()).doesNotContain("He turned his blade on his king");
-        assertThat(saved.get(0).aggregateCard()).doesNotContain("The king's guard answered too late");
+        assertThat(recordStringList(savedEvent, "supportedAliases")).containsExactly("The Betrayal", "The Coup", "betrayal", "the betrayal");
+        assertThat(recordStringList(savedEvent, "supportedEventTypes")).containsExactly("AMBUSH", "BETRAYAL");
+        assertThat(recordStringList(savedEvent, "evidenceSnippets")).containsExactly(
+                "He turned his blade on his king",
+                "The king's guard answered too late"
+        );
+    }
+
+    @Test
+    @DisplayName("ChapterEvent stores deterministic supported lists and filters blanks")
+    void chapterEventStoresDeterministicSupportedLists() {
+        UUID chapterId = UUID.randomUUID();
+        UUID m1 = UUID.randomUUID();
+        UUID m2 = UUID.randomUUID();
+        String comp = m1.toString();
+
+        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
+        when(componentLookup.findSameEventComponents(chapterId)).thenReturn(List.of(
+                componentRow(m1.toString(), comp),
+                componentRow(m2.toString(), comp)
+        ));
+        when(mentionRepository.findByChapterIdOrdered(chapterId)).thenReturn(List.of(
+                new EventMention(m1, null, "The Accord", "the accord", Arrays.asList("Zeta", "", null, "Alpha", "Alpha"),
+                        "TREATY", "The Accord description", "PRECEDES", null, "", null, chapterId, null, null, null, null, null),
+                new EventMention(m2, null, "The Accord", "the accord", List.of("Beta", "Alpha"),
+                        "", "The Accord description", null, null, null, null, chapterId, null, null, null, null, null)
+        ));
+        when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(1L);
+
+        service.resolveChapter(chapterId);
+
+        ChapterEvent savedEvent = captureAllSaved().getFirst();
+        assertThat(recordStringList(savedEvent, "supportedAliases")).containsExactly("Alpha", "Beta", "The Accord", "Zeta", "the accord");
+        assertThat(recordStringList(savedEvent, "supportedEventTypes")).containsExactly("TREATY");
+        assertThat(recordStringList(savedEvent, "evidenceSnippets")).isEmpty();
+        assertThat(savedEvent.aggregateCard()).contains("**Event type:** TREATY");
+        assertThat(savedEvent.aggregateCard()).doesNotContain("Supported event type variants");
     }
 
     @Test

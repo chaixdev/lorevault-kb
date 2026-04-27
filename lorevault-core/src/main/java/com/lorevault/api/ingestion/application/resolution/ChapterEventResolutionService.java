@@ -168,7 +168,23 @@ public class ChapterEventResolutionService {
                 .filter(s -> !s.isBlank())
                 .toList());
 
-        String aggregateCard = buildAggregateCard(displayName, normalizedName, representativeEventType, mentions);
+        List<String> supportedAliases = collectSupportedAliases(mentions, displayName, normalizedName);
+        List<String> supportedEventTypes = distinct(mentions.stream()
+                .map(EventMention::eventType)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .sorted()
+                .toList());
+        List<String> evidenceSnippets = collectEvidenceSnippets(mentions);
+
+        String aggregateCard = buildAggregateCard(
+                displayName,
+                normalizedName,
+                representativeEventType,
+                supportedEventTypes,
+                evidenceSnippets,
+                mentions);
 
         return new ChapterEvent(
                 UUID.randomUUID(),
@@ -179,6 +195,9 @@ public class ChapterEventResolutionService {
                 representativeEventType,
                 mentions.size(),
                 aggregateCard,
+                supportedAliases,
+                supportedEventTypes,
+                evidenceSnippets,
                 null,
                 null
         );
@@ -193,6 +212,8 @@ public class ChapterEventResolutionService {
             String displayName,
             String normalizedName,
             String representativeEventType,
+            List<String> supportedEventTypes,
+            List<String> evidenceSnippets,
             List<EventMention> mentions
     ) {
         StringBuilder card = new StringBuilder();
@@ -204,12 +225,36 @@ public class ChapterEventResolutionService {
             card.append("**Event type:** ").append(representativeEventType).append("\n");
         }
 
-        List<String> eventTypes = distinct(mentions.stream().map(EventMention::eventType).toList());
-        if (eventTypes.size() > 1) {
-            card.append("**Event type variants:** ").append(String.join(", ", eventTypes)).append("\n");
+        if (supportedEventTypes.size() > 1) {
+            card.append("**Supported event type variants:** ").append(String.join(", ", supportedEventTypes)).append("\n");
         }
 
         card.append("**Mention count:** ").append(mentions.size()).append("\n");
+
+        Map<String, Long> sceneRelativeDistribution = mentions.stream()
+                .map(EventMention::sceneRelativeRelation)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.groupingBy(s -> s, Collectors.counting()));
+
+        if (!sceneRelativeDistribution.isEmpty()) {
+            card.append("\n**Scene-relative relation distribution:**\n");
+            sceneRelativeDistribution.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .forEach(entry -> card.append("- ")
+                            .append(entry.getKey())
+                            .append(": ")
+                            .append(entry.getValue())
+                            .append("\n"));
+        }
+
+        if (!evidenceSnippets.isEmpty()) {
+            card.append("\n**Evidence snippets:**\n");
+            for (String evidenceSnippet : evidenceSnippets) {
+                card.append("- ").append(evidenceSnippet).append("\n");
+            }
+        }
 
         List<String> descriptions = mentions.stream()
                 .map(EventMention::description)
@@ -228,6 +273,39 @@ public class ChapterEventResolutionService {
         }
 
         return card.toString().trim();
+    }
+
+    private List<String> collectSupportedAliases(List<EventMention> mentions, String displayName, String normalizedName) {
+        List<String> aliases = new ArrayList<>();
+        if (displayName != null && !displayName.isBlank()) {
+            aliases.add(displayName.trim());
+        }
+        if (normalizedName != null && !normalizedName.isBlank()) {
+            aliases.add(normalizedName.trim());
+        }
+        mentions.stream()
+                .flatMap(mention -> mention.aliases() == null ? java.util.stream.Stream.empty() : mention.aliases().stream())
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .forEach(aliases::add);
+
+        return aliases.stream()
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    private List<String> collectEvidenceSnippets(List<EventMention> mentions) {
+        return mentions.stream()
+                .map(EventMention::evidence)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .sorted()
+                .limit(4)
+                .toList();
     }
 
     /** Returns the most frequently occurring non-null value, or null if list is empty. */
