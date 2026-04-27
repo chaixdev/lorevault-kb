@@ -44,6 +44,9 @@ public class EventCoreferenceService {
     /** Minimum model confidence required to write a SAME_EVENT link. */
     static final double CONFIDENCE_THRESHOLD = 0.75;
 
+    /** Minimum failed-window count before ratio-based stage escalation is considered. */
+    static final int MIN_FAILED_WINDOWS_FOR_ESCALATION = 2;
+
     /** Number of scenes per rolling window. */
     static final int WINDOW_SIZE = 3;
 
@@ -82,6 +85,7 @@ public class EventCoreferenceService {
 
         Map<AbstractMap.SimpleEntry<UUID, UUID>, Double> bestConfidenceByPair = new HashMap<>();
         int failureCount = 0;
+        int attemptedWindowCount = 0;
         List<List<UUID>> failedWindows = new ArrayList<>();
 
         for (int windowIndex = 0; windowIndex < windows.size(); windowIndex++) {
@@ -98,6 +102,7 @@ public class EventCoreferenceService {
             Set<UUID> mentionAllowlist = windowMentions.stream().map(EventMention::id).collect(Collectors.toSet());
 
             String userPrompt = renderWindowPrompt(userTemplate, chapterId, windowSceneIds, mentionsByScene);
+            attemptedWindowCount++;
 
             try {
                 EventCorefModels.CorefWindowResponse response = llmClient.runEventCoref(jobId, userPrompt);
@@ -112,14 +117,23 @@ public class EventCoreferenceService {
             }
         }
 
-        if (failureCount == windows.size()) {
+        if (shouldFailForWindowFailures(failureCount, attemptedWindowCount)) {
+            String failureCode = failureCount == attemptedWindowCount
+                    ? "EVENT_COREF_ALL_WINDOWS_FAILED"
+                    : "EVENT_COREF_FAILURE_THRESHOLD_EXCEEDED";
+            String failureMessage = failureCount == attemptedWindowCount
+                    ? "All event co-reference windows failed"
+                    : "Event co-reference failure threshold exceeded";
             throw new EventCoreferenceException(IngestionFailure.builder(
-                    "EVENT_COREF_ALL_WINDOWS_FAILED",
-                    "All event co-reference windows failed"
+                    failureCode,
+                    failureMessage
             )
                     .stage("EVENT_COREF")
                     .detail("chapterId", chapterId)
                     .detail("jobId", jobId)
+                    .detail("failedWindowCount", failureCount)
+                    .detail("attemptedWindowCount", attemptedWindowCount)
+                    .detail("successfulWindowCount", attemptedWindowCount - failureCount)
                     .detail("windowCount", windows.size())
                     .build());
         }
@@ -276,6 +290,16 @@ public class EventCoreferenceService {
             return new AbstractMap.SimpleEntry<>(a, b);
         }
         return new AbstractMap.SimpleEntry<>(b, a);
+    }
+
+    static boolean shouldFailForWindowFailures(int failureCount, int attemptedWindowCount) {
+        if (failureCount <= 0 || attemptedWindowCount <= 0) {
+            return false;
+        }
+        if (failureCount == attemptedWindowCount) {
+            return true;
+        }
+        return failureCount >= MIN_FAILED_WINDOWS_FOR_ESCALATION && failureCount * 2 >= attemptedWindowCount;
     }
 
     private @Nullable UUID parseUuid(String value) {

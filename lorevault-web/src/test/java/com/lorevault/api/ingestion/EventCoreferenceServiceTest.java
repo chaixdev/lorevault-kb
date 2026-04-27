@@ -248,6 +248,38 @@ class EventCoreferenceServiceTest {
     }
 
     @Test
+    @DisplayName("failureThresholdExceededThrowsStageException")
+    void failureThresholdExceededThrowsStageException() {
+        stubPromptRendering();
+
+        UUID chapterId = UUID.randomUUID();
+        UUID jobId = UUID.randomUUID();
+        UUID s1 = UUID.randomUUID();
+        UUID s2 = UUID.randomUUID();
+        UUID s3 = UUID.randomUUID();
+        UUID s4 = UUID.randomUUID();
+        UUID s5 = UUID.randomUUID();
+        UUID m1 = UUID.randomUUID();
+        UUID m2 = UUID.randomUUID();
+
+        when(mentionRepo.findMentionsBySceneIds(any())).thenReturn(List.of(
+                mention(m1, s1, chapterId, 0),
+                mention(m2, s2, chapterId, 1)
+        ));
+        when(llmClient.runEventCoref(eq(jobId), anyString()))
+                .thenThrow(new RuntimeException("first window fails"))
+                .thenThrow(new RuntimeException("second window fails"))
+                .thenReturn(windowResponse(pair(m1, m2, true, 0.93)));
+
+        assertThatThrownBy(() -> service.runCorefPass(List.of(s1, s2, s3, s4, s5), chapterId, jobId))
+                .isInstanceOf(EventCoreferenceService.EventCoreferenceException.class)
+                .hasMessageContaining("failure threshold exceeded");
+
+        verify(mentionRepo, never()).deleteCoreferenceLinks(any());
+        verify(mentionRepo, never()).createSameEventLink(any(), any(), any(Double.class), anyString(), anyString(), anyString());
+    }
+
+    @Test
     @DisplayName("singleWindowFailureContinues")
     void singleWindowFailureContinues() {
         stubPromptRendering();

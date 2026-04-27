@@ -7,10 +7,9 @@ import com.lorevault.api.ingestion.domain.StatusRecord;
 import com.lorevault.api.ingestion.events.BookIndividualsReducedEvent;
 import com.lorevault.api.ingestion.events.BookLocationsReducedEvent;
 import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
-import com.lorevault.api.ingestion.events.BookIndividualsReducedEvent;
-import com.lorevault.api.ingestion.events.BookLocationsReducedEvent;
 import com.lorevault.api.ingestion.events.IngestionCompletedEvent;
 import com.lorevault.api.ingestion.events.EmbeddingsCompletedEvent;
+import com.lorevault.api.ingestion.events.IngestionFailedEvent;
 import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -108,6 +107,41 @@ class IngestionCompletionCoordinatorTest {
                 0
         ));
 
+        verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));
+        verify(eventPublisher, never()).publishEvent(any(IngestionCompletedEvent.class));
+    }
+
+    @Test
+    @DisplayName("Removes retained completion state when ingestion fails before all branches arrive")
+    void removesRetainedCompletionStateOnIngestionFailure() {
+        UUID jobId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+
+        coordinator.handleBookIndividualsReduced(new BookIndividualsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 3, 1));
+        coordinator.handleEmbeddingsCompleted(new EmbeddingsCompletedEvent(this, jobId, chapterId, 2, 4, 4, 1200));
+
+        coordinator.handleIngestionFailed(new IngestionFailedEvent(
+                this,
+                jobId,
+                chapterId,
+                "EVENT_COREF",
+                "llm backend unavailable",
+                false
+        ));
+
+        coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 2, 1));
+        coordinator.handleChapterEventsResolved(new ChapterEventsResolvedEvent(
+                this,
+                jobId,
+                chapterId,
+                UUID.randomUUID(),
+                true,
+                5,
+                2,
+                0
+        ));
+
+        verify(jobRepo, never()).findById(jobId);
         verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));
         verify(eventPublisher, never()).publishEvent(any(IngestionCompletedEvent.class));
     }

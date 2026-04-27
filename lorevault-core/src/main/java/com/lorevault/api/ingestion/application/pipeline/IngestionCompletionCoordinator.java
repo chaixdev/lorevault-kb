@@ -16,6 +16,8 @@ import com.lorevault.api.ingestion.events.BookLocationsReducedEvent;
 import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
 import com.lorevault.api.ingestion.events.EmbeddingsCompletedEvent;
 import com.lorevault.api.ingestion.events.IngestionCompletedEvent;
+import com.lorevault.api.ingestion.events.IngestionFailedEvent;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -36,6 +38,7 @@ public class IngestionCompletionCoordinator {
     private final ApplicationEventPublisher eventPublisher;
 
     private final ConcurrentHashMap<CompletionKey, CompletionState> completionStates = new ConcurrentHashMap<>();
+    private final Set<CompletionKey> failedKeys = ConcurrentHashMap.newKeySet();
 
     @Async("ingestionTaskExecutor")
     @EventListener
@@ -44,6 +47,9 @@ public class IngestionCompletionCoordinator {
                 event.getJobId(),
                 event.getChapterId()
         );
+        if (isTerminalFailure(key, "EMBEDDINGS_COMPLETED")) {
+            return;
+        }
         logBranchArrival(
                 "EMBEDDINGS_COMPLETED",
                 key,
@@ -72,6 +78,9 @@ public class IngestionCompletionCoordinator {
                 event.getJobId(),
                 event.getChapterId()
         );
+        if (isTerminalFailure(key, "BOOK_INDIVIDUALS_REDUCED")) {
+            return;
+        }
         logBranchArrival(
                 "BOOK_INDIVIDUALS_REDUCED",
                 key,
@@ -98,6 +107,9 @@ public class IngestionCompletionCoordinator {
                 event.getJobId(),
                 event.getChapterId()
         );
+        if (isTerminalFailure(key, "BOOK_LOCATIONS_REDUCED")) {
+            return;
+        }
         logBranchArrival(
                 "BOOK_LOCATIONS_REDUCED",
                 key,
@@ -125,6 +137,9 @@ public class IngestionCompletionCoordinator {
                 event.getJobId(),
                 event.getChapterId()
         );
+        if (isTerminalFailure(key, "CHAPTER_EVENTS_RESOLVED")) {
+            return;
+        }
         logBranchArrival(
                 "CHAPTER_EVENTS_RESOLVED",
                 key,
@@ -143,6 +158,36 @@ public class IngestionCompletionCoordinator {
         logCoordinatorState("CHAPTER_EVENTS_RESOLVED", key);
 
         completeIfReady(key);
+    }
+
+    @Async("ingestionTaskExecutor")
+    @EventListener
+    public void handleIngestionFailed(IngestionFailedEvent event) {
+        CompletionKey key = new CompletionKey(event.getJobId(), event.getChapterId());
+        failedKeys.add(key);
+        CompletionState removed = completionStates.remove(key);
+
+        log.info(
+                "[INGESTION_COMPLETION] Failure cleanup: jobId={}, chapterId={}, failedStage={}, stateRemoved={}",
+                event.getJobId(),
+                event.getChapterId(),
+                event.getFailedStage(),
+                removed != null
+        );
+    }
+
+    private boolean isTerminalFailure(CompletionKey key, String branch) {
+        if (!failedKeys.contains(key)) {
+            return false;
+        }
+
+        log.info(
+                "[INGESTION_COMPLETION] Ignoring late branch after failure: jobId={}, chapterId={}, branch={}",
+                key.jobId(),
+                key.chapterId(),
+                branch
+        );
+        return true;
     }
 
     private void completeIfReady(CompletionKey key) {
