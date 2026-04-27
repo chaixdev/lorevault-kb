@@ -69,4 +69,21 @@ public class PromptTemplateRenderingTest {
         assertThat(rendered).contains("curr ctx");
         assertThat(rendered).contains("next ctx");
     }
+
+    @Test
+    void eventCorefUserTemplate_renders_with_xml_payload_without_template_parse_errors() {
+        PromptTemplate t = repo.get("event-coref-user");
+
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("chapterId", "chapter-123");
+        vars.put("scenes", "<scene id=\"scene-1\"><mention id=\"mention-1\">payload</mention></scene>");
+
+        String rendered = t.render(vars);
+
+        assertThat(rendered).contains("chapter-123");
+        assertThat(rendered).contains("<mentions>");
+        assertThat(rendered).contains("<scene id=\"scene-1\"><mention id=\"mention-1\">payload</mention></scene>");
+        assertThat(rendered).contains("Return valid JSON only.");
+        assertThat(rendered).doesNotContain("Return a JSON object matching this schema:");
+    }
 }

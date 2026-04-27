@@ -194,6 +194,7 @@ class MentionRecordTest {
                 "the_duel",
                 aliases,
                 "duel",
+                "A formal duel between two champions",
                 "during",
                 "high",
                 "Two champions face off",

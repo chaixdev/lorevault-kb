@@ -1,5 +1,7 @@
 package com.lorevault.api.ai.infrastructure;
+
 import com.lorevault.api.ai.domain.LlmCallLogger;
+import com.lorevault.api.ingestion.domain.coref.EventCorefModels;
 import com.lorevault.api.ingestion.application.triad.SceneRelationshipAnalysisService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -138,5 +140,54 @@ class LlmClientTest {
         assertThat(responseBodyCaptor.getValue()).contains("\"primaryName\":\"Bridge Four Barracks\"");
         assertThat(responseBodyCaptor.getValue()).doesNotContain("[structured-response:");
         assertThat(outputTokensCaptor.getValue()).isGreaterThan(0);
+    }
+
+    @Test
+    void runEventCoref_shouldPersistStructuredResponseBodyWithEventCorefPromptPath() {
+        UUID jobId = UUID.randomUUID();
+        var response = new EventCorefModels.CorefWindowResponse(List.of(
+                new EventCorefModels.CorefPairJudgment(
+                        "mention-a",
+                        "mention-b",
+                        true,
+                        0.91,
+                        "same battle"
+                )
+        ));
+
+        when(promptRepository.get("event-coref-system"))
+                .thenReturn(new org.springframework.ai.chat.prompt.PromptTemplate("system coref prompt"));
+        when(promptProperties.getSceneAnalysisModel()).thenReturn("nlp-small");
+        when(promptProperties.getEventCorefSystemPath()).thenReturn("classpath:prompts/event-coref-system.st");
+        when(nlpSmallChatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.options(any())).thenReturn(requestSpec);
+        when(requestSpec.call()).thenReturn(callSpec);
+        when(callSpec.entity(eq(EventCorefModels.CorefWindowResponse.class))).thenReturn(response);
+
+        client.runEventCoref(jobId, "<mentions><scene id=\"s1\"/></mentions>");
+
+        ArgumentCaptor<String> responseBodyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(llmLog).logCall(
+                eq(jobId),
+                eq("event-coref"),
+                eq("openai-compatible"),
+                eq(null),
+                eq(0.1),
+                eq(0.9),
+                eq(6000),
+                eq("classpath:prompts/event-coref-system.st"),
+                eq("system coref prompt"),
+                eq("<mentions><scene id=\"s1\"/></mentions>"),
+                responseBodyCaptor.capture(),
+                anyLong(),
+                eq(13),
+                eq(42)
+        );
+
+        assertThat(responseBodyCaptor.getValue()).contains("\"pairs\"");
+        assertThat(responseBodyCaptor.getValue()).contains("\"mentionIdA\":\"mention-a\"");
+        assertThat(responseBodyCaptor.getValue()).contains("\"sameEvent\":true");
     }
 }

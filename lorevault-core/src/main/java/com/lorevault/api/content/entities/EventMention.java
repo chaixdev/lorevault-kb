@@ -16,6 +16,7 @@ public record EventMention(
         String normalizedName,
         List<String> aliases,
         String eventType,
+        String description,
         String sceneRelativeRelation,
         String certainty,
         String evidence,

@@ -57,6 +57,13 @@ public record LoreVaultPromptProperties(
             ? getPromptPath(sceneAnalysis.systemPrompt()) 
             : getPromptPath("scene-analysis.txt");
     }
+
+    /**
+     * Get event coreference system prompt path.
+     */
+    public String getEventCorefSystemPath() {
+        return getPromptPath("event-coref-system.st");
+    }
     
     /**
      * Get chapter segmentation model.

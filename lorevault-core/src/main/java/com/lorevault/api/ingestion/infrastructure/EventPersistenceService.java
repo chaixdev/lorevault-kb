@@ -56,6 +56,7 @@ public class EventPersistenceService {
                         normalizeName(displayName),
                         List.of(displayName),
                         normalizeText(extracted.eventType()),
+                        normalizeText(extracted.description()),
                         normalizeText(extracted.temporalType()),
                         normalizeText(extracted.certainty()),
                         normalizeText(extracted.evidence()),

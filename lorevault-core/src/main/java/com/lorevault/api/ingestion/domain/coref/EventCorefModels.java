@@ -26,15 +26,11 @@ public final class EventCorefModels {
             String displayName,
             String normalizedName,
             String eventType,
+            String description,
             String sceneRelativeRelation,
             String certainty,
             String evidence
     ) {}
-
-    /**
-     * A window of 2–3 mention inputs sent to the LLM for co-reference judgment.
-     */
-    public record CorefWindowInput(List<CorefMentionInput> mentions) {}
 
     // -------------------------------------------------------------------------
     // LLM output (structured response — Spring AI entity binding)

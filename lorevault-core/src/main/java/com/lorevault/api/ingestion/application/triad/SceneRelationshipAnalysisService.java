@@ -65,6 +65,7 @@ public class SceneRelationshipAnalysisService {
     public record TriadEventExtraction(
             String name,
             String eventType,
+            String description,
             String temporalType,
             String certainty,
             String evidence
@@ -308,6 +309,7 @@ public class SceneRelationshipAnalysisService {
                 .map(event -> new TriadAnalysisModels.EventExtraction(
                         normalizeText(event.name()),
                         normalizeText(event.eventType()),
+                        normalizeText(event.description()),
                         normalizeEventTemporalType(event.temporalType()),
                         normalizeText(event.certainty()),
                         normalizeText(event.evidence())

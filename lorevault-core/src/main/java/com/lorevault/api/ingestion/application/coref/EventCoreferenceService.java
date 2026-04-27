@@ -4,152 +4,333 @@ import com.lorevault.api.ai.infrastructure.LlmClient;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.content.entities.EventMention;
 import com.lorevault.api.content.entities.EventMentionGraphRepository;
+import com.lorevault.api.ingestion.domain.IngestionFailure;
+import com.lorevault.api.ingestion.domain.IngestionFailureCarrier;
 import com.lorevault.api.ingestion.domain.coref.EventCorefModels;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.prompt.PromptTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
+import jakarta.annotation.Nullable;
+import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Stage 2 — Event Co-reference Pass.
  *
- * <p>Loads all {@code EventMention} nodes for a chapter in deterministic order,
- * drives a rolling-triad window over them, calls the LLM for each window to judge
- * which pairs refer to the same real-world event, and writes {@code SAME_EVENT}
- * relationship edges for confident matches.</p>
+ * <p>Accepts an ordered list of scene IDs for a chapter (from {@code ScenesDetectedEvent}),
+ * drives a rolling window of 3 scenes over them, and for each window calls the LLM with all
+ * {@code EventMention} nodes grouped by scene to judge which mentions refer to the same event.
+ * Writes {@code SAME_EVENT} relationship edges for confident matches.</p>
  *
- * <p>The pass is idempotent: it deletes all existing {@code SAME_EVENT} links for
- * the chapter before writing new ones.</p>
- *
- * <p>Confidence threshold for writing a link: {@link #CONFIDENCE_THRESHOLD}.
- * When uncertain, the model is instructed to prefer fragmentation over false merges.</p>
+ * <p>The pass is idempotent: existing {@code SAME_EVENT} links for the chapter are deleted
+ * before new ones are written.</p>
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class EventCoreferenceService {
+
+    private static final Logger log = LoggerFactory.getLogger(EventCoreferenceService.class);
 
     /** Minimum model confidence required to write a SAME_EVENT link. */
     static final double CONFIDENCE_THRESHOLD = 0.75;
 
-    /** Rolling window size. 3 mentions per window → up to 3 pairs per call. */
+    /** Number of scenes per rolling window. */
     static final int WINDOW_SIZE = 3;
 
-    private final EventMentionGraphRepository mentionRepository;
+    static final String COREF_SOURCE = "EVENT_COREF_LLM";
+    static final String COREF_MODEL = "event-coref";
+
+    private final EventMentionGraphRepository mentionRepo;
     private final LlmClient llmClient;
     private final PromptRepository promptRepository;
 
     /**
-     * Run the co-reference pass for a chapter.
-     *
-     * @param chapterId chapter to process
-     * @param jobId     correlation id for LLM call logging
-     * @return summary of the pass
+     * Self-reference injected lazily so transactional write method is invoked through
+     * the Spring proxy rather than direct self-invocation.
      */
-    @Transactional
-    public EventCorefModels.CorefPassResult runCorefPass(UUID chapterId, UUID jobId) {
-        String passId = UUID.randomUUID().toString();
-        String modelId = "event-coref"; // logical label for logging
+    @Lazy
+    @Autowired
+    private EventCoreferenceService self;
 
-        log.info("[EVENT_COREF] Starting Stage 2 pass: chapterId={}, jobId={}, passId={}", chapterId, jobId, passId);
-
-        List<EventMention> mentions = mentionRepository.findByChapterIdOrdered(chapterId);
-        if (mentions.size() < 2) {
-            log.info("[EVENT_COREF] Skipping: fewer than 2 mentions for chapterId={}", chapterId);
-            return new EventCorefModels.CorefPassResult(chapterId, passId, modelId, 0, 0);
-        }
-
-        // Delete stale links before writing new ones (idempotent rebuild)
-        mentionRepository.deleteCoreferenceLinks(chapterId);
-
-        int windowsRun = 0;
-        int linksCreated = 0;
-
-        // Rolling window: slide by 1
-        for (int i = 0; i <= mentions.size() - 2; i++) {
-            int end = Math.min(i + WINDOW_SIZE, mentions.size());
-            List<EventMention> window = mentions.subList(i, end);
-
-            String userInput = renderUserInput(window, chapterId);
-            EventCorefModels.CorefWindowResponse response;
-
-            try {
-                response = llmClient.runEventCoref(jobId, userInput);
-            } catch (Exception e) {
-                log.warn("[EVENT_COREF] Window {} failed, skipping: chapterId={}, error={}",
-                        windowsRun, chapterId, e.getMessage());
-                windowsRun++;
-                continue;
-            }
-
-            windowsRun++;
-
-            if (response == null || response.pairs() == null) {
-                continue;
-            }
-
-            for (EventCorefModels.CorefPairJudgment pair : response.pairs()) {
-                if (!pair.sameEvent() || pair.confidence() < CONFIDENCE_THRESHOLD) {
-                    continue;
-                }
-                if (pair.mentionIdA() == null || pair.mentionIdB() == null) {
-                    log.debug("[EVENT_COREF] Skipping pair with null id: passId={}", passId);
-                    continue;
-                }
-                try {
-                    UUID idA = UUID.fromString(pair.mentionIdA());
-                    UUID idB = UUID.fromString(pair.mentionIdB());
-                    mentionRepository.createSameEventLink(idA, idB, pair.confidence(), passId, modelId);
-                    linksCreated++;
-                    log.debug("[EVENT_COREF] SAME_EVENT link: {} <-> {}, confidence={}, passId={}",
-                            idA, idB, pair.confidence(), passId);
-                } catch (IllegalArgumentException e) {
-                    log.warn("[EVENT_COREF] Invalid UUID in pair judgment: mentionIdA={}, mentionIdB={}, passId={}",
-                            pair.mentionIdA(), pair.mentionIdB(), passId);
-                }
-            }
-        }
-
-        log.info("[EVENT_COREF] Stage 2 complete: chapterId={}, jobId={}, passId={}, windowsRun={}, linksCreated={}",
-                chapterId, jobId, passId, windowsRun, linksCreated);
-
-        return new EventCorefModels.CorefPassResult(chapterId, passId, modelId, windowsRun, linksCreated);
+    public EventCoreferenceService(
+            EventMentionGraphRepository mentionRepo,
+            LlmClient llmClient,
+            PromptRepository promptRepository
+    ) {
+        this.mentionRepo = mentionRepo;
+        this.llmClient = llmClient;
+        this.promptRepository = promptRepository;
     }
 
-    /**
-     * Renders the user input for a single window by formatting mention fields as
-     * a structured text block — no raw chapter text is included.
-     */
-    private String renderUserInput(List<EventMention> window, UUID chapterId) {
+    public EventCorefModels.CorefPassResult runCorefPass(List<UUID> orderedSceneIds, UUID chapterId, UUID jobId) {
+        String modelId = llmClient.getEventCorefModelId();
+        if (orderedSceneIds == null || orderedSceneIds.isEmpty()) {
+            return new EventCorefModels.CorefPassResult(chapterId, UUID.randomUUID().toString(), modelId, 0, 0);
+        }
+
+        List<List<UUID>> windows = buildSceneWindows(orderedSceneIds);
         PromptTemplate userTemplate = promptRepository.get("event-coref-user");
 
-        StringBuilder mentionsText = new StringBuilder();
-        for (int i = 0; i < window.size(); i++) {
-            EventMention m = window.get(i);
-            mentionsText.append("  <mention index=\"").append(i + 1).append("\">\n");
-            mentionsText.append("    <id>").append(m.id()).append("</id>\n");
-            mentionsText.append("    <displayName>").append(safe(m.displayName())).append("</displayName>\n");
-            mentionsText.append("    <normalizedName>").append(safe(m.normalizedName())).append("</normalizedName>\n");
-            mentionsText.append("    <eventType>").append(safe(m.eventType())).append("</eventType>\n");
-            mentionsText.append("    <sceneRelativeRelation>").append(safe(m.sceneRelativeRelation())).append("</sceneRelativeRelation>\n");
-            mentionsText.append("    <certainty>").append(safe(m.certainty())).append("</certainty>\n");
-            mentionsText.append("    <evidence>").append(safe(m.evidence())).append("</evidence>\n");
-            mentionsText.append("  </mention>\n");
+        Map<AbstractMap.SimpleEntry<UUID, UUID>, Double> bestConfidenceByPair = new HashMap<>();
+        int failureCount = 0;
+        List<List<UUID>> failedWindows = new ArrayList<>();
+
+        for (int windowIndex = 0; windowIndex < windows.size(); windowIndex++) {
+            List<UUID> windowSceneIds = windows.get(windowIndex);
+            List<EventMention> windowMentions = mentionRepo.findMentionsBySceneIds(
+                    windowSceneIds.stream().map(UUID::toString).toList()
+            );
+
+            if (windowMentions.size() < 2) {
+                continue;
+            }
+
+            Map<UUID, List<EventMention>> mentionsByScene = groupMentionsBySceneOrdered(windowMentions);
+            Set<UUID> mentionAllowlist = windowMentions.stream().map(EventMention::id).collect(Collectors.toSet());
+
+            String userPrompt = renderWindowPrompt(userTemplate, chapterId, windowSceneIds, mentionsByScene);
+
+            try {
+                EventCorefModels.CorefWindowResponse response = llmClient.runEventCoref(jobId, userPrompt);
+                ingestWindowResponse(response, mentionAllowlist, bestConfidenceByPair);
+            } catch (RuntimeException ex) {
+                failureCount++;
+                failedWindows.add(windowSceneIds);
+                log.warn("[EVENT_COREF] Window failed: chapterId={}, jobId={}, windowIndex={}, windowScenes={}, error={}",
+                        chapterId, jobId, windowIndex, windowSceneIds, safeMessage(ex));
+                log.debug("[EVENT_COREF] Window failure details: chapterId={}, jobId={}, windowIndex={}",
+                        chapterId, jobId, windowIndex, ex);
+            }
+        }
+
+        if (failureCount == windows.size()) {
+            throw new EventCoreferenceException(IngestionFailure.builder(
+                    "EVENT_COREF_ALL_WINDOWS_FAILED",
+                    "All event co-reference windows failed"
+            )
+                    .stage("EVENT_COREF")
+                    .detail("chapterId", chapterId)
+                    .detail("jobId", jobId)
+                    .detail("windowCount", windows.size())
+                    .build());
+        }
+
+        if (failureCount > 0) {
+            log.warn(
+                    "[EVENT_COREF] Partial window failure: chapterId={}, jobId={}, failedWindowCount={}, totalWindowCount={}, failedWindowScenes={}",
+                    chapterId,
+                    jobId,
+                    failureCount,
+                    windows.size(),
+                    failedWindows.stream().map(this::formatWindowRange).toList()
+            );
+        }
+
+        String passId = UUID.randomUUID().toString();
+        EventCoreferenceService writer = self != null ? self : this;
+        writer.writeCoreferenceLinksTransactional(chapterId, passId, modelId, bestConfidenceByPair);
+
+        return new EventCorefModels.CorefPassResult(
+                chapterId,
+                passId,
+                modelId,
+                windows.size(),
+                bestConfidenceByPair.size()
+        );
+    }
+
+    public static List<List<UUID>> buildSceneWindows(List<UUID> orderedSceneIds) {
+        if (orderedSceneIds == null || orderedSceneIds.isEmpty()) {
+            return List.of();
+        }
+
+        if (orderedSceneIds.size() <= WINDOW_SIZE) {
+            return List.of(List.copyOf(orderedSceneIds));
+        }
+
+        List<List<UUID>> windows = new ArrayList<>();
+        for (int start = 0; start <= orderedSceneIds.size() - WINDOW_SIZE; start++) {
+            windows.add(List.copyOf(orderedSceneIds.subList(start, start + WINDOW_SIZE)));
+        }
+        return windows;
+    }
+
+    private Map<UUID, List<EventMention>> groupMentionsBySceneOrdered(List<EventMention> mentions) {
+        return mentions.stream()
+                .filter(m -> m.sceneId() != null)
+                .collect(Collectors.groupingBy(
+                        EventMention::sceneId,
+                        Collectors.collectingAndThen(
+                                Collectors.toList(),
+                                perScene -> perScene.stream()
+                                        .sorted(Comparator.comparing(EventMention::extractionIndex, Comparator.nullsLast(Integer::compareTo)))
+                                        .toList()
+                        )
+                ));
+    }
+
+    private String renderWindowPrompt(
+            PromptTemplate userTemplate,
+            UUID chapterId,
+            List<UUID> windowSceneIds,
+            Map<UUID, List<EventMention>> mentionsByScene
+    ) {
+        StringBuilder scenesBuilder = new StringBuilder();
+
+        for (UUID sceneId : windowSceneIds) {
+            scenesBuilder.append("  <scene id=\"").append(sceneId).append("\">\n");
+            List<EventMention> sceneMentions = mentionsByScene.getOrDefault(sceneId, List.of());
+
+            for (EventMention mention : sceneMentions) {
+                scenesBuilder
+                        .append("    <mention id=\"").append(mention.id()).append("\" eventType=\"")
+                        .append(escapeXml(nonBlankOrFallback(mention.eventType(), "UNKNOWN")))
+                        .append("\" normalizedName=\"")
+                        .append(escapeXml(nonBlankOrFallback(mention.normalizedName(), "")))
+                        .append("\" sceneRelativeRelation=\"")
+                        .append(escapeXml(nonBlankOrFallback(mention.sceneRelativeRelation(), "unknown")))
+                        .append("\" certainty=\"")
+                        .append(escapeXml(confidenceToken(mention.certainty())))
+                        .append("\">\n")
+                        .append("      <displayName>")
+                        .append(escapeXml(nonBlankOrFallback(mention.displayName(), "")))
+                        .append("</displayName>\n")
+                        .append("      <description>")
+                        .append(escapeXml(nonBlankOrFallback(mention.description(), "")))
+                        .append("</description>\n")
+                        .append("      <evidence>")
+                        .append(escapeXml(nonBlankOrFallback(mention.evidence(), "")))
+                        .append("</evidence>\n")
+                        .append("    </mention>\n");
+            }
+
+            if (sceneMentions.isEmpty()) {
+                scenesBuilder.append("    <noMentions>true</noMentions>\n");
+            }
+            scenesBuilder.append("  </scene>\n");
         }
 
         return userTemplate.render(Map.of(
-                "chapterId", chapterId.toString(),
-                "mentions", mentionsText.toString()
+                "chapterId", chapterId,
+                "scenes", scenesBuilder.toString().trim()
         ));
     }
 
-    private String safe(String value) {
-        return value != null ? value : "";
+    private void ingestWindowResponse(
+            EventCorefModels.CorefWindowResponse response,
+            Set<UUID> mentionAllowlist,
+            Map<AbstractMap.SimpleEntry<UUID, UUID>, Double> bestConfidenceByPair
+    ) {
+        if (response == null || response.pairs() == null || response.pairs().isEmpty()) {
+            return;
+        }
+
+        for (EventCorefModels.CorefPairJudgment pair : response.pairs()) {
+            if (pair == null || !pair.sameEvent() || pair.confidence() < CONFIDENCE_THRESHOLD) {
+                continue;
+            }
+
+            UUID mentionA = parseUuid(pair.mentionIdA());
+            UUID mentionB = parseUuid(pair.mentionIdB());
+            if (mentionA == null || mentionB == null) {
+                continue;
+            }
+            if (mentionA.equals(mentionB)) {
+                continue;
+            }
+            if (!mentionAllowlist.contains(mentionA) || !mentionAllowlist.contains(mentionB)) {
+                continue;
+            }
+
+            AbstractMap.SimpleEntry<UUID, UUID> canonicalPair = canonicalPair(mentionA, mentionB);
+            bestConfidenceByPair.merge(canonicalPair, pair.confidence(), Math::max);
+        }
+    }
+
+    @Transactional
+    public void writeCoreferenceLinksTransactional(
+            UUID chapterId,
+            String passId,
+            String modelId,
+            Map<AbstractMap.SimpleEntry<UUID, UUID>, Double> bestConfidenceByPair
+    ) {
+        mentionRepo.deleteCoreferenceLinks(chapterId);
+        for (Map.Entry<AbstractMap.SimpleEntry<UUID, UUID>, Double> entry : bestConfidenceByPair.entrySet()) {
+            AbstractMap.SimpleEntry<UUID, UUID> pair = entry.getKey();
+            mentionRepo.createSameEventLink(pair.getKey(), pair.getValue(), entry.getValue(), passId, COREF_SOURCE, modelId);
+        }
+    }
+
+    static AbstractMap.SimpleEntry<UUID, UUID> canonicalPair(UUID a, UUID b) {
+        if (a.toString().compareTo(b.toString()) <= 0) {
+            return new AbstractMap.SimpleEntry<>(a, b);
+        }
+        return new AbstractMap.SimpleEntry<>(b, a);
+    }
+
+    private @Nullable UUID parseUuid(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    private String confidenceToken(String certainty) {
+        return nonBlankOrFallback(certainty, "unknown");
+    }
+
+    private String nonBlankOrFallback(String value, String fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        return value;
+    }
+
+    private String escapeXml(String value) {
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
+    }
+
+    private String formatWindowRange(List<UUID> windowSceneIds) {
+        return windowSceneIds.stream().map(UUID::toString).collect(Collectors.joining("->"));
+    }
+
+    private String safeMessage(Throwable throwable) {
+        if (throwable == null || throwable.getMessage() == null) {
+            return "unknown";
+        }
+        return throwable.getMessage();
+    }
+
+    public static final class EventCoreferenceException extends RuntimeException implements IngestionFailureCarrier {
+        private final IngestionFailure failure;
+
+        public EventCoreferenceException(IngestionFailure failure) {
+            super(failure != null ? failure.message() : "Event coreference failed");
+            this.failure = failure;
+        }
+
+        @Override
+        public IngestionFailure failure() {
+            return failure;
+        }
     }
 }

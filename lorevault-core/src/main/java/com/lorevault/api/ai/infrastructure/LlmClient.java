@@ -132,7 +132,16 @@ public class LlmClient {
         ChatClient chatClient = getChatClientForModel(modelId);
         String actualModelId = getModelIdForStage("analysis");
 
-        return executeSceneDetectionStructuredCall(jobId, "scene-analysis", systemPrompt, userInput, chatClient, actualModelId, responseType);
+        return executeSceneDetectionStructuredCall(
+                jobId,
+                "scene-analysis",
+                promptProperties.getSceneAnalysisPath(),
+                systemPrompt,
+                userInput,
+                chatClient,
+                actualModelId,
+                responseType
+        );
     }
 
     /**
@@ -158,12 +167,17 @@ public class LlmClient {
         return executeSceneDetectionStructuredCall(
                 jobId,
                 "event-coref",
+                promptProperties.getEventCorefSystemPath(),
                 systemPrompt,
                 userInput,
                 chatClient,
                 actualModelId,
                 com.lorevault.api.ingestion.domain.coref.EventCorefModels.CorefWindowResponse.class
         );
+    }
+
+    public String getEventCorefModelId() {
+        return getModelIdForStage("analysis");
     }
 
     /**
@@ -299,7 +313,8 @@ public class LlmClient {
         }
     }
 
-    private <T> T executeSceneDetectionStructuredCall(UUID jobId, String step, String systemPrompt, String userInput,
+    private <T> T executeSceneDetectionStructuredCall(UUID jobId, String step, String promptTemplateId,
+                                                      String systemPrompt, String userInput,
                                                       ChatClient chatClient, String modelId, Class<T> responseType) {
         log.debug("[LLM] {} request: inputLength={} chars, model={}",
                 step, userInput == null ? 0 : userInput.length(), modelId);
@@ -355,7 +370,7 @@ public class LlmClient {
                     options.getTemperature(),
                     options.getTopP(),
                     options.getMaxTokens(),
-                    step.equals("chapter-segmentation") ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
+                    promptTemplateId,
                     systemPrompt,
                     safeInput,
                     responseBody,

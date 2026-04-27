@@ -37,6 +37,7 @@ public final class TriadAnalysisModels {
     public record EventExtraction(
             String name,
             String eventType,
+            String description,
             String temporalType,
             String certainty,
             String evidence

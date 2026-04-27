@@ -161,6 +161,7 @@ class SceneDetectionHandlerTest {
                             List.of(new TriadAnalysisModels.EventExtraction(
                                     "The Winter War",
                                     "war",
+                                    "A remembered historical war used as past narrative context.",
                                     "R:temporal.before",
                                     "Explicit",
                                     "They still speak of the Winter War"
