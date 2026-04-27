@@ -88,8 +88,12 @@ class LlmCallLoggingServiceTest {
         assertThat(result.getModel()).isEqualTo("gpt-4o-mini");
         assertThat(result.getRequest()).isNotNull();
         assertThat(result.getRequest().getInputBody()).isEqualTo("Chapter text preview...");
+        assertThat(result.getRequest().getInputHash()).isNotBlank();
+        assertThat(result.getRequest().getInputTruncated()).isFalse();
         assertThat(result.getResponse()).isNotNull();
         assertThat(result.getResponse().getBody()).isEqualTo("<scenes><scene>Response content</scene></scenes>");
+        assertThat(result.getResponse().getBodyHash()).isNotBlank();
+        assertThat(result.getResponse().getTruncated()).isFalse();
     }
 
     @Test
@@ -167,6 +171,8 @@ class LlmCallLoggingServiceTest {
         LlmCallRecord result = captor.getValue();
         assertThat(result.getResponse()).isNotNull();
         assertThat(result.getResponse().getBody()).isNull();
+        assertThat(result.getResponse().getBodyHash()).isNull();
+        assertThat(result.getResponse().getTruncated()).isNull();
     }
 
     @Test
@@ -201,7 +207,7 @@ class LlmCallLoggingServiceTest {
     }
 
     @Test
-    void logCall_withLongResponse_shouldPersistFullResponse() {
+    void logCall_withLongResponse_shouldTruncateAndPersistHash() {
         service = new LlmCallLoggingService(new LoreVaultLlmLoggingProperties(true, true, 20, true), jobRepo, statusRepo, llmCallRepo);
         UUID jobId = UUID.randomUUID();
         when(jobRepo.findById(jobId)).thenReturn(Optional.of(jobWithCurrentStatus(jobId)));
@@ -228,42 +234,14 @@ class LlmCallLoggingServiceTest {
         verify(llmCallRepo).save(captor.capture());
         LlmCallRecord result = captor.getValue();
         assertThat(result.getResponse()).isNotNull();
-        assertThat(result.getResponse().getBody()).isEqualTo("This is a very long response that exceeds 20 characters and should be truncated");
+        assertThat(result.getResponse().getBody()).isEqualTo("This is a very long ");
+        assertThat(result.getResponse().getBodyHash()).isNotBlank();
+        assertThat(result.getResponse().getTruncated()).isTrue();
     }
 
     @Test
-    void logCall_withSceneAnalysisStep_shouldPersistFullResponseEvenWhenOverLimit() {
-        service = new LlmCallLoggingService(new LoreVaultLlmLoggingProperties(true, true, 20, true), jobRepo, statusRepo, llmCallRepo);
-        UUID jobId = UUID.randomUUID();
-        when(jobRepo.findById(jobId)).thenReturn(Optional.of(jobWithCurrentStatus(jobId)));
-        when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
-        String longResponse = "This is a very long response that exceeds 20 characters and should not be truncated for scene-analysis";
-        service.logCall(
-                jobId,
-                "scene-analysis",
-                "openai-compatible",
-                "gpt-4o-mini",
-                0.1,
-                0.9,
-                6000,
-                "scene-analysis.txt",
-                "prompt",
-                "input",
-                longResponse,
-                1500L,
-                400,
-                200
-        );
-
-        ArgumentCaptor<LlmCallRecord> captor = ArgumentCaptor.forClass(LlmCallRecord.class);
-        verify(llmCallRepo).save(captor.capture());
-        assertThat(captor.getValue().getResponse()).isNotNull();
-        assertThat(captor.getValue().getResponse().getBody()).isEqualTo(longResponse);
-    }
-
-    @Test
-    void logCall_withInputPreview_shouldPersistFullInputPreview() {
+    void logCall_withInputPreview_shouldHonorConfiguredLimit() {
+        service = new LlmCallLoggingService(new LoreVaultLlmLoggingProperties(true, true, 1000, true), jobRepo, statusRepo, llmCallRepo);
         UUID jobId = UUID.randomUUID();
         when(jobRepo.findById(jobId)).thenReturn(Optional.of(jobWithCurrentStatus(jobId)));
         when(llmCallRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -288,7 +266,9 @@ class LlmCallLoggingServiceTest {
         ArgumentCaptor<LlmCallRecord> captor = ArgumentCaptor.forClass(LlmCallRecord.class);
         verify(llmCallRepo).save(captor.capture());
         assertThat(captor.getValue().getRequest()).isNotNull();
-        assertThat(captor.getValue().getRequest().getInputBody()).hasSize(1500);
+        assertThat(captor.getValue().getRequest().getInputBody()).hasSize(1000);
+        assertThat(captor.getValue().getRequest().getInputHash()).isNotBlank();
+        assertThat(captor.getValue().getRequest().getInputTruncated()).isTrue();
         assertThat(captor.getValue().getResponse()).isNotNull();
         assertThat(captor.getValue().getResponse().getBody()).isEqualTo("Short response");
     }

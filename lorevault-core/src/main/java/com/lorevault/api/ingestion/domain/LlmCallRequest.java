@@ -1,6 +1,5 @@
 package com.lorevault.api.ingestion.domain;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.neo4j.core.schema.Id;
@@ -10,7 +9,6 @@ import java.util.UUID;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 @Node("LlmCallRequest")
 public class LlmCallRequest {
     @Id
@@ -18,4 +16,24 @@ public class LlmCallRequest {
 
     private String renderedPrompt;
     private String inputBody;
+    private String inputHash;
+    private Boolean inputTruncated;
+
+    public LlmCallRequest(
+            UUID id,
+            String renderedPrompt,
+            String inputBody,
+            String inputHash,
+            Boolean inputTruncated
+    ) {
+        this.id = id;
+        this.renderedPrompt = renderedPrompt;
+        this.inputBody = inputBody;
+        this.inputHash = inputHash;
+        this.inputTruncated = inputTruncated;
+    }
+
+    public LlmCallRequest(UUID id, String renderedPrompt, String inputBody) {
+        this(id, renderedPrompt, inputBody, null, null);
+    }
 }

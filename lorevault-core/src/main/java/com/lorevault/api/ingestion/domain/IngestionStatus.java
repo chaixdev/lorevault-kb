@@ -37,6 +37,16 @@ public enum IngestionStatus {
      * The local SLM is performing its initial pass to extract all potential entity mentions
      */
     EXTRACTING_ENTITIES,
+
+    /**
+     * The system is resolving cross-scene event co-reference links for a chapter.
+     */
+    EVENT_COREF,
+
+    /**
+     * The system is aggregating co-reference chains into chapter-level event records.
+     */
+    CHAPTER_EVENT_AGGREGATION,
     
     /**
      * The system is creating technical chunks from the identified scenes and generating their vector embeddings
@@ -91,6 +101,8 @@ public enum IngestionStatus {
             case SCENE_SEGMENTATION -> 15;
             case SCENE_TRIAD_ANALYSIS -> 25;
             case EXTRACTING_ENTITIES -> 35;
+            case EVENT_COREF -> 42;
+            case CHAPTER_EVENT_AGGREGATION -> 46;
             case EMBEDDING_CHUNKS -> 50;
             // case SYNTHESIZING_CHARACTERS -> 60;
             // case SYNTHESIZING_LOCATIONS -> 75;

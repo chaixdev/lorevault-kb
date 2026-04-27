@@ -7,5 +7,6 @@ public record ChapterEventResolutionResult(
     boolean success,
     int rawMentionsProcessed,
     int chapterEventsCreated,
+    int failedCorefWindowCount,
     String message
 ) {}

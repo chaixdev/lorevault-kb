@@ -73,7 +73,8 @@ class IngestionCompletionCoordinatorTest {
                 UUID.randomUUID(),
                 true,
                 5,
-                2
+                2,
+                0
         ));
 
         verify(ingestionJobService).completeJob(job, chapterId, 1200);
@@ -93,8 +94,6 @@ class IngestionCompletionCoordinatorTest {
         failedStatus.setStatus(IngestionStatus.FAILED);
         job.setCurrentStatus(failedStatus);
 
-        when(jobRepo.findById(jobId)).thenReturn(java.util.Optional.of(job));
-
         coordinator.handleBookIndividualsReduced(new BookIndividualsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 3, 1));
         coordinator.handleEmbeddingsCompleted(new EmbeddingsCompletedEvent(this, jobId, chapterId, 2, 4, 4, 1200));
         coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 2, 1));
@@ -105,7 +104,8 @@ class IngestionCompletionCoordinatorTest {
                 UUID.randomUUID(),
                 true,
                 5,
-                2
+                2,
+                0
         ));
 
         verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));

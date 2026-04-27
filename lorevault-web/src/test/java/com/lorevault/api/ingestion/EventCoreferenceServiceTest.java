@@ -106,6 +106,7 @@ class EventCoreferenceServiceTest {
         assertThat(result.chapterId()).isEqualTo(chapterId);
         assertThat(result.windowsRun()).isZero();
         assertThat(result.linksCreated()).isZero();
+        assertThat(result.failedWindowCount()).isZero();
         verify(mentionRepo, never()).deleteCoreferenceLinks(any());
         verify(mentionRepo, never()).findMentionsBySceneIds(any());
         verify(llmClient, never()).runEventCoref(any(), anyString());
@@ -214,6 +215,7 @@ class EventCoreferenceServiceTest {
 
         assertThat(result.windowsRun()).isEqualTo(2);
         assertThat(result.linksCreated()).isEqualTo(1);
+        assertThat(result.failedWindowCount()).isZero();
         ArgumentCaptor<String> sourceCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> modelCaptor = ArgumentCaptor.forClass(String.class);
         verify(mentionRepo, times(1)).createSameEventLink(any(), any(), any(Double.class), anyString(), sourceCaptor.capture(), modelCaptor.capture());
@@ -274,6 +276,7 @@ class EventCoreferenceServiceTest {
 
         assertThat(result.windowsRun()).isEqualTo(2);
         assertThat(result.linksCreated()).isEqualTo(1);
+        assertThat(result.failedWindowCount()).isEqualTo(1);
         verify(mentionRepo).deleteCoreferenceLinks(chapterId);
         verify(mentionRepo, times(1)).createSameEventLink(any(), any(), any(Double.class), anyString(), anyString(), anyString());
         assertThat(logAppender.list)

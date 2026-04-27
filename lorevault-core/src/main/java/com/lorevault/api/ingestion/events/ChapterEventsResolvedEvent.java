@@ -10,6 +10,7 @@ public class ChapterEventsResolvedEvent extends IngestionEvent {
     private final boolean processed;
     private final int mentionCount;
     private final int chapterEventCount;
+    private final int failedCorefWindowCount;
 
     public ChapterEventsResolvedEvent(
             Object source,
@@ -18,9 +19,10 @@ public class ChapterEventsResolvedEvent extends IngestionEvent {
             UUID bookId,
             boolean processed,
             int mentionCount,
-            int chapterEventCount
+            int chapterEventCount,
+            int failedCorefWindowCount
     ) {
-        this(source, jobId, jobId, chapterId, bookId, processed, mentionCount, chapterEventCount);
+        this(source, jobId, jobId, chapterId, bookId, processed, mentionCount, chapterEventCount, failedCorefWindowCount);
     }
 
     public ChapterEventsResolvedEvent(
@@ -31,13 +33,15 @@ public class ChapterEventsResolvedEvent extends IngestionEvent {
             UUID bookId,
             boolean processed,
             int mentionCount,
-            int chapterEventCount
+            int chapterEventCount,
+            int failedCorefWindowCount
     ) {
         super(source, jobId, correlationId, chapterId);
         this.bookId = bookId;
         this.processed = processed;
         this.mentionCount = mentionCount;
         this.chapterEventCount = chapterEventCount;
+        this.failedCorefWindowCount = failedCorefWindowCount;
     }
 
     @Override

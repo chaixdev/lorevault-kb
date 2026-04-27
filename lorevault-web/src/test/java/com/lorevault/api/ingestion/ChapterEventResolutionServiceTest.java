@@ -74,6 +74,7 @@ class ChapterEventResolutionServiceTest {
         assertThat(result.success()).isFalse();
         assertThat(result.rawMentionsProcessed()).isZero();
         assertThat(result.chapterEventsCreated()).isZero();
+        assertThat(result.failedCorefWindowCount()).isZero();
         verify(chapterEventRepository, never()).deleteByChapterId(any());
     }
 
@@ -106,6 +107,7 @@ class ChapterEventResolutionServiceTest {
         assertThat(result.success()).isTrue();
         assertThat(result.rawMentionsProcessed()).isEqualTo(3);
         assertThat(result.chapterEventsCreated()).isEqualTo(2);
+        assertThat(result.failedCorefWindowCount()).isZero();
 
         List<ChapterEvent> saved = captureAllSaved();
         assertThat(saved).hasSize(2);
@@ -149,6 +151,34 @@ class ChapterEventResolutionServiceTest {
     }
 
     @Test
+    @DisplayName("Canonical label tie breaks lexicographically for deterministic rebuilds")
+    void canonicalLabelTieBreaksLexicographically() {
+        UUID chapterId = UUID.randomUUID();
+        UUID m1 = UUID.randomUUID();
+        UUID m2 = UUID.randomUUID();
+        String comp = m1.toString();
+
+        when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
+        when(componentLookup.findSameEventComponents(chapterId)).thenReturn(List.of(
+                componentRow(m1.toString(), comp),
+                componentRow(m2.toString(), comp)
+        ));
+        when(mentionRepository.findByChapterIdOrdered(chapterId)).thenReturn(List.of(
+                mention(m1, "Siege", "siege", "BATTLE", "PRECEDES", null, chapterId),
+                mention(m2, "Ambush", "ambush", "BETRAYAL", "PRECEDES", null, chapterId)
+        ));
+        when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(1L);
+
+        service.resolveChapter(chapterId);
+
+        List<ChapterEvent> saved = captureAllSaved();
+        ChapterEvent savedEvent = saved.getFirst();
+        assertThat(savedEvent.displayName()).isEqualTo("Ambush");
+        assertThat(savedEvent.representativeEventType()).isEqualTo("BATTLE");
+    }
+
+    @Test
     @DisplayName("Aggregate card includes event type and evidence")
     void aggregateCardIncludesTypeAndEvidence() {
         UUID chapterId = UUID.randomUUID();
@@ -182,6 +212,7 @@ class ChapterEventResolutionServiceTest {
         ChapterEventResolutionResult result = service.resolveChapter(chapterId);
 
         assertThat(result.success()).isFalse();
+        assertThat(result.failedCorefWindowCount()).isZero();
         verify(chapterEventRepository).deleteByChapterId(chapterId);
         verify(chapterEventRepository, never()).saveAll(any());
     }

@@ -4,7 +4,7 @@ import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.application.coref.EventCoreferenceService;
 import com.lorevault.api.ingestion.application.pipeline.PipelineStageSupport;
 import com.lorevault.api.ingestion.application.result.ChapterEventResolutionResult;
-import com.lorevault.api.content.entities.ChapterGraphRepository;
+import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.domain.coref.EventCorefModels;
 import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
@@ -37,20 +37,17 @@ public class ChapterEventResolutionHandler {
 
     private final EventCoreferenceService eventCoreferenceService;
     private final ChapterEventResolutionService chapterEventResolutionService;
-    private final ChapterGraphRepository chapterGraphRepository;
     private final PipelineStageSupport pipelineStageSupport;
     private final ApplicationEventPublisher eventPublisher;
 
     public ChapterEventResolutionHandler(
             EventCoreferenceService eventCoreferenceService,
             ChapterEventResolutionService chapterEventResolutionService,
-            ChapterGraphRepository chapterGraphRepository,
             IngestionJobService ingestionJobService,
             ApplicationEventPublisher eventPublisher
     ) {
         this.eventCoreferenceService = eventCoreferenceService;
         this.chapterEventResolutionService = chapterEventResolutionService;
-        this.chapterGraphRepository = chapterGraphRepository;
         this.pipelineStageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         this.eventPublisher = eventPublisher;
     }
@@ -63,18 +60,17 @@ public class ChapterEventResolutionHandler {
         UUID correlationId = event.getCorrelationId();
         UUID bookId = event.getBookId();
 
-        if (chapterGraphRepository.hasCompletedEventResolutionForJob(chapterId, jobId)) {
-            log.warn(
-                    "[CHAPTER_EVENT_RESOLUTION] Replay skipped: jobId={}, correlationId={}, chapterId={}, bookId={}",
-                    jobId,
-                    correlationId,
-                    chapterId,
-                    bookId
-            );
-            return;
-        }
-
         log.info("[CHAPTER_EVENT_RESOLUTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}", jobId, correlationId, chapterId, bookId);
+        pipelineStageSupport.updateJobStatus(
+                jobId,
+                IngestionStatus.EVENT_COREF,
+                "Resolving cross-scene event co-reference",
+                java.util.Map.of(
+                        "correlationId", correlationId.toString(),
+                        "chapterId", chapterId.toString(),
+                        "sceneCount", sceneIdsOrEmpty(event.getSceneIds()).size()
+                )
+        );
 
         // Stage 2: LLM rolling-triad co-reference pass — writes SAME_EVENT links
         List<UUID> sceneIds = event.getSceneIds();
@@ -94,6 +90,19 @@ public class ChapterEventResolutionHandler {
         log.info("[CHAPTER_EVENT_RESOLUTION] Stage 2 complete: jobId={}, correlationId={}, chapterId={}, windowsRun={}, linksCreated={}",
                 jobId, correlationId, chapterId, corefResult.windowsRun(), corefResult.linksCreated());
 
+        pipelineStageSupport.updateJobStatus(
+                jobId,
+                IngestionStatus.CHAPTER_EVENT_AGGREGATION,
+                "Aggregating chapter-level events from co-reference chains",
+                java.util.Map.of(
+                        "correlationId", correlationId.toString(),
+                        "chapterId", chapterId.toString(),
+                        "windowsRun", corefResult.windowsRun(),
+                        "linksCreated", corefResult.linksCreated(),
+                        "failedCorefWindowCount", corefResult.failedWindowCount()
+                )
+        );
+
         // Stage 3: deterministic aggregation from SAME_EVENT chains → ChapterEvent nodes
         ChapterEventResolutionResult aggregationResult = pipelineStageSupport.runStage(
                 this,
@@ -108,21 +117,29 @@ public class ChapterEventResolutionHandler {
             return;
         }
 
+        aggregationResult = new ChapterEventResolutionResult(
+                aggregationResult.chapterId(),
+                aggregationResult.success(),
+                aggregationResult.rawMentionsProcessed(),
+                aggregationResult.chapterEventsCreated(),
+                corefResult.failedWindowCount(),
+                aggregationResult.message()
+        );
+
         if (aggregationResult.success()) {
             log.info(
-                    "[CHAPTER_EVENT_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterEventCount={}",
+                    "[CHAPTER_EVENT_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterEventCount={}, failedCorefWindowCount={}",
                     jobId, chapterId, bookId,
                     aggregationResult.rawMentionsProcessed(),
-                    aggregationResult.chapterEventsCreated()
+                    aggregationResult.chapterEventsCreated(),
+                    aggregationResult.failedCorefWindowCount()
             );
         } else {
             log.warn(
-                    "[CHAPTER_EVENT_RESOLUTION] Skipped (no mentions): jobId={}, chapterId={}, bookId={}, reason={}",
-                    jobId, chapterId, bookId, aggregationResult.message()
+                    "[CHAPTER_EVENT_RESOLUTION] Skipped (no mentions): jobId={}, chapterId={}, bookId={}, failedCorefWindowCount={}, reason={}",
+                    jobId, chapterId, bookId, aggregationResult.failedCorefWindowCount(), aggregationResult.message()
             );
         }
-
-        chapterGraphRepository.markEventResolutionCompleted(chapterId, jobId);
 
         eventPublisher.publishEvent(new ChapterEventsResolvedEvent(
                  this,
@@ -131,8 +148,13 @@ public class ChapterEventResolutionHandler {
                  chapterId,
                  bookId,
                  aggregationResult.success(),
-                aggregationResult.rawMentionsProcessed(),
-                aggregationResult.chapterEventsCreated()
+                 aggregationResult.rawMentionsProcessed(),
+                 aggregationResult.chapterEventsCreated(),
+                 aggregationResult.failedCorefWindowCount()
         ));
+    }
+
+    private List<UUID> sceneIdsOrEmpty(List<UUID> sceneIds) {
+        return sceneIds == null ? List.of() : sceneIds;
     }
 }

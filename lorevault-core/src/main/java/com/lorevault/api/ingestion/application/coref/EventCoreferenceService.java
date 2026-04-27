@@ -48,7 +48,6 @@ public class EventCoreferenceService {
     static final int WINDOW_SIZE = 3;
 
     static final String COREF_SOURCE = "EVENT_COREF_LLM";
-    static final String COREF_MODEL = "event-coref";
 
     private final EventMentionGraphRepository mentionRepo;
     private final LlmClient llmClient;
@@ -75,7 +74,7 @@ public class EventCoreferenceService {
     public EventCorefModels.CorefPassResult runCorefPass(List<UUID> orderedSceneIds, UUID chapterId, UUID jobId) {
         String modelId = llmClient.getEventCorefModelId();
         if (orderedSceneIds == null || orderedSceneIds.isEmpty()) {
-            return new EventCorefModels.CorefPassResult(chapterId, UUID.randomUUID().toString(), modelId, 0, 0);
+            return new EventCorefModels.CorefPassResult(chapterId, UUID.randomUUID().toString(), modelId, 0, 0, 0);
         }
 
         List<List<UUID>> windows = buildSceneWindows(orderedSceneIds);
@@ -145,7 +144,8 @@ public class EventCoreferenceService {
                 passId,
                 modelId,
                 windows.size(),
-                bestConfidenceByPair.size()
+                bestConfidenceByPair.size(),
+                failureCount
         );
     }
 

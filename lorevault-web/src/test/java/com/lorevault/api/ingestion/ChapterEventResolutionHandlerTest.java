@@ -1,11 +1,11 @@
 package com.lorevault.api.ingestion;
 
-import com.lorevault.api.content.entities.ChapterGraphRepository;
 import com.lorevault.api.ingestion.application.IngestionJobService;
 import com.lorevault.api.ingestion.application.coref.EventCoreferenceService;
 import com.lorevault.api.ingestion.application.resolution.ChapterEventResolutionHandler;
 import com.lorevault.api.ingestion.application.resolution.ChapterEventResolutionService;
 import com.lorevault.api.ingestion.application.result.ChapterEventResolutionResult;
+import com.lorevault.api.ingestion.domain.IngestionStatus;
 import com.lorevault.api.ingestion.domain.coref.EventCorefModels;
 import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
@@ -33,7 +33,6 @@ class ChapterEventResolutionHandlerTest {
 
     @Mock private EventCoreferenceService eventCoreferenceService;
     @Mock private ChapterEventResolutionService chapterEventResolutionService;
-    @Mock private ChapterGraphRepository chapterGraphRepository;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -44,7 +43,6 @@ class ChapterEventResolutionHandlerTest {
         handler = new ChapterEventResolutionHandler(
                 eventCoreferenceService,
                 chapterEventResolutionService,
-                chapterGraphRepository,
                 ingestionJobService,
                 eventPublisher
         );
@@ -55,7 +53,7 @@ class ChapterEventResolutionHandlerTest {
     }
 
     private EventCorefModels.CorefPassResult passResult(UUID chapterId) {
-        return new EventCorefModels.CorefPassResult(chapterId, "pass-1", "model", 3, 2);
+        return new EventCorefModels.CorefPassResult(chapterId, "pass-1", "model", 3, 2, 0);
     }
 
     @Test
@@ -65,11 +63,9 @@ class ChapterEventResolutionHandlerTest {
         UUID chapterId = UUID.randomUUID();
         UUID bookId = UUID.randomUUID();
 
-        when(chapterGraphRepository.hasCompletedEventResolutionForJob(chapterId, jobId)).thenReturn(false);
-
         when(eventCoreferenceService.runCorefPass(anyList(), eq(chapterId), eq(jobId))).thenReturn(passResult(chapterId));
         when(chapterEventResolutionService.resolveChapter(chapterId))
-                .thenReturn(new ChapterEventResolutionResult(chapterId, true, 3, 2, "ok"));
+                .thenReturn(new ChapterEventResolutionResult(chapterId, true, 3, 2, 0, "ok"));
 
         handler.handleScenesDetected(scenesDetectedEvent(jobId, chapterId, bookId));
 
@@ -84,8 +80,10 @@ class ChapterEventResolutionHandlerTest {
         assertThat(published.isProcessed()).isTrue();
         assertThat(published.getMentionCount()).isEqualTo(3);
         assertThat(published.getChapterEventCount()).isEqualTo(2);
+        assertThat(published.getFailedCorefWindowCount()).isZero();
         assertThat(published.getCorrelationId()).isNotNull();
-        verify(chapterGraphRepository).markEventResolutionCompleted(chapterId, jobId);
+        verify(ingestionJobService).updateJobStatus(eq(jobId), eq(IngestionStatus.EVENT_COREF), anyString(), anyMap());
+        verify(ingestionJobService).updateJobStatus(eq(jobId), eq(IngestionStatus.CHAPTER_EVENT_AGGREGATION), anyString(), anyMap());
     }
 
     @Test
@@ -94,8 +92,6 @@ class ChapterEventResolutionHandlerTest {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         UUID bookId = UUID.randomUUID();
-
-        when(chapterGraphRepository.hasCompletedEventResolutionForJob(chapterId, jobId)).thenReturn(false);
 
         when(eventCoreferenceService.runCorefPass(anyList(), eq(chapterId), eq(jobId)))
                 .thenThrow(new RuntimeException("LLM timed out"));
@@ -114,8 +110,6 @@ class ChapterEventResolutionHandlerTest {
         UUID chapterId = UUID.randomUUID();
         UUID bookId = UUID.randomUUID();
 
-        when(chapterGraphRepository.hasCompletedEventResolutionForJob(chapterId, jobId)).thenReturn(false);
-
         when(eventCoreferenceService.runCorefPass(anyList(), eq(chapterId), eq(jobId))).thenReturn(passResult(chapterId));
         when(chapterEventResolutionService.resolveChapter(chapterId))
                 .thenThrow(new RuntimeException("graph write failed"));
@@ -132,11 +126,9 @@ class ChapterEventResolutionHandlerTest {
         UUID chapterId = UUID.randomUUID();
         UUID bookId = UUID.randomUUID();
 
-        when(chapterGraphRepository.hasCompletedEventResolutionForJob(chapterId, jobId)).thenReturn(false);
-
         when(eventCoreferenceService.runCorefPass(anyList(), eq(chapterId), eq(jobId))).thenReturn(passResult(chapterId));
         when(chapterEventResolutionService.resolveChapter(chapterId))
-                .thenReturn(new ChapterEventResolutionResult(chapterId, false, 0, 0, "No mentions"));
+                .thenReturn(new ChapterEventResolutionResult(chapterId, false, 0, 0, 1, "No mentions"));
 
         handler.handleScenesDetected(scenesDetectedEvent(jobId, chapterId, bookId));
 
@@ -146,25 +138,27 @@ class ChapterEventResolutionHandlerTest {
 
         ChapterEventsResolvedEvent published2 = (ChapterEventsResolvedEvent) publishedCaptor2.getValue();
         assertThat(published2.isProcessed()).isFalse();
+        assertThat(published2.getFailedCorefWindowCount()).isZero();
     }
 
     @Test
-    @DisplayName("duplicateScenesDetectedEvent_skippedAfterCompletion")
-    void duplicateScenesDetectedEventSkippedAfterCompletion() {
+    @DisplayName("eventPublicationFailure_doesNotWriteSyntheticCompletionMarker")
+    void eventPublicationFailureDoesNotWriteSyntheticCompletionMarker() {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         UUID bookId = UUID.randomUUID();
 
-        when(chapterGraphRepository.hasCompletedEventResolutionForJob(chapterId, jobId)).thenReturn(false, true);
         when(eventCoreferenceService.runCorefPass(anyList(), eq(chapterId), eq(jobId))).thenReturn(passResult(chapterId));
         when(chapterEventResolutionService.resolveChapter(chapterId))
-                .thenReturn(new ChapterEventResolutionResult(chapterId, true, 3, 2, "ok"));
+                .thenReturn(new ChapterEventResolutionResult(chapterId, true, 3, 2, 0, "ok"));
+        doThrow(new RuntimeException("event bus unavailable")).when(eventPublisher).publishEvent(any(ChapterEventsResolvedEvent.class));
 
-        ScenesDetectedEvent event = scenesDetectedEvent(jobId, chapterId, bookId);
-        handler.handleScenesDetected(event);
-        handler.handleScenesDetected(event);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                handler.handleScenesDetected(scenesDetectedEvent(jobId, chapterId, bookId))
+        ).isInstanceOf(RuntimeException.class).hasMessageContaining("event bus unavailable");
 
-        verify(eventCoreferenceService, times(1)).runCorefPass(anyList(), eq(chapterId), eq(jobId));
-        verify(chapterEventResolutionService, times(1)).resolveChapter(chapterId);
+        verify(eventCoreferenceService).runCorefPass(anyList(), eq(chapterId), eq(jobId));
+        verify(chapterEventResolutionService).resolveChapter(chapterId);
+        verify(eventPublisher).publishEvent(any(ChapterEventsResolvedEvent.class));
     }
 }

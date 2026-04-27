@@ -11,6 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -82,15 +85,24 @@ public class LlmCallLoggingService implements LlmCallLogger {
         rec.setTokensEstimated(Boolean.TRUE);
         rec.setPromptTemplateId(promptTemplateId);
         rec.setStoreRenderedPrompt(props.storeRenderedPrompt());
+        Integer maxBodyChars = props.maxBodyChars();
+        TruncationResult inputResult = maybeTruncate(inputBody, maxBodyChars);
         LlmCallRequest request = new LlmCallRequest();
         request.setId(UUID.randomUUID());
         request.setRenderedPrompt(props.storeRenderedPrompt() ? renderedPrompt : null);
-        request.setInputBody(inputBody);
+        request.setInputBody(inputResult.body());
+        request.setInputHash(inputResult.hash());
+        request.setInputTruncated(inputResult.truncated());
         rec.setRequest(request);
 
+        TruncationResult responseResult = props.persistBodiesEnabled() == Boolean.TRUE
+                ? maybeTruncate(responseBody, maxBodyChars)
+                : TruncationResult.notPersisted();
         LlmCallResponse response = new LlmCallResponse();
         response.setId(UUID.randomUUID());
-        response.setBody(props.persistBodiesEnabled() == Boolean.TRUE ? responseBody : null);
+        response.setBody(responseResult.body());
+        response.setBodyHash(responseResult.hash());
+        response.setTruncated(responseResult.truncated());
         rec.setResponse(response);
 
         rec.setCreatedAt(LocalDateTime.now());
@@ -118,5 +130,35 @@ public class LlmCallLoggingService implements LlmCallLogger {
         }
 
         llmCallRepo.save(rec);
+    }
+
+    private TruncationResult maybeTruncate(String body, Integer maxChars) {
+        if (body == null) {
+            return new TruncationResult(null, null, false);
+        }
+        if (maxChars == null || maxChars < 0 || body.length() <= maxChars) {
+            return new TruncationResult(body, sha256(body), false);
+        }
+        return new TruncationResult(body.substring(0, maxChars), sha256(body), true);
+    }
+
+    private String sha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder(hashed.length * 2);
+            for (byte current : hashed) {
+                builder.append(String.format("%02x", current));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 not available", exception);
+        }
+    }
+
+    private record TruncationResult(String body, String hash, Boolean truncated) {
+        private static TruncationResult notPersisted() {
+            return new TruncationResult(null, null, null);
+        }
     }
 }

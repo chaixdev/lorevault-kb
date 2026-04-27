@@ -44,13 +44,13 @@ public class ChapterEventResolutionService {
     @Transactional
     public ChapterEventResolutionResult resolveChapter(UUID chapterId) {
         if (chapterId == null) {
-            return new ChapterEventResolutionResult(null, false, 0, 0, "Chapter ID is required");
+            return new ChapterEventResolutionResult(null, false, 0, 0, 0, "Chapter ID is required");
         }
 
         long mentionCount = chapterEventRepository.countMentionsByChapterId(chapterId);
         if (mentionCount == 0) {
             return new ChapterEventResolutionResult(
-                    chapterId, false, 0, 0, "No event mentions found for chapter");
+                    chapterId, false, 0, 0, 0, "No event mentions found for chapter");
         }
 
         // Idempotent rebuild: remove previous ChapterEvent nodes + REFERS_TO edges
@@ -72,7 +72,7 @@ public class ChapterEventResolutionService {
 
         if (componentMap.isEmpty()) {
             return new ChapterEventResolutionResult(
-                    chapterId, false, Math.toIntExact(mentionCount), 0,
+                    chapterId, false, Math.toIntExact(mentionCount), 0, 0,
                     "No resolvable event mentions found for chapter");
         }
 
@@ -100,7 +100,7 @@ public class ChapterEventResolutionService {
 
         if (chapterEvents.isEmpty()) {
             return new ChapterEventResolutionResult(
-                    chapterId, false, Math.toIntExact(mentionCount), 0,
+                    chapterId, false, Math.toIntExact(mentionCount), 0, 0,
                     "No resolvable event mentions found for chapter");
         }
 
@@ -138,7 +138,7 @@ public class ChapterEventResolutionService {
                 chapterId, mentionCount, createdCount);
 
         return new ChapterEventResolutionResult(
-                chapterId, true, Math.toIntExact(mentionCount), Math.toIntExact(createdCount),
+                chapterId, true, Math.toIntExact(mentionCount), Math.toIntExact(createdCount), 0,
                 "Resolved chapter event mentions from co-reference chains");
     }
 
@@ -241,8 +241,12 @@ public class ChapterEventResolutionService {
         return values.stream()
                 .collect(Collectors.groupingBy(v -> v, Collectors.counting()))
                 .entrySet().stream()
-                .max(Map.Entry.comparingByValue())
+                .sorted(
+                        Map.Entry.<String, Long>comparingByValue().reversed()
+                                .thenComparing(Map.Entry.comparingByKey())
+                )
                 .map(Map.Entry::getKey)
+                .findFirst()
                 .orElse(null);
     }
 

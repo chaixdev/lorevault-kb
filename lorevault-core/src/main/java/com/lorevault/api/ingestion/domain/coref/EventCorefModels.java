@@ -71,12 +71,14 @@ public final class EventCorefModels {
      * @param model          model id that was used
      * @param windowsRun     number of rolling-triad windows executed
      * @param linksCreated   number of SAME_EVENT links written
+     * @param failedWindowCount number of windows that failed and were skipped
      */
     public record CorefPassResult(
             java.util.UUID chapterId,
             String passId,
             String model,
             int windowsRun,
-            int linksCreated
+            int linksCreated,
+            int failedWindowCount
     ) {}
 }
