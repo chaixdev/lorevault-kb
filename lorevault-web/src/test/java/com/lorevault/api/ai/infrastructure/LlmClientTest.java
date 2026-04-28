@@ -2,6 +2,7 @@ package com.lorevault.api.ai.infrastructure;
 
 import com.lorevault.api.ai.llm.LlmCallLogger;
 import com.lorevault.api.ai.llm.EventCorefModels;
+import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.ai.llm.LlmClient;
 import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
 
@@ -190,5 +191,49 @@ class LlmClientTest {
         assertThat(responseBodyCaptor.getValue()).contains("\"pairs\"");
         assertThat(responseBodyCaptor.getValue()).contains("\"mentionIdA\":\"mention-a\"");
         assertThat(responseBodyCaptor.getValue()).contains("\"sameEvent\":true");
+    }
+
+    @Test
+    void runEventMergeVerification_shouldPersistStructuredResponseBodyWithEventMergePromptPath() {
+        UUID jobId = UUID.randomUUID();
+        var response = new EventMergeModels.EventMergePairResponse(
+                "MERGE",
+                0.86,
+                "shared anchors align"
+        );
+
+        when(promptRepository.get("event-merge-system"))
+                .thenReturn(new org.springframework.ai.chat.prompt.PromptTemplate("system merge prompt"));
+        when(promptProperties.getEventMergeSystemPath()).thenReturn("classpath:prompts/event-merge-system.st");
+        when(nlpSmallChatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.options(any())).thenReturn(requestSpec);
+        when(requestSpec.call()).thenReturn(callSpec);
+        when(callSpec.entity(eq(EventMergeModels.EventMergePairResponse.class))).thenReturn(response);
+
+        client.runEventMergeVerification(jobId, "<pair></pair>");
+
+        ArgumentCaptor<String> responseBodyCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(llmLog).logCall(
+                eq(jobId),
+                eq("event-merge"),
+                eq("openai-compatible"),
+                eq(null),
+                eq(0.1),
+                eq(0.9),
+                eq(6000),
+                eq("classpath:prompts/event-merge-system.st"),
+                eq("system merge prompt"),
+                eq("<pair></pair>"),
+                responseBodyCaptor.capture(),
+                anyLong(),
+                eq(5),
+                outputTokensCaptor.capture()
+        );
+
+        assertThat(responseBodyCaptor.getValue()).contains("\"decision\":\"MERGE\"");
+        assertThat(responseBodyCaptor.getValue()).contains("\"confidence\":0.86");
     }
 }

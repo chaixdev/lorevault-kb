@@ -64,6 +64,13 @@ public record LoreVaultPromptProperties(
     public String getEventCorefSystemPath() {
         return getPromptPath("event-coref-system.st");
     }
+
+    /**
+     * Get event merge verification system prompt path.
+     */
+    public String getEventMergeSystemPath() {
+        return getPromptPath("event-merge-system.st");
+    }
     
     /**
      * Get chapter segmentation model.

@@ -176,6 +176,31 @@ public class LlmClient {
         );
     }
 
+    /**
+     * Executes a single ChapterEvent semantic merge verification call.
+     * Uses the {@code event-merge-system.st} prompt and structured JSON response binding.
+     */
+    public EventMergeModels.EventMergePairResponse runEventMergeVerification(
+            UUID jobId,
+            String userInput
+    ) {
+        PromptTemplate systemTemplate = promptRepository.get("event-merge-system");
+        String systemPrompt = systemTemplate.render(Map.of());
+
+        ChatClient chatClient = getChatClientForModel("nlp-small");
+
+        return executeSceneDetectionStructuredCall(
+                jobId,
+                "event-merge",
+                promptProperties.getEventMergeSystemPath(),
+                systemPrompt,
+                userInput,
+                chatClient,
+                nlpSmallModelId,
+                EventMergeModels.EventMergePairResponse.class
+        );
+    }
+
     public String getEventCorefModelId() {
         return getModelIdForStage("analysis");
     }

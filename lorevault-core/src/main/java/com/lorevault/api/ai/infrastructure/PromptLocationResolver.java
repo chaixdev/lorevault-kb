@@ -1,7 +1,6 @@
 package com.lorevault.api.ai.infrastructure;
 
 import com.lorevault.api.config.LoreVaultPromptProperties;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
@@ -9,10 +8,13 @@ import org.springframework.stereotype.Component;
  * Centralizes the mapping between prompt names and their file locations.
  */
 @Component
-@RequiredArgsConstructor
 public class PromptLocationResolver {
 
     private final LoreVaultPromptProperties promptProperties;
+
+    public PromptLocationResolver(LoreVaultPromptProperties promptProperties) {
+        this.promptProperties = promptProperties;
+    }
 
     /**
      * Resolve a logical prompt name to its resource path.
@@ -29,6 +31,8 @@ public class PromptLocationResolver {
             case "rag-answer-generation" -> getRagAnswerGenerationPath();
             case "event-coref-system" -> promptProperties.getEventCorefSystemPath();
             case "event-coref-user" -> promptProperties.getPromptPath("event-coref-usertemplate.st");
+            case "event-merge-system" -> promptProperties.getEventMergeSystemPath();
+            case "event-merge-user" -> promptProperties.getPromptPath("event-merge-user.st");
             default -> throw new IllegalArgumentException("Unknown prompt name: " + logicalName);
         };
     }
