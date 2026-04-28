@@ -45,11 +45,12 @@ The evidence layer is written before any entity consolidation happens.
 
 Once scene persistence is complete, `SceneDetectionHandler` publishes `ScenesDetectedEvent`.
 
-That event feeds three required follow-up flows:
+That event feeds the content branch, the entity lanes documented here, and the separate event-resolution path documented in `ingestion-pipeline.md`:
 
 - **content branch** — chunking then embedding
 - **Individual branch** — chapter resolution then book reduction
 - **Location branch** — chapter resolution then book reduction
+- **Event branch** — chapter event resolution, then event embedding and same-book ANN candidate generation
 
 Entity lanes are sibling branches, not sub-steps of each other or of the content branch.
 
@@ -206,9 +207,16 @@ graph LR
     ChapterResolvedLoc --> BookReduceLoc["BookLocationReductionHandler"]
     BookReduceLoc --> BookReducedLoc["BookLocationsReducedEvent"]
 
+    ScenesEvt --> ChapterResolveEvt["ChapterEventResolutionHandler"]
+    ChapterResolveEvt --> ChapterResolvedEvt["ChapterEventsResolvedEvent"]
+    ChapterResolvedEvt --> EventEmbedding["ChapterEventEmbeddingHandler"]
+    EventEmbedding --> BookEventCandidates["BookEventCandidatesGeneratedEvent"]
+
     EmbeddingsDone --> Complete["IngestionCompletionCoordinator"]
     BookReducedInd --> Complete
     BookReducedLoc --> Complete
+    ChapterResolvedEvt --> Complete
+    BookEventCandidates --> Complete
     Complete --> Done["IngestionCompletedEvent"]
 ```
 
@@ -216,13 +224,15 @@ graph LR
 
 `IngestionCompletedEvent` is terminal for chapter ingestion.
 
-`IngestionCompletionCoordinator` waits for all three required branches to complete for the same `(jobId, chapterId)` before publishing `IngestionCompletedEvent`:
+`IngestionCompletionCoordinator` waits for all required completion-barrier events for the same `(jobId, chapterId)` before publishing `IngestionCompletedEvent`:
 
 - `EmbeddingsCompletedEvent` (content branch)
 - `BookIndividualsReducedEvent` (Individual lane)
 - `BookLocationsReducedEvent` (Location lane)
+- `ChapterEventsResolvedEvent` (event-resolution path)
+- `BookEventCandidatesGeneratedEvent` (event embedding and ANN candidate path)
 
-Entity lanes are part of the completion contract, not optional post-processing.
+Entity lanes and the event path are part of the completion contract, not optional post-processing.
 
 ## Idempotency
 
@@ -261,7 +271,7 @@ This pattern covers:
 
 This pattern does **not** cover:
 
-- future event resolution (separate special case)
+- event resolution internals, event embeddings, or ANN candidate generation (separate pipeline path)
 - embedding-assisted candidate generation for entity matching
 - claim extraction or canonical fact modeling
 - cross-book or cross-series entity resolution
