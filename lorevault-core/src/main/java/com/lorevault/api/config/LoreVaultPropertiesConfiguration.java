@@ -5,6 +5,7 @@ import com.lorevault.api.config.LoreVaultEmbeddingProperties;
 import com.lorevault.api.config.LoreVaultLlmProperties;
 import com.lorevault.api.config.LoreVaultLlmLoggingProperties;
 import com.lorevault.api.config.LoreVaultSlotsProperties;
+import com.lorevault.api.ingestion.application.eventembedding.BookEventAnnProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -19,7 +20,8 @@ import org.springframework.context.annotation.Configuration;
     LoreVaultLlmLoggingProperties.class,
     LoreVaultEmbeddingProperties.class,
     LoreVaultContentProperties.class,
-    LoreVaultSlotsProperties.class
+    LoreVaultSlotsProperties.class,
+    BookEventAnnProperties.class
 })
 public class LoreVaultPropertiesConfiguration {
     // This class serves as the central point for enabling configuration properties

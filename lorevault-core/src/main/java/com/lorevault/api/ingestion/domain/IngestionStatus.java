@@ -47,6 +47,11 @@ public enum IngestionStatus {
      * The system is aggregating co-reference chains into chapter-level event records.
      */
     CHAPTER_EVENT_AGGREGATION,
+
+    /**
+     * The system is embedding chapter-level events and generating book-event merge candidates.
+     */
+    EVENT_CANDIDATE_GENERATION,
     
     /**
      * The system is creating technical chunks from the identified scenes and generating their vector embeddings
@@ -103,6 +108,7 @@ public enum IngestionStatus {
             case EXTRACTING_ENTITIES -> 35;
             case EVENT_COREF -> 42;
             case CHAPTER_EVENT_AGGREGATION -> 46;
+            case EVENT_CANDIDATE_GENERATION -> 48;
             case EMBEDDING_CHUNKS -> 50;
             // case SYNTHESIZING_CHARACTERS -> 60;
             // case SYNTHESIZING_LOCATIONS -> 75;
