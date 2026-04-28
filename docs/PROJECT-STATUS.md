@@ -1,8 +1,8 @@
 # LoreVault Project Status
 
 **Last Updated:** April 28, 2026  
-**Reviewed Through Commit:** `2a21018`  
-**Status:** Active — the split core/web codebase now uses capability-oriented internal packages across `lorevault-core`, with canonical docs updated to match the shipped structure and recent ingestion/search reliability hardening  
+**Reviewed Through Commit:** `828186b`  
+**Status:** Active — Stages 1–6 of the event entity resolution pipeline are now shipped end to end: EventMention extraction, chapter-scoped SAME_EVENT coref, ChapterEvent aggregation, ANN candidate generation, LLM semantic merge verification, and BookEvent write path  
 **Functional Goals:** Continue event extraction and aggregation work while broadening mention extraction beyond individuals/locations and keeping ingestion outcomes mechanically reliable  
 **Technical Goals:** Preserve the new architecture boundaries and transaction-safe ingestion flow while tightening remaining edge/test drift
 
@@ -25,7 +25,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Scoped entity resolution is now active for two lanes:
   - `IndividualMention -> ChapterIndividual -> BookIndividual`
   - `LocationMention -> ChapterLocation -> BookLocation`
-- Stage-1 event extraction now persists event-mention evidence, and the current event lane now carries chapter events through embedding plus same-book ANN candidate generation as groundwork for deeper event aggregation
+- Stage-1 event extraction now persists event-mention evidence, and the full event lane now carries chapter events through embedding, same-book ANN candidate generation, LLM semantic merge verification, and BookEvent write path — Stages 1–6 are shipped end to end
 - Scene analysis now persists object mentions end to end, including extracted object metadata from the triad-analysis output
 - Ingestion completion is coordinated across required post-scene branches: embedding completion, book-level Individual reduction, book-level Location reduction, chapter event resolution, and event ANN candidate generation
 - Query routing now distinguishes direct entity lookup from broader narrative Q&A, with entity-aware RAG grounded in scene-level individual and location context
@@ -52,6 +52,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Strong cycle containment completed** — completed four bounded passes of architectural cycle-containment work: moved triad-status ownership to ingestion handler with per-triad callback semantics, removed AI→timeline inverter coupling, extracted normalized triad result contracts for ingestion workflows, removed `Scene implements timeline.Event` reverse edge while keeping Scene as the current Event carrier, introduced an ingestion-owned triad artifact lookup seam for timeline provenance reads, and turned architecture profile cycle test from failing (17→8→6→2) to passing (0 current violations in `CorePackageBoundaryArchitectureTest`)
 - **Capability-oriented package reorg shipped** — completed the bounded `lorevault-core` package restructure across `ingestion`, `content`, `ai`, `library`, and `search`, replacing legacy internal layered buckets with capability-owned packages and adding a narrow `search.model` seam to keep `rag` and `semantic` cycle-free
 - **Stage 4 event path shipped** — chapter events now continue beyond extraction into vector embedding and same-book ANN candidate generation, and ingestion completion now explicitly waits on the five-event fan-in contract that includes the event branch
+- **Stages 5–6 event path shipped** — LLM semantic merge verification (Stage 5) evaluates each ANN candidate pair and decides MERGE / KEEP_SEPARATE / UNRESOLVED; BookEvent write path (Stage 6) clusters MERGE decisions and writes thin `BookEvent` nodes plus `ChapterEvent -[:REFERS_TO]-> BookEvent` edges; the event entity resolution pipeline is now end-to-end from EventMention through BookEvent
 - **Post-split architecture and ingestion hardening continued** — recent follow-up commits enforced architecture boundaries across `ai`, `content`, and `ingestion`; aligned async ingestion handlers with transaction rules; tightened LLM-call/status persistence and book-reduction claim handling; stabilized semantic-search test wiring; and refreshed individual-resolution coverage to match the current triad-analysis flow
 
 ## What Is Next

@@ -2,7 +2,7 @@
 
 **Status:** Planning  
 **Last Updated:** April 28, 2026  
-**Scope:** `scene-analysis` extraction, event coreference, and chapter event reduction (Stage 1–3 of the event pipeline)  
+**Scope:** `scene-analysis` extraction, event coreference, chapter event reduction (Stages 1–3), and deferred tuning items for the ANN and semantic merge verification stages (Stages 4–5)  
 **Reference:** `docs/concepts/evidence-vs-interpretation-layer.md`, `docs/concepts/core-domain-model-and-graph-process-restructured.md`, `docs/concepts/temporal-relation-semantics.md`
 
 ---
@@ -60,7 +60,9 @@ chapter reduction (Stage 3)
 - Stage 1 `EventMention` persistence is shipped.
 - Stage 2 chapter-scoped scene-windowed `SAME_EVENT` coreference is implemented: `EventCoreferenceService` now accepts ordered scene ids, builds rolling 3-scene windows, validates active-window pairs, writes rebuildable chapter-scoped `SAME_EVENT` links, deletes and rebuilds chapter links, uses a 0.75 confidence threshold, and escalates failures.
 - Stage 3 `ChapterEvent` reduction is shipped for chapter-local aggregates and now preserves support metadata: aliases, event-type variants, and evidence snippets.
-- Stage 4+ book-wide ANN candidate generation, semantic verification, `BookEvent`, and retrieval integration remain unimplemented.
+- Stage 4 ANN candidate generation is shipped: `ChapterEvent.aggregateCard` is embedded, stored on the node, and an in-memory ANN pass generates same-book cross-chapter candidate pairs after each chapter's events are resolved.
+- Stage 5 semantic merge verification is shipped: `BookEventMergeVerificationService` calls the LLM per ANN candidate pair and decides MERGE / KEEP_SEPARATE / UNRESOLVED.
+- Stage 6 `BookEvent` write path is shipped: `BookEventReductionService` clusters MERGE decisions, writes thin `BookEvent` nodes, and writes `ChapterEvent -[:REFERS_TO]-> BookEvent` edges.
 
 ## Live data examined
 
@@ -281,3 +283,46 @@ Implementation note: the shipped reducer keeps `displayName`, `normalizedName`, 
 - `docs/concepts/temporal-relation-semantics.md`
 - `docs/concepts/Narrative event DAG.md`
 - `docs/patterns/ingestion/ingestion-pipeline.md`
+
+---
+
+## Deferred: ANN threshold tuning (Stage 4)
+
+**When to revisit:** After processing real book data through Stages 4–6 and observing candidate pair distributions.
+
+The Stage 4 ANN pass uses several numeric thresholds that were set conservatively without real-data calibration. Their values live in `BookEventAnnProperties` and are bound via `lorevault.ingestion.event-ann.*`.
+
+| Parameter | Purpose | Current default | Calibration signal |
+|---|---|---|---|
+| `topK` | ANN query result count per source event | ? | Observe candidate count per chapter vs missed cross-chapter merges |
+| `oversampleFactor` | Multiplier applied to topK before deduplication | ? | Observe duplicate-pair rate |
+| `annFloor` | Minimum ANN score to retain a pair | ? | Observe true-positive rate at different floor values |
+| `maxCandidatesPerEvent` | Hard cap on candidate pairs per source event | ? | Observe fanout to Stage 5 LLM calls |
+
+**Calibration approach:**
+1. Ingest the 18-chapter Deathworlders sample with production-equivalent prompts.
+2. Log candidate pair counts per chapter (already logged by `ChapterEventEmbeddingHandler`).
+3. Inspect which cross-chapter event clusters the verifier correctly merges vs misses.
+4. Adjust floor upward if Stage 5 receives too many noise pairs; adjust topK upward if recall is low.
+
+Do not tune these values by intuition — base all changes on observed pair distributions from real data.
+
+---
+
+## Deferred: Stage 2 cross-chapter window scope
+
+**When to revisit:** After Stage 6 `BookEvent` write path is validated on real data and cross-chapter missed-merge rate is measured.
+
+**Open design question:** Should the `EventCoreferenceService` rolling-window pass extend the first window of a new chapter backward into the tail scenes of the prior chapter?
+
+**Current behavior:** `SAME_EVENT` links are chapter-scoped. The window always starts fresh at the first scene of the chapter. Events mentioned in the last scene of chapter N and the first scene of chapter N+1 are never proposed as coref candidates.
+
+**Proposed extension:** Allow the first window of a chapter to include the last 1-2 scenes of the prior chapter. This mirrors the existing scene-detection triad overlap pattern and would enable `SAME_EVENT` links to span chapter boundaries.
+
+**Constraints if implemented:**
+- `deleteCoreferenceLinks(chapterId)` must remain chapter-scoped for clean rebuild semantics.
+- Cross-chapter `SAME_EVENT` links would need a separate delete/rebuild pass or a different edge property to distinguish them from chapter-local links.
+- `ChapterEvent` aggregation (Stage 3) must remain chapter-scoped for spoiler gating — cross-chapter coref links would feed `BookEvent` clustering (Stage 6) directly rather than altering `ChapterEvent` scope.
+- The `EventCoreferenceService` currently receives only a chapter's own ordered scene ids. A cross-chapter window would require access to the prior chapter's tail scene ids, which requires either a new query or a change to the event triggering.
+
+**Recommendation:** Do not implement until Stage 6 data quality from the current in-memory ANN approach can be measured. If `BookEvent` clustering via Stage 5+6 already captures the cross-chapter merges that matter, the windowing extension may not be worth the rebuild complexity.
