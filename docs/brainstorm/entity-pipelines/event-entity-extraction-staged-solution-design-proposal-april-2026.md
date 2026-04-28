@@ -887,13 +887,13 @@ What changed in the implementation understanding:
 - the Stage 2 rolling unit is now explicitly the ordered three-scene window, not a flat list of mentions
 - the right trigger for the event branch is still `ScenesDetectedEvent`, but now for a stronger reason: it already carries the ordered scene ids needed to form Stage 2 windows
 - the reusable building block shared between scene analysis and event resolution is the persisted scene-window shape, while prompts and judgment logic stay type-specific
-- Stage 3 aggregate reduction is present and now carries support metadata on `ChapterEvent`: `supportedAliases`, `supportedEventTypes`, and `evidenceSnippets`
+- Stage 3 aggregate reduction is present and now carries support metadata on `ChapterEvent`: `supportedAliases`, `supportedEventTypes`, and `identityEvidence`
 
 Implementation review notes worth preserving:
 
 - The new `ChapterEvent` support fields are aggregate metadata, not new extraction behavior. They preserve the evidence variation that contributed to the chapter aggregate without pretending that one representative label or event type is canonical truth.
-- `ChapterEventResolutionService` populates `supportedAliases` from the representative names plus all mention aliases, `supportedEventTypes` from nonblank mention event types, and `evidenceSnippets` from distinct mention evidence capped to a small inspection-friendly set.
-- These fields are currently persisted for graph inspection and future reducers. They are not yet retrieval inputs, except that `supportedEventTypes` and `evidenceSnippets` contribute to the deterministic aggregate card.
+- `ChapterEventResolutionService` populates `supportedAliases` from the representative names plus all mention aliases, `supportedEventTypes` from nonblank mention event types, and `identityEvidence` from distinct mention evidence capped to a small inspection-friendly set.
+- These fields are currently persisted for graph inspection and future reducers. `identityEvidence` is audit/inspection metadata only; it is not passed to Stage 5 LLM merge verification, and it no longer contributes to the deterministic aggregate card.
 - Runtime validation against the 18-chapter Deathworlders sample showed all produced `ChapterEvent` nodes populated the support fields. That review predated the Stage 4 ANN slice below; semantic verification and `BookEvent` still remain outside the current implementation.
 
 ### Stage 4 ANN candidate-generation implementation update - April 2026

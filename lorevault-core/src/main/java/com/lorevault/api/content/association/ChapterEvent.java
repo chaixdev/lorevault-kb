@@ -25,7 +25,7 @@ public record ChapterEvent(
         String aggregateCard,
         List<String> supportedAliases,
         List<String> supportedEventTypes,
-        List<String> evidenceSnippets,
+        List<String> identityEvidence,
         @CreatedDate LocalDateTime createdAt,
         @LastModifiedDate LocalDateTime updatedAt,
         /**

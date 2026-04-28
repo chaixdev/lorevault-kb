@@ -7,14 +7,13 @@ You must classify the pair as exactly one of:
 - KEEP_SEPARATE: they are clearly different events.
 - UNRESOLVED: evidence is mixed or insufficient to decide safely.
 
-Inputs are aggregate-level and more stable than raw mentions. Use these fields as evidence:
+Inputs are aggregate-level and more stable than raw mentions. Use these fields as comparison signals:
 - displayName
 - normalizedName
 - representativeEventType
 - aggregateCard
 - supportedAliases
 - supportedEventTypes
-- evidenceSnippets
 - annScore
 
 Decision policy:

@@ -13,9 +13,6 @@ Evaluate this ChapterEvent candidate pair for book-level semantic merge.
     <supportedEventTypes>
 {event1SupportedEventTypes}
     </supportedEventTypes>
-    <evidenceSnippets>
-{event1EvidenceSnippets}
-    </evidenceSnippets>
   </eventA>
   <eventB id="{eventId2}">
     <displayName>{event2DisplayName}</displayName>
@@ -28,9 +25,6 @@ Evaluate this ChapterEvent candidate pair for book-level semantic merge.
     <supportedEventTypes>
 {event2SupportedEventTypes}
     </supportedEventTypes>
-    <evidenceSnippets>
-{event2EvidenceSnippets}
-    </evidenceSnippets>
   </eventB>
 </pair>
 

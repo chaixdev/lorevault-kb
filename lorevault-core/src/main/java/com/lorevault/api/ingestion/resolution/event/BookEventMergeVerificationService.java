@@ -129,14 +129,12 @@ public class BookEventMergeVerificationService {
         vars.put("event1AggregateCard", safe(eventA.aggregateCard()));
         vars.put("event1SupportedAliases", toXmlList(eventA.supportedAliases()));
         vars.put("event1SupportedEventTypes", toXmlList(eventA.supportedEventTypes()));
-        vars.put("event1EvidenceSnippets", toXmlList(eventA.evidenceSnippets()));
         vars.put("event2DisplayName", safe(eventB.displayName()));
         vars.put("event2NormalizedName", safe(eventB.normalizedName()));
         vars.put("event2RepresentativeEventType", safe(eventB.representativeEventType()));
         vars.put("event2AggregateCard", safe(eventB.aggregateCard()));
         vars.put("event2SupportedAliases", toXmlList(eventB.supportedAliases()));
         vars.put("event2SupportedEventTypes", toXmlList(eventB.supportedEventTypes()));
-        vars.put("event2EvidenceSnippets", toXmlList(eventB.evidenceSnippets()));
         return vars;
     }
 

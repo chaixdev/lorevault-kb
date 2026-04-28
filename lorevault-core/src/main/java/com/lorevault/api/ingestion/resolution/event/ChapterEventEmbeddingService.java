@@ -165,7 +165,7 @@ public class ChapterEventEmbeddingService {
                     original.aggregateCard(),
                     original.supportedAliases(),
                     original.supportedEventTypes(),
-                    original.evidenceSnippets(),
+                    original.identityEvidence(),
                     original.createdAt(),
                     original.updatedAt(),
                     vector,

@@ -175,14 +175,13 @@ public class ChapterEventResolutionService {
                 .filter(s -> !s.isBlank())
                 .sorted()
                 .toList());
-        List<String> evidenceSnippets = collectEvidenceSnippets(mentions);
+        List<String> identityEvidence = collectIdentityEvidence(mentions);
 
         String aggregateCard = buildAggregateCard(
                 displayName,
                 normalizedName,
                 representativeEventType,
                 supportedEventTypes,
-                evidenceSnippets,
                 mentions);
 
         return new ChapterEvent(
@@ -196,7 +195,7 @@ public class ChapterEventResolutionService {
                 aggregateCard,
                 supportedAliases,
                 supportedEventTypes,
-                evidenceSnippets,
+                identityEvidence,
                 null,
                 null,
                 null,
@@ -215,7 +214,6 @@ public class ChapterEventResolutionService {
             String normalizedName,
             String representativeEventType,
             List<String> supportedEventTypes,
-            List<String> evidenceSnippets,
             List<EventMention> mentions
     ) {
         StringBuilder card = new StringBuilder();
@@ -249,13 +247,6 @@ public class ChapterEventResolutionService {
                             .append(": ")
                             .append(entry.getValue())
                             .append("\n"));
-        }
-
-        if (!evidenceSnippets.isEmpty()) {
-            card.append("\n**Evidence snippets:**\n");
-            for (String evidenceSnippet : evidenceSnippets) {
-                card.append("- ").append(evidenceSnippet).append("\n");
-            }
         }
 
         List<String> descriptions = mentions.stream()
@@ -298,7 +289,7 @@ public class ChapterEventResolutionService {
                 .toList();
     }
 
-    private List<String> collectEvidenceSnippets(List<EventMention> mentions) {
+    private List<String> collectIdentityEvidence(List<EventMention> mentions) {
         return mentions.stream()
                 .map(EventMention::evidence)
                 .filter(Objects::nonNull)

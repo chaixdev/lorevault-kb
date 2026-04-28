@@ -225,7 +225,7 @@ After rolling-window coref completes, add a chapter-level second pass: compare m
 
 Remove the illusion that the canonical fields are "true" — they are serving conveniences.
 
-Implementation note: the shipped reducer keeps `displayName`, `normalizedName`, and `representativeEventType` as representative conveniences, while `supportedAliases`, `supportedEventTypes`, and `evidenceSnippets` preserve the supporting variation. Current consumers should treat the support lists as provenance/inspection metadata unless and until a later retrieval or book-event reducer explicitly promotes them into query behavior.
+Implementation note: the shipped reducer keeps `displayName`, `normalizedName`, and `representativeEventType` as representative conveniences, while `supportedAliases`, `supportedEventTypes`, and `identityEvidence` preserve the supporting variation for audit and inspection. Current LLM merge verification does not consume `identityEvidence`; if evidence proves useful to analysis later, it should be reintroduced deliberately rather than treated as default aggregate input.
 
 #### T2-C: Keep SAME_EVENT as interpretation, not durable evidence
 **Target:** Conceptual — already in place mechanically, but make it explicit in the codebase and coref cleanup logic  

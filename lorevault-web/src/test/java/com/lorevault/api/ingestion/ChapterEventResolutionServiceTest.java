@@ -225,14 +225,14 @@ class ChapterEventResolutionServiceTest {
         assertThat(savedEvent.aggregateCard()).contains("**Scene-relative relation distribution:**");
         assertThat(savedEvent.aggregateCard()).contains("- FOLLOWS: 1");
         assertThat(savedEvent.aggregateCard()).contains("- PRECEDES: 1");
-        assertThat(savedEvent.aggregateCard()).contains("**Evidence snippets:**");
-        assertThat(savedEvent.aggregateCard()).contains("He turned his blade on his king");
-        assertThat(savedEvent.aggregateCard()).contains("The king's guard answered too late");
+        assertThat(savedEvent.aggregateCard()).doesNotContain("**Evidence snippets:**");
+        assertThat(savedEvent.aggregateCard()).doesNotContain("He turned his blade on his king");
+        assertThat(savedEvent.aggregateCard()).doesNotContain("The king's guard answered too late");
         assertThat(saved.get(0).aggregateCard()).contains("**Descriptions:**");
         assertThat(saved.get(0).aggregateCard()).contains("The Betrayal description");
         assertThat(recordStringList(savedEvent, "supportedAliases")).containsExactly("The Betrayal", "The Coup", "betrayal", "the betrayal");
         assertThat(recordStringList(savedEvent, "supportedEventTypes")).containsExactly("AMBUSH", "BETRAYAL");
-        assertThat(recordStringList(savedEvent, "evidenceSnippets")).containsExactly(
+        assertThat(recordStringList(savedEvent, "identityEvidence")).containsExactly(
                 "He turned his blade on his king",
                 "The king's guard answered too late"
         );
@@ -265,7 +265,7 @@ class ChapterEventResolutionServiceTest {
         ChapterEvent savedEvent = captureAllSaved().getFirst();
         assertThat(recordStringList(savedEvent, "supportedAliases")).containsExactly("Alpha", "Beta", "The Accord", "Zeta", "the accord");
         assertThat(recordStringList(savedEvent, "supportedEventTypes")).containsExactly("TREATY");
-        assertThat(recordStringList(savedEvent, "evidenceSnippets")).isEmpty();
+        assertThat(recordStringList(savedEvent, "identityEvidence")).isEmpty();
         assertThat(savedEvent.aggregateCard()).contains("**Event type:** TREATY");
         assertThat(savedEvent.aggregateCard()).doesNotContain("Supported event type variants");
     }
