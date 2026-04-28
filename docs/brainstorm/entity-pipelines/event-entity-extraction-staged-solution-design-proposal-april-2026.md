@@ -429,29 +429,75 @@ Use ANN as the main broad-scope candidate generation mechanism for local aggrega
 
 That means candidate pools are derived from:
 
-- embedded local aggregate cards
-- ANN top-K retrieval within the target scope
+- embedded local aggregate cards (`ChapterEvent.aggregateCard`)
+- ANN top-K retrieval scoped to the same book, excluding same-chapter events
+
+### Embedding storage
+
+Embedding fields are stored directly on the `ChapterEvent` node, following the chunk embedding pattern:
+
+- `embedding` — float vector
+- `embeddingHash` — SHA-256 of `(modelId + ":" + aggregateCardContentHash)` for freshness detection
+- `embeddedAt` — timestamp
+
+`ChapterEvent.aggregateCard` is rebuilt on every reprocessing run; the hash ensures stale embeddings are refreshed automatically.
+
+### Schema
+
+A dedicated `ChapterEvent` vector index is registered in `Neo4jSchemaInitializer` alongside the existing `chunk_embedding_idx`, using the same dimension and similarity function (`cosine`). The index name is `chapter_event_embedding_idx`.
+
+### Execution model
+
+Per-chapter incremental:
+
+1. After `ChapterEventsResolvedEvent`, embed only the new/changed `ChapterEvent` nodes for that chapter.
+2. ANN-query those freshly embedded events against all other chapters' `ChapterEvent` nodes in the same book.
+3. Exclude same-chapter events and self-matches.
+4. Dedup candidate pairs using a stable unordered key `(min(idA, idB), max(idA, idB))` — keep the pair with the highest ANN score, never emit both A→B and B→A.
+5. Pass candidate pairs in-memory to Stage 5.
+
+**First-run note:** on initial rollout, `ChapterEvent` nodes from earlier chapters will not yet have embeddings. A one-time backfill pass is required to ensure full coverage.
 
 ### Practical safeguards
 
-- similarity band threshold
-- top-K cap
-- cluster-size cap
-- type-specific veto rules
+- similarity floor (ANN lower cutoff)
+- top-K cap per source event
+- oversampling factor before post-filtering
+- max candidates per source event cap (limits Stage 5 fanout)
+- type-specific veto rules (not for first implementation)
 
 ### Threshold policy
 
 The first implementation should make the threshold strategy explicit:
 
-- low similarity scores are rejected directly
-- a middle similarity band is labeled for review / semantic verification
-- very high similarity scores are still verified, but can be prioritized
+- low similarity scores are rejected directly (below ANN floor)
+- a middle similarity band is forwarded to Stage 5 for semantic verification
+- very high similarity scores are still verified but can be prioritized
 
 Do **not** assume one global cosine threshold will work for all event types in narrative fiction.
 
 Thresholds should be type-tuned and empirical.
 
 HITL review tooling is out of scope for the first implementation, but the pipeline may still label borderline candidates for later inspection.
+
+### Initial threshold defaults
+
+These are starting points for empirical tuning, not commitments. All values must be externally configurable:
+
+| Parameter | Default |
+|---|---|
+| `topK` | 8 |
+| `oversampleFactor` | 3 (effective oversample = 24) |
+| `annFloor` | 0.82 |
+| `maxCandidatesPerEvent` | 3 |
+
+### Candidate persistence
+
+Candidates are passed in-memory to Stage 5 in the first implementation. A `BookEventCandidate` persistence model should be introduced only when retry, audit, or HITL inspection requires it.
+
+### Ingestion completion
+
+Stage 4 participates in the ingestion fan-in as a new branch. It must have its own completion event (e.g. `BookEventCandidatesGeneratedEvent`) distinct from `ChapterEventsResolvedEvent`, which remains a clean chapter-local completion signal. The `IngestionCompletionCoordinator` receives this new event before declaring chapter ingestion complete.
 
 ---
 
@@ -848,18 +894,50 @@ Implementation review notes worth preserving:
 - The new `ChapterEvent` support fields are aggregate metadata, not new extraction behavior. They preserve the evidence variation that contributed to the chapter aggregate without pretending that one representative label or event type is canonical truth.
 - `ChapterEventResolutionService` populates `supportedAliases` from the representative names plus all mention aliases, `supportedEventTypes` from nonblank mention event types, and `evidenceSnippets` from distinct mention evidence capped to a small inspection-friendly set.
 - These fields are currently persisted for graph inspection and future reducers. They are not yet retrieval inputs, except that `supportedEventTypes` and `evidenceSnippets` contribute to the deterministic aggregate card.
-- Runtime validation against the 18-chapter Deathworlders sample showed all produced `ChapterEvent` nodes populated the support fields, while book-wide ANN, semantic verification, and `BookEvent` remain outside this slice.
+- Runtime validation against the 18-chapter Deathworlders sample showed all produced `ChapterEvent` nodes populated the support fields. That review predated the Stage 4 ANN slice below; semantic verification and `BookEvent` still remain outside the current implementation.
+
+### Stage 4 ANN candidate-generation implementation update - April 2026
+
+The next slice implemented the first half of the proposed book-wide ANN path. LoreVault now embeds `ChapterEvent.aggregateCard`, stores the embedding on the `ChapterEvent` node, creates the `chapter_event_embedding_idx` vector index, and runs an asynchronous event-candidate stage after `ChapterEventsResolvedEvent`. This stage does not yet create `BookEvent` nodes or perform semantic merge verification. It produces transient candidate-pair counts for the current ingestion run and publishes `BookEventCandidatesGeneratedEvent` so the completion coordinator can observe that the event ANN branch finished.
+
+What stayed aligned with the proposal:
+
+- The embedded text is still deterministic aggregate-card text, not a separately generated LLM summary.
+- ANN lookup is scoped to the same book and explicitly excludes the source chapter so Stage 4 proposes only cross-chapter candidates.
+- Vector similarity remains a candidate generator only. It does not merge events, write book-level identity, or replace the future semantic verifier.
+- Candidate pairs remain in memory for this slice. There is still no persisted `BookEventCandidate` graph shape or human-in-the-loop queue.
+- The runtime knobs from the proposal are present: `topK`, `oversampleFactor`, `annFloor`, and `maxCandidatesPerEvent`.
+
+Important divergences and refinements:
+
+- Stage 4 became a distinct event-driven fan-in branch instead of being folded into completion on `ChapterEventsResolvedEvent`. The coordinator now waits for both `ChapterEventsResolvedEvent` and `BookEventCandidatesGeneratedEvent`; the former proves chapter event aggregation completed, while the latter proves the downstream event-embedding and ANN candidate pass completed.
+- `ChapterEventsResolvedEvent` is therefore both an intermediate trigger and a completion-barrier signal. Treating it only as a handoff event would hide failures or stalls between event aggregation and event ANN candidate generation.
+- The ingestion status model gained an explicit `EVENT_CANDIDATE_GENERATION` step so operations can distinguish event candidate work from both chapter-event aggregation and final completion.
+- `lorevault.event-ann.embedding-dimension` is a guard knob, not an independent embedding-model configuration. It is wired to `lorevault.embedding.model.dimensions` by default and exists so malformed source vectors are skipped before Neo4j ANN query execution.
+- The ANN query intentionally oversamples from the vector index first, then applies same-book and cross-chapter filtering in Cypher. A warning is logged when fewer than `topK` candidates survive that filter so operators can identify under-recall and tune `oversampleFactor`.
+- ANN failures now use sanitized logging and structured `IngestionFailure` details with code `EVENT_ANN_QUERY_FAILED` instead of leaking raw exception text into job metadata.
+
+Significant implementation patterns introduced:
+
+- `ChapterEventEmbeddingHandler` listens asynchronously for `ChapterEventsResolvedEvent`, embeds chapter events, reloads the persisted chapter-event set, generates same-book ANN pairs, and publishes `BookEventCandidatesGeneratedEvent` with the original `jobId`, `correlationId`, `chapterId`, and `bookId`.
+- `PipelineStageSupport.runStage` gained a correlation-aware overload, and `IngestionFailedEvent` gained a matching constructor. Failure events from async downstream stages now preserve the originating correlation id instead of silently falling back to `jobId` as correlation id.
+- `IngestionCompletionCoordinator` now has a five-event completion barrier: `EmbeddingsCompletedEvent`, `BookIndividualsReducedEvent`, `BookLocationsReducedEvent`, `ChapterEventsResolvedEvent`, and `BookEventCandidatesGeneratedEvent`.
+- The coordinator also keeps a bounded terminal-failure marker map. This preserves the semantics that a failed `(jobId, correlationId, chapterId)` ignores late success branches, while avoiding the unbounded `failedKeys` retention problem from the earlier coordinator shape.
+- Candidate pairs are canonicalized with an unordered UUID key, so repeated ANN hits for `(A, B)` and `(B, A)` collapse to one pair and retain the highest score.
+- Candidate retention caps count both endpoints of a pair, so one high-similarity event cannot dominate the proposed candidate set for the chapter.
+- The implementation treats Stage 4 as blocking for ingestion completion but not yet persistence-bearing for candidate identity. That distinction is important: missing Stage 4 means the ingestion is incomplete, but successful Stage 4 still leaves final identity decisions to a future semantic-verification stage.
 
 What remains intentionally unimplemented:
 
-- book-wide ANN candidate generation
-- semantic merge verification
+- semantic merge verification after ANN candidate generation
+- persisted `BookEventCandidate` or review queue
 - `BookEvent`
-- event embeddings
+- first-run/backfill orchestration for existing `ChapterEvent` nodes
+- type-specific veto rules and tuned threshold profiles
 - event-aware retrieval integration
 - cross-chapter `SAME_EVENT` handoff and book-wide event identity
 
-This proposal should therefore now be read as the target architecture for the next implementation slice, with the Stage 2 notes above superseded where they describe the mechanism as future work.
+This proposal should therefore now be read as an evolving design record: Stage 1 through the Stage 4 ANN-candidate slice have shipped in partial form, while semantic verification, book-level event identity, backfill, and retrieval integration remain future work.
 
 ---
 
