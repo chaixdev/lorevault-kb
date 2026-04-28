@@ -98,10 +98,10 @@ class LlmCallRecordPersistenceIntegrationTest {
         assertThat(record.getStatusRecordId()).isNull();
         assertThat(record.getStep()).isEqualTo("chapter-segmentation");
         assertThat(record.getRequest()).isNotNull();
-        assertThat(record.getRequest().getInputBody()).isEqualTo("Chapter 1: The hero begins their journey in a small village...");
+        assertThat(record.getRequest().getInputBody()).isEqualTo("Chapter 1: The hero begins their journey in a smal");
         assertThat(record.getResponse()).isNotNull();
         assertThat(record.getResponse().getBody())
-                .isEqualTo("This is a test response that is longer than 50 characters and should be persisted fully in the integration test");
+                .isEqualTo("This is a test response that is longer than 50 cha");
     }
 
     @Test

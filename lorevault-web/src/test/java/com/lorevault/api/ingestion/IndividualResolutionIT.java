@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.application.IngestionJobService;
+import com.lorevault.api.ingestion.application.IngestionIsolatedLookupService;
 import com.lorevault.api.ingestion.application.IngestionService;
 import com.lorevault.api.ingestion.application.pipeline.*;
 import com.lorevault.api.ingestion.application.resolution.*;
@@ -51,13 +52,17 @@ import static org.mockito.Mockito.when;
 @Import({
         TestConfig.class,
         IngestionService.class,
+        IngestionIsolatedLookupService.class,
         IngestionJobService.class,
         SceneDetectionHandler.class,
         SceneProcessingService.class,
+        ObjectPersistenceService.class,
         IndividualPersistenceService.class,
         EventPersistenceService.class,
         ChapterIndividualResolutionService.class,
         BookIndividualReductionService.class,
+        BookReductionClaimService.class,
+        BookIndividualPersistenceService.class,
         DefaultTemporalEdgeService.class
 })
 @Tag("integration")
