@@ -16,8 +16,16 @@ public class IngestionFailedEvent extends IngestionEvent {
     private final boolean retryable;
     
     public IngestionFailedEvent(Object source, UUID jobId, UUID chapterId, 
-                                 String failedStage, String errorMessage, boolean retryable) {
+                                  String failedStage, String errorMessage, boolean retryable) {
         super(source, jobId, chapterId);
+        this.failedStage = failedStage;
+        this.errorMessage = errorMessage;
+        this.retryable = retryable;
+    }
+
+    public IngestionFailedEvent(Object source, UUID jobId, UUID correlationId, UUID chapterId,
+                                 String failedStage, String errorMessage, boolean retryable) {
+        super(source, jobId, correlationId, chapterId);
         this.failedStage = failedStage;
         this.errorMessage = errorMessage;
         this.retryable = retryable;

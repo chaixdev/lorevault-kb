@@ -58,6 +58,21 @@ public class PipelineStageSupport {
             Supplier<T> work,
             Function<Exception, Boolean> isRetryable
     ) {
+        return runStage(source, stage, jobId, jobId, chapterId, work, isRetryable);
+    }
+
+    /**
+     * Execute a stage with an explicit event correlation id preserved on emitted failure events.
+     */
+    public <T> T runStage(
+            Object source,
+            String stage,
+            UUID jobId,
+            UUID correlationId,
+            UUID chapterId,
+            Supplier<T> work,
+            Function<Exception, Boolean> isRetryable
+    ) {
         try {
             return work.get();
         } catch (Exception e) {
@@ -65,20 +80,20 @@ public class PipelineStageSupport {
             try {
                 retryable = isRetryable != null && Boolean.TRUE.equals(isRetryable.apply(e));
             } catch (Exception classifierError) {
-                log.debug("Failure classifier threw for stage {} job={} chapter={}: {}",
-                        stage, jobId, chapterId, classifierError.getMessage());
+                log.debug("Failure classifier threw for stage {} job={} correlationId={} chapter={}: {}",
+                        stage, jobId, correlationId, chapterId, classifierError.getMessage());
             }
 
             if (retryable) {
-                log.warn("Stage {} failed for job={} chapter={}: {}", stage, jobId, chapterId, safeMessage(e));
-                log.debug("Stage {} retryable failure details for job={} chapter={}", stage, jobId, chapterId, e);
+                log.warn("Stage {} failed for job={} correlationId={} chapter={}: {}", stage, jobId, correlationId, chapterId, safeMessage(e));
+                log.debug("Stage {} retryable failure details for job={} correlationId={} chapter={}", stage, jobId, correlationId, chapterId, e);
             } else {
-                log.error("Stage {} failed for job={} chapter={}: {}", stage, jobId, chapterId, safeMessage(e));
-                log.debug("Stage {} failure details for job={} chapter={}", stage, jobId, chapterId, e);
+                log.error("Stage {} failed for job={} correlationId={} chapter={}: {}", stage, jobId, correlationId, chapterId, safeMessage(e));
+                log.debug("Stage {} failure details for job={} correlationId={} chapter={}", stage, jobId, correlationId, chapterId, e);
             }
 
             eventPublisher.publishEvent(new IngestionFailedEvent(
-                source != null ? source : this, jobId, chapterId, stage, safeMessage(e), retryable));
+                    source != null ? source : this, jobId, correlationId, chapterId, stage, safeMessage(e), retryable));
 
             IngestionFailure failure = extractFailure(stage, e);
 
@@ -94,8 +109,34 @@ public class PipelineStageSupport {
     }
 
     private String safeMessage(Exception e) {
+        return sanitizeExceptionMessage(e);
+    }
+
+    /**
+     * Produces a log-safe, single-line representation of an exception message.
+     * <p>
+     * Strips CR, LF, and ASCII control characters to prevent log-injection, then
+     * truncates to 200 characters. Falls back to the simple class name when the
+     * message is null or blank after sanitization.
+     * </p>
+     *
+     * @param e the exception whose message is being sanitized
+     * @return a sanitized, truncated string safe for logs and status fields
+     */
+    public static String sanitizeExceptionMessage(Exception e) {
+        if (e == null) {
+            return "unknown error";
+        }
         String message = e.getMessage();
-        return message != null ? message : e.getClass().getSimpleName();
+        if (message == null || message.isBlank()) {
+            return e.getClass().getSimpleName();
+        }
+        // Strip CR, LF and other ASCII control characters (< 0x20, except space)
+        String sanitized = message.replaceAll("[\\r\\n\\t\\x00-\\x1F\\x7F]", " ").strip();
+        if (sanitized.isBlank()) {
+            return e.getClass().getSimpleName();
+        }
+        return sanitized.length() > 200 ? sanitized.substring(0, 200) + "…" : sanitized;
     }
 
     private IngestionFailure extractFailure(String stage, Exception e) {
