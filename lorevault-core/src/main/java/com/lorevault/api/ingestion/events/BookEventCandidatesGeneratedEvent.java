@@ -18,6 +18,8 @@ public class BookEventCandidatesGeneratedEvent extends IngestionEvent {
     private final int embeddedCount;
     /** Number of candidate pairs generated for this chapter. */
     private final int candidatePairCount;
+    /** Number of BookEvent nodes created for this chapter in Stage 6. */
+    private final int bookEventsCreated;
 
     public BookEventCandidatesGeneratedEvent(
             Object source,
@@ -25,12 +27,14 @@ public class BookEventCandidatesGeneratedEvent extends IngestionEvent {
             UUID chapterId,
             UUID bookId,
             int embeddedCount,
-            int candidatePairCount
+            int candidatePairCount,
+            int bookEventsCreated
     ) {
         super(source, jobId, chapterId);
         this.bookId = bookId;
         this.embeddedCount = embeddedCount;
         this.candidatePairCount = candidatePairCount;
+        this.bookEventsCreated = bookEventsCreated;
     }
 
     public BookEventCandidatesGeneratedEvent(
@@ -40,12 +44,14 @@ public class BookEventCandidatesGeneratedEvent extends IngestionEvent {
             UUID chapterId,
             UUID bookId,
             int embeddedCount,
-            int candidatePairCount
+            int candidatePairCount,
+            int bookEventsCreated
     ) {
         super(source, jobId, correlationId, chapterId);
         this.bookId = bookId;
         this.embeddedCount = embeddedCount;
         this.candidatePairCount = candidatePairCount;
+        this.bookEventsCreated = bookEventsCreated;
     }
 
     @Override

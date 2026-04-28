@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion.resolution.event;
 
+import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.content.association.ChapterEvent;
 import com.lorevault.api.ai.embedding.EmbeddingGenerationException;
 import com.lorevault.api.ingestion.job.IngestionJobService;
@@ -10,6 +11,7 @@ import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -33,6 +35,8 @@ public class ChapterEventEmbeddingHandler {
     private final ChapterEventEmbeddingService embeddingService;
     private final ChapterEventEmbeddingTransactionSupport txSupport;
     private final BookEventAnnCandidateService annCandidateService;
+    private final BookEventMergeVerificationService mergeVerificationService;
+    private final BookEventReductionService bookEventReductionService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
 
@@ -40,12 +44,16 @@ public class ChapterEventEmbeddingHandler {
             ChapterEventEmbeddingService embeddingService,
             ChapterEventEmbeddingTransactionSupport txSupport,
             BookEventAnnCandidateService annCandidateService,
+            BookEventMergeVerificationService mergeVerificationService,
+            BookEventReductionService bookEventReductionService,
             IngestionJobService ingestionJobService,
             ApplicationEventPublisher eventPublisher
     ) {
         this.embeddingService = embeddingService;
         this.txSupport = txSupport;
         this.annCandidateService = annCandidateService;
+        this.mergeVerificationService = mergeVerificationService;
+        this.bookEventReductionService = bookEventReductionService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
@@ -90,6 +98,44 @@ public class ChapterEventEmbeddingHandler {
                     List<ChapterEvent> chapterEvents = txSupport.loadChapterEvents(chapterId);
                     List<BookEventCandidatePair> candidatePairs = annCandidateService.generateCandidates(chapterEvents, chapterId);
 
+                    Map<UUID, ChapterEvent> chapterEventsById = chapterEvents.stream()
+                            .filter(chapterEvent -> chapterEvent != null && chapterEvent.id() != null)
+                            .collect(Collectors.toMap(ChapterEvent::id, chapterEvent -> chapterEvent));
+
+                    log.info(
+                            "[EVENT_MERGE] Starting semantic merge verification: jobId={}, chapterId={}, candidatePairCount={}",
+                            jobId,
+                            chapterId,
+                            candidatePairs.size()
+                    );
+                    List<EventMergeModels.EventMergeVerification> verifications = mergeVerificationService.verifyCandidates(
+                            jobId,
+                            chapterId,
+                            candidatePairs,
+                            chapterEventsById
+                    );
+
+                    List<EventMergeModels.EventMergeDecision> mergeDecisions = verifications.stream()
+                            .filter(v -> v != null && v.decision() == EventMergeModels.MergeDecision.MERGE)
+                            .map(v -> new EventMergeModels.EventMergeDecision(v.eventId1(), v.eventId2(), v.confidence()))
+                            .toList();
+
+                    log.info(
+                            "[BOOK_EVENT] Starting write path: jobId={}, chapterId={}, chapterEventCount={}, mergeDecisionCount={}",
+                            jobId,
+                            chapterId,
+                            chapterEvents.size(),
+                            mergeDecisions.size()
+                    );
+                    BookEventReductionService.BookEventReductionResult reductionResult =
+                            bookEventReductionService.reduceAndPersist(
+                                    jobId,
+                                    chapterId,
+                                    bookId,
+                                    chapterEvents,
+                                    mergeDecisions
+                            );
+
                     eventPublisher.publishEvent(new BookEventCandidatesGeneratedEvent(
                             this,
                             jobId,
@@ -97,17 +143,20 @@ public class ChapterEventEmbeddingHandler {
                             chapterId,
                             bookId,
                             embeddedCount,
-                            candidatePairs.size()
+                            candidatePairs.size(),
+                            reductionResult.bookEventsCreated()
                     ));
 
                     log.info(
-                            "[EVENT_EMBEDDING] Completed: jobId={}, correlationId={}, chapterId={}, bookId={}, embeddedCount={}, candidatePairCount={}",
+                            "[EVENT_EMBEDDING] Completed: jobId={}, correlationId={}, chapterId={}, bookId={}, embeddedCount={}, candidatePairCount={}, bookEventsCreated={}, referenceLinksWritten={}",
                             jobId,
                             correlationId,
                             chapterId,
                             bookId,
                             embeddedCount,
-                            candidatePairs.size()
+                            candidatePairs.size(),
+                            reductionResult.bookEventsCreated(),
+                            reductionResult.referenceLinksWritten()
                     );
                     return null;
                 },

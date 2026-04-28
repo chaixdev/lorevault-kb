@@ -51,6 +51,8 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE CONSTRAINT book_individual_scope_unique IF NOT EXISTS FOR (bi:BookIndividual) REQUIRE (bi.bookId, bi.normalizedName) IS UNIQUE";
     private static final String CHAPTER_EVENT_ID_UNIQUE =
             "CREATE CONSTRAINT chapter_event_id_unique IF NOT EXISTS FOR (ce:ChapterEvent) REQUIRE ce.id IS UNIQUE";
+    private static final String BOOK_EVENT_ID_UNIQUE =
+            "CREATE CONSTRAINT book_event_id_unique IF NOT EXISTS FOR (be:BookEvent) REQUIRE be.id IS UNIQUE";
     // ChapterEvent identity is derived from co-reference chains (SAME_EVENT links), not lexical name.
     // No (chapterId, normalizedName) scope-unique constraint — that would bake lexical sameness into storage.
     private static final String EVENT_MENTION_ID_UNIQUE =
@@ -95,6 +97,8 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE INDEX event_mention_chapter_name IF NOT EXISTS FOR (m:EventMention) ON (m.chapterId, m.normalizedName)";
     private static final String CHAPTER_EVENT_CHAPTER_NAME_INDEX =
             "CREATE INDEX chapter_event_chapter_name IF NOT EXISTS FOR (ce:ChapterEvent) ON (ce.chapterId, ce.normalizedName)";
+    private static final String BOOK_EVENT_BOOK_NAME_INDEX =
+            "CREATE INDEX book_event_book_name IF NOT EXISTS FOR (be:BookEvent) ON (be.bookId, be.normalizedName)";
     private static final String BOOK_LOCATION_BOOK_NAME_INDEX =
             "CREATE INDEX book_location_book_name IF NOT EXISTS FOR (bl:BookLocation) ON (bl.bookId, bl.normalizedName)";
     private static final String LLM_CALL_RECORD_JOB_ID_INDEX =
@@ -124,6 +128,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(BOOK_INDIVIDUAL_ID_UNIQUE, "BookIndividual.id unique"));
         results.add(executeConstraint(BOOK_INDIVIDUAL_SCOPE_UNIQUE, "BookIndividual(bookId, normalizedName) unique"));
         results.add(executeConstraint(CHAPTER_EVENT_ID_UNIQUE, "ChapterEvent.id unique"));
+        results.add(executeConstraint(BOOK_EVENT_ID_UNIQUE, "BookEvent.id unique"));
         results.add(executeConstraint(EVENT_MENTION_ID_UNIQUE, "EventMention.id unique"));
         results.add(executeConstraint(CHAPTER_LOCATION_ID_UNIQUE, "ChapterLocation.id unique"));
         results.add(executeConstraint(CHAPTER_LOCATION_SCOPE_UNIQUE, "ChapterLocation(chapterId, normalizedName) unique"));
@@ -145,6 +150,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(OBJECT_MENTION_CHAPTER_NAME_INDEX, "ObjectMention(chapterId, normalizedName)"));
         results.add(executeIndex(EVENT_MENTION_CHAPTER_NAME_INDEX, "EventMention(chapterId, normalizedName)"));
         results.add(executeIndex(CHAPTER_EVENT_CHAPTER_NAME_INDEX, "ChapterEvent(chapterId, normalizedName)"));
+        results.add(executeIndex(BOOK_EVENT_BOOK_NAME_INDEX, "BookEvent(bookId, normalizedName)"));
         results.add(executeIndex(BOOK_LOCATION_BOOK_NAME_INDEX, "BookLocation(bookId, normalizedName)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_ID_INDEX, "LlmCallRecord(jobId)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_INDEX, "LlmCallRecord(jobId, step)"));

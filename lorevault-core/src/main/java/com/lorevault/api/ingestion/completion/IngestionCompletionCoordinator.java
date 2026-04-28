@@ -178,6 +178,7 @@ public class IngestionCompletionCoordinator {
                 event.getBookId(),
                 "embeddedCount=" + event.getEmbeddedCount()
                         + ", candidatePairCount=" + event.getCandidatePairCount()
+                        + ", bookEventsCreated=" + event.getBookEventsCreated()
         );
 
         completionStates.compute(key, (ignored, current) -> {

@@ -5,6 +5,7 @@ import com.lorevault.api.ingestion.job.IngestionStatus;
 import com.lorevault.api.ingestion.events.BookEventCandidatesGeneratedEvent;
 import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
 import com.lorevault.api.ingestion.events.IngestionFailedEvent;
+import com.lorevault.api.ai.llm.EventMergeModels;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,6 +35,8 @@ class ChapterEventEmbeddingHandlerTest {
     @Mock private ChapterEventEmbeddingService embeddingService;
     @Mock private ChapterEventEmbeddingTransactionSupport txSupport;
     @Mock private BookEventAnnCandidateService annCandidateService;
+    @Mock private BookEventMergeVerificationService mergeVerificationService;
+    @Mock private BookEventReductionService bookEventReductionService;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -45,6 +48,8 @@ class ChapterEventEmbeddingHandlerTest {
                 embeddingService,
                 txSupport,
                 annCandidateService,
+                mergeVerificationService,
+                bookEventReductionService,
                 ingestionJobService,
                 eventPublisher
         );
@@ -63,6 +68,13 @@ class ChapterEventEmbeddingHandlerTest {
         when(annCandidateService.generateCandidates(List.of(), chapterId)).thenReturn(List.of(
                 BookEventCandidatePair.of(UUID.randomUUID(), UUID.randomUUID(), 0.91)
         ));
+        when(mergeVerificationService.verifyCandidates(eq(jobId), eq(chapterId), any(), any())).thenReturn(List.of(
+                new EventMergeModels.EventMergeVerification(
+                        UUID.randomUUID(), UUID.randomUUID(), EventMergeModels.MergeDecision.KEEP_SEPARATE, 0.77, "not same"
+                )
+        ));
+        when(bookEventReductionService.reduceAndPersist(eq(jobId), eq(chapterId), eq(bookId), any(), any()))
+                .thenReturn(new BookEventReductionService.BookEventReductionResult(1, 2));
 
         handler.handleChapterEventsResolved(new ChapterEventsResolvedEvent(
                 this,
@@ -85,6 +97,8 @@ class ChapterEventEmbeddingHandlerTest {
         verify(embeddingService).embedChapterEvents(chapterId);
         verify(txSupport).loadChapterEvents(chapterId);
         verify(annCandidateService).generateCandidates(List.of(), chapterId);
+        verify(mergeVerificationService).verifyCandidates(eq(jobId), eq(chapterId), any(), any());
+        verify(bookEventReductionService).reduceAndPersist(eq(jobId), eq(chapterId), eq(bookId), any(), any());
 
         ArgumentCaptor<ApplicationEvent> publishedCaptor = ArgumentCaptor.forClass(ApplicationEvent.class);
         verify(eventPublisher).publishEvent(publishedCaptor.capture());
@@ -97,6 +111,7 @@ class ChapterEventEmbeddingHandlerTest {
         assertThat(published.getBookId()).isEqualTo(bookId);
         assertThat(published.getEmbeddedCount()).isEqualTo(2);
         assertThat(published.getCandidatePairCount()).isEqualTo(1);
+        assertThat(published.getBookEventsCreated()).isEqualTo(1);
     }
 
     @Test

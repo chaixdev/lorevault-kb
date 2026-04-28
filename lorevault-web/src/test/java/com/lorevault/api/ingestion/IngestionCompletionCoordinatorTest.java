@@ -86,6 +86,7 @@ class IngestionCompletionCoordinatorTest {
                 chapterId,
                 UUID.randomUUID(),
                 2,
+                1,
                 1
         ));
 
@@ -125,6 +126,7 @@ class IngestionCompletionCoordinatorTest {
                 chapterId,
                 UUID.randomUUID(),
                 2,
+                1,
                 1
         ));
 
@@ -168,6 +170,7 @@ class IngestionCompletionCoordinatorTest {
                 chapterId,
                 bookId,
                 2,
+                1,
                 1
         ));
 
@@ -175,7 +178,7 @@ class IngestionCompletionCoordinatorTest {
         coordinator.handleEmbeddingsCompleted(new EmbeddingsCompletedEvent(this, jobId, chapterId, 2, 4, 4, 1200));
         coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
         coordinator.handleChapterEventsResolved(new ChapterEventsResolvedEvent(this, jobId, chapterId, bookId, true, 5, 2, 0));
-        coordinator.handleBookEventCandidatesGenerated(new BookEventCandidatesGeneratedEvent(this, jobId, chapterId, bookId, 2, 1));
+        coordinator.handleBookEventCandidatesGenerated(new BookEventCandidatesGeneratedEvent(this, jobId, chapterId, bookId, 2, 1, 1));
 
         verify(jobRepo, never()).findById(jobId);
         verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));
@@ -210,7 +213,7 @@ class IngestionCompletionCoordinatorTest {
         coordinator.handleEmbeddingsCompleted(new EmbeddingsCompletedEvent(this, jobId, chapterId, 2, 4, 4, 1200));
         coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
         coordinator.handleChapterEventsResolved(new ChapterEventsResolvedEvent(this, jobId, chapterId, bookId, true, 5, 2, 0));
-        coordinator.handleBookEventCandidatesGenerated(new BookEventCandidatesGeneratedEvent(this, jobId, chapterId, bookId, 2, 1));
+        coordinator.handleBookEventCandidatesGenerated(new BookEventCandidatesGeneratedEvent(this, jobId, chapterId, bookId, 2, 1, 1));
 
         verify(ingestionJobService, times(1)).completeJob(job, chapterId, 1200);
         verify(eventPublisher, times(1)).publishEvent(any(IngestionCompletedEvent.class));
@@ -220,7 +223,7 @@ class IngestionCompletionCoordinatorTest {
         coordinator.handleEmbeddingsCompleted(new EmbeddingsCompletedEvent(this, jobId, chapterId, 2, 4, 4, 1200));
         coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
         coordinator.handleChapterEventsResolved(new ChapterEventsResolvedEvent(this, jobId, chapterId, bookId, true, 5, 2, 0));
-        coordinator.handleBookEventCandidatesGenerated(new BookEventCandidatesGeneratedEvent(this, jobId, chapterId, bookId, 2, 1));
+        coordinator.handleBookEventCandidatesGenerated(new BookEventCandidatesGeneratedEvent(this, jobId, chapterId, bookId, 2, 1, 1));
 
         // Still exactly once — replay must not re-trigger completion
         verify(ingestionJobService, times(1)).completeJob(any(), any(), any(Integer.class));
