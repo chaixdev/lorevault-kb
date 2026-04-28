@@ -27,5 +27,18 @@ public record ChapterEvent(
         List<String> supportedEventTypes,
         List<String> evidenceSnippets,
         @CreatedDate LocalDateTime createdAt,
-        @LastModifiedDate LocalDateTime updatedAt
+        @LastModifiedDate LocalDateTime updatedAt,
+        /**
+         * Dense vector embedding of {@code aggregateCard}. Used for ANN-based event similarity
+         * in Stage 4 of the ingestion pipeline. Null until the embedding pipeline has run.
+         */
+        double[] embedding,
+        /**
+         * SHA-256 of {@code modelId:aggregateCard} used to detect stale embeddings.
+         * When {@code aggregateCard} changes or the embedding model rotates, the hash drifts
+         * and the embedding is regenerated.
+         */
+        String embeddingHash,
+        /** Timestamp when the embedding was last (re)computed. */
+        LocalDateTime embeddedAt
 ) {}

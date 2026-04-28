@@ -18,6 +18,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
 
     private static final Logger log = LoggerFactory.getLogger(Neo4jSchemaInitializer.class);
     private static final String CHUNK_VECTOR_INDEX_NAME = "chunk_embedding_idx";
+    private static final String CHAPTER_EVENT_VECTOR_INDEX_NAME = "chapter_event_embedding_idx";
 
     private final Neo4jClient neo4jClient;
     private final LoreVaultEmbeddingProperties embeddingProperties;
@@ -152,8 +153,9 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         // Event per-chapter ordering index
         results.add(executeIndex(EVENT_PER_CHAPTER_SCENE_INDEX, "Event(chapterId, sceneIndex)"));
         
-        // Create vector search index
+        // Create vector search indexes
         results.add(ensureChunkVectorIndex());
+        results.add(ensureChapterEventVectorIndex());
         
         long successful = results.stream().filter(r -> r.contains("ensured")).count();
         long failed = results.stream().filter(r -> r.contains("failed")).count();
@@ -236,6 +238,53 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
 
     private String chunkVectorIndexCypher(int dimensions) {
         return "CREATE VECTOR INDEX " + CHUNK_VECTOR_INDEX_NAME + " IF NOT EXISTS FOR (ch:Chunk) ON (ch.embedding) " +
+               "OPTIONS {indexConfig: {`vector.dimensions`: " + dimensions + ", `vector.similarity_function`: 'cosine'}}";
+    }
+
+    private String ensureChapterEventVectorIndex() {
+        String description = "ChapterEvent embedding vector index";
+        try {
+            Integer existingDimensions = existingChapterEventVectorDimensions();
+            int expectedDimensions = embeddingProperties.model().dimensions();
+
+            if (existingDimensions != null && existingDimensions != expectedDimensions) {
+                log.warn(
+                        "Rebuilding vector index {} due to dimension drift: existing={}, expected={}",
+                        CHAPTER_EVENT_VECTOR_INDEX_NAME,
+                        existingDimensions,
+                        expectedDimensions
+                );
+                neo4jClient.query("DROP INDEX " + CHAPTER_EVENT_VECTOR_INDEX_NAME + " IF EXISTS").run();
+            }
+
+            neo4jClient.query(chapterEventVectorIndexCypher(expectedDimensions)).run();
+            log.debug("Ensured vector index: {}", description);
+            return "ensured: " + description;
+        } catch (Exception e) {
+            log.error("Failed to create vector index {}: {}", description, e.getMessage());
+            log.debug("Vector index creation requires Neo4j 5.x with vector capabilities");
+            return "failed: " + description;
+        }
+    }
+
+    private Integer existingChapterEventVectorDimensions() {
+        return neo4jClient.query(
+                        "SHOW VECTOR INDEXES YIELD name, options " +
+                        "WHERE name = $indexName " +
+                        "RETURN options.indexConfig.`vector.dimensions` AS dimensions"
+                )
+                .bind(CHAPTER_EVENT_VECTOR_INDEX_NAME).to("indexName")
+                .fetch()
+                .one()
+                .map(row -> row.get("dimensions"))
+                .filter(Number.class::isInstance)
+                .map(Number.class::cast)
+                .map(Number::intValue)
+                .orElse(null);
+    }
+
+    private String chapterEventVectorIndexCypher(int dimensions) {
+        return "CREATE VECTOR INDEX " + CHAPTER_EVENT_VECTOR_INDEX_NAME + " IF NOT EXISTS FOR (ce:ChapterEvent) ON (ce.embedding) " +
                "OPTIONS {indexConfig: {`vector.dimensions`: " + dimensions + ", `vector.similarity_function`: 'cosine'}}";
     }
 

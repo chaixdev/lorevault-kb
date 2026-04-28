@@ -56,12 +56,15 @@ class Neo4jSchemaInitializerVectorIndexTest {
         // Then: Vector index should be created with correct dimensions
         assertThat(vectorIndexExists("chunk_embedding_idx")).isTrue();
         assertThat(vectorIndexDimensions("chunk_embedding_idx")).isEqualTo(2560);
+        assertThat(vectorIndexExists("chapter_event_embedding_idx")).isTrue();
+        assertThat(vectorIndexDimensions("chapter_event_embedding_idx")).isEqualTo(2560);
         
         // When: Running again (idempotent)
         assertDoesNotThrow(() -> schemaInitializer.ensureMinimalSchema());
         
         // Then: Still works without errors
         assertThat(vectorIndexExists("chunk_embedding_idx")).isTrue();
+        assertThat(vectorIndexExists("chapter_event_embedding_idx")).isTrue();
     }
 
     @Test
@@ -77,6 +80,21 @@ class Neo4jSchemaInitializerVectorIndexTest {
 
         assertThat(vectorIndexExists("chunk_embedding_idx")).isTrue();
         assertThat(vectorIndexDimensions("chunk_embedding_idx")).isEqualTo(2560);
+    }
+
+    @Test
+    void ensureMinimalSchema_rebuildsChapterEventVectorIndexWhenDimensionsDrift() {
+        neo4jClient.query(
+                "CREATE VECTOR INDEX chapter_event_embedding_idx IF NOT EXISTS FOR (ce:ChapterEvent) ON (ce.embedding) " +
+                "OPTIONS {indexConfig: {`vector.dimensions`: 3072, `vector.similarity_function`: 'cosine'}}"
+        ).run();
+
+        assertThat(vectorIndexDimensions("chapter_event_embedding_idx")).isEqualTo(3072);
+
+        assertDoesNotThrow(() -> schemaInitializer.ensureMinimalSchema());
+
+        assertThat(vectorIndexExists("chapter_event_embedding_idx")).isTrue();
+        assertThat(vectorIndexDimensions("chapter_event_embedding_idx")).isEqualTo(2560);
     }
 
     @Test

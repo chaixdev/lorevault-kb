@@ -54,4 +54,14 @@ public interface ChapterEventGraphRepository extends Neo4jRepository<ChapterEven
             SET m.resolutionStatus = $resolutionStatus
             """)
     void linkMentionToChapterEvent(UUID mentionId, UUID chapterEventId, String resolutionStatus);
+
+    /**
+     * Load all ChapterEvent nodes for a given chapter.
+     * Used by Stage 4 (event embedding) to load targets for ANN embedding.
+     */
+    @Query("""
+            MATCH (ce:ChapterEvent {chapterId: $chapterId})
+            RETURN ce
+            """)
+    java.util.List<ChapterEvent> findByChapterId(UUID chapterId);
 }

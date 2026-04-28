@@ -199,6 +199,9 @@ public class ChapterEventResolutionService {
                 supportedEventTypes,
                 evidenceSnippets,
                 null,
+                null,
+                null,
+                null,
                 null
         );
     }
