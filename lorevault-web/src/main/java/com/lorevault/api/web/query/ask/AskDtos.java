@@ -1,6 +1,6 @@
 package com.lorevault.api.web.query.ask;
-import com.lorevault.api.library.domain.PublicationCoordinates;
-import com.lorevault.api.search.domain.SpoilerVisibility;
+import com.lorevault.api.library.book.PublicationCoordinates;
+import com.lorevault.api.search.model.SpoilerVisibility;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.Valid;

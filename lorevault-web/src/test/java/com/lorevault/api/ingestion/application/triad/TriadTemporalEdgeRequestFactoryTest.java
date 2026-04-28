@@ -1,16 +1,18 @@
 package com.lorevault.api.ingestion.application.triad;
 
-import com.lorevault.api.content.timeline.application.TemporalEdgeWriteRequest;
-import com.lorevault.api.ingestion.domain.triad.TriadAnalysisModels;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.LlmCallResponse;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.domain.TriadAnalysisArtifactLookup;
-import com.lorevault.api.ingestion.domain.TriadAnalysisException;
+import com.lorevault.api.ingestion.resolution.event.TemporalEdgeWriteRequest;
+import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
+import com.lorevault.api.ingestion.resolution.event.LlmCallRecord;
+import com.lorevault.api.ingestion.resolution.event.LlmCallResponse;
+import com.lorevault.api.ingestion.job.StatusRecord;
+import com.lorevault.api.ingestion.triad.TriadAnalysisArtifactLookup;
+import com.lorevault.api.ingestion.triad.TriadAnalysisException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+
+import com.lorevault.api.ingestion.triad.TriadTemporalEdgeRequestFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

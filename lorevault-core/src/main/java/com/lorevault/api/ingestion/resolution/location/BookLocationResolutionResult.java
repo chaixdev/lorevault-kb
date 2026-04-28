@@ -1,0 +1,11 @@
+package com.lorevault.api.ingestion.resolution.location;
+
+import java.util.UUID;
+
+public record BookLocationResolutionResult(
+    UUID bookId,
+    boolean success,
+    int chapterLocationsProcessed,
+    int bookLocationsCreated,
+    String message
+) {}

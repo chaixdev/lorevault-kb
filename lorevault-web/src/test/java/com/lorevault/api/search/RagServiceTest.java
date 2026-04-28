@@ -1,16 +1,20 @@
 package com.lorevault.api.search;
-import com.lorevault.api.content.entities.Chapter;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.application.CoreSearchRecords.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
+import com.lorevault.api.content.chapter.Chapter;
+import com.lorevault.api.ingestion.job.IngestionFailure;
+import com.lorevault.api.search.extraction.QuestionIntent;
+import com.lorevault.api.search.extraction.QuestionIntentClassifier;
+import com.lorevault.api.search.model.CoreSearchRecords;
+import com.lorevault.api.search.model.CoreSearchRecords.*;
 
-import com.lorevault.api.content.entities.Chunk;
+import com.lorevault.api.content.chunk.Chunk;
 
-import com.lorevault.api.content.entities.ChapterGraphRepository;
-import com.lorevault.api.content.entities.ChunkGraphRepository;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.content.chunk.ChunkGraphRepository;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
-import com.lorevault.api.search.application.SemanticSearchService;
+import com.lorevault.api.search.semantic.CypherTemplateRegistry;
+import com.lorevault.api.search.semantic.SemanticSearchService;
+import com.lorevault.api.search.model.EntityLookupException;
+import com.lorevault.api.search.rag.RagService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -385,7 +389,7 @@ class RagServiceTest {
             when(intentClassifier.classify(any())).thenReturn(QuestionIntent.ENTITY_LOOKUP);
 
             EntityLookupException lookupFailure = new EntityLookupException(
-                    com.lorevault.api.ingestion.domain.IngestionFailure.builder(
+                    IngestionFailure.builder(
                                     "ENTITY_LOOKUP_QUERY_FAILED",
                                     "Entity lookup query failed for template: individual-lookup")
                             .stage("ENTITY_LOOKUP")

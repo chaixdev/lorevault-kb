@@ -1,13 +1,13 @@
 package com.lorevault.api.ingestion;
 
 import com.lorevault.api.config.LoreVaultLlmLoggingProperties;
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
+import com.lorevault.api.ingestion.job.IngestionJob;
+import com.lorevault.api.ingestion.resolution.event.LlmCallRecord;
+import com.lorevault.api.ingestion.job.StatusRecord;
+import com.lorevault.api.ingestion.job.IngestionJobGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.LlmCallLoggingService;
 import com.lorevault.api.ingestion.infrastructure.LlmCallRecordGraphRepository;
-import com.lorevault.api.ingestion.infrastructure.StatusRecordGraphRepository;
+import com.lorevault.api.ingestion.job.StatusRecordGraphRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

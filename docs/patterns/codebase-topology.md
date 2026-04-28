@@ -13,6 +13,30 @@ packages, cross-package calls, or domain entities.
 `lorevault-web` and `lorevault-core` are the two Maven modules. `lorevault-web` depends
 on `lorevault-core`. There is no third module.
 
+`lorevault-core` uses seven top-level feature packages under `com.lorevault.api`:
+
+- `ai`
+- `config`
+- `content`
+- `health`
+- `ingestion`
+- `library`
+- `search`
+
+Representative current internal package map:
+
+| Top-level package | Current internal shape |
+|---|---|
+| `ai` | `chunking`, `embedding`, `llm`, `infrastructure` |
+| `content` | `association`, `chapter`, `chunk`, `mention`, `scene`, `timeline` |
+| `ingestion` | `completion`, `content`, `events`, `job`, `pipeline`, `resolution/{event,individual,location}`, `scene`, `submission`, `triad`, `infrastructure` |
+| `library` | `book`, `series`, `service`, `universe` |
+| `search` | `extraction`, `model`, `rag`, `semantic` |
+
+Legacy internal directories from the old layered shape (`application`, `domain`,
+`entities`, and similar) are transitional leftovers only and are not part of the
+canonical topology once empty.
+
 ---
 
 ## Known Intra-Module Coupling

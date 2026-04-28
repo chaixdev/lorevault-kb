@@ -1,6 +1,6 @@
 package com.lorevault.api.testutil.builders;
 
-import com.lorevault.api.library.domain.PublicationCoordinates;
+import com.lorevault.api.library.book.PublicationCoordinates;
 
 /**
  * Test builder for PublicationCoordinates with deterministic defaults.

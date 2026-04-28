@@ -1,28 +1,30 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionIsolatedLookupService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
+import com.lorevault.api.content.chapter.Chapter;
+import com.lorevault.api.ingestion.job.IngestionJobService;
+import com.lorevault.api.ingestion.resolution.individual.*;
+import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
+import com.lorevault.api.ingestion.scene.SceneDetectionHandler;
+import com.lorevault.api.ingestion.submission.IngestionIsolatedLookupService;
+import com.lorevault.api.ingestion.submission.IngestionService;
 import com.lorevault.api.ingestion.infrastructure.*;
 
-import com.lorevault.api.ingestion.application.scene.SceneDetectionService;
-import com.lorevault.api.ingestion.application.triad.TriadTemporalEdgeRequestFactory;
-import com.lorevault.api.ingestion.application.triad.SceneRelationshipAnalysisService;
-import com.lorevault.api.ingestion.application.scene.SceneProcessingService;
-import com.lorevault.api.ingestion.application.scene.SceneWithCoordinates;
-import com.lorevault.api.ingestion.domain.triad.TriadAnalysisModels;
-import com.lorevault.api.library.domain.Book;
-import com.lorevault.api.library.infrastructure.BookGraphRepository;
-import com.lorevault.api.content.entities.ChapterGraphRepository;
+import com.lorevault.api.ingestion.scene.SceneDetectionService;
+import com.lorevault.api.ingestion.triad.TriadTemporalEdgeRequestFactory;
+import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
+import com.lorevault.api.ingestion.scene.SceneProcessingService;
+import com.lorevault.api.ingestion.scene.SceneWithCoordinates;
+import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
+import com.lorevault.api.ingestion.submission.IngestionSubmissionResult;
+import com.lorevault.api.library.book.Book;
+import com.lorevault.api.library.book.BookGraphRepository;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import com.lorevault.api.integration.TestConfig;
 import com.lorevault.api.web.command.ingestion.SubmitChapterRequest;
 import com.lorevault.api.testutil.SampleChapterLoader;
 import com.lorevault.api.testing.TestImages;
-import com.lorevault.api.content.timeline.application.DefaultTemporalEdgeService;
-import com.lorevault.api.content.timeline.application.SceneTemporalRelationshipPersistenceService;
+import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeService;
+import com.lorevault.api.ingestion.resolution.event.SceneTemporalRelationshipPersistenceService;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -144,7 +146,7 @@ class IndividualResolutionIT {
         SubmitChapterRequest request = SampleChapterLoader.loadSampleChapter("kevin_jenkins");
         when(sceneDetectionService.detectScenesInChapter(
                 org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(com.lorevault.api.content.entities.Chapter.class)))
+                org.mockito.ArgumentMatchers.any(Chapter.class)))
                 .thenReturn(outcomeWithRepeatedNyx());
         when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
                 org.mockito.ArgumentMatchers.any(),
@@ -194,7 +196,7 @@ class IndividualResolutionIT {
 
         when(sceneDetectionService.detectScenesInChapter(
                 org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(com.lorevault.api.content.entities.Chapter.class)))
+                org.mockito.ArgumentMatchers.any(Chapter.class)))
                 .thenReturn(
                         outcomeWithSingleIndividual("Kevin"),
                         outcomeWithSingleIndividual("Kevin"),

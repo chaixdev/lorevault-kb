@@ -1,8 +1,10 @@
 package com.lorevault.api.ingestion.application.scene;
 
-import com.lorevault.api.ingestion.domain.SceneLocalizationException;
-import com.lorevault.api.content.entities.ChapterGraphRepository;
-import com.lorevault.api.content.entities.SceneGraphRepository;
+import com.lorevault.api.ingestion.scene.SceneLocalizationException;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.content.scene.SceneGraphRepository;
+import com.lorevault.api.ingestion.scene.SceneDetectionResult;
+import com.lorevault.api.ingestion.scene.SceneProcessingService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

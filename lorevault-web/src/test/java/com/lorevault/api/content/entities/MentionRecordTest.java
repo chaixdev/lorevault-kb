@@ -5,6 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+
+import com.lorevault.api.content.mention.EventMention;
+import com.lorevault.api.content.mention.IndividualMention;
+import com.lorevault.api.content.mention.LocationMention;
+import com.lorevault.api.content.mention.ObjectMention;
+import com.lorevault.api.content.mention.Mention;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;

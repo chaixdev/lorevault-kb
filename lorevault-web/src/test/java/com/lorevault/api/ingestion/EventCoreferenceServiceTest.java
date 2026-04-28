@@ -1,11 +1,11 @@
 package com.lorevault.api.ingestion;
 
-import com.lorevault.api.ai.infrastructure.LlmClient;
+import com.lorevault.api.ai.llm.LlmClient;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
-import com.lorevault.api.content.entities.EventMention;
-import com.lorevault.api.content.entities.EventMentionGraphRepository;
-import com.lorevault.api.ingestion.application.coref.EventCoreferenceService;
-import com.lorevault.api.ingestion.domain.coref.EventCorefModels;
+import com.lorevault.api.content.mention.EventMention;
+import com.lorevault.api.content.mention.EventMentionGraphRepository;
+import com.lorevault.api.ingestion.resolution.event.EventCoreferenceService;
+import com.lorevault.api.ai.llm.EventCorefModels;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;

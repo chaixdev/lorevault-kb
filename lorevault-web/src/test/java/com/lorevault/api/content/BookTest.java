@@ -1,5 +1,5 @@
 package com.lorevault.api.content;
-import com.lorevault.api.library.domain.Book;
+import com.lorevault.api.library.book.Book;
 
 import com.lorevault.api.testutil.TestIds;
 import com.lorevault.api.testutil.builders.BookBuilder;

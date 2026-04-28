@@ -1,8 +1,9 @@
 package com.lorevault.api.ai.infrastructure;
 
-import com.lorevault.api.ai.domain.LlmCallLogger;
-import com.lorevault.api.ingestion.domain.coref.EventCorefModels;
-import com.lorevault.api.ingestion.application.triad.SceneRelationshipAnalysisService;
+import com.lorevault.api.ai.llm.LlmCallLogger;
+import com.lorevault.api.ai.llm.EventCorefModels;
+import com.lorevault.api.ai.llm.LlmClient;
+import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.config.LoreVaultModelsProperties;

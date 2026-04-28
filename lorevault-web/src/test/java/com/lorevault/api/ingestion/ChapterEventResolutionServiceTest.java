@@ -1,12 +1,12 @@
 package com.lorevault.api.ingestion;
 
-import com.lorevault.api.content.entities.ChapterEvent;
-import com.lorevault.api.content.entities.ChapterEventGraphRepository;
-import com.lorevault.api.content.entities.EventMention;
-import com.lorevault.api.content.entities.EventMentionComponentLookup;
-import com.lorevault.api.content.entities.EventMentionGraphRepository;
-import com.lorevault.api.ingestion.application.resolution.ChapterEventResolutionService;
-import com.lorevault.api.ingestion.application.result.ChapterEventResolutionResult;
+import com.lorevault.api.content.association.ChapterEvent;
+import com.lorevault.api.content.association.ChapterEventGraphRepository;
+import com.lorevault.api.content.mention.EventMention;
+import com.lorevault.api.content.mention.EventMentionComponentLookup;
+import com.lorevault.api.content.mention.EventMentionGraphRepository;
+import com.lorevault.api.ingestion.resolution.event.ChapterEventResolutionService;
+import com.lorevault.api.ingestion.resolution.event.ChapterEventResolutionResult;
 
 import java.util.List;
 import java.util.UUID;

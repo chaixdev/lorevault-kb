@@ -1,8 +1,7 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.application.resolution.BookLocationReductionService;
-import com.lorevault.api.ingestion.application.result.BookLocationResolutionResult;
-import com.lorevault.api.web.command.ingestion.BookLocationResolutionResponse;
+import com.lorevault.api.ingestion.resolution.location.BookLocationReductionService;
+import com.lorevault.api.ingestion.resolution.location.BookLocationResolutionResult;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

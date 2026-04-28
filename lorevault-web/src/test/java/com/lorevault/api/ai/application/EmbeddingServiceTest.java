@@ -1,9 +1,10 @@
 package com.lorevault.api.ai.application;
 
-import com.lorevault.api.ai.domain.EmbeddingGenerationException;
-import com.lorevault.api.ai.application.EmbeddingTransactionSupport;
-import com.lorevault.api.content.entities.Chapter;
-import com.lorevault.api.content.entities.Chunk;
+import com.lorevault.api.ai.embedding.EmbeddingGenerationException;
+import com.lorevault.api.ai.embedding.EmbeddingService;
+import com.lorevault.api.ai.embedding.EmbeddingTransactionSupport;
+import com.lorevault.api.content.chapter.Chapter;
+import com.lorevault.api.content.chunk.Chunk;
 import com.lorevault.api.testutil.fakes.FakeContentRepositories;
 import com.lorevault.api.testutil.fakes.FakeEmbeddingModel;
 import org.junit.jupiter.api.DisplayName;

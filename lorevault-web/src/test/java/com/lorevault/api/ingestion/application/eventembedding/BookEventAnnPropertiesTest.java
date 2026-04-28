@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion.application.eventembedding;
 
+import com.lorevault.api.ingestion.resolution.event.BookEventAnnProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

@@ -1,5 +1,5 @@
 package com.lorevault.api.timeline;
-import com.lorevault.api.content.timeline.application.TriadRelationInverter;
+import com.lorevault.api.ingestion.triad.TriadRelationInverter;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;

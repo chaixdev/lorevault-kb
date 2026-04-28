@@ -1,12 +1,12 @@
 package com.lorevault.api.ingestion;
 
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.coref.EventCoreferenceService;
-import com.lorevault.api.ingestion.application.resolution.ChapterEventResolutionHandler;
-import com.lorevault.api.ingestion.application.resolution.ChapterEventResolutionService;
-import com.lorevault.api.ingestion.application.result.ChapterEventResolutionResult;
-import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.ingestion.domain.coref.EventCorefModels;
+import com.lorevault.api.ingestion.job.IngestionJobService;
+import com.lorevault.api.ingestion.resolution.event.EventCoreferenceService;
+import com.lorevault.api.ingestion.resolution.event.ChapterEventResolutionHandler;
+import com.lorevault.api.ingestion.resolution.event.ChapterEventResolutionService;
+import com.lorevault.api.ingestion.resolution.event.ChapterEventResolutionResult;
+import com.lorevault.api.ingestion.job.IngestionStatus;
+import com.lorevault.api.ai.llm.EventCorefModels;
 import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 

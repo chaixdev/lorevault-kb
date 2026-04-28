@@ -1,5 +1,5 @@
 package com.lorevault.api.ingestion.infrastructure;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
+import com.lorevault.api.ingestion.resolution.event.LlmCallRecord;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 

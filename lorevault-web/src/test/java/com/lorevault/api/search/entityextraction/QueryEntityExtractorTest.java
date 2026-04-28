@@ -1,14 +1,8 @@
 package com.lorevault.api.search.entityextraction;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
+import com.lorevault.api.search.extraction.ExtractionResult;
+import com.lorevault.api.search.extraction.KnownEntityTrie;
+import com.lorevault.api.search.extraction.OpenNlpNounPhraseExtractor;
+import com.lorevault.api.search.extraction.QueryEntityExtractor;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,7 +20,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class QueryEntityExtractorTest {
 
-    @Mock KnownEntityTrie           knownEntityTrie;
+    @Mock KnownEntityTrie knownEntityTrie;
     @Mock OpenNlpNounPhraseExtractor openNlpExtractor;
 
     QueryEntityExtractor extractor;

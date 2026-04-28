@@ -1,11 +1,11 @@
 package com.lorevault.api.ingestion;
 
-import com.lorevault.api.content.entities.BookIndividual;
-import com.lorevault.api.content.entities.BookIndividualGraphRepository;
-import com.lorevault.api.ingestion.application.resolution.BookIndividualPersistenceService;
-import com.lorevault.api.ingestion.application.resolution.BookIndividualReductionService;
-import com.lorevault.api.ingestion.application.resolution.BookReductionClaimService;
-import com.lorevault.api.ingestion.application.result.BookIndividualResolutionResult;
+import com.lorevault.api.content.association.BookIndividual;
+import com.lorevault.api.content.association.BookIndividualGraphRepository;
+import com.lorevault.api.ingestion.resolution.individual.BookIndividualPersistenceService;
+import com.lorevault.api.ingestion.resolution.individual.BookIndividualReductionService;
+import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
+import com.lorevault.api.ingestion.resolution.individual.BookIndividualResolutionResult;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;

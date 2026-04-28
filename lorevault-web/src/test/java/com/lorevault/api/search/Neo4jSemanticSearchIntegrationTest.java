@@ -1,14 +1,14 @@
 package com.lorevault.api.search;
-import com.lorevault.api.search.infrastructure.*;
 import com.lorevault.api.config.Neo4jSchemaInitializer;
 
-import com.lorevault.api.content.entities.Chunk;
-import com.lorevault.api.content.entities.ChunkGraphRepository;
-import com.lorevault.api.search.infrastructure.Neo4jSemanticSearch.SearchFilters;
-import com.lorevault.api.search.infrastructure.Neo4jSemanticSearch.SearchResult;
-import com.lorevault.api.search.domain.SeriesProgress;
-import com.lorevault.api.search.domain.SpoilerVisibility;
-import com.lorevault.api.search.domain.UnconfiguredSeriesPolicy;
+import com.lorevault.api.content.chunk.Chunk;
+import com.lorevault.api.content.chunk.ChunkGraphRepository;
+import com.lorevault.api.search.semantic.Neo4jSemanticSearch;
+import com.lorevault.api.search.semantic.Neo4jSemanticSearch.SearchFilters;
+import com.lorevault.api.search.semantic.Neo4jSemanticSearch.SearchResult;
+import com.lorevault.api.search.model.SeriesProgress;
+import com.lorevault.api.search.model.SpoilerVisibility;
+import com.lorevault.api.search.model.UnconfiguredSeriesPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;

@@ -1,6 +1,6 @@
 package com.lorevault.api.content.timeline.infrastructure;
 
-import com.lorevault.api.content.entities.Scene;
+import com.lorevault.api.content.scene.Scene;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 

@@ -1,8 +1,10 @@
 package com.lorevault.api.ingestion.infrastructure;
 
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.domain.TriadAnalysisArtifactLookup;
+import com.lorevault.api.ingestion.job.IngestionJobGraphRepository;
+import com.lorevault.api.ingestion.job.StatusRecordGraphRepository;
+import com.lorevault.api.ingestion.resolution.event.LlmCallRecord;
+import com.lorevault.api.ingestion.job.StatusRecord;
+import com.lorevault.api.ingestion.triad.TriadAnalysisArtifactLookup;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;

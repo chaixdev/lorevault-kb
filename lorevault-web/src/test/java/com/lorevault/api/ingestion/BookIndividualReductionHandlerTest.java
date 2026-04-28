@@ -1,23 +1,10 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
 
-import com.lorevault.api.ingestion.application.result.BookIndividualResolutionResult;
+import com.lorevault.api.ingestion.resolution.individual.BookIndividualResolutionResult;
 import com.lorevault.api.ingestion.events.BookIndividualsReducedEvent;
 import com.lorevault.api.ingestion.events.ChapterIndividualsResolvedEvent;
+import com.lorevault.api.ingestion.resolution.individual.BookIndividualReductionHandler;
+import com.lorevault.api.ingestion.resolution.individual.BookIndividualReductionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -1,8 +1,8 @@
 package com.lorevault.api.timeline;
 
-import com.lorevault.api.content.timeline.application.SceneTemporalRelationshipPersistenceService;
-import com.lorevault.api.content.timeline.application.TemporalEdgeProvenance;
-import com.lorevault.api.content.timeline.application.TemporalEdgeWriteRequest;
+import com.lorevault.api.ingestion.resolution.event.SceneTemporalRelationshipPersistenceService;
+import com.lorevault.api.ingestion.resolution.event.TemporalEdgeProvenance;
+import com.lorevault.api.ingestion.resolution.event.TemporalEdgeWriteRequest;
 import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
 import java.util.List;
 import java.util.UUID;

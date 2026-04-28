@@ -1,12 +1,12 @@
 package com.lorevault.api.ingestion;
 
-import com.lorevault.api.content.entities.BookLocation;
-import com.lorevault.api.content.entities.ChapterLocation;
-import com.lorevault.api.content.entities.ChapterLocationGraphRepository;
-import com.lorevault.api.ingestion.application.resolution.BookLocationPersistenceService;
-import com.lorevault.api.ingestion.application.resolution.BookLocationReductionService;
-import com.lorevault.api.ingestion.application.resolution.BookReductionClaimService;
-import com.lorevault.api.ingestion.application.result.BookLocationResolutionResult;
+import com.lorevault.api.content.association.BookLocation;
+import com.lorevault.api.content.association.ChapterLocation;
+import com.lorevault.api.content.association.ChapterLocationGraphRepository;
+import com.lorevault.api.ingestion.resolution.location.BookLocationPersistenceService;
+import com.lorevault.api.ingestion.resolution.location.BookLocationReductionService;
+import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
+import com.lorevault.api.ingestion.resolution.location.BookLocationResolutionResult;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;

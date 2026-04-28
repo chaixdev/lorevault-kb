@@ -1,6 +1,8 @@
 package com.lorevault.api.ingestion.application.eventembedding;
 
 import java.util.UUID;
+
+import com.lorevault.api.ingestion.resolution.event.BookEventCandidatePair;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

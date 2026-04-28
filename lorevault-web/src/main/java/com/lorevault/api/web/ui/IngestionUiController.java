@@ -1,14 +1,14 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.library.domain.Universe;
-import com.lorevault.api.library.domain.Series;
-import com.lorevault.api.library.domain.Book;
-import com.lorevault.api.library.application.LibraryResult;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.library.application.LibraryQueryService;
-import com.lorevault.api.library.application.LibraryService;
+import com.lorevault.api.library.universe.Universe;
+import com.lorevault.api.library.series.Series;
+import com.lorevault.api.library.book.Book;
+import com.lorevault.api.library.service.LibraryResult;
+import com.lorevault.api.ingestion.submission.IngestionService;
+import com.lorevault.api.library.service.LibraryQueryService;
+import com.lorevault.api.library.service.LibraryService;
 import com.lorevault.api.web.command.ingestion.SubmitChapterRequest;
-import com.lorevault.api.ingestion.application.result.IngestionSubmissionResult;
+import com.lorevault.api.ingestion.submission.IngestionSubmissionResult;
 import com.lorevault.api.web.command.ingestion.builder.CoordinatesBuilder;
 import com.lorevault.api.web.command.ingestion.extractor.FileContentExtractor;
 import com.lorevault.api.web.command.ingestion.validation.FileUploadValidator;

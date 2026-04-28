@@ -1,18 +1,16 @@
 package com.lorevault.api.web.query.ask;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.application.CoreSearchRecords.*;
+import com.lorevault.api.search.model.CoreSearchRecords;
+import com.lorevault.api.search.model.CoreSearchRecords.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lorevault.api.ingestion.domain.IngestionFailure;
-import com.lorevault.api.search.domain.EntityLookupException;
-import com.lorevault.api.search.domain.SemanticSearchException;
-import com.lorevault.api.web.query.ask.AskDtos.AskMetadata;
+import com.lorevault.api.ingestion.job.IngestionFailure;
+import com.lorevault.api.search.model.EntityLookupException;
+import com.lorevault.api.search.model.SemanticSearchException;
 import com.lorevault.api.web.query.ask.AskDtos.AskRequest;
-import com.lorevault.api.web.query.ask.AskDtos.CitationDto;
 import com.lorevault.api.web.query.ask.SemanticSearchDtos.SemanticSearchRequest;
-import com.lorevault.api.library.domain.PublicationCoordinates;
-import com.lorevault.api.search.application.RagService;
-import com.lorevault.api.search.application.SemanticSearchService;
+import com.lorevault.api.library.book.PublicationCoordinates;
+import com.lorevault.api.search.rag.RagService;
+import com.lorevault.api.search.semantic.SemanticSearchService;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;

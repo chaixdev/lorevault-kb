@@ -1,26 +1,27 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.domain.*;
+import com.lorevault.api.ingestion.job.IngestionJobService;
 import com.lorevault.api.ingestion.infrastructure.*;
 
-import com.lorevault.api.ingestion.domain.SceneLocalizationException;
-import com.lorevault.api.ingestion.domain.SceneDetectionException;
-import com.lorevault.api.ingestion.application.scene.SceneWithCoordinates;
-import com.lorevault.api.ingestion.application.triad.SceneRelationshipAnalysisService;
-import com.lorevault.api.ingestion.application.triad.TriadTemporalEdgeRequestFactory;
-import com.lorevault.api.content.entities.Chapter;
-import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.ingestion.domain.triad.TriadAnalysisModels;
-import com.lorevault.api.content.entities.ChapterGraphRepository;
-import com.lorevault.api.content.entities.SceneGraphRepository;
-import com.lorevault.api.ingestion.application.scene.SceneDetectionService;
-import com.lorevault.api.ingestion.application.scene.SceneProcessingService;
-import com.lorevault.api.content.timeline.application.DefaultTemporalEdgeService;
-import com.lorevault.api.content.timeline.application.SceneTemporalRelationshipPersistenceService;
+import com.lorevault.api.ingestion.scene.SceneLocalizationException;
+import com.lorevault.api.ingestion.scene.SceneDetectionException;
+import com.lorevault.api.ingestion.scene.SceneWithCoordinates;
+import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
+import com.lorevault.api.ingestion.triad.TriadTemporalEdgeRequestFactory;
+import com.lorevault.api.content.chapter.Chapter;
+import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.content.scene.SceneGraphRepository;
+import com.lorevault.api.ingestion.scene.SceneDetectionService;
+import com.lorevault.api.ingestion.scene.SceneProcessingService;
+import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeService;
+import com.lorevault.api.ingestion.resolution.event.SceneTemporalRelationshipPersistenceService;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import com.lorevault.api.ingestion.events.IngestionFailedEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
+import com.lorevault.api.ingestion.job.IngestionFailure;
+import com.lorevault.api.ingestion.job.IngestionStatus;
+import com.lorevault.api.ingestion.scene.SceneDetectionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -35,6 +36,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -108,7 +110,8 @@ class SceneDetectionHandlerTest {
                     new SceneDetectionService.SceneSegmentationOutcome(sceneCoords)
             );
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
-            when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(eq(jobId), any(Chapter.class), any(Consumer.class)))
+            when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
+                    eq(jobId), any(Chapter.class), anyConsumer()))
                     .thenReturn(new TriadAnalysisModels.SceneRelationshipOutcome(List.of(), List.of(), List.of()));
             when(triadTemporalEdgeRequestFactory.buildRequests(eq(chapterId), eq(List.of()), anyMap())).thenReturn(List.of());
 
@@ -174,7 +177,8 @@ class SceneDetectionHandlerTest {
             when(sceneDetectionService.detectScenesInChapter(jobId, testChapter))
                     .thenReturn(new SceneDetectionService.SceneSegmentationOutcome(sceneCoords));
             when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
-            when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(eq(jobId), any(Chapter.class), any(Consumer.class)))
+            when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
+                    eq(jobId), any(Chapter.class), anyConsumer()))
                     .thenReturn(new TriadAnalysisModels.SceneRelationshipOutcome(List.of(), extractions, objectExtractions, locationExtractions, eventExtractions));
             when(triadTemporalEdgeRequestFactory.buildRequests(eq(chapterId), eq(List.of()), anyMap())).thenReturn(List.of());
 
@@ -387,5 +391,9 @@ class SceneDetectionHandlerTest {
 
     private Scene createScene(int index) {
         return new Scene(UUID.randomUUID(), index, 0L, 1L, "ctx", "text", chapterId, null, null, null, null, null);
+    }
+
+    private static Consumer<Map<String, Object>> anyConsumer() {
+        return any();
     }
 }

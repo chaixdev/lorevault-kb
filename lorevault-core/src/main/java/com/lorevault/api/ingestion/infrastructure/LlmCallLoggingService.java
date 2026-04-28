@@ -1,12 +1,14 @@
 package com.lorevault.api.ingestion.infrastructure;
 
-import com.lorevault.api.ai.domain.LlmCallLogger;
+import com.lorevault.api.ai.llm.LlmCallLogger;
 import com.lorevault.api.config.LoreVaultLlmLoggingProperties;
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.LlmCallRequest;
-import com.lorevault.api.ingestion.domain.LlmCallResponse;
-import com.lorevault.api.ingestion.domain.StatusRecord;
+import com.lorevault.api.ingestion.job.IngestionJob;
+import com.lorevault.api.ingestion.job.IngestionJobGraphRepository;
+import com.lorevault.api.ingestion.job.StatusRecordGraphRepository;
+import com.lorevault.api.ingestion.resolution.event.LlmCallRecord;
+import com.lorevault.api.ingestion.resolution.event.LlmCallRequest;
+import com.lorevault.api.ingestion.resolution.event.LlmCallResponse;
+import com.lorevault.api.ingestion.job.StatusRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

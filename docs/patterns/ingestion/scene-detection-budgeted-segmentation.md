@@ -92,11 +92,11 @@ Chapter-segmentation call output caps remain hardcoded in code (`maxTokens=6000`
 
 - `../../lorevault-core/src/main/java/com/lorevault/api/config/LoreVaultModelsProperties.java`
 - `../../lorevault-web/src/main/resources/application.yml`
-- `../../lorevault-core/src/main/java/com/lorevault/api/ai/infrastructure/LlmClient.java`
-- `../../lorevault-core/src/main/java/com/lorevault/api/ingestion/application/scene/SceneDetectionService.java`
-- `../../lorevault-core/src/main/java/com/lorevault/api/ingestion/application/scene/SceneWithCoordinates.java`
-- `../../lorevault-core/src/main/java/com/lorevault/api/ingestion/application/scene/SceneProcessingService.java`
-- `../../lorevault-core/src/main/java/com/lorevault/api/content/entities/Scene.java`
+- `../../lorevault-core/src/main/java/com/lorevault/api/ai/llm/LlmClient.java`
+- `../../lorevault-core/src/main/java/com/lorevault/api/ingestion/scene/SceneDetectionService.java`
+- `../../lorevault-core/src/main/java/com/lorevault/api/ingestion/scene/SceneWithCoordinates.java`
+- `../../lorevault-core/src/main/java/com/lorevault/api/ingestion/scene/SceneProcessingService.java`
+- `../../lorevault-core/src/main/java/com/lorevault/api/content/scene/Scene.java`
 
 ## Validation Evidence
 

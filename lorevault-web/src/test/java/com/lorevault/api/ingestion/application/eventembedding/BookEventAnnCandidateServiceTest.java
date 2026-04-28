@@ -4,12 +4,17 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.lorevault.api.content.entities.ChapterEvent;
+import com.lorevault.api.content.association.ChapterEvent;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
+
+import com.lorevault.api.ingestion.resolution.event.BookEventAnnCandidateException;
+import com.lorevault.api.ingestion.resolution.event.BookEventAnnCandidateService;
+import com.lorevault.api.ingestion.resolution.event.BookEventAnnProperties;
+import com.lorevault.api.ingestion.resolution.event.BookEventCandidatePair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

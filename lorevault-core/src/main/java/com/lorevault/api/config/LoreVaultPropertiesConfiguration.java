@@ -1,11 +1,6 @@
 package com.lorevault.api.config;
 
-import com.lorevault.api.config.LoreVaultContentProperties;
-import com.lorevault.api.config.LoreVaultEmbeddingProperties;
-import com.lorevault.api.config.LoreVaultLlmProperties;
-import com.lorevault.api.config.LoreVaultLlmLoggingProperties;
-import com.lorevault.api.config.LoreVaultSlotsProperties;
-import com.lorevault.api.ingestion.application.eventembedding.BookEventAnnProperties;
+import com.lorevault.api.ingestion.resolution.event.BookEventAnnProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
