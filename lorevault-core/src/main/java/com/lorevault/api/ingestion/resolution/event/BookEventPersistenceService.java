@@ -3,6 +3,7 @@ package com.lorevault.api.ingestion.resolution.event;
 import com.lorevault.api.content.association.BookEvent;
 import com.lorevault.api.content.association.BookEventGraphRepository;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.neo4j.core.Neo4jClient;
@@ -44,6 +45,40 @@ public class BookEventPersistenceService {
         }
 
         return new BookEventWriteSummary(savedBookEvents.size(), writtenLinks);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UUID> expandRewriteScope(List<UUID> scopedChapterEventIds) {
+        if (scopedChapterEventIds == null || scopedChapterEventIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> scopedIds = scopedChapterEventIds.stream().map(UUID::toString).toList();
+        Object rawIds = neo4jClient.query("""
+                MATCH (ce:ChapterEvent)
+                WHERE ce.id IN $chapterEventIds
+                OPTIONAL MATCH (ce)-[:REFERS_TO]->(be:BookEvent)<-[:REFERS_TO]-(linked:ChapterEvent)
+                WITH collect(DISTINCT be) AS touchedBookEvents
+                UNWIND touchedBookEvents AS be
+                MATCH (linked:ChapterEvent)-[:REFERS_TO]->(be)
+                RETURN collect(DISTINCT linked.id) AS chapterEventIds
+                """)
+                .bind(scopedIds).to("chapterEventIds")
+                .fetch()
+                .one()
+                .map(row -> row.get("chapterEventIds"))
+                .orElse(List.of());
+
+        LinkedHashSet<UUID> expanded = new LinkedHashSet<>(scopedChapterEventIds);
+        if (rawIds instanceof List<?> linkedIds) {
+            for (Object linkedId : linkedIds) {
+                UUID uuid = toUuid(linkedId);
+                if (uuid != null) {
+                    expanded.add(uuid);
+                }
+            }
+        }
+        return List.copyOf(expanded);
     }
 
     private void clearExistingBookEventLinks(List<UUID> scopedChapterEventIds) {
@@ -90,6 +125,16 @@ public class BookEventPersistenceService {
             return number.intValue();
         }
         return 0;
+    }
+
+    private UUID toUuid(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof UUID uuid) {
+            return uuid;
+        }
+        return UUID.fromString(value.toString());
     }
 
     public record BookEventWriteSummary(

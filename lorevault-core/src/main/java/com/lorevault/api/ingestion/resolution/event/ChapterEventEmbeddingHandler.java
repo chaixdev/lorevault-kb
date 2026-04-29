@@ -11,8 +11,10 @@ import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
@@ -27,8 +29,9 @@ import org.springframework.stereotype.Component;
  * branch for ingestion completion.
  */
 @Component
-@Slf4j
 public class ChapterEventEmbeddingHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ChapterEventEmbeddingHandler.class);
 
     static final String STAGE_EVENT_EMBEDDING = "EVENT_EMBEDDING";
 
@@ -98,9 +101,25 @@ public class ChapterEventEmbeddingHandler {
                     List<ChapterEvent> chapterEvents = txSupport.loadChapterEvents(chapterId);
                     List<BookEventCandidatePair> candidatePairs = annCandidateService.generateCandidates(chapterEvents, chapterId);
 
-                    Map<UUID, ChapterEvent> chapterEventsById = chapterEvents.stream()
+                    Map<UUID, ChapterEvent> currentChapterEventsById = chapterEvents.stream()
                             .filter(chapterEvent -> chapterEvent != null && chapterEvent.id() != null)
                             .collect(Collectors.toMap(ChapterEvent::id, chapterEvent -> chapterEvent));
+
+                    List<UUID> candidateEndpointIds = candidatePairs.stream()
+                            .filter(pair -> pair != null)
+                            .flatMap(pair -> java.util.stream.Stream.of(pair.eventId1(), pair.eventId2()))
+                            .filter(java.util.Objects::nonNull)
+                            .distinct()
+                            .toList();
+                    List<ChapterEvent> candidateEndpointEvents = txSupport.loadChapterEventsByIds(candidateEndpointIds);
+                    Map<UUID, ChapterEvent> chapterEventsById = candidateEndpointEvents.stream()
+                            .filter(chapterEvent -> chapterEvent != null && chapterEvent.id() != null)
+                            .collect(Collectors.toMap(
+                                    ChapterEvent::id,
+                                    Function.identity(),
+                                    (left, right) -> left
+                            ));
+                    currentChapterEventsById.forEach(chapterEventsById::putIfAbsent);
 
                     log.info(
                             "[EVENT_MERGE] Starting semantic merge verification: jobId={}, chapterId={}, candidatePairCount={}",
@@ -132,7 +151,7 @@ public class ChapterEventEmbeddingHandler {
                                     jobId,
                                     chapterId,
                                     bookId,
-                                    chapterEvents,
+                                    List.copyOf(chapterEventsById.values()),
                                     mergeDecisions
                             );
 

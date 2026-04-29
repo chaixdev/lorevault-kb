@@ -99,9 +99,8 @@ public class BookEventAnnCandidateService {
                         CALL db.index.vector.queryNodes($indexName, $limit, $embedding)
                         YIELD node, score
                         WITH book, node AS candidate, score
-                        MATCH (candidateChapter:Chapter {id: candidate.chapterId})-[:IN_BOOK]->(book)
+                        MATCH (:Chapter {id: candidate.chapterId})-[:IN_BOOK]->(book)
                         WHERE candidate.id <> $sourceId
-                          AND candidate.chapterId <> $chapterId
                           AND score >= $annFloor
                         WITH candidate, vector.similarity.cosine(candidate.embedding, $embedding) AS cosineScore
                         WHERE cosineScore >= $annFloor

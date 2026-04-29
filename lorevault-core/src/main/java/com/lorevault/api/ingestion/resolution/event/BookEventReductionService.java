@@ -3,9 +3,11 @@ package com.lorevault.api.ingestion.resolution.event;
 import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.content.association.BookEvent;
 import com.lorevault.api.content.association.ChapterEvent;
+import com.lorevault.api.content.association.ChapterEventGraphRepository;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,9 +22,14 @@ public class BookEventReductionService {
     private static final Logger log = LoggerFactory.getLogger(BookEventReductionService.class);
 
     private final BookEventPersistenceService persistenceService;
+    private final ChapterEventGraphRepository chapterEventRepository;
 
-    public BookEventReductionService(BookEventPersistenceService persistenceService) {
+    public BookEventReductionService(
+            BookEventPersistenceService persistenceService,
+            ChapterEventGraphRepository chapterEventRepository
+    ) {
         this.persistenceService = persistenceService;
+        this.chapterEventRepository = chapterEventRepository;
     }
 
     public BookEventReductionResult reduceAndPersist(
@@ -45,13 +52,33 @@ public class BookEventReductionService {
             eventsById.put(chapterEvent.id(), chapterEvent);
         }
 
-        DisjointSet disjointSet = new DisjointSet(eventsById.keySet());
+        List<UUID> currentChapterEventIds = chapterEvents.stream()
+                .filter(chapterEvent -> chapterEvent != null && chapterId.equals(chapterEvent.chapterId()))
+                .map(ChapterEvent::id)
+                .filter(id -> id != null)
+                .toList();
+
+        List<UUID> mergeEndpointIds = mergeDecisions == null ? List.of() : mergeDecisions.stream()
+                .filter(decision -> decision != null)
+                .flatMap(decision -> java.util.stream.Stream.of(decision.eventId1(), decision.eventId2()))
+                .filter(id -> id != null && !currentChapterEventIds.contains(id))
+                .distinct()
+                .toList();
+
+        LinkedHashSet<UUID> rewriteSeedIds = new LinkedHashSet<>();
+        rewriteSeedIds.addAll(currentChapterEventIds);
+        rewriteSeedIds.addAll(mergeEndpointIds);
+
+        List<UUID> rewriteScope = persistenceService.expandRewriteScope(List.copyOf(rewriteSeedIds));
+        Map<UUID, ChapterEvent> rewriteEventsById = loadRewriteEventsById(rewriteScope, eventsById);
+
+        DisjointSet disjointSet = new DisjointSet(rewriteEventsById.keySet());
         if (mergeDecisions != null) {
             for (EventMergeModels.EventMergeDecision decision : mergeDecisions) {
                 if (decision == null || decision.eventId1() == null || decision.eventId2() == null) {
                     continue;
                 }
-                if (!eventsById.containsKey(decision.eventId1()) || !eventsById.containsKey(decision.eventId2())) {
+                if (!rewriteEventsById.containsKey(decision.eventId1()) || !rewriteEventsById.containsKey(decision.eventId2())) {
                     continue;
                 }
                 disjointSet.union(decision.eventId1(), decision.eventId2());
@@ -59,7 +86,7 @@ public class BookEventReductionService {
         }
 
         Map<UUID, List<ChapterEvent>> clustersByRoot = new HashMap<>();
-        for (ChapterEvent chapterEvent : chapterEvents) {
+        for (ChapterEvent chapterEvent : rewriteEventsById.values()) {
             if (chapterEvent == null || chapterEvent.id() == null) {
                 continue;
             }
@@ -92,10 +119,7 @@ public class BookEventReductionService {
             chapterEventIdsByBookEvent.add(chapterEventIds);
         }
 
-        List<UUID> scopedChapterEventIds = chapterEvents.stream()
-                .map(ChapterEvent::id)
-                .filter(id -> id != null)
-                .toList();
+        List<UUID> scopedChapterEventIds = rewriteEventsById.keySet().stream().toList();
 
         BookEventPersistenceService.BookEventWriteSummary summary = persistenceService.saveAndLinkBookEvents(
                 chapterId,
@@ -130,6 +154,33 @@ public class BookEventReductionService {
                 )
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Cluster must contain at least one ChapterEvent"));
+    }
+
+    private Map<UUID, ChapterEvent> loadRewriteEventsById(
+            List<UUID> rewriteScope,
+            Map<UUID, ChapterEvent> knownEventsById
+    ) {
+        Map<UUID, ChapterEvent> rewriteEventsById = new HashMap<>();
+        List<UUID> missingIds = new ArrayList<>();
+
+        for (UUID rewriteEventId : rewriteScope) {
+            ChapterEvent knownEvent = knownEventsById.get(rewriteEventId);
+            if (knownEvent != null) {
+                rewriteEventsById.put(rewriteEventId, knownEvent);
+            } else {
+                missingIds.add(rewriteEventId);
+            }
+        }
+
+        if (!missingIds.isEmpty()) {
+            for (ChapterEvent event : chapterEventRepository.findByIds(missingIds)) {
+                if (event != null && event.id() != null) {
+                    rewriteEventsById.put(event.id(), event);
+                }
+            }
+        }
+
+        return rewriteEventsById;
     }
 
     private int mentionCountOrZero(Integer mentionCount) {

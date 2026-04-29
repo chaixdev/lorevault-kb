@@ -2,13 +2,12 @@ package com.lorevault.api.ingestion.resolution.event;
 
 import com.lorevault.api.content.association.ChapterEvent;
 import com.lorevault.api.content.association.ChapterEventGraphRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Transactional DB operations for the ChapterEvent embedding pipeline.
@@ -23,11 +22,15 @@ import java.util.UUID;
  * </ul>
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class ChapterEventEmbeddingTransactionSupport {
 
+    private static final Logger log = LoggerFactory.getLogger(ChapterEventEmbeddingTransactionSupport.class);
+
     private final ChapterEventGraphRepository chapterEventRepo;
+
+    public ChapterEventEmbeddingTransactionSupport(ChapterEventGraphRepository chapterEventRepo) {
+        this.chapterEventRepo = chapterEventRepo;
+    }
 
     /**
      * Load all ChapterEvent nodes for the chapter.
@@ -37,6 +40,17 @@ public class ChapterEventEmbeddingTransactionSupport {
     List<ChapterEvent> loadChapterEvents(UUID chapterId) {
         List<ChapterEvent> events = chapterEventRepo.findByChapterId(chapterId);
         log.debug("[EventEmbeddings] Loaded {} ChapterEvents chapter={}", events.size(), chapterId);
+        return events;
+    }
+
+    @Transactional(readOnly = true)
+    List<ChapterEvent> loadChapterEventsByIds(List<UUID> chapterEventIds) {
+        if (chapterEventIds == null || chapterEventIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<ChapterEvent> events = chapterEventRepo.findByIds(chapterEventIds);
+        log.debug("[EventEmbeddings] Loaded {} ChapterEvents by ids", events.size());
         return events;
     }
 

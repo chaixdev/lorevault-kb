@@ -64,4 +64,14 @@ public interface ChapterEventGraphRepository extends Neo4jRepository<ChapterEven
             RETURN ce
             """)
     java.util.List<ChapterEvent> findByChapterId(UUID chapterId);
+
+    /**
+     * Load ChapterEvent nodes by stable application ids.
+     */
+    @Query("""
+            MATCH (ce:ChapterEvent)
+            WHERE ce.id IN $chapterEventIds
+            RETURN ce
+            """)
+    java.util.List<ChapterEvent> findByIds(java.util.List<UUID> chapterEventIds);
 }

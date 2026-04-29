@@ -53,8 +53,8 @@ class BookEventAnnCandidateServiceTest {
             new BookEventAnnProperties(8, 3, 0.82, 3, 3);
 
     @Test
-    @DisplayName("Queries book-wide candidates, excludes current chapter, and propagates ANN failures")
-    void queryFailurePropagatesAndQueryScopesToBookExcludingCurrentChapter() {
+    @DisplayName("Queries book-wide candidates, allows same-chapter candidates, and propagates ANN failures")
+    void queryFailurePropagatesAndQueryScopesToBookAllowingSameChapterCandidates() {
         BookEventAnnCandidateService service = new BookEventAnnCandidateService(
                 neo4jClient, TEST_PROPS
         );
@@ -71,8 +71,8 @@ class BookEventAnnCandidateServiceTest {
         verify(neo4jClient).query(queryCaptor.capture());
         assertThat(queryCaptor.getValue())
                 .contains("MATCH (:Chapter {id: $chapterId})-[:IN_BOOK]->(book:Book)")
-                .contains("MATCH (candidateChapter:Chapter {id: candidate.chapterId})-[:IN_BOOK]->(book)")
-                .contains("candidate.chapterId <> $chapterId")
+                .contains("MATCH (:Chapter {id: candidate.chapterId})-[:IN_BOOK]->(book)")
+                .doesNotContain("candidate.chapterId <> $chapterId")
                 .doesNotContain("candidate.chapterId = $chapterId");
     }
 

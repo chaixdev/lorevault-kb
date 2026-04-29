@@ -6,7 +6,9 @@ import com.lorevault.api.ingestion.events.BookEventCandidatesGeneratedEvent;
 import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
 import com.lorevault.api.ingestion.events.IngestionFailedEvent;
 import com.lorevault.api.ai.llm.EventMergeModels;
+import com.lorevault.api.content.association.ChapterEvent;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -62,15 +64,19 @@ class ChapterEventEmbeddingHandlerTest {
         UUID correlationId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         UUID bookId = UUID.randomUUID();
+        UUID crossChapterEventId = UUID.randomUUID();
+        ChapterEvent current = chapterEvent(chapterId, UUID.randomUUID());
+        ChapterEvent crossChapter = chapterEvent(UUID.randomUUID(), crossChapterEventId);
 
         when(embeddingService.embedChapterEvents(chapterId)).thenReturn(2);
-        when(txSupport.loadChapterEvents(chapterId)).thenReturn(List.of());
-        when(annCandidateService.generateCandidates(List.of(), chapterId)).thenReturn(List.of(
-                BookEventCandidatePair.of(UUID.randomUUID(), UUID.randomUUID(), 0.91)
+        when(txSupport.loadChapterEvents(chapterId)).thenReturn(List.of(current));
+        when(annCandidateService.generateCandidates(List.of(current), chapterId)).thenReturn(List.of(
+                BookEventCandidatePair.of(current.id(), crossChapterEventId, 0.91)
         ));
+        when(txSupport.loadChapterEventsByIds(List.of(current.id(), crossChapterEventId))).thenReturn(List.of(crossChapter, current));
         when(mergeVerificationService.verifyCandidates(eq(jobId), eq(chapterId), any(), any())).thenReturn(List.of(
                 new EventMergeModels.EventMergeVerification(
-                        UUID.randomUUID(), UUID.randomUUID(), EventMergeModels.MergeDecision.KEEP_SEPARATE, 0.77, "not same"
+                        current.id(), crossChapterEventId, EventMergeModels.MergeDecision.KEEP_SEPARATE, 0.77, "not same"
                 )
         ));
         when(bookEventReductionService.reduceAndPersist(eq(jobId), eq(chapterId), eq(bookId), any(), any()))
@@ -96,7 +102,8 @@ class ChapterEventEmbeddingHandlerTest {
         );
         verify(embeddingService).embedChapterEvents(chapterId);
         verify(txSupport).loadChapterEvents(chapterId);
-        verify(annCandidateService).generateCandidates(List.of(), chapterId);
+        verify(annCandidateService).generateCandidates(List.of(current), chapterId);
+        verify(txSupport).loadChapterEventsByIds(List.of(current.id(), crossChapterEventId));
         verify(mergeVerificationService).verifyCandidates(eq(jobId), eq(chapterId), any(), any());
         verify(bookEventReductionService).reduceAndPersist(eq(jobId), eq(chapterId), eq(bookId), any(), any());
 
@@ -112,6 +119,27 @@ class ChapterEventEmbeddingHandlerTest {
         assertThat(published.getEmbeddedCount()).isEqualTo(2);
         assertThat(published.getCandidatePairCount()).isEqualTo(1);
         assertThat(published.getBookEventsCreated()).isEqualTo(1);
+    }
+
+    private ChapterEvent chapterEvent(UUID chapterId, UUID eventId) {
+        return new ChapterEvent(
+                eventId,
+                chapterId,
+                null,
+                "Display",
+                "display",
+                "TYPE",
+                1,
+                "aggregate",
+                List.of(),
+                List.of(),
+                List.of(),
+                null,
+                null,
+                null,
+                null,
+                null
+        );
     }
 
     @Test

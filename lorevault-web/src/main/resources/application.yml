@@ -152,7 +152,7 @@ lorevault:
   event-ann:
     top-k: 8
     oversample-factor: 3
-    ann-floor: 0.82
+    ann-floor: 0.70
     max-candidates-per-event: 3
     embedding-dimension: ${lorevault.embedding.model.dimensions:2560}
 
