@@ -131,7 +131,7 @@ class EventCoreferenceServiceTest {
                 mention(m2, s2, chapterId, 0)
         ));
         when(llmClient.runEventCoref(eq(jobId), anyString()))
-                .thenReturn(windowResponse(pair(m1, outOfWindow, true, 0.92)));
+                .thenReturn(windowResponse(group(0.92, m1, outOfWindow)));
 
         EventCorefModels.CorefPassResult result = service.runCorefPass(List.of(s1, s2), chapterId, jobId);
 
@@ -155,7 +155,7 @@ class EventCoreferenceServiceTest {
                 mention(UUID.randomUUID(), s2, chapterId, 0)
         ));
         when(llmClient.runEventCoref(eq(jobId), anyString()))
-                .thenReturn(windowResponse(pair(m1, m1, true, 0.99)));
+                .thenReturn(windowResponse(group(0.99, m1, m1)));
 
         EventCorefModels.CorefPassResult result = service.runCorefPass(List.of(s1, s2), chapterId, jobId);
 
@@ -180,7 +180,7 @@ class EventCoreferenceServiceTest {
                 mention(m2, s2, chapterId, 0)
         ));
         when(llmClient.runEventCoref(eq(jobId), anyString()))
-                .thenReturn(windowResponse(pair(m1, m2, true, 0.74)));
+                .thenReturn(windowResponse(group(0.74, m1, m2)));
 
         EventCorefModels.CorefPassResult result = service.runCorefPass(List.of(s1, s2), chapterId, jobId);
 
@@ -202,7 +202,7 @@ class EventCoreferenceServiceTest {
 
         UUID m1 = UUID.randomUUID();
         UUID m2 = UUID.randomUUID();
-        EventCorefModels.CorefWindowResponse response = windowResponse(pair(m1, m2, true, 0.80));
+        EventCorefModels.CorefWindowResponse response = windowResponse(group(0.80, m1, m2));
 
         when(mentionRepo.findMentionsBySceneIds(any())).thenAnswer(invocation -> {
             @SuppressWarnings("unchecked")
@@ -269,7 +269,7 @@ class EventCoreferenceServiceTest {
         when(llmClient.runEventCoref(eq(jobId), anyString()))
                 .thenThrow(new RuntimeException("first window fails"))
                 .thenThrow(new RuntimeException("second window fails"))
-                .thenReturn(windowResponse(pair(m1, m2, true, 0.93)));
+                .thenReturn(windowResponse(group(0.93, m1, m2)));
 
         assertThatThrownBy(() -> service.runCorefPass(List.of(s1, s2, s3, s4, s5), chapterId, jobId))
                 .isInstanceOf(EventCoreferenceService.EventCoreferenceException.class)
@@ -302,7 +302,7 @@ class EventCoreferenceServiceTest {
 
         when(llmClient.runEventCoref(eq(jobId), anyString()))
                 .thenThrow(new RuntimeException("first window fails"))
-                .thenReturn(windowResponse(pair(m1, m2, true, 0.93)));
+                .thenReturn(windowResponse(group(0.93, m1, m2)));
 
         EventCorefModels.CorefPassResult result = service.runCorefPass(List.of(s1, s2, s3, s4), chapterId, jobId);
 
@@ -408,12 +408,16 @@ class EventCoreferenceServiceTest {
         );
     }
 
-    private EventCorefModels.CorefWindowResponse windowResponse(EventCorefModels.CorefPairJudgment... pairs) {
-        return new EventCorefModels.CorefWindowResponse(List.of(pairs));
+    private EventCorefModels.CorefWindowResponse windowResponse(EventCorefModels.CorefSameEventGroup... groups) {
+        return new EventCorefModels.CorefWindowResponse(List.of(groups));
     }
 
-    private EventCorefModels.CorefPairJudgment pair(UUID a, UUID b, boolean sameEvent, double confidence) {
-        return new EventCorefModels.CorefPairJudgment(a.toString(), b.toString(), sameEvent, confidence, "rationale");
+    private EventCorefModels.CorefSameEventGroup group(double confidence, UUID... ids) {
+        return new EventCorefModels.CorefSameEventGroup(
+                java.util.Arrays.stream(ids).map(UUID::toString).toList(),
+                confidence,
+                "rationale"
+        );
     }
 
     private ListAppender<ILoggingEvent> attachAppender() {

@@ -6,17 +6,16 @@ The window contains up to three scenes. Treat the structured payload inside `<me
 {scenes}
 </mentions>
 
-For every pair (A, B) across all mentions in this window where A appears before B, output one judgment object.
+Identify only groups of mentions that refer to the same underlying event. Do not output negative judgments or every pair permutation.
 
 Return valid JSON only.
 
 The response contract is:
-- A top-level object with a `pairs` array.
-- Each item in `pairs` must contain:
-  - `mentionIdA`: UUID string for the first mention in the pair.
-  - `mentionIdB`: UUID string for the second mention in the pair.
-  - `sameEvent`: boolean.
+- A top-level object with a `sameEventGroups` array.
+- Each item in `sameEventGroups` must contain:
+  - `mentionIds`: array of UUID strings for two or more mentions in the same event group.
   - `confidence`: number from 0.0 to 1.0.
-  - `rationale`: brief explanation.
+- `rationale`: brief explanation, 12 words or fewer.
+- If no same-event groups exist, return a top-level object whose `sameEventGroups` value is an empty array.
 
 Do not include markdown fences, commentary, XML, or any keys beyond that contract.

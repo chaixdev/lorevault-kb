@@ -245,29 +245,30 @@ public class EventCoreferenceService {
             Set<UUID> mentionAllowlist,
             Map<AbstractMap.SimpleEntry<UUID, UUID>, Double> bestConfidenceByPair
     ) {
-        if (response == null || response.pairs() == null || response.pairs().isEmpty()) {
+        if (response == null || response.sameEventGroups() == null || response.sameEventGroups().isEmpty()) {
             return;
         }
 
-        for (EventCorefModels.CorefPairJudgment pair : response.pairs()) {
-            if (pair == null || !pair.sameEvent() || pair.confidence() < CONFIDENCE_THRESHOLD) {
+        for (EventCorefModels.CorefSameEventGroup group : response.sameEventGroups()) {
+            if (group == null || group.confidence() < CONFIDENCE_THRESHOLD || group.mentionIds() == null) {
                 continue;
             }
 
-            UUID mentionA = parseUuid(pair.mentionIdA());
-            UUID mentionB = parseUuid(pair.mentionIdB());
-            if (mentionA == null || mentionB == null) {
-                continue;
-            }
-            if (mentionA.equals(mentionB)) {
-                continue;
-            }
-            if (!mentionAllowlist.contains(mentionA) || !mentionAllowlist.contains(mentionB)) {
+            List<UUID> validMentionIds = group.mentionIds().stream()
+                    .map(this::parseUuid)
+                    .filter(id -> id != null && mentionAllowlist.contains(id))
+                    .distinct()
+                    .toList();
+            if (validMentionIds.size() < 2) {
                 continue;
             }
 
-            AbstractMap.SimpleEntry<UUID, UUID> canonicalPair = canonicalPair(mentionA, mentionB);
-            bestConfidenceByPair.merge(canonicalPair, pair.confidence(), Math::max);
+            for (int i = 0; i < validMentionIds.size(); i++) {
+                for (int j = i + 1; j < validMentionIds.size(); j++) {
+                    AbstractMap.SimpleEntry<UUID, UUID> canonicalPair = canonicalPair(validMentionIds.get(i), validMentionIds.get(j));
+                    bestConfidenceByPair.merge(canonicalPair, group.confidence(), Math::max);
+                }
+            }
         }
     }
 

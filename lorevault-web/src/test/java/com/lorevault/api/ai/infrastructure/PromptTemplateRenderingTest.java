@@ -73,6 +73,7 @@ public class PromptTemplateRenderingTest {
         assertThat(rendered).contains("chapter-123");
         assertThat(rendered).contains("<mentions>");
         assertThat(rendered).contains("<scene id=\"scene-1\"><mention id=\"mention-1\">payload</mention></scene>");
+        assertThat(rendered).contains("sameEventGroups");
         assertThat(rendered).contains("Return valid JSON only.");
         assertThat(rendered).doesNotContain("Return a JSON object matching this schema:");
     }

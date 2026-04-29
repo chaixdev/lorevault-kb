@@ -37,27 +37,24 @@ public final class EventCorefModels {
     // -------------------------------------------------------------------------
 
     /**
-     * A single pair judgment produced by the LLM for two mentions in the window.
+     * A positive same-event group produced by the LLM for mentions in the window.
      *
-     * @param mentionIdA  id of the first mention (from window input)
-     * @param mentionIdB  id of the second mention (from window input)
-     * @param sameEvent   true when the model judges both mentions refer to the same real-world event
+     * @param mentionIds  ids of two or more mentions judged to refer to the same real-world event
      * @param confidence  model's self-reported confidence in [0.0, 1.0]
      * @param rationale   brief natural-language explanation (for audit/debug only)
      */
-    public record CorefPairJudgment(
-            String mentionIdA,
-            String mentionIdB,
-            boolean sameEvent,
+    public record CorefSameEventGroup(
+            List<String> mentionIds,
             double confidence,
             String rationale
     ) {}
 
     /**
      * Full structured response from the LLM for one co-reference window.
-     * Contains one judgment per candidate pair in the window.
+     * Contains only positive same-event groups. Mentions omitted from all groups are treated as
+     * unmerged for this window; no negative pair judgments are requested or persisted.
      */
-    public record CorefWindowResponse(List<CorefPairJudgment> pairs) {}
+    public record CorefWindowResponse(List<CorefSameEventGroup> sameEventGroups) {}
 
     // -------------------------------------------------------------------------
     // Pass result

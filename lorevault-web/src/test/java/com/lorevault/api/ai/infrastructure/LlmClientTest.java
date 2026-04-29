@@ -148,10 +148,8 @@ class LlmClientTest {
     void runEventCoref_shouldPersistStructuredResponseBodyWithEventCorefPromptPath() {
         UUID jobId = UUID.randomUUID();
         var response = new EventCorefModels.CorefWindowResponse(List.of(
-                new EventCorefModels.CorefPairJudgment(
-                        "mention-a",
-                        "mention-b",
-                        true,
+                new EventCorefModels.CorefSameEventGroup(
+                        List.of("mention-a", "mention-b"),
                         0.91,
                         "same battle"
                 )
@@ -171,6 +169,7 @@ class LlmClientTest {
         client.runEventCoref(jobId, "<mentions><scene id=\"s1\"/></mentions>");
 
         ArgumentCaptor<String> responseBodyCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(llmLog).logCall(
                 eq(jobId),
                 eq("event-coref"),
@@ -185,12 +184,12 @@ class LlmClientTest {
                 responseBodyCaptor.capture(),
                 anyLong(),
                 eq(13),
-                eq(42)
+                outputTokensCaptor.capture()
         );
 
-        assertThat(responseBodyCaptor.getValue()).contains("\"pairs\"");
-        assertThat(responseBodyCaptor.getValue()).contains("\"mentionIdA\":\"mention-a\"");
-        assertThat(responseBodyCaptor.getValue()).contains("\"sameEvent\":true");
+        assertThat(responseBodyCaptor.getValue()).contains("\"sameEventGroups\"");
+        assertThat(responseBodyCaptor.getValue()).contains("\"mentionIds\":[\"mention-a\",\"mention-b\"]");
+        assertThat(outputTokensCaptor.getValue()).isGreaterThan(0);
     }
 
     @Test

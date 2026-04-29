@@ -58,7 +58,7 @@ chapter reduction (Stage 3)
 ## Current implementation status
 
 - Stage 1 `EventMention` persistence is shipped.
-- Stage 2 chapter-scoped scene-windowed `SAME_EVENT` coreference is implemented: `EventCoreferenceService` now accepts ordered scene ids, builds rolling 3-scene windows, validates active-window pairs, writes rebuildable chapter-scoped `SAME_EVENT` links, deletes and rebuilds chapter links, uses a 0.75 confidence threshold, and escalates failures.
+- Stage 2 chapter-scoped scene-windowed `SAME_EVENT` coreference is implemented: `EventCoreferenceService` now accepts ordered scene ids, builds rolling 3-scene windows, asks the LLM for positive same-event groups only, validates active-window group members, writes rebuildable chapter-scoped `SAME_EVENT` links, deletes and rebuilds chapter links, uses a 0.75 confidence threshold, and escalates failures.
 - Stage 3 `ChapterEvent` reduction is shipped for chapter-local aggregates and now preserves support metadata: aliases, event-type variants, and evidence snippets.
 - Stage 4 ANN candidate generation is shipped: `ChapterEvent.aggregateCard` is embedded, stored on the node, and an in-memory ANN pass generates same-book cross-chapter candidate pairs after each chapter's events are resolved.
 - Stage 5 semantic merge verification is shipped: `BookEventMergeVerificationService` calls the LLM per ANN candidate pair and decides MERGE / KEEP_SEPARATE / UNRESOLVED.
@@ -90,11 +90,11 @@ The same event cluster in chapter `dd8...` produced three types: `attack`, `assa
 
 **Implication:** `eventType` values are narrative-local, not canonical. Using them as reduction canonicalization keys produces unstable representative types.
 
-### Finding 3: Coref is calibrated toward fragmentation
+### Finding 3: Prior pairwise coref was calibrated toward fragmentation
 
-The event-coref system prompt explicitly prefers `sameEvent=false` when uncertain. In sampled data, confident negatives cluster around 0.95. Chapter `523...` produced 0 SAME_EVENT edges from 3 event-coref calls. The 0.75 write threshold is conservative relative to the already-biased model output.
+The earlier event-coref system prompt asked for every pair and explicitly preferred `sameEvent=false` when uncertain. In sampled data, confident negatives clustered around 0.95. Chapter `523...` produced 0 SAME_EVENT edges from 3 event-coref calls. The 0.75 write threshold was conservative relative to the already-biased model output.
 
-**Implication:** The issue is not just threshold — it is prompt posture. Uncertainty becomes a strong negative rather than low confidence.
+**Implication:** The issue was not just threshold — it was prompt posture and output contract. Stage 2 now asks for positive same-event groups only; omitted mentions simply produce no links, so the model no longer spends output tokens enumerating negatives.
 
 ### Finding 4: Successful merges rely on shared anchors, not names
 
@@ -198,11 +198,13 @@ Example preferred set: `battle`, `meeting`, `interview`, `ceremony`, `journey`, 
 
 #### T1-E: Retune coref around shared anchors
 **Target:** `event-coref-system.st`  
-Replace the "prefer sameEvent=false when uncertain" instruction with: reduce confidence when uncertain, but do not treat uncertainty as evidence of difference. Add a ranked signal list: shared participants + place + action = strong evidence; similar name/type alone = weak evidence. Add a worked example with the Rogers Arena attack pattern showing how anchor overlap justifies merging across name drift.
+**Status:** Partially implemented by the positive-groups-only Stage 2 contract.  
+The prompt now asks for same-event groups rather than every pair permutation, reducing overproduction of negative judgments. Remaining tuning should focus on ranked shared anchors: participants + place + action = strong evidence; similar name/type alone = weak evidence. Add a worked example with the Rogers Arena attack pattern showing how anchor overlap justifies merging across name drift.
 
 #### T1-F: Fix overconfident negative posture
 **Target:** `event-coref-system.st`  
-Remove or invert the "prefer false when uncertain" bias. Replace with: if anchor features are weak on both sides, emit `sameEvent=false` at low confidence (0.45–0.55), not 0.90+. High-confidence negatives should require positive evidence of difference, not just name/type mismatch.
+**Status:** Superseded by the positive-groups-only Stage 2 contract.  
+The model no longer emits `sameEvent=false` rows. Omitted mentions are treated as unmerged/unresolved for the window, and only confident positive groups become `SAME_EVENT` links.
 
 ---
 
@@ -221,7 +223,7 @@ After rolling-window coref completes, add a chapter-level second pass: compare m
 - A representative `displayName` (deterministic from most-supported or first-seen, not a frequency tie-break on a small set)
 - A `supportedAliases` list (all distinct member display names)
 - A `representativeEventType` plus a `supportedEventTypes` list
-- The existing `aggregateCard` for evidence snippets
+- The existing `aggregateCard` for aggregate comparison features
 
 Remove the illusion that the canonical fields are "true" — they are serving conveniences.
 
