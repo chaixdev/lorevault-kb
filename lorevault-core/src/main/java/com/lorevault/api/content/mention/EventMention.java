@@ -9,7 +9,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
 
-@Node("EventMention")
+@Node(primaryLabel = "EventMention", labels = "Mention")
 public record EventMention(
         @Id UUID id,
         String source,

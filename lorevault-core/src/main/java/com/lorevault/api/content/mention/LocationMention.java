@@ -9,7 +9,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
 
-@Node("LocationMention")
+@Node(primaryLabel = "LocationMention", labels = "Mention")
 public record LocationMention(
         @Id UUID id,
         String source,

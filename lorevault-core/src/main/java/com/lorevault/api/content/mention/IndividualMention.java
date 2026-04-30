@@ -9,7 +9,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
 
-@Node("IndividualMention")
+@Node(primaryLabel = "IndividualMention", labels = "Mention")
 public record IndividualMention(
         @Id UUID id,
         String source,
