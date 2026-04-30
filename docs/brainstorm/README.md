@@ -39,6 +39,7 @@ When a brainstorm becomes stable enough, either:
 - [Event entity extraction proposal — April 2026](entity-pipelines/event-entity-extraction-proposal-april-2026.md) — active working proposal for `EventMention -> ChapterEvent -> BookEvent` and the emerging direction toward a future root `ResolvedEvent`, including current decisions about scene-relative temporal semantics, DAG participation, and query-root traversal
 - [Event entity extraction staged solution design proposal — April 2026](entity-pipelines/event-entity-extraction-staged-solution-design-proposal-april-2026.md) — event-first semantic aggregation design: rolling-triad entity likeness analysis, local aggregate cards, book-wide ANN candidates, semantic verification, chapter as the first spoiler-safe rich aggregate boundary, and later generalization to other entity types
 - [Event entity extraction: external research (verbatim) — April 2026](entity-pipelines/event-entity-extraction-external-research-verbatim-april-2026.md) — preserved external surveys on mention→aggregate→resolved ladders, canonical query roots, event-graph analogues, and dual-purpose root nodes
+- [Provenance and projection generation model brainstorm — April 2026](entity-pipelines/provenance-generation-model-brainstorm-april-2026.md) — exploratory proposal for generation-backed mutable projections, watermarks, dependency edges, and invalidation waves to make ingestion retries and manual reruns coherent
 
 ### Scene detection
 
@@ -51,6 +52,7 @@ When a brainstorm becomes stable enough, either:
 - [Pragmatic modulith plan](architecture/pragmatic-modulith-plan.md)
 - [Event-driven architecture plan](architecture/event-driven-architecture-plan.md)
 - [Async ingestion logging philosophy brainstorm — April 2026](architecture/2026-04-17_async-ingestion-logging-philosophy-brainstorm.md) — broader proposal for correlation, lifecycle logs, MDC/context propagation, and phased logging rollout around the async ingestion pipeline
+- [StageRun DAG observability and recovery brainstorm — April 2026](architecture/stage-run-dag-observability-and-recovery-brainstorm-april-2026.md) — proposal to replace the linear `StatusRecord` chain with persisted stage-run DAG orchestration, stage-run events, fan-in status, and JVM crash recovery hooks
 
 ### Query and retrieval
 
