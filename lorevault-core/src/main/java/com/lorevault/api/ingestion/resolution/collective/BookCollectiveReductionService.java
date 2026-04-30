@@ -11,11 +11,17 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
+import org.neo4j.driver.exceptions.TransientException;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class BookCollectiveReductionService {
+
+    private static final String CLAIM_LANE = "BOOK_COLLECTIVE_REDUCTION";
 
     private final BookGraphRepository bookGraphRepository;
     private final ChapterCollectiveGraphRepository chapterCollectiveRepository;
@@ -39,13 +45,18 @@ public class BookCollectiveReductionService {
         return bookId != null && bookGraphRepository.findById(bookId).isPresent();
     }
 
+    @Retryable(
+            retryFor = {TransientDataAccessException.class, TransientException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 200, multiplier = 2.0, maxDelay = 2_000)
+    )
     public BookCollectiveResolutionResult resolveBook(UUID bookId) {
         if (bookId == null) {
             return new BookCollectiveResolutionResult(null, false, 0, 0, "Book ID is required");
         }
 
-        if (!claimService.tryAcquireClaimWithRetry(bookId, 6, 500)) {
-            throw new BookReductionClaimUnavailableException("BOOK_COLLECTIVE_REDUCTION", bookId);
+        if (!claimService.tryAcquireClaimWithRetry(bookId, CLAIM_LANE, 6, 500)) {
+            throw new BookReductionClaimUnavailableException(CLAIM_LANE, bookId);
         }
         try {
             List<ChapterCollective> chapterCollectives = chapterCollectiveRepository.findByBookId(bookId).stream()
@@ -64,7 +75,7 @@ public class BookCollectiveReductionService {
 
             return resolveBook(bookId, chapterCollectives);
         } finally {
-            claimService.releaseClaim(bookId);
+            claimService.releaseClaim(bookId, CLAIM_LANE);
         }
     }
 

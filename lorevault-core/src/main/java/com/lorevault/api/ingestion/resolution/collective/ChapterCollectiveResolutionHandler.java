@@ -31,7 +31,7 @@ public class ChapterCollectiveResolutionHandler {
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
 
-    @Async("ingestionTaskExecutor")
+    @Async("ingestionLaneTaskExecutor")
     @EventListener
     public void handleScenesDetected(ScenesDetectedEvent event) {
         UUID chapterId = event.getChapterId();
@@ -47,7 +47,7 @@ public class ChapterCollectiveResolutionHandler {
                 chapterId,
                 () -> {
                     log.info(
-                            "[CHAPTER_COLLECTIVE_RESOLUTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}",
+                            "[LANE:COLLECTIVE] [CHAPTER_COLLECTIVE_RESOLUTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}",
                             jobId,
                             correlationId,
                             chapterId,
@@ -57,7 +57,7 @@ public class ChapterCollectiveResolutionHandler {
 
                     if (response.success()) {
                         log.info(
-                                "[CHAPTER_COLLECTIVE_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterCollectiveCount={}",
+                                "[LANE:COLLECTIVE] [CHAPTER_COLLECTIVE_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterCollectiveCount={}",
                                 jobId,
                                 chapterId,
                                 bookId,
@@ -66,7 +66,7 @@ public class ChapterCollectiveResolutionHandler {
                         );
                     } else {
                         log.warn(
-                                "[CHAPTER_COLLECTIVE_RESOLUTION] Skipped: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterCollectiveCount={}, reason={}",
+                                "[LANE:COLLECTIVE] [CHAPTER_COLLECTIVE_RESOLUTION] Skipped: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterCollectiveCount={}, reason={}",
                                 jobId,
                                 chapterId,
                                 bookId,

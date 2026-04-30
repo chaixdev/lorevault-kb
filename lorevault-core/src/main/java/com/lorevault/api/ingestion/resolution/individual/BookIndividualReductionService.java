@@ -12,11 +12,17 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.data.neo4j.core.Neo4jClient;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.neo4j.driver.exceptions.TransientException;
 
 @Service
 public class BookIndividualReductionService {
+
+    private static final String CLAIM_LANE = "BOOK_INDIVIDUAL_REDUCTION";
 
     private final BookIndividualGraphRepository bookIndividualRepository;
     private final BookGraphRepository bookGraphRepository;
@@ -43,13 +49,18 @@ public class BookIndividualReductionService {
         return bookId != null && bookGraphRepository.findById(bookId).isPresent();
     }
 
+    @Retryable(
+            retryFor = {TransientDataAccessException.class, TransientException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 200, multiplier = 2.0, maxDelay = 2_000)
+    )
     public BookIndividualResolutionResult resolveBook(UUID bookId) {
         if (bookId == null) {
             return new BookIndividualResolutionResult(null, false, 0, 0, "Book ID is required");
         }
 
-        if (!claimService.tryAcquireClaimWithRetry(bookId, 6, 500)) {
-            throw new BookReductionClaimUnavailableException("BOOK_INDIVIDUAL_REDUCTION", bookId);
+        if (!claimService.tryAcquireClaimWithRetry(bookId, CLAIM_LANE, 6, 500)) {
+            throw new BookReductionClaimUnavailableException(CLAIM_LANE, bookId);
         }
         try {
             List<BookReductionCandidate> candidates = findReductionCandidates(bookId);
@@ -59,7 +70,7 @@ public class BookIndividualReductionService {
             }
             return resolveBook(bookId, candidates);
         } finally {
-            claimService.releaseClaim(bookId);
+            claimService.releaseClaim(bookId, CLAIM_LANE);
         }
     }
 

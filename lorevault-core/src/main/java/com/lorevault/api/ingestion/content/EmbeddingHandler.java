@@ -64,14 +64,14 @@ public class EmbeddingHandler {
                 this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         }
 
-    @Async("ingestionTaskExecutor")
+    @Async("ingestionLaneTaskExecutor")
     @EventListener
     public void handleChunksCreated(ChunksCreatedEvent event) {
         UUID jobId = event.getJobId();
         UUID chapterId = event.getChapterId();
         int chunkCount = event.getChunkCount();
         
-        log.info("[EMBEDDING] Starting for job={}, chapter={}, chunkCount={}", 
+        log.info("[LANE:CONTENT] [EMBEDDING] Starting for job={}, chapter={}, chunkCount={}", 
                 jobId, chapterId, chunkCount);
         
                 stageSupport.runStage(
@@ -89,7 +89,7 @@ public class EmbeddingHandler {
             stageSupport.updateJobStatus(jobId, IngestionStatus.EMBEDDING_CHUNKS,
                     String.format("Generated embeddings for %d chunks", embeddedCount));
             
-            log.info("[EMBEDDING] Completed for chapter {}: {} embeddings generated", 
+            log.info("[LANE:CONTENT] [EMBEDDING] Completed for chapter {}: {} embeddings generated", 
                     chapterId, embeddedCount);
             
             // Complete the ingestion job (merged from CompletionHandler)
@@ -102,7 +102,7 @@ public class EmbeddingHandler {
     }
 
     private void completeIngestion(UUID jobId, UUID chapterId, int embeddedCount) {
-        log.info("[COMPLETION] Processing for job={}, chapter={}", jobId, chapterId);
+        log.info("[LANE:CONTENT] [EMBEDDING_COMPLETION_BRANCH] Processing for job={}, chapter={}", jobId, chapterId);
         
         // Gather statistics
         int sceneCount = sceneRepo.findByChapterId(chapterId).size();
@@ -115,7 +115,7 @@ public class EmbeddingHandler {
         String rawText = chapter.getRawText();
         int chapterLength = rawText != null ? rawText.length() : 0;
 
-        log.info("[COMPLETION] Embedding branch finished for job {}: {} scenes, {} chunks, {} embeddings",
+        log.info("[LANE:CONTENT] [EMBEDDING_COMPLETION_BRANCH] Embedding branch finished for job {}: {} scenes, {} chunks, {} embeddings",
                 jobId, sceneCount, chunkCount, embeddedCount);
 
         eventPublisher.publishEvent(new EmbeddingsCompletedEvent(

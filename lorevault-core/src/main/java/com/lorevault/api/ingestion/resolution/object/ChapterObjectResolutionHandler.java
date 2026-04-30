@@ -31,7 +31,7 @@ public class ChapterObjectResolutionHandler {
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
 
-    @Async("ingestionTaskExecutor")
+    @Async("ingestionLaneTaskExecutor")
     @EventListener
     public void handleScenesDetected(ScenesDetectedEvent event) {
         UUID chapterId = event.getChapterId();
@@ -46,12 +46,12 @@ public class ChapterObjectResolutionHandler {
                 correlationId,
                 chapterId,
                 () -> {
-            log.info("[CHAPTER_OBJECT_RESOLUTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}", jobId, correlationId, chapterId, bookId);
+            log.info("[LANE:OBJECT] [CHAPTER_OBJECT_RESOLUTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}", jobId, correlationId, chapterId, bookId);
             ChapterObjectResolutionResult response = chapterObjectResolutionService.resolveChapter(chapterId);
 
             if (response.success()) {
                 log.info(
-                        "[CHAPTER_OBJECT_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterObjectCount={}",
+                        "[LANE:OBJECT] [CHAPTER_OBJECT_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterObjectCount={}",
                         jobId,
                         chapterId,
                         bookId,
@@ -60,7 +60,7 @@ public class ChapterObjectResolutionHandler {
                 );
             } else {
                 log.warn(
-                        "[CHAPTER_OBJECT_RESOLUTION] Skipped: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterObjectCount={}, reason={}",
+                        "[LANE:OBJECT] [CHAPTER_OBJECT_RESOLUTION] Skipped: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterObjectCount={}, reason={}",
                         jobId,
                         chapterId,
                         bookId,

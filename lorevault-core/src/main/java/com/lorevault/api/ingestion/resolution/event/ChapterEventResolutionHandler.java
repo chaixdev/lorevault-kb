@@ -52,7 +52,7 @@ public class ChapterEventResolutionHandler {
         this.eventPublisher = eventPublisher;
     }
 
-    @Async("ingestionTaskExecutor")
+    @Async("ingestionLaneTaskExecutor")
     @EventListener
     public void handleScenesDetected(ScenesDetectedEvent event) {
         UUID chapterId = event.getChapterId();
@@ -60,7 +60,7 @@ public class ChapterEventResolutionHandler {
         UUID correlationId = event.getCorrelationId();
         UUID bookId = event.getBookId();
 
-        log.info("[CHAPTER_EVENT_RESOLUTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}", jobId, correlationId, chapterId, bookId);
+        log.info("[LANE:EVENT] [CHAPTER_EVENT_RESOLUTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}", jobId, correlationId, chapterId, bookId);
         pipelineStageSupport.updateJobStatus(
                 jobId,
                 IngestionStatus.EVENT_COREF,
@@ -87,7 +87,7 @@ public class ChapterEventResolutionHandler {
             return;
         }
 
-        log.info("[CHAPTER_EVENT_RESOLUTION] Stage 2 complete: jobId={}, correlationId={}, chapterId={}, windowsRun={}, linksCreated={}",
+        log.info("[LANE:EVENT] [CHAPTER_EVENT_RESOLUTION] Stage 2 complete: jobId={}, correlationId={}, chapterId={}, windowsRun={}, linksCreated={}",
                 jobId, correlationId, chapterId, corefResult.windowsRun(), corefResult.linksCreated());
 
         pipelineStageSupport.updateJobStatus(
@@ -128,7 +128,7 @@ public class ChapterEventResolutionHandler {
 
         if (aggregationResult.success()) {
             log.info(
-                    "[CHAPTER_EVENT_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterEventCount={}, failedCorefWindowCount={}",
+                    "[LANE:EVENT] [CHAPTER_EVENT_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterEventCount={}, failedCorefWindowCount={}",
                     jobId, chapterId, bookId,
                     aggregationResult.rawMentionsProcessed(),
                     aggregationResult.chapterEventsCreated(),
@@ -136,7 +136,7 @@ public class ChapterEventResolutionHandler {
             );
         } else {
             log.warn(
-                    "[CHAPTER_EVENT_RESOLUTION] Skipped (no mentions): jobId={}, chapterId={}, bookId={}, failedCorefWindowCount={}, reason={}",
+                    "[LANE:EVENT] [CHAPTER_EVENT_RESOLUTION] Skipped (no mentions): jobId={}, chapterId={}, bookId={}, failedCorefWindowCount={}, reason={}",
                     jobId, chapterId, bookId, aggregationResult.failedCorefWindowCount(), aggregationResult.message()
             );
         }

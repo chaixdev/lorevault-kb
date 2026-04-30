@@ -14,6 +14,23 @@ public class BookLocationsReducedEvent extends IngestionEvent {
     public BookLocationsReducedEvent(
             Object source,
             UUID jobId,
+            UUID correlationId,
+            UUID chapterId,
+            UUID bookId,
+            boolean processed,
+            int chapterLocationCount,
+            int bookLocationCount
+    ) {
+        super(source, jobId, correlationId, chapterId);
+        this.bookId = bookId;
+        this.processed = processed;
+        this.chapterLocationCount = chapterLocationCount;
+        this.bookLocationCount = bookLocationCount;
+    }
+
+    public BookLocationsReducedEvent(
+            Object source,
+            UUID jobId,
             UUID chapterId,
             UUID bookId,
             boolean processed,
