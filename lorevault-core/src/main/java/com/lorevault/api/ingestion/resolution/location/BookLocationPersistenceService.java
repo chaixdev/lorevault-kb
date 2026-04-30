@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -23,17 +22,17 @@ public class BookLocationPersistenceService {
 
     private final BookLocationGraphRepository bookLocationRepository;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void deleteByBookId(UUID bookId) {
-        bookLocationRepository.deleteByBookId(bookId);
-    }
-
     @Transactional
-    public List<BookLocation> saveAndLinkBookLocations(
+    public List<BookLocation> replaceBookLocations(
             UUID bookId,
             List<BookLocation> bookLocations,
             List<List<UUID>> chapterLocationIdsByBookLocation
     ) {
+        bookLocationRepository.deleteByBookId(bookId);
+        if (bookLocations.isEmpty()) {
+            return List.of();
+        }
+
         List<BookLocation> savedLocations = new ArrayList<>(bookLocationRepository.saveAll(bookLocations));
 
         for (int i = 0; i < savedLocations.size(); i++) {

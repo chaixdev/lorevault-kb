@@ -2,6 +2,7 @@ package com.lorevault.api.ingestion;
 
 import com.lorevault.api.content.association.BookIndividual;
 import com.lorevault.api.content.association.BookIndividualGraphRepository;
+import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
 import com.lorevault.api.ingestion.resolution.individual.BookIndividualPersistenceService;
 import com.lorevault.api.ingestion.resolution.individual.BookIndividualReductionService;
 import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
@@ -20,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.neo4j.core.Neo4jClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -80,7 +82,7 @@ class BookIndividualReductionServiceTest {
         when(bookIndividualRepository.countChapterIndividualsForBookAndName(bookId, "nyx")).thenReturn(2L);
         when(bookIndividualRepository.countChapterIndividualsForBookAndName(bookId, "orion")).thenReturn(1L);
         when(bookIndividualPersistenceService.countByBookId(bookId)).thenReturn(2L);
-        when(bookIndividualPersistenceService.saveAndLinkBookIndividuals(any(), any()))
+        when(bookIndividualPersistenceService.replaceBookIndividuals(any(), any()))
                 .thenAnswer(invocation -> invocation.getArgument(1));
 
         BookIndividualResolutionResult response = service.resolveBook(bookId);
@@ -89,11 +91,9 @@ class BookIndividualReductionServiceTest {
         assertThat(response.chapterIndividualsProcessed()).isEqualTo(2);
         assertThat(response.bookIndividualsCreated()).isEqualTo(2);
 
-        verify(bookIndividualPersistenceService).deleteByBookId(bookId);
-
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<BookIndividual>> savedCaptor = ArgumentCaptor.forClass(List.class);
-        verify(bookIndividualPersistenceService).saveAndLinkBookIndividuals(eq(bookId), savedCaptor.capture());
+        verify(bookIndividualPersistenceService).replaceBookIndividuals(eq(bookId), savedCaptor.capture());
         List<BookIndividual> saved = savedCaptor.getValue();
         assertThat(saved)
                 .extracting(BookIndividual::displayName, BookIndividual::normalizedName, BookIndividual::chapterIndividualCount)
@@ -117,11 +117,26 @@ class BookIndividualReductionServiceTest {
 
         BookIndividualResolutionResult response = service.resolveBook(bookId);
 
-        assertThat(response.success()).isFalse();
+        assertThat(response.success()).isTrue();
         assertThat(response.chapterIndividualsProcessed()).isZero();
         assertThat(response.bookIndividualsCreated()).isZero();
-        verify(bookIndividualPersistenceService, never()).deleteByBookId(any());
-        verify(bookIndividualPersistenceService, never()).saveAndLinkBookIndividuals(any(), any());
+        verify(bookIndividualPersistenceService).replaceBookIndividuals(eq(bookId), eq(List.of()));
+    }
+
+    @Test
+    @DisplayName("Throws typed claim exception when book reduction claim cannot be acquired")
+    void throwsTypedClaimExceptionWhenClaimCannotBeAcquired() {
+        UUID bookId = UUID.randomUUID();
+        when(claimService.tryAcquireClaimWithRetry(bookId, 6, 500)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.resolveBook(bookId))
+                .isInstanceOf(BookReductionClaimUnavailableException.class)
+                .hasMessageContaining("BOOK_INDIVIDUAL_REDUCTION")
+                .hasMessageContaining(bookId.toString());
+
+        verify(neo4jClient, never()).query(anyString());
+        verify(bookIndividualPersistenceService, never()).replaceBookIndividuals(any(), any());
+        verify(claimService, never()).releaseClaim(any());
     }
 
     private Map<String, Object> row(

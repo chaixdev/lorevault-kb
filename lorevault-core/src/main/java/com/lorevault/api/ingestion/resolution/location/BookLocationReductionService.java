@@ -5,6 +5,7 @@ import com.lorevault.api.content.association.BookLocationGraphRepository;
 import com.lorevault.api.library.book.BookGraphRepository;
 import com.lorevault.api.content.association.ChapterLocation;
 import com.lorevault.api.content.association.ChapterLocationGraphRepository;
+import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -51,7 +52,7 @@ public class BookLocationReductionService {
         }
 
         if (!claimService.tryAcquireClaimWithRetry(bookId, 6, 500)) {
-            return new BookLocationResolutionResult(bookId, false, 0, 0, "Reduction already in progress for book");
+            throw new BookReductionClaimUnavailableException("BOOK_LOCATION_REDUCTION", bookId);
         }
         try {
             List<ChapterLocation> chapterLocations = chapterLocationRepository.findByBookId(bookId).stream()
@@ -62,15 +63,11 @@ public class BookLocationReductionService {
                     .toList();
 
             if (chapterLocations.isEmpty()) {
-                return new BookLocationResolutionResult(bookId, false, 0, 0, "No chapter locations found for book");
+                bookLocationPersistenceService.replaceBookLocations(bookId, List.of(), List.of());
+                return new BookLocationResolutionResult(bookId, true, 0, 0, "No chapter locations found for book");
             }
-            // Delete stale nodes in a separate committed transaction so the unique constraint on
-            // (bookId, normalizedName) is clear before the subsequent save transaction begins.
-            bookLocationPersistenceService.deleteByBookId(bookId);
             return resolveBook(bookId, chapterLocations);
         } finally {
-            // releaseClaim uses REQUIRES_NEW so claim cleanup commits independently of the
-            // aggregate rebuild transaction owned by BookLocationPersistenceService.
             claimService.releaseClaim(bookId);
         }
     }
@@ -101,7 +98,7 @@ public class BookLocationReductionService {
         List<List<UUID>> chapterLocationIdsByBookLocation = clusters.stream()
                 .map(LocationCluster::chapterLocationIds)
                 .toList();
-        bookLocationPersistenceService.saveAndLinkBookLocations(bookId, bookLocations, chapterLocationIdsByBookLocation);
+        bookLocationPersistenceService.replaceBookLocations(bookId, bookLocations, chapterLocationIdsByBookLocation);
 
         return new BookLocationResolutionResult(
                 bookId,

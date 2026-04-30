@@ -2,6 +2,7 @@ package com.lorevault.api.ingestion.resolution.individual;
 
 import com.lorevault.api.content.association.BookIndividual;
 import com.lorevault.api.content.association.BookIndividualGraphRepository;
+import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
 import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
 import com.lorevault.api.library.book.BookGraphRepository;
 
@@ -48,20 +49,16 @@ public class BookIndividualReductionService {
         }
 
         if (!claimService.tryAcquireClaimWithRetry(bookId, 6, 500)) {
-            return new BookIndividualResolutionResult(bookId, false, 0, 0, "Reduction already in progress for book");
+            throw new BookReductionClaimUnavailableException("BOOK_INDIVIDUAL_REDUCTION", bookId);
         }
         try {
             List<BookReductionCandidate> candidates = findReductionCandidates(bookId);
             if (candidates.isEmpty()) {
-                return new BookIndividualResolutionResult(bookId, false, 0, 0, "No chapter individuals found for book");
+                bookIndividualPersistenceService.replaceBookIndividuals(bookId, List.of());
+                return new BookIndividualResolutionResult(bookId, true, 0, 0, "No chapter individuals found for book");
             }
-            // Delete stale nodes in a separate committed transaction so the unique constraint on
-            // (bookId, normalizedName) is clear before the subsequent save transaction begins.
-            bookIndividualPersistenceService.deleteByBookId(bookId);
             return resolveBook(bookId, candidates);
         } finally {
-            // releaseClaim uses REQUIRES_NEW so claim cleanup commits independently of the
-            // aggregate rebuild transaction owned by BookIndividualPersistenceService.
             claimService.releaseClaim(bookId);
         }
     }
@@ -90,7 +87,7 @@ public class BookIndividualReductionService {
             return new BookIndividualResolutionResult(bookId, false, candidates.size(), 0, "No resolvable chapter individuals found for book");
         }
 
-        bookIndividualPersistenceService.saveAndLinkBookIndividuals(bookId, bookIndividuals);
+        bookIndividualPersistenceService.replaceBookIndividuals(bookId, bookIndividuals);
 
         return new BookIndividualResolutionResult(
                 bookId,
