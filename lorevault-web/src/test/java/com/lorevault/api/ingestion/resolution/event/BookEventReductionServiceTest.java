@@ -41,7 +41,7 @@ class BookEventReductionServiceTest {
         ChapterEvent linkedCurrent = chapterEvent(UUID.randomUUID(), linkedCurrentId, "linked-current");
 
         when(persistenceService.expandRewriteScope(List.of(currentId, mergeEndpointId))).thenReturn(List.of(currentId, mergeEndpointId, linkedCurrentId));
-        when(persistenceService.saveAndLinkBookEvents(eq(chapterId), eq(jobId), any(), any(), anyList()))
+        when(persistenceService.saveAndLinkBookEvents(eq(bookId), eq(chapterId), eq(jobId), any(), any(), anyList()))
                 .thenReturn(new BookEventPersistenceService.BookEventWriteSummary(1, 2));
 
         BookEventReductionService service = new BookEventReductionService(persistenceService, chapterEventRepository);
@@ -74,7 +74,7 @@ class BookEventReductionServiceTest {
         ChapterEvent keepSeparateCandidate = chapterEvent(UUID.randomUUID(), keepSeparateCandidateId, "keep-separate");
 
         when(persistenceService.expandRewriteScope(List.of(currentId))).thenReturn(List.of(currentId));
-        when(persistenceService.saveAndLinkBookEvents(eq(chapterId), eq(jobId), any(), any(), anyList()))
+        when(persistenceService.saveAndLinkBookEvents(eq(bookId), eq(chapterId), eq(jobId), any(), any(), anyList()))
                 .thenReturn(new BookEventPersistenceService.BookEventWriteSummary(1, 1));
 
         BookEventReductionService service = new BookEventReductionService(persistenceService, chapterEventRepository);
@@ -94,7 +94,7 @@ class BookEventReductionServiceTest {
         assertThat(rewriteSeedCaptor.getValue()).containsExactly(currentId);
 
         ArgumentCaptor<List<UUID>> persistedScopeCaptor = ArgumentCaptor.forClass(List.class);
-        verify(persistenceService).saveAndLinkBookEvents(eq(chapterId), eq(jobId), any(), any(), persistedScopeCaptor.capture());
+        verify(persistenceService).saveAndLinkBookEvents(eq(bookId), eq(chapterId), eq(jobId), any(), any(), persistedScopeCaptor.capture());
         assertThat(persistedScopeCaptor.getValue()).containsExactly(currentId);
     }
 

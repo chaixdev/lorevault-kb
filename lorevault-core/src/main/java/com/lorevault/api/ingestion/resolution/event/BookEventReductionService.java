@@ -122,6 +122,7 @@ public class BookEventReductionService {
         List<UUID> scopedChapterEventIds = rewriteEventsById.keySet().stream().toList();
 
         BookEventPersistenceService.BookEventWriteSummary summary = persistenceService.saveAndLinkBookEvents(
+                bookId,
                 chapterId,
                 jobId,
                 bookEventsToCreate,
