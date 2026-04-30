@@ -67,13 +67,13 @@ class ChapterEventEmbeddingHandlerTest {
         UUID crossChapterEventId = UUID.randomUUID();
         ChapterEvent current = chapterEvent(chapterId, UUID.randomUUID());
         ChapterEvent crossChapter = chapterEvent(UUID.randomUUID(), crossChapterEventId);
+        BookEventCandidatePair candidatePair = BookEventCandidatePair.of(current.id(), crossChapterEventId, 0.91);
+        List<UUID> expectedCandidateEndpointIds = List.of(candidatePair.eventId1(), candidatePair.eventId2());
 
         when(embeddingService.embedChapterEvents(chapterId)).thenReturn(2);
         when(txSupport.loadChapterEvents(chapterId)).thenReturn(List.of(current));
-        when(annCandidateService.generateCandidates(List.of(current), chapterId)).thenReturn(List.of(
-                BookEventCandidatePair.of(current.id(), crossChapterEventId, 0.91)
-        ));
-        when(txSupport.loadChapterEventsByIds(List.of(current.id(), crossChapterEventId))).thenReturn(List.of(crossChapter, current));
+        when(annCandidateService.generateCandidates(List.of(current), chapterId)).thenReturn(List.of(candidatePair));
+        when(txSupport.loadChapterEventsByIds(expectedCandidateEndpointIds)).thenReturn(List.of(crossChapter, current));
         when(mergeVerificationService.verifyCandidates(eq(jobId), eq(chapterId), any(), any())).thenReturn(List.of(
                 new EventMergeModels.EventMergeVerification(
                         current.id(), crossChapterEventId, EventMergeModels.MergeDecision.KEEP_SEPARATE, 0.77, "not same"
@@ -103,7 +103,7 @@ class ChapterEventEmbeddingHandlerTest {
         verify(embeddingService).embedChapterEvents(chapterId);
         verify(txSupport).loadChapterEvents(chapterId);
         verify(annCandidateService).generateCandidates(List.of(current), chapterId);
-        verify(txSupport).loadChapterEventsByIds(List.of(current.id(), crossChapterEventId));
+        verify(txSupport).loadChapterEventsByIds(expectedCandidateEndpointIds);
         verify(mergeVerificationService).verifyCandidates(eq(jobId), eq(chapterId), any(), any());
         verify(bookEventReductionService).reduceAndPersist(eq(jobId), eq(chapterId), eq(bookId), any(), any());
 

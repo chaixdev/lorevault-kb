@@ -53,14 +53,16 @@ class EventAnnRerunCommandControllerWebMvcTest {
     @Test
     void rerunAnn_invalidBookUuid_returns400() throws Exception {
         mockMvc.perform(post("/api/command/ingest/events/rerun-ann")
-                        .param("bookId", "not-a-uuid"))
+                        .param("bookId", "not-a-uuid")
+                        .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_BOOK_ID"));
     }
 
     @Test
     void rerunAnn_missingUniverseForDefaultScope_returns400() throws Exception {
-        mockMvc.perform(post("/api/command/ingest/events/rerun-ann"))
+        mockMvc.perform(post("/api/command/ingest/events/rerun-ann")
+                        .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("MISSING_UNIVERSE_ID"));
     }
