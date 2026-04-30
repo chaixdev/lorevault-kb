@@ -32,7 +32,7 @@
     <header class="h-14 border-b border-slate-800 bg-slate-950 flex-shrink-0 flex items-center justify-between px-6 z-10">
         <div class="flex items-center gap-3">
             <div class="flex h-7 w-7 items-center justify-center rounded bg-emerald-500/20 border border-emerald-500/30">
-                <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-4 w-4 text-emerald-400" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                 </svg>
             </div>
@@ -51,101 +51,267 @@
     </header>
 
     <!-- Main Content Grid -->
-    <main class="flex-1 flex overflow-hidden p-4 sm:p-6 gap-6 max-w-[1600px] mx-auto w-full"
+    <main class="flex-1 flex flex-col overflow-hidden p-4 sm:p-6 gap-4 max-w-[1600px] mx-auto w-full"
           x-data="operatorLayout()">
-        
-        <!-- Left Column: Context & Upload -->
-        <div class="flex-shrink-0 flex gap-3 min-h-0"
-             :class="leftRailCollapsed ? 'w-14' : 'w-80 lg:w-96'">
-            <button type="button"
-                    class="mt-2 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-800 bg-slate-900/70 text-emerald-300 shadow-xl transition hover:border-slate-700 hover:bg-slate-800"
-                    @click="leftRailCollapsed = !leftRailCollapsed"
-                    :title="leftRailCollapsed ? 'Expand upload rail' : 'Collapse upload rail'">
-                <svg class="h-4 w-4 transition-transform" :class="leftRailCollapsed ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        <div class="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 shadow-xl">
+            <div class="flex items-center gap-2">
+                <svg class="h-4 w-4 text-emerald-400" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                 </svg>
-            </button>
-
-            <div class="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar pb-6" x-show="!leftRailCollapsed" x-cloak>
-                <div id="chapter-upload-panel" th:replace="~{ui/ingestion :: uploadForm(message=${uploadMessage}, messageType=${uploadMessageType}, chapterUploadForm=${chapterUploadForm})}"></div>
-            </div>
-        </div>
-
-        <!-- Center Column: Jobs Stream -->
-        <div class="flex-1 flex flex-col min-w-0 bg-slate-900/50 rounded-xl border border-slate-800 shadow-2xl overflow-hidden relative">
-            <!-- Header -->
-            <div class="flex items-center justify-between border-b border-slate-800 px-5 py-3.5 bg-slate-900/80 shrink-0">
-                <div class="flex items-center gap-2">
-                    <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    <h3 class="text-sm font-semibold text-slate-200">Active Job Stream</h3>
+                <div class="flex items-baseline gap-3">
+                    <span class="text-sm font-semibold text-slate-100">Dev Console</span>
+                    <span class="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Operator Tabs</span>
                 </div>
+            </div>
+            <div class="inline-flex rounded-lg border border-slate-800 bg-slate-950 p-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                 <button type="button"
-                        class="inline-flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800 px-2.5 py-1 text-[10px] font-medium text-slate-300 transition hover:bg-slate-700 hover:text-white"
-                        th:hx-get="@{/ui/jobs}"
-                        hx-target="#jobs-table"
-                        hx-swap="innerHTML">
-                    <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 12a9 9 0 11-3-6.708" stroke-linecap="round" stroke-linejoin="round"></path>
-                        <polyline points="21 4 21 10 15 10" stroke-linecap="round" stroke-linejoin="round"></polyline>
-                    </svg>
-                    Sync
+                        class="rounded-md px-3 py-1.5 transition"
+                        :class="activeTab === 'ingestion' ? 'bg-emerald-500/15 text-emerald-300' : 'hover:text-slate-200'"
+                        @click="activeTab = 'ingestion'">
+                    Ingestion / Jobs
+                </button>
+                <button type="button"
+                        class="rounded-md px-3 py-1.5 transition"
+                        :class="activeTab === 'qa' ? 'bg-emerald-500/15 text-emerald-300' : 'hover:text-slate-200'"
+                        @click="activeTab = 'qa'">
+                    Q&amp;A Validation
                 </button>
             </div>
-            
-            <!-- Jobs container -->
-            <div id="jobs-table"
-                 class="flex-1 overflow-y-auto p-0 custom-scrollbar"
-                 th:hx-get="@{/ui/jobs}"
-                 hx-trigger="load, refresh-jobs from:body every 5s"
-                 hx-target="this"
-                 hx-swap="innerHTML">
-                 <div class="p-6 flex items-center justify-center gap-3 text-slate-500 text-xs h-full">
-                     <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                         <circle class="opacity-25" cx="12" cy="12" r="10"></circle>
-                         <path class="opacity-75" d="M4 12a8 8 0 018-8"></path>
-                     </svg>
-                     Establishing telemetry link...
-                 </div>
-            </div>
         </div>
 
-        <!-- Right Column: Operator Tools -->
-        <div class="w-80 flex-shrink-0 flex flex-col gap-6 overflow-hidden">
-            
-            <!-- Q&A Panel -->
-            <div class="flex flex-col h-[54%] rounded-xl border border-slate-800 bg-slate-900/50 shadow-xl overflow-hidden shrink-0">
-                <div class="px-4 py-3 border-b border-slate-800 bg-slate-900/80 flex items-center gap-2 shrink-0">
-                    <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                    <h3 class="text-sm font-semibold text-slate-200">Operator Q&A</h3>
+        <section x-show="activeTab === 'ingestion'" x-cloak class="flex-1 min-h-0 overflow-hidden">
+            <div class="h-full flex overflow-hidden gap-6">
+                <div class="flex-shrink-0 flex gap-3 min-h-0"
+                     :class="leftRailCollapsed ? 'w-14' : 'w-80 lg:w-96'">
+                    <button type="button"
+                            class="mt-2 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-800 bg-slate-900/70 text-emerald-300 shadow-xl transition hover:border-slate-700 hover:bg-slate-800"
+                            @click="leftRailCollapsed = !leftRailCollapsed"
+                            :title="leftRailCollapsed ? 'Expand upload rail' : 'Collapse upload rail'">
+                        <svg class="h-4 w-4 transition-transform" :class="leftRailCollapsed ? 'rotate-180' : ''" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </button>
+
+                    <div class="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar pb-6" x-show="!leftRailCollapsed" x-cloak>
+                        <div id="chapter-upload-panel" th:replace="~{ui/ingestion :: uploadForm(message=${uploadMessage}, messageType=${uploadMessageType}, chapterUploadForm=${chapterUploadForm})}"></div>
+                    </div>
                 </div>
-                <div class="flex-1 flex flex-col overflow-hidden bg-slate-900/30">
-                    <div id="qa-results" class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+
+                <div class="flex-1 flex flex-col min-w-0 gap-6 overflow-hidden">
+                    <div class="flex-1 flex flex-col min-w-0 bg-slate-900/50 rounded-xl border border-slate-800 shadow-2xl overflow-hidden relative">
+                        <div class="flex items-center justify-between border-b border-slate-800 px-5 py-3.5 bg-slate-900/80 shrink-0">
+                            <div class="flex items-center gap-2">
+                                <svg class="h-4 w-4 text-emerald-400" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <h3 class="text-sm font-semibold text-slate-200">Active Job Stream</h3>
+                            </div>
+                            <button type="button"
+                                    class="inline-flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800 px-2.5 py-1 text-[10px] font-medium text-slate-300 transition hover:bg-slate-700 hover:text-white"
+                                    th:hx-get="@{/ui/jobs}"
+                                    hx-target="#jobs-table"
+                                    hx-swap="innerHTML">
+                                <svg class="h-3 w-3" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 12a9 9 0 11-3-6.708" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    <polyline points="21 4 21 10 15 10" stroke-linecap="round" stroke-linejoin="round"></polyline>
+                                </svg>
+                                Sync
+                            </button>
+                        </div>
+
+                        <div id="jobs-table"
+                             class="flex-1 overflow-y-auto p-0 custom-scrollbar"
+                             th:hx-get="@{/ui/jobs}"
+                             hx-trigger="load, refresh-jobs from:body every 5s"
+                             hx-target="this"
+                             hx-swap="innerHTML">
+                             <div class="p-6 flex items-center justify-center gap-3 text-slate-500 text-xs h-full">
+                                 <svg class="h-4 w-4 animate-spin" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                     <circle class="opacity-25" cx="12" cy="12" r="10"></circle>
+                                     <path class="opacity-75" d="M4 12a8 8 0 018-8"></path>
+                                 </svg>
+                                 Establishing telemetry link...
+                             </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col rounded-xl border border-slate-800 bg-slate-950 shadow-xl overflow-hidden font-mono min-h-0">
+                        <div class="px-4 py-2 border-b border-slate-800 bg-slate-900 flex items-center justify-between shrink-0">
+                            <div class="flex items-center gap-2">
+                                <div class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                <span class="text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Live Feed</span>
+                            </div>
+                            <span class="text-slate-600 text-[9px]">/api/query/jobs/stream</span>
+                        </div>
+                        <div class="flex-1 overflow-hidden bg-[#0a0c10]">
+                            <div class="h-full overflow-y-auto custom-scrollbar p-4 space-y-1.5 text-[10px]"
+                                 x-data="jobEventConsole()"
+                                 x-init="connect()">
+                                <template x-for="item in entries" :key="item.id">
+                                    <div class="flex gap-2.5 hover:bg-white/5 px-1 rounded -mx-1 py-0.5">
+                                        <span class="text-slate-600 shrink-0" x-text="item.time"></span>
+                                        <span class="w-10 shrink-0 font-semibold" :class="item.tagClass" x-text="item.tag"></span>
+                                        <span class="text-slate-400 break-words" x-text="item.message"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section x-show="activeTab === 'qa'" x-cloak class="flex-1 min-h-0 overflow-hidden">
+            <div class="h-full flex flex-col rounded-xl border border-slate-800 bg-slate-900/50 shadow-2xl overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between shrink-0">
+                    <div class="flex items-center gap-2">
+                        <svg class="h-4 w-4 text-emerald-400" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-200">Q&amp;A Validation</h3>
+                            <p class="text-[10px] text-slate-500">Dev-only fixture-driven asks against the live graph.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-1 min-h-0 grid grid-rows-[minmax(0,1fr)_auto] gap-0 bg-slate-900/30">
+                    <div id="qa-results" class="overflow-y-auto p-4 sm:p-6 custom-scrollbar">
                         <div class="rounded-lg border border-dashed border-slate-700 bg-slate-950/40 px-3 py-4 text-center text-[11px] text-slate-500">
                             Ask a quick validation question against the current graph.
                         </div>
                     </div>
+
                     <form id="operator-qa-form"
                           th:hx-post="@{/ui/query/ask/rag}"
                           hx-target="#qa-results"
                           hx-swap="innerHTML"
-                          class="border-t border-slate-800 p-3 space-y-2">
-                        <input type="text"
-                               name="question"
-                               placeholder="Query the lore graph..."
-                               class="w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-white placeholder-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40">
-                        <input type="hidden" name="topK" value="5">
-                        <div class="space-y-1">
-                            <label for="qa-mode" class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Mode</label>
-                            <select id="qa-mode"
-                                    class="w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40">
-                                <option value="vector">Vector retrieval</option>
-                                <option value="rag" selected>RAG baseline</option>
-                                <option value="graph-aware">Graph-aware</option>
-                                <option value="hybrid">Hybrid RRF</option>
-                            </select>
+                          class="border-t border-slate-800 bg-slate-950/60 p-4 sm:p-5 space-y-4">
+                        <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem]">
+                            <div class="space-y-1.5">
+                                <label for="qa-question" class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Question</label>
+                                <input id="qa-question"
+                                       type="text"
+                                       name="question"
+                                       placeholder="Query the lore graph..."
+                                       class="w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-white placeholder-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40">
+                            </div>
+                            <div class="space-y-1.5">
+                                <label for="qa-topK" class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">TopK</label>
+                                <input id="qa-topK"
+                                       type="number"
+                                       min="1"
+                                       name="topK"
+                                       value="5"
+                                       class="w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40">
+                            </div>
                         </div>
+
+                        <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem]">
+                            <div class="space-y-1.5">
+                                <label for="qa-mode" class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Mode</label>
+                                <select id="qa-mode"
+                                        class="w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40">
+                                    <option value="vector">Vector retrieval</option>
+                                    <option value="rag" selected>RAG baseline</option>
+                                    <option value="graph-aware">Graph-aware</option>
+                                    <option value="hybrid">Hybrid RRF</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1.5">
+                                <label for="qa-unconfigured-policy" class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Unconfigured series</label>
+                                <select id="qa-unconfigured-policy"
+                                        name="unconfiguredSeriesPolicy"
+                                        x-model="qaFixture.unconfiguredSeriesPolicy"
+                                        class="w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40">
+                                    <option value="HIDE" selected>HIDE</option>
+                                    <option value="SHOW">SHOW</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-4 space-y-3">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <h4 class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Reading progress</h4>
+                                    <p class="text-[10px] text-slate-500">Dev-only spoiler scope sent with every Q&amp;A request.</p>
+                                </div>
+                                <div class="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-[10px] font-medium text-slate-400" x-text="qaSpoilerScopeSummary()"></div>
+                            </div>
+
+                            <div class="grid gap-3 lg:grid-cols-2">
+                                <div class="space-y-1.5">
+                                    <label for="qa-universe" class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Universe</label>
+                                    <input id="qa-universe-name" type="hidden" name="universe" x-model="qaFixture.universe">
+                                    <select id="qa-universe"
+                                            name="universeId"
+                                            x-model="qaFixture.universeId"
+                                            data-universe-options
+                                            th:hx-get="@{/ui/library-options/universes}"
+                                            hx-trigger="load"
+                                            hx-target="this"
+                                            hx-swap="innerHTML"
+                                            @change="handleQaUniverseChange($event)"
+                                            class="w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40">
+                                        <option value="">Loading universes...</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label for="qa-series" class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Series</label>
+                                    <input id="qa-series-name" type="hidden" name="series" x-model="qaFixture.series">
+                                    <input id="qa-series-selected" type="hidden" name="selected" x-model="qaFixture.seriesId">
+                                    <select id="qa-series"
+                                            name="seriesId"
+                                            x-model="qaFixture.seriesId"
+                                            data-series-options
+                                            th:hx-get="@{/ui/library-options/series}"
+                                            hx-trigger="refresh"
+                                            hx-target="this"
+                                            hx-swap="innerHTML"
+                                            hx-include="#qa-universe, #qa-series-selected"
+                                            @change="handleQaSeriesChange($event)"
+                                            class="w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40">
+                                        <option value="">Select a series</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5 lg:col-span-2">
+                                    <label class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Read-through book</label>
+                                    <input id="qa-book" type="hidden" name="readThroughBookNumber" x-model="qaFixture.readThroughBookNumber">
+                                    <div id="qa-book-options"
+                                         class="grid gap-2 md:grid-cols-2 xl:grid-cols-3"
+                                         th:hx-get="@{/ui/library-options/qa-books}"
+                                         hx-trigger="refresh"
+                                         hx-target="this"
+                                         hx-swap="innerHTML"
+                                         hx-include="#qa-universe, #qa-series">
+                                        <div class="rounded-lg border border-dashed border-slate-700 bg-slate-950/50 px-3 py-4 text-center text-[11px] text-slate-500">
+                                            Select a universe to load books.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label for="qa-chapter" class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Read-through chapter</label>
+                                    <input id="qa-selected-book-id" type="hidden" name="bookId" x-model="qaFixture.bookId">
+                                    <input id="qa-read-through-chapter-number" type="hidden" name="readThroughChapterNumber" x-model="qaFixture.readThroughChapterNumber">
+                                    <select id="qa-chapter"
+                                            x-model="qaFixture.readThroughChapterNumber"
+                                            th:hx-get="@{/ui/library-options/qa-chapters}"
+                                            hx-trigger="refresh"
+                                            hx-target="this"
+                                            hx-swap="innerHTML"
+                                            hx-include="#qa-selected-book-id"
+                                            @change="handleQaChapterChange($event)"
+                                            class="w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40">
+                                        <option value="">Entire selected book</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Active spoiler scope</label>
+                                    <div class="rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-[11px] text-slate-400" x-text="qaSpoilerScopeSummary()"></div>
+                                </div>
+                            </div>
+                        </div>
+
                         <button type="submit"
                                 class="inline-flex w-full items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] font-semibold text-emerald-300 transition hover:bg-emerald-500/20">
                             Ask
@@ -153,38 +319,104 @@
                     </form>
                 </div>
             </div>
-
-            <!-- Event Console Panel -->
-            <div class="flex-1 flex flex-col max-h-[32%] rounded-xl border border-slate-800 bg-slate-950 shadow-xl overflow-hidden font-mono min-h-0">
-                <div class="px-4 py-2 border-b border-slate-800 bg-slate-900 flex items-center justify-between shrink-0">
-                    <div class="flex items-center gap-2">
-                        <div class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                        <span class="text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Live Feed</span>
-                    </div>
-                    <span class="text-slate-600 text-[9px]">/api/query/jobs/stream</span>
-                </div>
-                <div class="flex-1 overflow-hidden bg-[#0a0c10]">
-                    <div class="h-full overflow-y-auto custom-scrollbar p-4 space-y-1.5 text-[10px]"
-                         x-data="jobEventConsole()"
-                         x-init="connect()">
-                        <template x-for="item in entries" :key="item.id">
-                            <div class="flex gap-2.5 hover:bg-white/5 px-1 rounded -mx-1 py-0.5">
-                                <span class="text-slate-600 shrink-0" x-text="item.time"></span>
-                                <span class="w-10 shrink-0 font-semibold" :class="item.tagClass" x-text="item.tag"></span>
-                                <span class="text-slate-400 break-words" x-text="item.message"></span>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-            </div>
-            
-        </div>
+        </section>
     </main>
 
     <script>
         function operatorLayout() {
             return {
-                leftRailCollapsed: false
+                activeTab: 'ingestion',
+                leftRailCollapsed: false,
+                qaFixture: {
+                    universeId: '',
+                    universe: '',
+                    seriesId: '',
+                    series: '',
+                    bookId: '',
+                    bookTitle: '',
+                    readThroughBookNumber: '1',
+                    readThroughChapterNumber: '',
+                    readThroughChapterLabel: '',
+                    unconfiguredSeriesPolicy: 'HIDE'
+                },
+                qaSpoilerScopeSummary() {
+                    const universe = this.qaFixture.universe.trim();
+                    const series = this.qaFixture.series.trim();
+                    const book = String(this.qaFixture.readThroughBookNumber || '').trim();
+                    const chapter = String(this.qaFixture.readThroughChapterNumber || '').trim();
+                    const chapterLabel = this.qaFixture.readThroughChapterLabel.trim();
+                    const policy = this.qaFixture.unconfiguredSeriesPolicy || 'HIDE';
+
+                    if (!universe || !book) {
+                        return 'Spoiler scope inactive';
+                    }
+
+                    const chapterText = chapter ? (chapterLabel || `chapter ${chapter}`) : 'full book';
+                    const seriesText = series || 'Standalone';
+                    return `${universe} • ${seriesText} • book ${book} (${chapterText}) • ${policy}`;
+                },
+                handleQaUniverseChange(event) {
+                    this.qaFixture.universe = this.selectedOptionText(event.target);
+                    this.qaFixture.seriesId = '';
+                    this.qaFixture.series = '';
+                    this.clearQaBookSelection();
+                    htmx.trigger(document.querySelector('#qa-series'), 'refresh');
+                    htmx.trigger(document.querySelector('#qa-book-options'), 'refresh');
+                    this.refreshQaChapters('');
+                },
+                handleQaSeriesChange(event) {
+                    this.qaFixture.series = this.selectedOptionText(event.target);
+                    this.clearQaBookSelection();
+                    htmx.trigger(document.querySelector('#qa-book-options'), 'refresh');
+                    this.refreshQaChapters('');
+                },
+                selectQaBook(event) {
+                    const checkbox = event.target;
+                    document.querySelectorAll('input[name="selectedBookId"]').forEach((item) => {
+                        if (item !== checkbox) {
+                            item.checked = false;
+                        }
+                    });
+
+                    if (!checkbox.checked) {
+                        this.clearQaBookSelection();
+                        this.refreshQaChapters('');
+                        return;
+                    }
+
+                    this.qaFixture.bookId = checkbox.value;
+                    this.qaFixture.bookTitle = checkbox.dataset.bookTitle || '';
+                    this.qaFixture.readThroughBookNumber = checkbox.dataset.bookNumber || '';
+                    this.qaFixture.readThroughChapterNumber = '';
+                    this.qaFixture.readThroughChapterLabel = '';
+                    this.refreshQaChapters(checkbox.value);
+                },
+                handleQaChapterChange(event) {
+                    this.qaFixture.readThroughChapterLabel = this.selectedOptionText(event.target);
+                },
+                clearQaBookSelection() {
+                    this.qaFixture.bookId = '';
+                    this.qaFixture.bookTitle = '';
+                    this.qaFixture.readThroughBookNumber = '';
+                    this.qaFixture.readThroughChapterNumber = '';
+                    this.qaFixture.readThroughChapterLabel = '';
+                },
+                refreshQaChapters(bookId) {
+                    const chapterSelect = document.querySelector('#qa-chapter');
+                    if (!chapterSelect) {
+                        return;
+                    }
+                    htmx.ajax('GET', `/ui/library-options/qa-chapters?bookId=${encodeURIComponent(bookId || '')}`, {
+                        target: chapterSelect,
+                        swap: 'innerHTML'
+                    });
+                },
+                selectedOptionText(select) {
+                    if (!select || !select.selectedOptions || select.selectedOptions.length === 0) {
+                        return '';
+                    }
+                    return select.selectedOptions[0].textContent.trim();
+                }
             };
         }
 
@@ -259,11 +491,22 @@
             const qaModeSelect = document.querySelector('#qa-mode');
 
             if (qaForm && qaModeSelect) {
-                qaForm.addEventListener('submit', () => {
+                const updateQaEndpoint = () => {
                     const mode = qaModeSelect.value || 'rag';
                     qaForm.setAttribute('hx-post', `/ui/query/ask/${mode}`);
-                });
+                    if (window.htmx) {
+                        htmx.process(qaForm);
+                    }
+                };
+                qaModeSelect.addEventListener('change', updateQaEndpoint);
+                updateQaEndpoint();
             }
+
+            ['qa-universe', 'qa-series', 'qa-unconfigured-policy'].forEach((id) => {
+                const field = document.querySelector(`#${id}`);
+                field?.addEventListener('input', () => htmx.trigger(field, 'refresh'));
+                field?.addEventListener('change', () => htmx.trigger(field, 'refresh'));
+            });
 
             document.body.addEventListener('refresh-universes', () => {
                 document.querySelectorAll('[data-universe-options]')?.forEach(select => {

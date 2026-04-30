@@ -121,6 +121,7 @@ public class LibraryQueryService {
     public record ChapterSummary(
             UUID id,
             Integer chapterNumber,
+            Integer bookNumber,
             String title,
             Integer sceneCount
     ) {}
@@ -140,6 +141,7 @@ public class LibraryQueryService {
                     return new ChapterSummary(
                             ch.getId(),
                             ch.getChapterNumber(),
+                            ch.getBookNumber(),
                             ch.getChapterTitle(),
                             sceneCount
                     );

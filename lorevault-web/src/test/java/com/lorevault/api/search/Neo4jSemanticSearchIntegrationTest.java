@@ -317,6 +317,34 @@ class Neo4jSemanticSearchIntegrationTest {
     }
 
     @Test
+    void search_withSpoilerVisibility_respectsStandaloneBookChapterBoundary() {
+        double[] queryEmbedding = {1.0, 0.0, 0.0};
+        UUID chunkAtCutoff = UUID.randomUUID();
+        UUID chunkAfterCutoff = UUID.randomUUID();
+
+        createChunkLinkedToChapter(chunkAtCutoff, "Standalone ch 8 content", new double[]{1.0, 0.0, 0.0},
+                "JENKINSVERSE", null, 0, 8);
+        createChunkLinkedToChapter(chunkAfterCutoff, "Standalone ch 15 spoiler", new double[]{0.9, 0.1, 0.0},
+                "JENKINSVERSE", null, 0, 15);
+
+        SeriesProgress progress = new SeriesProgress();
+        progress.setSeries(null);
+        progress.setReadThroughBookNumber(0);
+        progress.setReadThroughChapterNumber(8);
+
+        SpoilerVisibility visibility = new SpoilerVisibility();
+        visibility.setUniverse("JENKINSVERSE");
+        visibility.setSeriesProgress(List.of(progress));
+        visibility.setUnconfiguredSeriesPolicy(UnconfiguredSeriesPolicy.HIDE);
+
+        List<SearchResult> results = semanticSearch.search(
+                queryEmbedding, 5, SearchFilters.empty(), visibility);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.getFirst().chunkId()).isEqualTo(chunkAtCutoff);
+    }
+
+    @Test
     void search_withMultipleSeriesProgress_filtersEachSeriesIndependently() {
         double[] queryEmbedding = {1.0, 0.0, 0.0};
         UUID stormlight1 = UUID.randomUUID();
