@@ -6,6 +6,7 @@ import com.lorevault.api.ingestion.job.IngestionStatus;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.content.timeline.infrastructure.CrossChapterBoundaryProjection;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.scene.SceneGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
@@ -20,6 +21,7 @@ import com.lorevault.api.ingestion.infrastructure.EventPersistenceService;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeService;
 import com.lorevault.api.ingestion.resolution.event.SceneTemporalRelationshipPersistenceService;
+import com.lorevault.api.ingestion.resolution.event.TemporalEdgeWriteRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
@@ -30,6 +32,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 /**
@@ -140,7 +143,7 @@ public class SceneDetectionHandler {
             
             // Create default temporal edges
             log.info("[SCENE_DETECTION] Creating default temporal edges for book {}", bookId);
-            defaultTemporalEdgeService.createAllDefaults(bookId);
+            var temporalDefaults = defaultTemporalEdgeService.createAllDefaults(bookId);
 
             Map<Integer, UUID> sceneIndexToId = scenes.stream()
                     .filter(scene -> scene.getSceneIndex() != null)
@@ -180,6 +183,8 @@ public class SceneDetectionHandler {
                             sceneIndexToId
                     )
             );
+
+            replayBoundaryTemporalProjection(jobId, temporalDefaults.newlyCreatedCrossChapterBoundaries());
 
             if (!scenes.isEmpty()) {
                 individualPersistenceService.persistExtractedIndividuals(
@@ -245,6 +250,60 @@ public class SceneDetectionHandler {
                 jobId, chapterId, scenes.size());
         
         eventPublisher.publishEvent(new ScenesDetectedEvent(this, jobId, chapterId, bookId, sceneIds));
+    }
+
+    private void replayBoundaryTemporalProjection(UUID jobId, List<CrossChapterBoundaryProjection> boundaries) {
+        if (boundaries == null || boundaries.isEmpty()) {
+            return;
+        }
+
+        for (CrossChapterBoundaryProjection boundary : boundaries) {
+            if (boundary == null || boundary.getPreviousSceneId() == null || boundary.getNextSceneId() == null) {
+                continue;
+            }
+
+            if (sceneTemporalRelationshipPersistenceService.hasAnyTemporalRelationshipBetween(
+                    boundary.getPreviousSceneId(),
+                    boundary.getNextSceneId())) {
+                continue;
+            }
+
+            Chapter laterChapter = chapterRepo.findById(boundary.getNextChapterId()).orElse(null);
+            if (laterChapter == null) {
+                continue;
+            }
+
+            List<Scene> laterScenes = new ArrayList<>(sceneRepo.findByChapterId(boundary.getNextChapterId()));
+            Scene firstScene = laterScenes.stream()
+                    .filter(scene -> boundary.getNextSceneId().equals(scene.getEventId()))
+                    .findFirst()
+                    .orElse(null);
+            if (firstScene == null) {
+                continue;
+            }
+
+            laterChapter.setScenes(List.of(firstScene));
+
+            var replayOutcome = sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
+                    jobId,
+                    laterChapter,
+                    statusProps -> { }
+            );
+
+            List<TemporalEdgeWriteRequest> replayRequests = replayOutcome.triadAnalyses().stream()
+                    .filter(analysis -> analysis.prevToCurrType() != null)
+                    .map(analysis -> new TemporalEdgeWriteRequest(
+                            boundary.getPreviousSceneId(),
+                            boundary.getNextSceneId(),
+                            analysis.prevToCurrType(),
+                            analysis.prevToCurrCertainty(),
+                            analysis.prevToCurrEvidence(),
+                            analysis.timelineMarker(),
+                            null
+                    ))
+                    .toList();
+            sceneTemporalRelationshipPersistenceService.applyTemporalRelationships(replayRequests);
+        }
     }
 
     private boolean isRetryableError(Exception e) {
