@@ -336,8 +336,13 @@ The `PipelineStageSupport.runStage()` utility wraps every stage in a try-catch b
 
 Each handler defines its own retryability logic. For instance, LLM provider errors are marked as retryable, while a missing chapter entity is treated as a terminal state. The system specifically unwraps `TriadAnalysisException` to preserve granular details about which part of the temporal analysis failed. To prevent cascading failures in the event-driven loop, exceptions are recorded and swallowed by the handler rather than being rethrown.
 
-### Idempotency
-To support safe event re-delivery and manual restarts, each handler verifies its current state before performing work. The `SceneDetectionHandler` queries `sceneRepo.findByChapterId()` and skips processing if scenes are already present. Similarly, the `ChunkingHandler` uses `chunkRepo.existsForChapterViaScenes()` to determine if chunking is already finished. The scoped entity-reduction handlers use deterministic delete-and-rebuild behavior, and book-level reduction is serialized per book where needed. These checks allow the pipeline to resume from the last successful stage if interrupted.
+### Retry and Replay Safety
+
+LoreVault does not treat "idempotent handler" as a blanket claim. Strict idempotency means running the same operation multiple times has the same effect as running it once. Some current and future reducers may involve LLM-assisted analysis where a retry can legitimately produce a different latest projection.
+
+The pipeline standard is therefore retry safety: a handler owns a defined projection scope, leaves that owned projection coherent on success, emits downstream events only after that coherent state exists, and treats failure or deferred work as something other than alternate success.
+
+State checks such as existing-scene or existing-chunk lookups are useful guards, but they are not the whole contract. When a handler replaces or invalidates owned output, downstream projections that depend on that output must be rebuilt, marked stale, or otherwise prevented from being treated as current. See [Handler Retry-Safety](handler-retry-safety.md) and [Handler Design Contract](../../rules/handler-design-contract.md).
 
 ### Boundaries
 - **Triad analysis details** — The internal logic for temporal triad classification is documented in the Triad Analysis Pattern.
@@ -383,6 +388,21 @@ Every ingestion event class must carry both `jobId` and `correlationId`.
 
 Neither field is optional. Events without both fields cannot be traced through async
 log lines spanning multiple handlers and threads.
+
+### Handler Ownership and Retry Safety
+
+Every ingestion handler must follow the [Handler Design Contract](../../rules/handler-design-contract.md).
+
+At minimum, a handler change must make clear:
+
+- which nodes and relationships the handler owns
+- what upstream projections it depends on
+- which downstream stages become stale when its output changes
+- what its success event means
+- how retryable, deferred, empty, and terminal-failure outcomes differ
+
+Do not publish success-shaped downstream events for claim contention, retry exhaustion,
+or work that did not reach a coherent terminal state.
 
 ### Transactional Event Scoping
 

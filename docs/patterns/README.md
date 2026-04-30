@@ -42,6 +42,7 @@ If a pattern currently depends on proposal history or future-work context, extra
 ### Ingestion
 
 - [Ingestion Pipeline](ingestion/ingestion-pipeline.md) — async stage-based chapter processing from upload to embedding
+- [Handler Retry-Safety](ingestion/handler-retry-safety.md) — ownership, replay safety, invalidation propagation, and completion-event semantics for ingestion handlers
 - [Entity Resolution Ladder](ingestion/entity-resolution-ladder.md) — scene-local mention evidence to chapter and book entity aggregation during ingestion (Individual and Location lanes)
 - [Ingestion Observability](ingestion/ingestion-job-observability.md) — append-only StatusRecord chain and LLM call logging
 - [Triad Analysis](ingestion/triad-analysis.md) — three-scene sliding window for relationship extraction
