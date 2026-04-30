@@ -269,6 +269,8 @@ record SearchResult(UUID chunkId, double score, String snippet,
                     List<String> locationsPresent)     // from LocationMention.displayName
 ```
 
+Current canonical entity lanes have since expanded to Object and Collective as well. If this proposal is revived, the entity-expansion fields should be generalized rather than limited to Individual/Location.
+
 The `sceneSummary` field (`Scene.contextSummary`) is particularly valuable: it is an AI-generated one-line description of the scene. Including it in the context header gives the LLM a stable anchor without needing to re-read the full chunk.
 
 ---
@@ -285,9 +287,9 @@ OPTIONAL MATCH (chapterViaScene:Chapter)-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(c
 
 This means it can reach the `Scene` via the second pattern. The `Scene` node is reachable; the query just does not currently return it or traverse further from it.
 
-**No data migration needed.** The graph links already exist. The expansion query just needs to continue from `Scene` to `IndividualMention` and `LocationMention`.
+**No data migration needed for existing mention links.** The graph links already exist. The expansion query can continue from `Scene` to the implemented scene-local mention families, currently Individual, Location, Object, and Collective.
 
-### Problem: `IndividualMention` and `LocationMention` may not exist for all scenes
+### Problem: mention evidence may not exist for all scenes
 
 Triad extraction runs during ingestion, but only for scenes that passed scene detection. If a chapter was ingested before the entity pipeline existed, those scenes have no mention nodes.
 
@@ -300,8 +302,8 @@ Triad extraction runs during ingestion, but only for scenes that passed scene de
 **Files to change:**
 
 1. `Neo4jSemanticSearch.java`
-   - Extend `SearchResult` record to include `sceneId`, `sceneSummary`, `individualsPresent`, `locationsPresent`
-   - Extend `buildCypher()` with `OPTIONAL MATCH` traversal to `IndividualMention` and `LocationMention`
+   - Extend `SearchResult` record to include `sceneId`, `sceneSummary`, and entity-presence fields
+   - Extend `buildCypher()` with `OPTIONAL MATCH` traversal to the implemented mention families
    - Map new fields in the `mappedBy` lambda
 
 2. `RagService.java`
@@ -317,7 +319,7 @@ Triad extraction runs during ingestion, but only for scenes that passed scene de
 **Tests to add/update:**
 
 - Unit test: `buildCypher()` includes `OPTIONAL MATCH` when entity expansion is enabled
-- Integration test: a chapter with known `IndividualMention` nodes returns them in `individualsPresent`
+- Integration test: a chapter with known mention nodes returns the expected scene-local entity presence fields
 
 ---
 
@@ -625,7 +627,7 @@ That is the best next experiment because it:
 
 - [RAG Retrieval Chain](../../patterns/search/rag-retrieval-chain.md) — current RAG chain
 - [Spoiler-Aware Retrieval](../../patterns/search/spoiler-aware-retrieval.md) — spoiler filter mechanism
-- [Entity Resolution Ladder](../../patterns/ingestion/entity-resolution-ladder.md) — entity resolution ladder (Individual and Location lanes)
+- [Entity Resolution Ladder](../../patterns/ingestion/entity-resolution-ladder.md) — entity resolution ladder (Individual, Location, Object, and Collective lanes)
 - `lorevault-api/src/main/java/com/lorevault/api/search/Neo4jSemanticSearch.java` — vector search impl
 - `lorevault-api/src/main/java/com/lorevault/api/search/RagService.java` — RAG orchestration
 - External: Neo4j GraphRAG Pattern Catalog (graphrag.com/reference/graphrag/)

@@ -439,11 +439,11 @@ That is now reflected directly in the implementation shape:
 
 1. scene analysis returns scene-level Individuals and Locations
 2. scenes are persisted first
-3. `IndividualMention` and `LocationMention` persistence both use the real persisted Scene IDs
-4. chapter/book `Individual` and chapter/book `Location` follow-up processing run as sibling post-scene branches
+3. `IndividualMention` and `LocationMention` persistence both use the real persisted Scene IDs; this was later extended to Object and Collective mention persistence as the regular entity ladder grew
+4. chapter/book regular entity follow-up processing runs as sibling post-scene branches; current implemented lanes are Individual, Location, Object, and Collective
 5. `IngestionCompleted` waits for all required scene-level follow-up work rather than firing per Entity type
 
-This is a canonical-doc candidate because it clarifies that new Entity lanes should attach as sibling branches, not as nested sub-steps of earlier Entity types.
+This has since been promoted into the canonical entity-resolution and ingestion-pipeline patterns: new regular entity lanes attach as sibling branches, not as nested sub-steps of earlier entity types.
 
 #### 4. Book-level Location reduction is fed by a direct repository query
 

@@ -4,6 +4,8 @@
 
 This branch/worktree adds Object and Collective extraction evidence, chapter-level resolution, book-level reduction, command rerun endpoints, schema/index updates, and completion fan-in wiring. The implementation follows the existing lane shape and has good focused coverage for happy paths, grouping behavior, controller validation, schema labels, and the Collective claim-exhaustion regression that was already fixed once. However, the review found merge-blocking reliability defects in the book-level reducers: both Object and Collective can permanently delete existing derived book aggregates before replacement data is committed, and claim contention is not modeled safely across async fan-in. Verdict: 🔁 **Request Changes**.
 
+**Follow-up note (April 30, 2026):** the merge-blocking reducer safety findings were addressed after this review by introducing retryable `BookReductionClaimUnavailableException` handling and coherent transactional `replaceBook*` persistence methods across Individual, Location, Object, and Collective book reducers. The review remains useful as the audit record that motivated those fixes.
+
 ## Findings
 
 ### HIGH-1 — Object book rebuild can permanently delete existing aggregates on mid-run failure

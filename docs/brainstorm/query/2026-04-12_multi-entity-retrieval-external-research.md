@@ -189,7 +189,7 @@ The paper establishes that the relevant evidence unit for "X and Y argument at Z
 
 Their solution is a **dual-graph** (entity graph + event/scene graph with bipartite mapping), which allows retrieval to be anchored at the event/scene level rather than the entity level. For the "argument" query, retrieval anchors at the scene node, then expands to entities and chunks.
 
-**Advantage for LoreVault:** LoreVault already has `Scene` as a first-class node with `[:MENTIONS]` edges to `IndividualMention` and `LocationMention`. The scene co-occurrence Cypher is expressible directly against the existing graph. No new nodes or relationships are needed.
+**Advantage for LoreVault:** LoreVault already has `Scene` as a first-class node with `[:MENTIONS]` edges to scene-local entity mentions. The current regular mention families include Individual, Location, Object, and Collective. The scene co-occurrence Cypher is expressible directly against the existing graph. No new nodes or relationships are needed for the co-occurrence traversal itself.
 
 ### 3.3 Subgraph Retrieval
 
