@@ -1,30 +1,26 @@
-package com.lorevault.api.content.mention;
+package com.lorevault.api.content.association;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
 
-@Node(primaryLabel = "ObjectMention", labels = "Mention")
-public record ObjectMention(
+@Node(primaryLabel = "BookCollective", labels = "BookEntity")
+public record BookCollective(
         @Id UUID id,
-        String source,
+        UUID bookId,
         String displayName,
         String normalizedName,
         List<String> aliases,
-        String type,
-        String material,
-        String purpose,
-        String description,
-        UUID sceneId,
-        UUID chapterId,
-        UUID bookId,
-        String resolutionStatus,
-        Integer extractionIndex,
+        String collectiveType,
+        String certainty,
+        String evidence,
+        Integer chapterCollectiveCount,
+        UUID representativeChapterCollectiveId,
+        UUID firstSeenChapterId,
         @CreatedDate LocalDateTime createdAt,
         @LastModifiedDate LocalDateTime updatedAt
-) implements Mention {}
+) {}

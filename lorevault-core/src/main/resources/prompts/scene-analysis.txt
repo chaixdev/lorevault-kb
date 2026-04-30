@@ -99,7 +99,17 @@ Entity Categories — definitions (for <scene_entities>)
         <activity>two or three sentences on what the individual is doing in the scene</activity>
       </individual>
     </individuals>
-    <collectives></collectives>
+    <collectives>
+      <collective>
+        <aliases>
+          <alias>the order</alias>
+          <alias>order of the veil</alias>
+        </aliases>
+        <collective_type>faction | organization | military | government | other</collective_type>
+        <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied</certainty>
+        <evidence>≤180 chars, verbatim or tight paraphrase grounding why this collective is present</evidence>
+      </collective>
+    </collectives>
     <objects>
       <object>
         <type></type>
@@ -120,12 +130,6 @@ Entity Categories — definitions (for <scene_entities>)
         <description></description>
       </location>
     </locations>
-    <concepts>
-      <concept>
-        <type></type>
-        <description></description>
-      </concept>
-    </concepts>
     <events>
       <event>
         <name></name>

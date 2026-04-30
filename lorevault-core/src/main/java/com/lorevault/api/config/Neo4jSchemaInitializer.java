@@ -65,6 +65,22 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE CONSTRAINT book_location_id_unique IF NOT EXISTS FOR (bl:BookLocation) REQUIRE bl.id IS UNIQUE";
     private static final String BOOK_LOCATION_SCOPE_UNIQUE =
             "CREATE CONSTRAINT book_location_scope_unique IF NOT EXISTS FOR (bl:BookLocation) REQUIRE (bl.bookId, bl.normalizedName) IS UNIQUE";
+    private static final String CHAPTER_OBJECT_ID_UNIQUE =
+            "CREATE CONSTRAINT chapter_object_id_unique IF NOT EXISTS FOR (co:ChapterObject) REQUIRE co.id IS UNIQUE";
+    private static final String CHAPTER_OBJECT_SCOPE_UNIQUE =
+            "CREATE CONSTRAINT chapter_object_scope_unique IF NOT EXISTS FOR (co:ChapterObject) REQUIRE (co.chapterId, co.normalizedName) IS UNIQUE";
+    private static final String BOOK_OBJECT_ID_UNIQUE =
+            "CREATE CONSTRAINT book_object_id_unique IF NOT EXISTS FOR (bo:BookObject) REQUIRE bo.id IS UNIQUE";
+    private static final String BOOK_OBJECT_SCOPE_UNIQUE =
+            "CREATE CONSTRAINT book_object_scope_unique IF NOT EXISTS FOR (bo:BookObject) REQUIRE (bo.bookId, bo.normalizedName) IS UNIQUE";
+    private static final String CHAPTER_COLLECTIVE_ID_UNIQUE =
+            "CREATE CONSTRAINT chapter_collective_id_unique IF NOT EXISTS FOR (cc:ChapterCollective) REQUIRE cc.id IS UNIQUE";
+    private static final String CHAPTER_COLLECTIVE_SCOPE_UNIQUE =
+            "CREATE CONSTRAINT chapter_collective_scope_unique IF NOT EXISTS FOR (cc:ChapterCollective) REQUIRE (cc.chapterId, cc.normalizedName) IS UNIQUE";
+    private static final String BOOK_COLLECTIVE_ID_UNIQUE =
+            "CREATE CONSTRAINT book_collective_id_unique IF NOT EXISTS FOR (bc:BookCollective) REQUIRE bc.id IS UNIQUE";
+    private static final String BOOK_COLLECTIVE_SCOPE_UNIQUE =
+            "CREATE CONSTRAINT book_collective_scope_unique IF NOT EXISTS FOR (bc:BookCollective) REQUIRE (bc.bookId, bc.normalizedName) IS UNIQUE";
 
     // Book reduction claim uniqueness (mutex for concurrent book-level reduction)
     private static final String BOOK_REDUCTION_CLAIM_BOOK_ID_UNIQUE =
@@ -93,6 +109,8 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE INDEX location_mention_chapter_name IF NOT EXISTS FOR (m:LocationMention) ON (m.chapterId, m.normalizedName)";
     private static final String OBJECT_MENTION_CHAPTER_NAME_INDEX =
             "CREATE INDEX object_mention_chapter_name IF NOT EXISTS FOR (m:ObjectMention) ON (m.chapterId, m.normalizedName)";
+    private static final String COLLECTIVE_MENTION_CHAPTER_NAME_INDEX =
+            "CREATE INDEX collective_mention_chapter_name IF NOT EXISTS FOR (m:CollectiveMention) ON (m.chapterId, m.normalizedName)";
     private static final String EVENT_MENTION_CHAPTER_NAME_INDEX =
             "CREATE INDEX event_mention_chapter_name IF NOT EXISTS FOR (m:EventMention) ON (m.chapterId, m.normalizedName)";
     private static final String CHAPTER_EVENT_CHAPTER_NAME_INDEX =
@@ -101,6 +119,14 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE INDEX book_event_book_name IF NOT EXISTS FOR (be:BookEvent) ON (be.bookId, be.normalizedName)";
     private static final String BOOK_LOCATION_BOOK_NAME_INDEX =
             "CREATE INDEX book_location_book_name IF NOT EXISTS FOR (bl:BookLocation) ON (bl.bookId, bl.normalizedName)";
+    private static final String CHAPTER_OBJECT_CHAPTER_NAME_INDEX =
+            "CREATE INDEX chapter_object_chapter_name IF NOT EXISTS FOR (co:ChapterObject) ON (co.chapterId, co.normalizedName)";
+    private static final String BOOK_OBJECT_BOOK_NAME_INDEX =
+            "CREATE INDEX book_object_book_name IF NOT EXISTS FOR (bo:BookObject) ON (bo.bookId, bo.normalizedName)";
+    private static final String CHAPTER_COLLECTIVE_CHAPTER_NAME_INDEX =
+            "CREATE INDEX chapter_collective_chapter_name IF NOT EXISTS FOR (cc:ChapterCollective) ON (cc.chapterId, cc.normalizedName)";
+    private static final String BOOK_COLLECTIVE_BOOK_NAME_INDEX =
+            "CREATE INDEX book_collective_book_name IF NOT EXISTS FOR (bc:BookCollective) ON (bc.bookId, bc.normalizedName)";
     private static final String LLM_CALL_RECORD_JOB_ID_INDEX =
             "CREATE INDEX llm_call_record_job_id IF NOT EXISTS FOR (r:LlmCallRecord) ON (r.jobId)";
     private static final String LLM_CALL_RECORD_JOB_STEP_INDEX =
@@ -111,6 +137,24 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     // Per-chapter ordering index for events
     private static final String EVENT_PER_CHAPTER_SCENE_INDEX =
             "CREATE INDEX event_per_chapter_scene_idx IF NOT EXISTS FOR (e:Event) ON (e.chapterId, e.sceneIndex)";
+
+    private static final List<String> AGGREGATE_LABEL_BACKFILLS = List.of(
+            "MATCH (m:IndividualMention) SET m:Mention",
+            "MATCH (m:LocationMention) SET m:Mention",
+            "MATCH (m:ObjectMention) SET m:Mention",
+            "MATCH (m:CollectiveMention) SET m:Mention",
+            "MATCH (m:EventMention) SET m:Mention",
+            "MATCH (ce:ChapterEvent) SET ce:ChapterEntity",
+            "MATCH (ci:ChapterIndividual) SET ci:ChapterEntity",
+            "MATCH (cl:ChapterLocation) SET cl:ChapterEntity",
+            "MATCH (co:ChapterObject) SET co:ChapterEntity",
+            "MATCH (cc:ChapterCollective) SET cc:ChapterEntity",
+            "MATCH (be:BookEvent) SET be:BookEntity",
+            "MATCH (bi:BookIndividual) SET bi:BookEntity",
+            "MATCH (bl:BookLocation) SET bl:BookEntity",
+            "MATCH (bo:BookObject) SET bo:BookEntity",
+            "MATCH (bc:BookCollective) SET bc:BookEntity"
+    );
 
     @Override
     public void ensureMinimalSchema() {
@@ -134,6 +178,14 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(CHAPTER_LOCATION_SCOPE_UNIQUE, "ChapterLocation(chapterId, normalizedName) unique"));
         results.add(executeConstraint(BOOK_LOCATION_ID_UNIQUE, "BookLocation.id unique"));
         results.add(executeConstraint(BOOK_LOCATION_SCOPE_UNIQUE, "BookLocation(bookId, normalizedName) unique"));
+        results.add(executeConstraint(CHAPTER_OBJECT_ID_UNIQUE, "ChapterObject.id unique"));
+        results.add(executeConstraint(CHAPTER_OBJECT_SCOPE_UNIQUE, "ChapterObject(chapterId, normalizedName) unique"));
+        results.add(executeConstraint(BOOK_OBJECT_ID_UNIQUE, "BookObject.id unique"));
+        results.add(executeConstraint(BOOK_OBJECT_SCOPE_UNIQUE, "BookObject(bookId, normalizedName) unique"));
+        results.add(executeConstraint(CHAPTER_COLLECTIVE_ID_UNIQUE, "ChapterCollective.id unique"));
+        results.add(executeConstraint(CHAPTER_COLLECTIVE_SCOPE_UNIQUE, "ChapterCollective(chapterId, normalizedName) unique"));
+        results.add(executeConstraint(BOOK_COLLECTIVE_ID_UNIQUE, "BookCollective.id unique"));
+        results.add(executeConstraint(BOOK_COLLECTIVE_SCOPE_UNIQUE, "BookCollective(bookId, normalizedName) unique"));
         results.add(executeConstraint(CHAPTER_CONTENT_HASH_UNIQUE, "Chapter.contentHash unique"));
         results.add(executeConstraint(BOOK_REDUCTION_CLAIM_BOOK_ID_UNIQUE, "BookReductionClaim.bookId unique"));
         
@@ -148,16 +200,24 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(BOOK_INDIVIDUAL_BOOK_NAME_INDEX, "BookIndividual(bookId, normalizedName)"));
         results.add(executeIndex(LOCATION_MENTION_CHAPTER_NAME_INDEX, "LocationMention(chapterId, normalizedName)"));
         results.add(executeIndex(OBJECT_MENTION_CHAPTER_NAME_INDEX, "ObjectMention(chapterId, normalizedName)"));
+        results.add(executeIndex(COLLECTIVE_MENTION_CHAPTER_NAME_INDEX, "CollectiveMention(chapterId, normalizedName)"));
         results.add(executeIndex(EVENT_MENTION_CHAPTER_NAME_INDEX, "EventMention(chapterId, normalizedName)"));
         results.add(executeIndex(CHAPTER_EVENT_CHAPTER_NAME_INDEX, "ChapterEvent(chapterId, normalizedName)"));
         results.add(executeIndex(BOOK_EVENT_BOOK_NAME_INDEX, "BookEvent(bookId, normalizedName)"));
         results.add(executeIndex(BOOK_LOCATION_BOOK_NAME_INDEX, "BookLocation(bookId, normalizedName)"));
+        results.add(executeIndex(CHAPTER_OBJECT_CHAPTER_NAME_INDEX, "ChapterObject(chapterId, normalizedName)"));
+        results.add(executeIndex(BOOK_OBJECT_BOOK_NAME_INDEX, "BookObject(bookId, normalizedName)"));
+        results.add(executeIndex(CHAPTER_COLLECTIVE_CHAPTER_NAME_INDEX, "ChapterCollective(chapterId, normalizedName)"));
+        results.add(executeIndex(BOOK_COLLECTIVE_BOOK_NAME_INDEX, "BookCollective(bookId, normalizedName)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_ID_INDEX, "LlmCallRecord(jobId)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_INDEX, "LlmCallRecord(jobId, step)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_STATUS_INDEX, "LlmCallRecord(jobId, step, statusRecordId)"));
         
         // Event per-chapter ordering index
         results.add(executeIndex(EVENT_PER_CHAPTER_SCENE_INDEX, "Event(chapterId, sceneIndex)"));
+
+        // Backfill aggregate labels for existing nodes; new writes get these from @Node metadata.
+        AGGREGATE_LABEL_BACKFILLS.forEach(cypher -> results.add(executeLabelBackfill(cypher)));
         
         // Create vector search indexes
         results.add(ensureChunkVectorIndex());
@@ -197,6 +257,17 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         } catch (Exception e) {
             log.error("Failed to create index {}: {}", description, e.getMessage());
             return "failed: " + description;
+        }
+    }
+
+    private String executeLabelBackfill(String cypher) {
+        try {
+            neo4jClient.query(cypher).run();
+            log.debug("Ensured aggregate label backfill: {}", cypher);
+            return "ensured: " + cypher;
+        } catch (Exception e) {
+            log.error("Failed aggregate label backfill {}: {}", cypher, e.getMessage());
+            return "failed: " + cypher;
         }
     }
 

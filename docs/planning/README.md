@@ -93,3 +93,7 @@ At minimum, each planning item should include:
 - [HTTP Request ID MDC Propagation](http-request-id-mdc-propagation.md)
 - [Revisit domain modeling with modern Java contracts and value objects](modern-java-domain-modeling-follow-up.md)
 - [Tighten web transport boundaries and internal type visibility](tighten-web-transport-boundaries-and-type-visibility.md)
+- [Q&A Retrieval Quality Validation](qa-retrieval-quality-validation.md)
+- [Object Entity Resolution Lane](object-resolution-lane.md)
+- [Collective and Concept Entity Resolution Lanes](collective-and-concept-resolution-lanes.md)
+- [Minimal Relation Type Catalog](minimal-reltype-catalog.md)

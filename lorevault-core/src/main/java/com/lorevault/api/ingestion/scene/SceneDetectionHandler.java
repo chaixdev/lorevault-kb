@@ -14,6 +14,7 @@ import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
 import com.lorevault.api.ingestion.triad.TriadTemporalEdgeRequestFactory;
 import com.lorevault.api.ingestion.infrastructure.IndividualPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.ObjectPersistenceService;
+import com.lorevault.api.ingestion.infrastructure.CollectivePersistenceService;
 import com.lorevault.api.ingestion.infrastructure.LocationPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.EventPersistenceService;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
@@ -53,6 +54,7 @@ public class SceneDetectionHandler {
     private final SceneDetectionService sceneDetectionService;
     private final SceneProcessingService sceneProcessingService;
     private final IndividualPersistenceService individualPersistenceService;
+    private final CollectivePersistenceService collectivePersistenceService;
     private final ObjectPersistenceService objectPersistenceService;
     private final LocationPersistenceService locationPersistenceService;
     private final EventPersistenceService eventPersistenceService;
@@ -69,6 +71,7 @@ public class SceneDetectionHandler {
             SceneDetectionService sceneDetectionService,
             SceneProcessingService sceneProcessingService,
             IndividualPersistenceService individualPersistenceService,
+            CollectivePersistenceService collectivePersistenceService,
             ObjectPersistenceService objectPersistenceService,
             LocationPersistenceService locationPersistenceService,
             EventPersistenceService eventPersistenceService,
@@ -84,6 +87,7 @@ public class SceneDetectionHandler {
         this.sceneDetectionService = sceneDetectionService;
         this.sceneProcessingService = sceneProcessingService;
         this.individualPersistenceService = individualPersistenceService;
+        this.collectivePersistenceService = collectivePersistenceService;
         this.objectPersistenceService = objectPersistenceService;
         this.locationPersistenceService = locationPersistenceService;
         this.eventPersistenceService = eventPersistenceService;
@@ -146,7 +150,13 @@ public class SceneDetectionHandler {
                             (UUID left, UUID right) -> left
                     ));
 
-            var sceneRelationshipOutcome = new TriadAnalysisModels.SceneRelationshipOutcome(List.of(), List.of(), List.of(), List.of());
+            var sceneRelationshipOutcome = new TriadAnalysisModels.SceneRelationshipOutcome(
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of()
+            );
             if (!scenes.isEmpty()) {
                 Chapter triadChapter = chapterRepo.findById(chapterId)
                         .orElseThrow(() -> new IllegalArgumentException("Chapter not found for triad analysis: " + chapterId));
@@ -175,6 +185,10 @@ public class SceneDetectionHandler {
                 individualPersistenceService.persistExtractedIndividuals(
                         scenes,
                         sceneRelationshipOutcome.sceneIndividualExtractions()
+                );
+                collectivePersistenceService.persistExtractedCollectives(
+                        scenes,
+                        sceneRelationshipOutcome.sceneCollectiveExtractions()
                 );
                 objectPersistenceService.persistExtractedObjects(
                         scenes,

@@ -5,8 +5,10 @@ import com.lorevault.api.ingestion.job.IngestionJob;
 import com.lorevault.api.ingestion.job.IngestionStatus;
 import com.lorevault.api.ingestion.job.StatusRecord;
 import com.lorevault.api.ingestion.events.BookIndividualsReducedEvent;
+import com.lorevault.api.ingestion.events.BookCollectivesReducedEvent;
 import com.lorevault.api.ingestion.events.BookEventCandidatesGeneratedEvent;
 import com.lorevault.api.ingestion.events.BookLocationsReducedEvent;
+import com.lorevault.api.ingestion.events.BookObjectsReducedEvent;
 import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
 import com.lorevault.api.ingestion.events.IngestionCompletedEvent;
 import com.lorevault.api.ingestion.events.EmbeddingsCompletedEvent;
@@ -63,7 +65,15 @@ class IngestionCompletionCoordinatorTest {
 
         verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));
 
+        coordinator.handleBookCollectivesReduced(new BookCollectivesReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 2, 1));
+
+        verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));
+
         coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 2, 1));
+
+        verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));
+
+        coordinator.handleBookObjectsReduced(new BookObjectsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 2, 1));
 
         verify(ingestionJobService, never()).completeJob(any(), any(), any(Integer.class));
 
@@ -109,7 +119,9 @@ class IngestionCompletionCoordinatorTest {
 
         coordinator.handleBookIndividualsReduced(new BookIndividualsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 3, 1));
         coordinator.handleEmbeddingsCompleted(new EmbeddingsCompletedEvent(this, jobId, chapterId, 2, 4, 4, 1200));
+        coordinator.handleBookCollectivesReduced(new BookCollectivesReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 2, 1));
         coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 2, 1));
+        coordinator.handleBookObjectsReduced(new BookObjectsReducedEvent(this, jobId, chapterId, UUID.randomUUID(), true, 2, 1));
         coordinator.handleChapterEventsResolved(new ChapterEventsResolvedEvent(
                 this,
                 jobId,
@@ -154,6 +166,8 @@ class IngestionCompletionCoordinatorTest {
         ));
 
         coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
+        coordinator.handleBookCollectivesReduced(new BookCollectivesReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
+        coordinator.handleBookObjectsReduced(new BookObjectsReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
         coordinator.handleChapterEventsResolved(new ChapterEventsResolvedEvent(
                 this,
                 jobId,
@@ -176,7 +190,9 @@ class IngestionCompletionCoordinatorTest {
 
         coordinator.handleBookIndividualsReduced(new BookIndividualsReducedEvent(this, jobId, chapterId, bookId, true, 3, 1));
         coordinator.handleEmbeddingsCompleted(new EmbeddingsCompletedEvent(this, jobId, chapterId, 2, 4, 4, 1200));
+        coordinator.handleBookCollectivesReduced(new BookCollectivesReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
         coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
+        coordinator.handleBookObjectsReduced(new BookObjectsReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
         coordinator.handleChapterEventsResolved(new ChapterEventsResolvedEvent(this, jobId, chapterId, bookId, true, 5, 2, 0));
         coordinator.handleBookEventCandidatesGenerated(new BookEventCandidatesGeneratedEvent(this, jobId, chapterId, bookId, 2, 1, 1));
 
@@ -211,7 +227,9 @@ class IngestionCompletionCoordinatorTest {
         // First full fan-in — should complete exactly once
         coordinator.handleBookIndividualsReduced(new BookIndividualsReducedEvent(this, jobId, chapterId, bookId, true, 3, 1));
         coordinator.handleEmbeddingsCompleted(new EmbeddingsCompletedEvent(this, jobId, chapterId, 2, 4, 4, 1200));
+        coordinator.handleBookCollectivesReduced(new BookCollectivesReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
         coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
+        coordinator.handleBookObjectsReduced(new BookObjectsReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
         coordinator.handleChapterEventsResolved(new ChapterEventsResolvedEvent(this, jobId, chapterId, bookId, true, 5, 2, 0));
         coordinator.handleBookEventCandidatesGenerated(new BookEventCandidatesGeneratedEvent(this, jobId, chapterId, bookId, 2, 1, 1));
 
@@ -221,7 +239,9 @@ class IngestionCompletionCoordinatorTest {
         // Replay all five branches again — job status is now COMPLETE; must be absorbed silently
         coordinator.handleBookIndividualsReduced(new BookIndividualsReducedEvent(this, jobId, chapterId, bookId, true, 3, 1));
         coordinator.handleEmbeddingsCompleted(new EmbeddingsCompletedEvent(this, jobId, chapterId, 2, 4, 4, 1200));
+        coordinator.handleBookCollectivesReduced(new BookCollectivesReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
         coordinator.handleBookLocationsReduced(new BookLocationsReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
+        coordinator.handleBookObjectsReduced(new BookObjectsReducedEvent(this, jobId, chapterId, bookId, true, 2, 1));
         coordinator.handleChapterEventsResolved(new ChapterEventsResolvedEvent(this, jobId, chapterId, bookId, true, 5, 2, 0));
         coordinator.handleBookEventCandidatesGenerated(new BookEventCandidatesGeneratedEvent(this, jobId, chapterId, bookId, 2, 1, 1));
 

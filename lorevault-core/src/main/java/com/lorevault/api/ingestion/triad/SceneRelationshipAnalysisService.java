@@ -60,6 +60,13 @@ public class SceneRelationshipAnalysisService {
             String description
     ) {}
 
+    public record TriadCollectiveExtraction(
+            List<String> aliases,
+            String collectiveType,
+            String certainty,
+            String evidence
+    ) {}
+
     public record TriadEventExtraction(
             String name,
             String eventType,
@@ -71,6 +78,7 @@ public class SceneRelationshipAnalysisService {
 
     public record TriadCurrentSceneEntities(
             List<TriadIndividualExtraction> individuals,
+            List<TriadCollectiveExtraction> collectives,
             List<TriadObjectExtraction> objects,
             List<TriadLocationExtraction> locations,
             List<TriadEventExtraction> events
@@ -79,7 +87,7 @@ public class SceneRelationshipAnalysisService {
                 List<TriadIndividualExtraction> individuals,
                 List<TriadLocationExtraction> locations
         ) {
-            this(individuals, List.of(), locations, List.of());
+            this(individuals, List.of(), List.of(), locations, List.of());
         }
 
         public TriadCurrentSceneEntities(
@@ -87,7 +95,7 @@ public class SceneRelationshipAnalysisService {
                 List<TriadObjectExtraction> objects,
                 List<TriadLocationExtraction> locations
         ) {
-            this(individuals, objects, locations, List.of());
+            this(individuals, List.of(), objects, locations, List.of());
         }
     }
 
@@ -137,6 +145,7 @@ public class SceneRelationshipAnalysisService {
 
         List<TriadAnalysisModels.SceneRelationshipAnalysis> analyses = new ArrayList<>();
         Map<Integer, List<TriadAnalysisModels.IndividualExtraction>> extractedIndividualsBySceneIndex = new HashMap<>();
+        Map<Integer, List<TriadAnalysisModels.CollectiveExtraction>> extractedCollectivesBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadAnalysisModels.ObjectExtraction>> extractedObjectsBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadAnalysisModels.LocationExtraction>> extractedLocationsBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadAnalysisModels.EventExtraction>> extractedEventsBySceneIndex = new HashMap<>();
@@ -208,6 +217,13 @@ public class SceneRelationshipAnalysisService {
                             .addAll(triadObjects);
                 }
 
+                List<TriadAnalysisModels.CollectiveExtraction> triadCollectives = normalizeCollectives(normalized);
+                if (!triadCollectives.isEmpty()) {
+                    extractedCollectivesBySceneIndex
+                            .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
+                            .addAll(triadCollectives);
+                }
+
                 List<TriadAnalysisModels.EventExtraction> triadEvents = normalizeEvents(normalized);
                 if (!triadEvents.isEmpty()) {
                     extractedEventsBySceneIndex
@@ -227,6 +243,11 @@ public class SceneRelationshipAnalysisService {
                 .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneLocationExtraction::sceneIndex))
                 .toList();
 
+        List<TriadAnalysisModels.SceneCollectiveExtraction> sceneCollectiveExtractions = extractedCollectivesBySceneIndex.entrySet().stream()
+                .map(e -> new TriadAnalysisModels.SceneCollectiveExtraction(e.getKey(), List.copyOf(e.getValue())))
+                .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneCollectiveExtraction::sceneIndex))
+                .toList();
+
         List<TriadAnalysisModels.SceneObjectExtraction> sceneObjectExtractions = extractedObjectsBySceneIndex.entrySet().stream()
                 .map(e -> new TriadAnalysisModels.SceneObjectExtraction(e.getKey(), List.copyOf(e.getValue())))
                 .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneObjectExtraction::sceneIndex))
@@ -240,6 +261,7 @@ public class SceneRelationshipAnalysisService {
         return new TriadAnalysisModels.SceneRelationshipOutcome(
                 analyses,
                 sceneExtractions,
+                sceneCollectiveExtractions,
                 sceneObjectExtractions,
                 sceneLocationExtractions,
                 sceneEventExtractions
@@ -295,6 +317,22 @@ public class SceneRelationshipAnalysisService {
                         normalizeText(object.description())
                 ))
                 .filter(object -> object.type() != null || !object.aliases().isEmpty())
+                .toList();
+    }
+
+    private List<TriadAnalysisModels.CollectiveExtraction> normalizeCollectives(TriadStructuredResult parsed) {
+        if (parsed == null || parsed.currentSceneEntities() == null || parsed.currentSceneEntities().collectives() == null) {
+            return List.of();
+        }
+        return parsed.currentSceneEntities().collectives().stream()
+                .filter(collective -> collective != null)
+                .map(collective -> new TriadAnalysisModels.CollectiveExtraction(
+                        normalizeAliases(collective.aliases()),
+                        normalizeText(collective.collectiveType()),
+                        normalizeText(collective.certainty()),
+                        normalizeText(collective.evidence())
+                ))
+                .filter(collective -> !collective.aliases().isEmpty())
                 .toList();
     }
 

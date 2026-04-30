@@ -8,7 +8,7 @@ import lombok.Getter;
  * generated for a chapter.  Carries enough summary data for the fan-in coordinator to log
  * and route the completion signal.
  *
- * <p>This is the 5th fan-in branch in {@code IngestionCompletionCoordinator}.
+ * <p>This is one of the required fan-in branches in {@code IngestionCompletionCoordinator}.
  */
 @Getter
 public class BookEventCandidatesGeneratedEvent extends IngestionEvent {
