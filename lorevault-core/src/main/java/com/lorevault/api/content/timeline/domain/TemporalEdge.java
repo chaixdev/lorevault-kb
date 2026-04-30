@@ -1,6 +1,6 @@
 package com.lorevault.api.content.timeline.domain;
 
-import com.lorevault.api.content.entities.Scene;
+import com.lorevault.api.content.scene.Scene;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.neo4j.core.schema.GeneratedValue;

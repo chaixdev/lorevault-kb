@@ -1,9 +1,9 @@
 package com.lorevault.api.ingestion.infrastructure;
 
-import com.lorevault.api.content.entities.IndividualMention;
-import com.lorevault.api.content.entities.IndividualMentionGraphRepository;
-import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
+import com.lorevault.api.content.mention.IndividualMention;
+import com.lorevault.api.content.mention.IndividualMentionGraphRepository;
+import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;

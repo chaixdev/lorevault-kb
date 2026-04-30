@@ -1,8 +1,7 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.application.resolution.BookIndividualReductionService;
-import com.lorevault.api.ingestion.application.result.BookIndividualResolutionResult;
-import com.lorevault.api.web.command.ingestion.BookIndividualResolutionResponse;
+import com.lorevault.api.ingestion.resolution.individual.BookIndividualReductionService;
+import com.lorevault.api.ingestion.resolution.individual.BookIndividualResolutionResult;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;

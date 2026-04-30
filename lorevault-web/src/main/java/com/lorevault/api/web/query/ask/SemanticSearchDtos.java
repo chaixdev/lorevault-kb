@@ -1,7 +1,5 @@
 package com.lorevault.api.web.query.ask;
-import com.lorevault.api.search.domain.SpoilerVisibility;
-import com.lorevault.api.search.domain.UnconfiguredSeriesPolicy;
-import com.lorevault.api.search.domain.SeriesProgress;
+import com.lorevault.api.search.model.SpoilerVisibility;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.Valid;

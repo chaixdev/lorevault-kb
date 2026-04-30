@@ -1,7 +1,7 @@
 package com.lorevault.api.search;
 
-import com.lorevault.api.search.domain.EntityLookupException;
-import com.lorevault.api.search.infrastructure.CypherTemplateRegistry;
+import com.lorevault.api.search.model.EntityLookupException;
+import com.lorevault.api.search.semantic.CypherTemplateRegistry;
 import java.util.Map;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;

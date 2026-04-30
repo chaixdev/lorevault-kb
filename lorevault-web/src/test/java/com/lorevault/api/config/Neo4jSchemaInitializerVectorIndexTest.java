@@ -1,13 +1,4 @@
 package com.lorevault.api.config;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -62,14 +53,48 @@ class Neo4jSchemaInitializerVectorIndexTest {
         // When: Running schema initialization
         assertDoesNotThrow(() -> schemaInitializer.ensureMinimalSchema());
         
-        // Then: Vector index should be created
+        // Then: Vector index should be created with correct dimensions
         assertThat(vectorIndexExists("chunk_embedding_idx")).isTrue();
+        assertThat(vectorIndexDimensions("chunk_embedding_idx")).isEqualTo(2560);
+        assertThat(vectorIndexExists("chapter_event_embedding_idx")).isTrue();
+        assertThat(vectorIndexDimensions("chapter_event_embedding_idx")).isEqualTo(2560);
         
         // When: Running again (idempotent)
         assertDoesNotThrow(() -> schemaInitializer.ensureMinimalSchema());
         
         // Then: Still works without errors
         assertThat(vectorIndexExists("chunk_embedding_idx")).isTrue();
+        assertThat(vectorIndexExists("chapter_event_embedding_idx")).isTrue();
+    }
+
+    @Test
+    void ensureMinimalSchema_rebuildsVectorIndexWhenDimensionsDrift() {
+        neo4jClient.query(
+                "CREATE VECTOR INDEX chunk_embedding_idx IF NOT EXISTS FOR (ch:Chunk) ON (ch.embedding) " +
+                "OPTIONS {indexConfig: {`vector.dimensions`: 3072, `vector.similarity_function`: 'cosine'}}"
+        ).run();
+
+        assertThat(vectorIndexDimensions("chunk_embedding_idx")).isEqualTo(3072);
+
+        assertDoesNotThrow(() -> schemaInitializer.ensureMinimalSchema());
+
+        assertThat(vectorIndexExists("chunk_embedding_idx")).isTrue();
+        assertThat(vectorIndexDimensions("chunk_embedding_idx")).isEqualTo(2560);
+    }
+
+    @Test
+    void ensureMinimalSchema_rebuildsChapterEventVectorIndexWhenDimensionsDrift() {
+        neo4jClient.query(
+                "CREATE VECTOR INDEX chapter_event_embedding_idx IF NOT EXISTS FOR (ce:ChapterEvent) ON (ce.embedding) " +
+                "OPTIONS {indexConfig: {`vector.dimensions`: 3072, `vector.similarity_function`: 'cosine'}}"
+        ).run();
+
+        assertThat(vectorIndexDimensions("chapter_event_embedding_idx")).isEqualTo(3072);
+
+        assertDoesNotThrow(() -> schemaInitializer.ensureMinimalSchema());
+
+        assertThat(vectorIndexExists("chapter_event_embedding_idx")).isTrue();
+        assertThat(vectorIndexDimensions("chapter_event_embedding_idx")).isEqualTo(2560);
     }
 
     @Test
@@ -93,6 +118,18 @@ class Neo4jSchemaInitializerVectorIndexTest {
         .fetchAs(Boolean.class)
         .one()
         .orElse(false);
+    }
+
+    private int vectorIndexDimensions(String indexName) {
+        return neo4jClient.query(
+            "SHOW INDEXES YIELD name, options WHERE name = $indexName " +
+            "RETURN options.indexConfig.`vector.dimensions` AS dimensions"
+        )
+        .bind("indexName").to(indexName)
+        .fetchAs(Long.class)
+        .one()
+        .map(Long::intValue)
+        .orElse(-1);
     }
 
     private boolean constraintExists(String constraintName) {

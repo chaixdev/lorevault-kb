@@ -13,7 +13,7 @@ This document builds on the current understanding established by:
 - the scene temporal-linking work and ADR 010 practical Allen relation usage
 - the Event DAG concept direction
 - the evidence-vs-interpretation layering discussion
-- the already implemented Individual and Location mention-resolution ladders
+- the already implemented regular entity mention-resolution ladders (currently Individual, Location, Object, and Collective)
 
 This is not yet canonical truth.
 
@@ -64,9 +64,9 @@ An extracted Event would serve a different role:
 
 So extracted Event entities should **complement** scenes, not compete with them.
 
-### 2. Events differ from Individual and Location in one important way
+### 2. Events differ from regular entity ladders in one important way
 
-The existing Individual and Location ladders are mostly identity ladders.
+The regular entity ladders are mostly identity ladders.
 
 For Events, identity is not enough.
 

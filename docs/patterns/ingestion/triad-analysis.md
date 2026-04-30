@@ -60,6 +60,21 @@ sequenceDiagram
 
 ## Key Data Structures
 
+### Scene-local entity evidence
+
+Scene analysis now emits both temporal-relation output and scene-local entity evidence. The entity evidence is persisted after scenes are saved so every mention can be linked to a stable `Scene.id`.
+
+Implemented scene-local entity evidence lanes:
+
+- `IndividualMention`
+- `LocationMention`
+- `ObjectMention`
+- `CollectiveMention`
+
+These evidence nodes feed the regular entity resolution ladder documented in [Entity Resolution Ladder](entity-resolution-ladder.md). Concept evidence is intentionally deferred until the Concept lane has a narrower extraction and subtype contract.
+
+### Temporal triad output
+
 **SceneTriad**
 - `previous: Scene` — The scene immediately preceding the current one. This may be from a prior chapter or null for the first scene of the first chapter.
 - `current: Scene` — The central scene being analyzed for its temporal placement.

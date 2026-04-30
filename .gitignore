@@ -133,6 +133,9 @@ spring-boot-devtools.properties
 ai-cache/
 model-cache/
 
+# Local agent audit logs
+.opencode/pilot-audit.log.*
+
 # Vector embeddings cache
 embeddings-cache/
 

@@ -14,12 +14,18 @@ import java.util.UUID;
 public abstract class IngestionEvent extends ApplicationEvent {
     
     private final UUID jobId;
+    private final UUID correlationId;
     private final UUID chapterId;
     private final Instant eventTime;
     
     protected IngestionEvent(Object source, UUID jobId, UUID chapterId) {
+        this(source, jobId, jobId, chapterId);
+    }
+
+    protected IngestionEvent(Object source, UUID jobId, UUID correlationId, UUID chapterId) {
         super(source);
         this.jobId = jobId;
+        this.correlationId = correlationId;
         this.chapterId = chapterId;
         this.eventTime = Instant.now();
     }

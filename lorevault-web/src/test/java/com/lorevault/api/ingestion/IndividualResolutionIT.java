@@ -1,24 +1,30 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
+import com.lorevault.api.content.chapter.Chapter;
+import com.lorevault.api.ingestion.job.IngestionJobService;
+import com.lorevault.api.ingestion.resolution.individual.*;
+import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
+import com.lorevault.api.ingestion.scene.SceneDetectionHandler;
+import com.lorevault.api.ingestion.submission.IngestionIsolatedLookupService;
+import com.lorevault.api.ingestion.submission.IngestionService;
 import com.lorevault.api.ingestion.infrastructure.*;
 
-import com.lorevault.api.ingestion.application.scene.SceneDetectionService;
-import com.lorevault.api.ingestion.application.scene.SceneProcessingService;
-import com.lorevault.api.ingestion.application.scene.SceneWithCoordinates;
-import com.lorevault.api.library.domain.Book;
-import com.lorevault.api.library.infrastructure.BookGraphRepository;
-import com.lorevault.api.content.entities.ChapterGraphRepository;
+import com.lorevault.api.ingestion.scene.SceneDetectionService;
+import com.lorevault.api.ingestion.triad.TriadTemporalEdgeRequestFactory;
+import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
+import com.lorevault.api.ingestion.scene.SceneProcessingService;
+import com.lorevault.api.ingestion.scene.SceneWithCoordinates;
+import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
+import com.lorevault.api.ingestion.submission.IngestionSubmissionResult;
+import com.lorevault.api.library.book.Book;
+import com.lorevault.api.library.book.BookGraphRepository;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import com.lorevault.api.integration.TestConfig;
 import com.lorevault.api.web.command.ingestion.SubmitChapterRequest;
 import com.lorevault.api.testutil.SampleChapterLoader;
 import com.lorevault.api.testing.TestImages;
-import com.lorevault.api.content.timeline.application.DefaultTemporalEdgeService;
-import com.lorevault.api.content.timeline.application.SceneTemporalRelationshipPersistenceService;
+import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeService;
+import com.lorevault.api.ingestion.resolution.event.SceneTemporalRelationshipPersistenceService;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -48,13 +54,17 @@ import static org.mockito.Mockito.when;
 @Import({
         TestConfig.class,
         IngestionService.class,
+        IngestionIsolatedLookupService.class,
         IngestionJobService.class,
         SceneDetectionHandler.class,
         SceneProcessingService.class,
+        ObjectPersistenceService.class,
         IndividualPersistenceService.class,
         EventPersistenceService.class,
         ChapterIndividualResolutionService.class,
         BookIndividualReductionService.class,
+        BookReductionClaimService.class,
+        BookIndividualPersistenceService.class,
         DefaultTemporalEdgeService.class
 })
 @Tag("integration")
@@ -112,12 +122,23 @@ class IndividualResolutionIT {
     @MockitoBean
     private SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService;
 
+    @MockitoBean
+    private TriadTemporalEdgeRequestFactory triadTemporalEdgeRequestFactory;
+
+    @MockitoBean
+    private SceneRelationshipAnalysisService sceneRelationshipAnalysisService;
+
     @BeforeEach
     void setUp() {
         reset(eventPublisher, defaultTemporalEdgeService, sceneDetectionService);
         neo4jClient.query("MATCH (n) DETACH DELETE n").run();
         persistDeathworldersBook();
         doNothing().when(defaultTemporalEdgeService).createAllDefaults(org.mockito.ArgumentMatchers.any());
+        when(triadTemporalEdgeRequestFactory.buildRequests(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of());
     }
 
     @Test
@@ -125,8 +146,13 @@ class IndividualResolutionIT {
         SubmitChapterRequest request = SampleChapterLoader.loadSampleChapter("kevin_jenkins");
         when(sceneDetectionService.detectScenesInChapter(
                 org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(com.lorevault.api.content.entities.Chapter.class)))
+                org.mockito.ArgumentMatchers.any(Chapter.class)))
                 .thenReturn(outcomeWithRepeatedNyx());
+        when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(triadOutcomeWithNyxAndOrion());
 
         IngestionSubmissionResult response = ingestionService.submitChapter(
                 request.getBookId(), request.getChapterNumber(), request.getChapterTitle(), request.getChapterText());
@@ -170,12 +196,17 @@ class IndividualResolutionIT {
 
         when(sceneDetectionService.detectScenesInChapter(
                 org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(com.lorevault.api.content.entities.Chapter.class)))
+                org.mockito.ArgumentMatchers.any(Chapter.class)))
                 .thenReturn(
-                        outcomeWithSingleIndividual("Kevin Jenkins"),
-                        outcomeWithSingleIndividual("Kevin Jenkins"),
-                        outcomeWithSingleIndividual("Kevin Jenkins")
+                        outcomeWithSingleIndividual("Kevin"),
+                        outcomeWithSingleIndividual("Kevin"),
+                        outcomeWithSingleIndividual("Kevin")
                 );
+        when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(triadOutcomeWithSingleIndividual("Kevin Jenkins"));
 
         UUID chapterIdOne = ingestAndResolveChapter(chapterOne);
         UUID chapterIdTwo = ingestAndResolveChapter(chapterTwo);
@@ -242,6 +273,65 @@ class IndividualResolutionIT {
                 new SceneWithCoordinates(0, 0, 120, displayName + " scene")
         );
         return new SceneDetectionService.SceneSegmentationOutcome(scenes);
+    }
+
+    private TriadAnalysisModels.SceneRelationshipOutcome triadOutcomeWithNyxAndOrion() {
+        return new TriadAnalysisModels.SceneRelationshipOutcome(
+                List.of(),
+                List.of(
+                        new TriadAnalysisModels.SceneIndividualExtraction(
+                                0,
+                                List.of(
+                                        new TriadAnalysisModels.IndividualExtraction(
+                                                List.of("Nyx"),
+                                                null,
+                                                null,
+                                                null
+                                        )
+                                )
+                        ),
+                        new TriadAnalysisModels.SceneIndividualExtraction(
+                                1,
+                                List.of(
+                                        new TriadAnalysisModels.IndividualExtraction(
+                                                List.of("Nyx"),
+                                                null,
+                                                null,
+                                                null
+                                        ),
+                                        new TriadAnalysisModels.IndividualExtraction(
+                                                List.of("Orion"),
+                                                null,
+                                                null,
+                                                null
+                                        )
+                                )
+                        )
+                ),
+                List.of(),
+                List.of()
+        );
+    }
+
+    private TriadAnalysisModels.SceneRelationshipOutcome triadOutcomeWithSingleIndividual(String displayName) {
+        return new TriadAnalysisModels.SceneRelationshipOutcome(
+                List.of(),
+                List.of(
+                        new TriadAnalysisModels.SceneIndividualExtraction(
+                                0,
+                                List.of(
+                                        new TriadAnalysisModels.IndividualExtraction(
+                                                List.of(displayName),
+                                                null,
+                                                null,
+                                                null
+                                        )
+                                )
+                        )
+                ),
+                List.of(),
+                List.of()
+        );
     }
 
     private long countNodes(String label) {

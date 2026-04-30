@@ -1,9 +1,14 @@
 package com.lorevault.api.ingestion.application.scene;
-import com.lorevault.api.ai.domain.LlmRetryStrategy;
-import com.lorevault.api.ingestion.domain.SceneDetectionException;
-import com.lorevault.api.ingestion.domain.SceneLocalizationException;
-import com.lorevault.api.ai.infrastructure.LlmClient;
+import com.lorevault.api.ai.llm.LlmRetryStrategy;
+import com.lorevault.api.ingestion.scene.SceneDetectionException;
+import com.lorevault.api.ingestion.scene.SceneLocalizationException;
+import com.lorevault.api.ai.llm.LlmClient;
 
+import com.lorevault.api.ingestion.job.IngestionFailure;
+import com.lorevault.api.ingestion.scene.SceneDetectionResult;
+import com.lorevault.api.ingestion.scene.SceneDetectionService;
+import com.lorevault.api.ingestion.scene.SceneProcessingService;
+import com.lorevault.api.ingestion.scene.SceneWithCoordinates;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -204,7 +209,7 @@ class SceneDetectionServiceTest {
                 .thenReturn(List.of(new SceneDetectionResult(4, "anchor", "ctx", "", "", "", "")));
 
         SceneLocalizationException failure = new SceneLocalizationException(
-                com.lorevault.api.ingestion.domain.IngestionFailure.builder(
+                IngestionFailure.builder(
                                 "SCENE_LOCALIZATION_ANCHOR_NOT_FOUND",
                                 "Failed to localize scene 4 because start anchor 'anchor' was not found"
                         )

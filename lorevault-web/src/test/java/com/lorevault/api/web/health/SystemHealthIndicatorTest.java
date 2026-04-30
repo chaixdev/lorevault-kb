@@ -1,11 +1,4 @@
 package com.lorevault.api.web.health;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.application.CoreSearchRecords.*;
 
 import com.lorevault.api.health.HealthMetricsCollector;
 import com.lorevault.api.health.SystemHealthService;

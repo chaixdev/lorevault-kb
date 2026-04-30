@@ -1,16 +1,14 @@
 package com.lorevault.api.ingestion;
 
-import com.lorevault.api.content.entities.Chapter;
-import com.lorevault.api.library.domain.PublicationCoordinates;
-import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.content.entities.ChapterGraphRepository;
-import com.lorevault.api.content.entities.ChunkGraphRepository;
-import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
-import com.lorevault.api.content.entities.SceneGraphRepository;
-import com.lorevault.api.ingestion.infrastructure.StatusRecordGraphRepository;
+import com.lorevault.api.content.chapter.Chapter;
+import com.lorevault.api.ingestion.job.*;
+import com.lorevault.api.library.book.PublicationCoordinates;
+import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.content.chunk.ChunkGraphRepository;
+import com.lorevault.api.ingestion.job.IngestionJobGraphRepository;
+import com.lorevault.api.content.scene.SceneGraphRepository;
+import com.lorevault.api.ingestion.job.StatusRecordGraphRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

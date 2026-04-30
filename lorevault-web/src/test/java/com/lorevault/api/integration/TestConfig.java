@@ -1,18 +1,9 @@
 package com.lorevault.api.integration;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
 
-import com.lorevault.api.ingestion.application.scene.SceneDetectionService;
+import com.lorevault.api.ingestion.scene.SceneDetectionService;
 import org.mockito.Mockito;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -37,6 +28,12 @@ public class TestConfig {
     @Primary
     public ChatClient nlpBig() {
         return mock(ChatClient.class);
+    }
+
+    @Bean
+    @Qualifier("embeddingModel")
+    public EmbeddingModel embeddingModel() {
+        return mock(EmbeddingModel.class);
     }
 
     /**

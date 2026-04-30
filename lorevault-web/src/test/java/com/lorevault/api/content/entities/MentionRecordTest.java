@@ -5,9 +5,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+
+import com.lorevault.api.content.mention.EventMention;
+import com.lorevault.api.content.mention.CollectiveMention;
+import com.lorevault.api.content.mention.IndividualMention;
+import com.lorevault.api.content.mention.LocationMention;
+import com.lorevault.api.content.mention.ObjectMention;
+import com.lorevault.api.content.mention.Mention;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.neo4j.core.schema.Node;
 
 @Tag("unit")
 @DisplayName("Mention records")
@@ -38,6 +46,30 @@ class MentionRecordTest {
         assertThat(mention.bookId()).isEqualTo(BOOK_ID);
         assertThat(mention.resolutionStatus()).isEqualTo("UNRESOLVED");
         assertThat(mention.extractionIndex()).isEqualTo(3);
+        assertThat(mention.createdAt()).isEqualTo(CREATED_AT);
+        assertThat(mention.updatedAt()).isEqualTo(UPDATED_AT);
+    }
+
+    @Test
+    @DisplayName("should expose object mention fields through record accessors")
+    void shouldExposeObjectMentionFieldsThroughRecordAccessors() {
+        ObjectMention mention = objectMention(UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                List.of("Nightblood"), "UNRESOLVED");
+
+        assertThat(mention.id()).isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000002"));
+        assertThat(mention.source()).isEqualTo("scene-analysis");
+        assertThat(mention.displayName()).isEqualTo("Nightblood");
+        assertThat(mention.normalizedName()).isEqualTo("nightblood");
+        assertThat(mention.aliases()).containsExactly("Nightblood");
+        assertThat(mention.type()).isEqualTo("sentient sword");
+        assertThat(mention.material()).isEqualTo("black metal");
+        assertThat(mention.purpose()).isEqualTo("destroy evil");
+        assertThat(mention.description()).isEqualTo("A dangerous awakened blade");
+        assertThat(mention.sceneId()).isEqualTo(SCENE_ID);
+        assertThat(mention.chapterId()).isEqualTo(CHAPTER_ID);
+        assertThat(mention.bookId()).isEqualTo(BOOK_ID);
+        assertThat(mention.resolutionStatus()).isEqualTo("UNRESOLVED");
+        assertThat(mention.extractionIndex()).isEqualTo(4);
         assertThat(mention.createdAt()).isEqualTo(CREATED_AT);
         assertThat(mention.updatedAt()).isEqualTo(UPDATED_AT);
     }
@@ -76,6 +108,8 @@ class MentionRecordTest {
     void shouldSupportSharedMentionContractAcrossMentionRecordTypes() {
         List<Mention> mentions = List.of(
                 individualMention(UUID.fromString("00000000-0000-0000-0000-000000000031"), List.of("Kal"), "UNRESOLVED"),
+                collectiveMention(UUID.fromString("00000000-0000-0000-0000-000000000035"), List.of("Bridge Four"), "UNRESOLVED"),
+                objectMention(UUID.fromString("00000000-0000-0000-0000-000000000034"), List.of("Nightblood"), "UNRESOLVED"),
                 locationMention(UUID.fromString("00000000-0000-0000-0000-000000000032"), List.of("The Tower"), "RESOLVED"),
                 eventMention(UUID.fromString("00000000-0000-0000-0000-000000000033"), List.of("Contest"), "PENDING")
         );
@@ -91,13 +125,51 @@ class MentionRecordTest {
                 .containsOnly(BOOK_ID);
         assertThat(mentions)
                 .extracting(Mention::displayName)
-                .containsExactly("Kaladin", "Urithiru", "The Duel");
+                .containsExactly("Kaladin", "Bridge Four", "Nightblood", "Urithiru", "The Duel");
         assertThat(mentions)
                 .extracting(Mention::normalizedName)
-                .containsExactly("kaladin", "urithiru", "the_duel");
+                .containsExactly("kaladin", "bridge four", "nightblood", "urithiru", "the_duel");
         assertThat(mentions)
                 .extracting(Mention::resolutionStatus)
-                .containsExactly("UNRESOLVED", "RESOLVED", "PENDING");
+                .containsExactly("UNRESOLVED", "UNRESOLVED", "UNRESOLVED", "RESOLVED", "PENDING");
+    }
+
+    @Test
+    @DisplayName("should map all mention records with specific primary labels and shared Mention label")
+    void shouldMapAllMentionRecordsWithSpecificPrimaryLabelsAndSharedMentionLabel() {
+        assertNodeLabels(IndividualMention.class, "IndividualMention", "Mention");
+        assertNodeLabels(CollectiveMention.class, "CollectiveMention", "Mention");
+        assertNodeLabels(ObjectMention.class, "ObjectMention", "Mention");
+        assertNodeLabels(LocationMention.class, "LocationMention", "Mention");
+        assertNodeLabels(EventMention.class, "EventMention", "Mention");
+    }
+
+    private static CollectiveMention collectiveMention(UUID id, List<String> aliases, String resolutionStatus) {
+        return new CollectiveMention(
+                id,
+                "scene-analysis",
+                "Bridge Four",
+                "bridge four",
+                aliases,
+                "military",
+                "Explicit",
+                "Bridge Four forms up around Kaladin",
+                SCENE_ID,
+                CHAPTER_ID,
+                BOOK_ID,
+                resolutionStatus,
+                6,
+                CREATED_AT,
+                UPDATED_AT
+        );
+    }
+
+    private static void assertNodeLabels(Class<?> entityType, String primaryLabel, String additionalLabel) {
+        Node node = entityType.getAnnotation(Node.class);
+
+        assertThat(node).isNotNull();
+        assertThat(node.primaryLabel()).isEqualTo(primaryLabel);
+        assertThat(node.labels()).containsExactly(additionalLabel);
     }
 
     private static IndividualMention individualMention(UUID id, List<String> aliases, String resolutionStatus) {
@@ -140,6 +212,27 @@ class MentionRecordTest {
         );
     }
 
+    private static ObjectMention objectMention(UUID id, List<String> aliases, String resolutionStatus) {
+        return new ObjectMention(
+                id,
+                "scene-analysis",
+                "Nightblood",
+                "nightblood",
+                aliases,
+                "sentient sword",
+                "black metal",
+                "destroy evil",
+                "A dangerous awakened blade",
+                SCENE_ID,
+                CHAPTER_ID,
+                BOOK_ID,
+                resolutionStatus,
+                4,
+                CREATED_AT,
+                UPDATED_AT
+        );
+    }
+
     private static EventMention eventMention(UUID id, List<String> aliases, String resolutionStatus) {
         return new EventMention(
                 id,
@@ -148,6 +241,7 @@ class MentionRecordTest {
                 "the_duel",
                 aliases,
                 "duel",
+                "A formal duel between two champions",
                 "during",
                 "high",
                 "Two champions face off",

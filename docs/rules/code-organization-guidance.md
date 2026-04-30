@@ -23,23 +23,23 @@ Use the existing feature-oriented split under `com.lorevault.api`.
 | `search` | navigating, querying, retrieving, and answering over `content` |
 | `web` | HTTP and UI edges |
 
-## Current content split
+## Current package map
 
-`content` is an internal semantic umbrella, not a flat bucket.
+LoreVault keeps the top-level feature split under `com.lorevault.api`, then uses
+capability-oriented internal packages where a feature is dense enough to need them.
 
-Use these content subareas:
+Representative current internal shape:
 
-| Package | Meaning |
+| Top-level package | Representative internal packages |
 |---|---|
-| `content.library` | universe / series / book structures and publication-position value types |
-| `content.entities` | materialized graph entities produced or enriched through ingestion |
-| `content.timeline` | temporal understanding and ordering stored as part of content |
+| `ai` | `chunking`, `embedding`, `llm`, `infrastructure` |
+| `content` | `association`, `chapter`, `chunk`, `mention`, `scene`, `timeline` |
+| `ingestion` | `completion`, `content`, `events`, `job`, `pipeline`, `resolution`, `scene`, `submission`, `triad`, `infrastructure` |
+| `library` | `book`, `series`, `service`, `universe` |
+| `search` | `extraction`, `model`, `rag`, `semantic` |
 
-Interpretation:
-
-- `content.library` defines corpus scope and publication structure
-- `content.entities` holds the concrete graph entities the product operates on
-- `content.timeline` is part of the content model, not a separate top-level feature
+This map is descriptive, not a mandatory template. The rule is capability ownership first,
+with local support packages only where they remain semantically honest.
 
 ## Ownership rules
 
@@ -94,37 +94,42 @@ If a type is orchestrating a product workflow such as ingestion, search, or anot
 
 ## Default internal shape
 
-A feature should stay flat by default.
+A feature should stay flat until it becomes semantically mixed enough to justify a split.
+When it does need internal structure, default to capability-oriented subpackages rather than
+recreating `application/domain/infrastructure` buckets by habit.
 
-Add internal subpackages only when the feature is both:
+Prefer packages that communicate what the feature does:
 
-- large enough that browsing has become harder
-- semantically mixed enough that the split reveals real ownership
+- `scene`, `chunk`, `mention`, `association`
+- `submission`, `job`, `resolution`, `completion`
+- `rag`, `semantic`, `extraction`, `model`
+- `book`, `series`, `universe`
 
-These are available buckets, not a mandatory template:
+Local support buckets are still valid when they are the clearest fit for one bounded area:
 
 | Subpackage | Use it for |
 |---|---|
-| `application` | orchestration, use-case flow, handlers, coordinators |
-| `domain` | rules, policies, value objects, invariants, meaning-bearing models |
-| `infrastructure` | repositories, adapters, external clients, persistence helpers |
 | `events` | shared workflow events used across multiple emitters/listeners |
+| `infrastructure` | technical support types that are genuinely shared within one feature |
+| `pipeline` | small feature-local pipeline support that is not itself a business capability |
+| `service` | a compact service/query seam when a feature is too small to justify finer capability splits |
 
-Use only the buckets a feature has actually earned.
+Do not introduce `application`, `domain`, or `infrastructure` as a feature-wide template just
+to complete a familiar architecture pattern. Use them only as a narrow local fit when the
+semantics are still obvious and they do not become mixed catch-all buckets.
 
 ## Web boundary rules
 
 - `web` stops transport concerns at the edge.
 - HTTP request and response DTOs belong in `web`.
-- Do **not** pass HTTP request/response DTOs into `application`, `domain`, or `content` code.
+- Do **not** pass HTTP request/response DTOs into core feature packages or `content` code.
 - Prefer small feature-owned contracts or primitives over leaking transport shapes inward.
 
 ## Dependency direction
 
-- `web` may depend on feature application code and edge DTOs.
-- `application` may coordinate feature-owned domain/content/infrastructure code.
-- `domain` should not import `web`.
-- `domain` should avoid depending on infrastructure concerns.
+- `web` may depend on `lorevault-core` feature packages and edge DTOs.
+- Core feature packages must not import `web`.
+- Shared support packages inside a feature (`events`, `model`, `pipeline`, `infrastructure`) should not depend on controllers or transport DTOs.
 - `events` should not depend on handlers, controllers, or other implementation details.
 - Treat dependency-direction violations as boundary smells, not harmless style drift.
 
@@ -132,8 +137,8 @@ Use only the buckets a feature has actually earned.
 
 ### Handlers
 
-- Handlers are application code.
-- Event-driven pipeline handlers belong in `application` unless a denser split has clearly emerged.
+- Handlers are workflow-entry types.
+- Put them beside the capability or pipeline stage they belong to, not in a generic `application` bucket by default.
 
 ### Events
 

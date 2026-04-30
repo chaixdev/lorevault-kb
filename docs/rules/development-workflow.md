@@ -125,3 +125,22 @@ This workflow aims to keep the repository legible:
 - accepted truth lives in top-level canonical docs
 
 That separation is the default standard for new work in this repository.
+
+## Local Graph Data Policy
+
+The local Neo4j development database is treated as **disposable and rebuildable** at all stages of current development.
+
+There is no migration obligation for local graph data.
+
+When the graph schema, extraction pipeline, or entity model changes, the correct response is to wipe the local database and re-ingest from source content. Re-ingestion is the migration path.
+
+This policy applies until LoreVault explicitly adopts a schema versioning and migration mechanism and documents it in a canonical rule or ADR. Until then:
+
+- Do not write planning or design docs that treat existing graph data as a constraint
+- Do not design schema changes around in-place graph migration
+- Do not block implementation work on backfill concerns for local data
+
+Scripts that support this policy:
+
+- `scripts/reset-dev-db.sh` — wipes the local Neo4j dev database
+- `scripts/prepare-dev-environment.sh` — wipes and re-seeds canonical sample data (requires app and Neo4j already running)

@@ -30,6 +30,27 @@ generic LLM infrastructure.
 Do not add new shared domain models. See the topology doc for the current state
 and rationale.
 
+## Package-Structure Direction
+
+Within `lorevault-core`, the default internal package shape is capability-oriented.
+
+- Keep the current top-level feature split under `com.lorevault.api`.
+- Inside a feature, prefer packages that communicate semantic ownership such as
+  `scene`, `chunk`, `resolution`, `rag`, `semantic`, `book`, or `universe`.
+- Treat old `application/domain/infrastructure` directories as retired defaults, not as
+  a template for new work.
+
+Scoped exceptions are acceptable when they remain semantically tight:
+
+- `content/timeline` keeps its local layered substructure because it is already a dense,
+  self-contained mechanism with clear internal roles.
+- shared support seams such as `ai/infrastructure`, `ingestion/infrastructure`,
+  `ingestion/events`, `ingestion/pipeline`, or `search/model` are acceptable when they
+  prevent false ownership or avoid back-edge cycles between capability packages.
+
+Remove empty legacy package directories after semantic moves so the source tree does not
+advertise a stale architecture.
+
 ---
 
 ## Graph Schema Management

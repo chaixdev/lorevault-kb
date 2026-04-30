@@ -1,13 +1,14 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.library.domain.PublicationCoordinates;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
+import com.lorevault.api.library.book.PublicationCoordinates;
+import com.lorevault.api.ingestion.job.IngestionJobService;
+import com.lorevault.api.ingestion.submission.IngestionIsolatedLookupService;
+import com.lorevault.api.ingestion.submission.IngestionService;
 
-import com.lorevault.api.library.domain.Book;
-import com.lorevault.api.content.entities.Chapter;
-import com.lorevault.api.ingestion.application.result.IngestionSubmissionResult;
-import com.lorevault.api.library.infrastructure.BookGraphRepository;
-import com.lorevault.api.content.entities.ChapterGraphRepository;
+import com.lorevault.api.library.book.Book;
+import com.lorevault.api.content.chapter.Chapter;
+import com.lorevault.api.ingestion.submission.IngestionSubmissionResult;
+import com.lorevault.api.library.book.BookGraphRepository;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.testing.TestImages;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -31,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataNeo4jTest
 @Testcontainers
-@Import({IngestionService.class, IngestionJobService.class})
+@Import({IngestionService.class, IngestionIsolatedLookupService.class, IngestionJobService.class})
 @ActiveProfiles("test")
 @Tag("integration")
 class IngestionServiceChapterPersistenceIntegrationTest {

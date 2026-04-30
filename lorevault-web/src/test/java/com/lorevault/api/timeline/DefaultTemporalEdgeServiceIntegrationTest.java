@@ -1,6 +1,6 @@
 package com.lorevault.api.timeline;
 
-import com.lorevault.api.content.timeline.application.DefaultTemporalEdgeService;
+import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeService;
 import com.lorevault.api.content.timeline.infrastructure.TemporalGraphRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

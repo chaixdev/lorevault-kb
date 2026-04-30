@@ -148,6 +148,117 @@ Refactor to a separate `@Service` bean, or inject self via `ApplicationContext`.
 Do not hold a transaction open across LLM calls, HTTP outbound calls, or file I/O.
 Holding the Neo4j connection slot while a slow external operation runs is expensive.
 
+```java
+// Wrong — Neo4j connection held open during every HTTP call to the embedding API
+@Transactional
+public int generateEmbeddingsForChapter(UUID chapterId) {
+    List<Chunk> chunks = chunkRepo.findByChapter(chapterId); // read inside tx
+    List<double[]> vectors = embeddingModel.call(chunks);    // external I/O inside tx
+    chunkRepo.saveAll(chunks);                               // write inside tx
+}
+
+// Correct — only the write needs a transaction
+public int generateEmbeddingsForChapter(UUID chapterId) {
+    List<Chunk> chunks = loadChunks(chapterId);         // outside tx
+    List<double[]> vectors = embeddingModel.call(...);  // outside tx
+    persistEmbeddings(chunks, vectors);                 // @Transactional write
+}
+```
+
+**`REQUIRES_NEW` for writes that must commit independently.**
+Use `propagation = REQUIRES_NEW` when a status update or audit write must commit and
+be immediately visible to other threads regardless of whether the caller's transaction
+eventually rolls back.
+
+```java
+// Job status updates use REQUIRES_NEW so the committed status is visible
+// to other threads even if the outer pipeline transaction later fails.
+@Transactional(propagation = Propagation.REQUIRES_NEW)
+public void updateJobStatus(UUID jobId, IngestionStatus status, ...) { ... }
+```
+
+Do not use `REQUIRES_NEW` speculatively. Overuse creates nested transactions that
+accumulate connection slots and can deadlock.
+
+**Repository writes outside a `@Transactional` method run in auto-commit.**
+Any `repository.save()` or `repository.saveAll()` call made from a method with no
+`@Transactional` context executes as a separate auto-commit operation. If a loop is
+interrupted mid-way the partial writes are permanent and idempotency guards that check
+"is the work already done?" will treat the partial result as complete on the next
+attempt. Always delegate multi-step write sequences to a `@Transactional` service
+method.
+
+**`@Transactional` on inner methods called via self-invocation is dead code.**
+When a `@Transactional` method delegates to other methods on the same bean using
+`this.`, the inner annotations are bypassed. Declare the transaction boundary at the
+outermost method only. If an inner method genuinely needs independent transaction
+semantics, move it to a separate `@Service` bean.
+
+```java
+// Wrong — inner annotations are bypassed; only createAllDefaults() opens a tx
+@Transactional
+public void createAllDefaults(UUID bookId) {
+    createInChapterDefaults(bookId);  // this.createInChapterDefaults() — proxy skipped
+    createCrossChapterDefault(bookId);
+}
+
+@Transactional   // never fires when called from createAllDefaults()
+public int createInChapterDefaults(UUID bookId) { ... }
+
+// Correct — annotate only the outer boundary; remove redundant inner annotations
+@Transactional
+public void createAllDefaults(UUID bookId) {
+    createInChapterDefaults(bookId);
+    createCrossChapterDefault(bookId);
+}
+
+public int createInChapterDefaults(UUID bookId) { ... }  // participates in outer tx
+```
+
+**In-process locks do not substitute for distributed coordination.**
+`ConcurrentHashMap<UUID, ReentrantLock>` or similar JVM-local guards protect against
+concurrent access within a single JVM only. Any reduction or merge operation that uses
+in-process locking to serialize writes for the same aggregate key is silently unsafe in
+a multi-node deployment.
+
+Acceptability rules:
+- JVM-local keyed locks are only acceptable when the service is explicitly fixed to a
+  single instance and that constraint is documented in both code and ops/deployment docs.
+- Multi-node-safe serialization is required when the write is destructive, non-commutative,
+  or triggered from async/event/scheduled paths that can overlap for the same aggregate key.
+- A Neo4j unique-constraint violation + retry loop is a guardrail against duplicate node
+  creation, not a serialization strategy for multi-step aggregate rebuilds. Do not substitute
+  one for the other.
+- The correct multi-node approach for delete-and-rebuild aggregates is a persisted
+  work-claim model: write a dirty marker / claim record to Neo4j under a unique constraint,
+  have the worker atomically claim it, run the rebuild, then clear or re-queue if a new
+  trigger arrived during the run.
+
+**Default to declarative transaction management. Mix sparingly.**
+`@Transactional` annotations on public methods of separate beans are the primary
+transaction management mechanism. `TransactionTemplate` is acceptable only when
+transaction settings must be chosen at runtime or you need a callback-scoped transaction
+outside of a proxied service method. If a `TransactionTemplate` is used, a code comment
+must explain why declarative annotations are insufficient.
+
+When the real goal is an isolated commit (equivalent to `REQUIRES_NEW`), the correct
+approach is a public method annotated `@Transactional(propagation = REQUIRES_NEW)` on a
+separate bean — not a hand-built template in the calling class.
+
+```java
+// Wrong — TransactionTemplate in the same class for what is just a REQUIRES_NEW read
+@PostConstruct
+private void init() {
+    txTemplate = new TransactionTemplate(txManager);
+    txTemplate.setPropagationBehavior(PROPAGATION_REQUIRES_NEW);
+}
+
+// Correct — separate bean, declarative annotation, no setup noise
+// IngestionDeduplicationService.java
+@Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+public Optional<IngestionJob> findActiveJobForChapter(UUID chapterId) { ... }
+```
+
 **`@TransactionalEventListener(AFTER_COMMIT)` + new transaction.**
 This fires outside any active transaction. If the handler needs to write to Neo4j,
 add `@Transactional(propagation = REQUIRES_NEW)`.

@@ -1,14 +1,4 @@
 package com.lorevault.api.ai.infrastructure;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
 
 import com.lorevault.api.config.LoreVaultPromptProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,5 +58,55 @@ public class PromptTemplateRenderingTest {
         assertThat(rendered).contains("prev ctx");
         assertThat(rendered).contains("curr ctx");
         assertThat(rendered).contains("next ctx");
+    }
+
+    @Test
+    void eventCorefUserTemplate_renders_with_xml_payload_without_template_parse_errors() {
+        PromptTemplate t = repo.get("event-coref-user");
+
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("chapterId", "chapter-123");
+        vars.put("scenes", "<scene id=\"scene-1\"><mention id=\"mention-1\">payload</mention></scene>");
+
+        String rendered = t.render(vars);
+
+        assertThat(rendered).contains("chapter-123");
+        assertThat(rendered).contains("<mentions>");
+        assertThat(rendered).contains("<scene id=\"scene-1\"><mention id=\"mention-1\">payload</mention></scene>");
+        assertThat(rendered).contains("sameEventGroups");
+        assertThat(rendered).contains("Return valid JSON only.");
+        assertThat(rendered).doesNotContain("Return a JSON object matching this schema:");
+    }
+
+    @Test
+    void eventMergeUserTemplate_renders_with_pair_payload_without_template_parse_errors() {
+        PromptTemplate t = repo.get("event-merge-user");
+
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("annScore", 0.91);
+        vars.put("eventId1", "00000000-0000-0000-0000-000000000001");
+        vars.put("eventId2", "00000000-0000-0000-0000-000000000002");
+        vars.put("event1DisplayName", "Battle at Helm's Deep");
+        vars.put("event1NormalizedName", "battle at helms deep");
+        vars.put("event1RepresentativeEventType", "BATTLE");
+        vars.put("event1AggregateCard", "card a");
+        vars.put("event1SupportedAliases", "<item>Helm's Deep battle</item>");
+        vars.put("event1SupportedEventTypes", "<item>BATTLE</item>");
+        vars.put("event1EvidenceSnippets", "<item>evidence a</item>");
+        vars.put("event2DisplayName", "The assault on Helm's Deep");
+        vars.put("event2NormalizedName", "the assault on helms deep");
+        vars.put("event2RepresentativeEventType", "ASSAULT");
+        vars.put("event2AggregateCard", "card b");
+        vars.put("event2SupportedAliases", "<item>assault</item>");
+        vars.put("event2SupportedEventTypes", "<item>ASSAULT</item>");
+        vars.put("event2EvidenceSnippets", "<item>evidence b</item>");
+
+        String rendered = t.render(vars);
+
+        assertThat(rendered).contains("<pair>");
+        assertThat(rendered).contains("<annScore>0.91</annScore>");
+        assertThat(rendered).contains("Battle at Helm's Deep");
+        assertThat(rendered).contains("The assault on Helm's Deep");
+        assertThat(rendered).contains("Return valid JSON only with keys: decision, confidence, rationale.");
     }
 }

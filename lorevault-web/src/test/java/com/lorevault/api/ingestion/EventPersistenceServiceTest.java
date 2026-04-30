@@ -1,10 +1,10 @@
 package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.infrastructure.*;
 
-import com.lorevault.api.content.entities.EventMention;
-import com.lorevault.api.content.entities.EventMentionGraphRepository;
-import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
+import com.lorevault.api.content.mention.EventMention;
+import com.lorevault.api.content.mention.EventMentionGraphRepository;
+import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -42,6 +42,7 @@ class EventPersistenceServiceTest {
                 new TriadAnalysisModels.EventExtraction(
                         "  The Winter War  ",
                         "war",
+                        "A remembered historical war that characters invoke as past context.",
                         "R:temporal.before",
                         "Explicit",
                         "They still speak of the Winter War"
@@ -61,6 +62,7 @@ class EventPersistenceServiceTest {
         assertThat(saved.normalizedName()).isEqualTo("the winter war");
         assertThat(saved.aliases()).containsExactly("The Winter War");
         assertThat(saved.eventType()).isEqualTo("war");
+        assertThat(saved.description()).isEqualTo("A remembered historical war that characters invoke as past context.");
         assertThat(saved.sceneRelativeRelation()).isEqualTo("R:temporal.before");
         assertThat(saved.certainty()).isEqualTo("Explicit");
         assertThat(saved.evidence()).isEqualTo("They still speak of the Winter War");
@@ -81,6 +83,7 @@ class EventPersistenceServiceTest {
                 new TriadAnalysisModels.EventExtraction(
                         " ",
                         "meeting",
+                        "A meeting alluded to without a usable event name.",
                         "R:temporal.overlaps",
                         "WeaklyImplied",
                         ""

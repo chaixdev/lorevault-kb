@@ -159,4 +159,4 @@ When reviewing persisted graph data:
 - `../../concepts/temporal-relation-semantics.md` — contributor/operator interpretation and validation rules
 - `../ingestion/triad-analysis.md` — triad inference and temporal edge persistence shape
 - `../ingestion/ingestion-pipeline.md` — when scenes, mentions, and temporal edges are persisted
-- `../ingestion/entity-resolution-ladder.md` — entity evidence ladder (Individual and Location lanes)
+- `../ingestion/entity-resolution-ladder.md` — entity evidence ladder (Individual, Location, Object, and Collective lanes)

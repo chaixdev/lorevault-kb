@@ -1,13 +1,14 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.resolution.*;
 
-import com.lorevault.api.content.entities.ChapterLocation;
-import com.lorevault.api.content.entities.ChapterLocationGraphRepository;
-import com.lorevault.api.content.entities.LocationMention;
-import com.lorevault.api.content.entities.LocationMentionGraphRepository;
-import com.lorevault.api.ingestion.application.result.ChapterLocationResolutionResult;
+import com.lorevault.api.content.association.ChapterLocation;
+import com.lorevault.api.content.association.ChapterLocationGraphRepository;
+import com.lorevault.api.content.mention.LocationMention;
+import com.lorevault.api.content.mention.LocationMentionGraphRepository;
+import com.lorevault.api.ingestion.resolution.location.ChapterLocationResolutionResult;
 import java.util.List;
 import java.util.UUID;
+
+import com.lorevault.api.ingestion.resolution.location.ChapterLocationResolutionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

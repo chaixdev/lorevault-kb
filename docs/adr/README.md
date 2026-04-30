@@ -45,3 +45,4 @@ If the decision is later replaced, the ADR should remain as history and point to
 - [008 - Define ingestion completion across parallel branches](008-define-ingestion-completion-across-parallel-branches.md)
 - [009 - Structured logging philosophy](009-structured-logging-philosophy.md)
 - [010 - Practical Allen relation usage](010-practical-allen-relation-usage.md)
+- [011 - Adopt capability-oriented internal package structure](011-adopt-capability-oriented-internal-package-structure.md)

@@ -37,3 +37,4 @@ If a rule needs rationale or mechanism context that only exists in exploratory d
 - [Logging philosophy](logging-philosophy.md)
 - [Coding standards](coding-standards.md)
 - [LoreVault module and domain model conventions](lorevault-module-conventions.md)
+- [Handler design contract](handler-design-contract.md)

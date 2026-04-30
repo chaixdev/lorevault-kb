@@ -1,9 +1,9 @@
 package com.lorevault.api.ingestion.infrastructure;
 
-import com.lorevault.api.content.entities.EventMention;
-import com.lorevault.api.content.entities.EventMentionGraphRepository;
-import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.ingestion.application.result.TriadAnalysisModels;
+import com.lorevault.api.content.mention.EventMention;
+import com.lorevault.api.content.mention.EventMentionGraphRepository;
+import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -56,6 +56,7 @@ public class EventPersistenceService {
                         normalizeName(displayName),
                         List.of(displayName),
                         normalizeText(extracted.eventType()),
+                        normalizeText(extracted.description()),
                         normalizeText(extracted.temporalType()),
                         normalizeText(extracted.certainty()),
                         normalizeText(extracted.evidence()),

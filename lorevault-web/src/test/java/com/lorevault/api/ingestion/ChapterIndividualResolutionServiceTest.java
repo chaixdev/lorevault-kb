@@ -1,11 +1,12 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.resolution.*;
 
-import com.lorevault.api.content.entities.ChapterIndividual;
-import com.lorevault.api.content.entities.ChapterIndividualGraphRepository;
-import com.lorevault.api.ingestion.application.result.ChapterIndividualResolutionResult;
+import com.lorevault.api.content.association.ChapterIndividual;
+import com.lorevault.api.content.association.ChapterIndividualGraphRepository;
+import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionResult;
 import java.util.List;
 import java.util.UUID;
+
+import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

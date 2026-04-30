@@ -12,24 +12,26 @@ The general ladder shape is:
 - `EntityMention -[:REFERS_TO]-> ChapterEntity`
 - `ChapterEntity -[:REFERS_TO]-> BookEntity`
 
-LoreVault currently implements two entity lanes following this ladder:
+LoreVault currently implements four regular entity lanes following this ladder:
 
 - **Individual** — `IndividualMention → ChapterIndividual → BookIndividual`
 - **Location** — `LocationMention → ChapterLocation → BookLocation`
+- **Object** — `ObjectMention → ChapterObject → BookObject`
+- **Collective** — `CollectiveMention → ChapterCollective → BookCollective`
 
-Each lane runs as an independent sibling branch off `ScenesDetectedEvent`. Both lanes are required branches in the ingestion completion contract.
+Each lane runs as an independent sibling branch off `ScenesDetectedEvent`. All four book-reduced events are required completion-barrier branches in the ingestion completion contract.
 
-This pattern documents the present-state mechanism. Future event resolution is a distinct special case not covered here.
+Event resolution is a distinct special-case pipeline path. It uses event-specific extraction, chapter event aggregation, event embeddings, ANN candidate generation, semantic merge verification, and book event writes rather than the regular entity ladder described here.
 
 ## Why the ladder exists
 
-LoreVault treats entity resolution as a scoped aggregation problem rather than immediate canonicalization.
+LoreVault treats entity resolution as a scoped aggregation problem rather than immediate global canonicalization.
 
-- `EntityMention` preserves evidence from a specific scene
-- `ChapterEntity` consolidates same-entity mentions within one chapter
-- `BookEntity` provides a thin cross-chapter identity backbone within one book
+- `EntityMention` preserves evidence from a specific scene.
+- `ChapterEntity` consolidates same-entity mentions within one chapter.
+- `BookEntity` provides a thin cross-chapter identity backbone within one book.
 
-The result is a map/reduce entity flow that fits the chapter-oriented ingestion pipeline and spoiler-aware product shape.
+The result is a map/reduce entity flow that fits chapter-oriented ingestion and spoiler-aware retrieval.
 
 ## Shared Mechanism
 
@@ -37,151 +39,113 @@ The result is a map/reduce entity flow that fits the chapter-oriented ingestion 
 
 `SceneDetectionHandler` persists real `Scene` nodes first.
 
-After scenes are localized and saved, each entity lane's persistence service resolves `sceneIndex → Scene.id` and writes `EntityMention` nodes plus `Scene -[:MENTIONS]-> EntityMention` links using persisted scene IDs.
+After scenes are localized and saved, each entity persistence service resolves `sceneIndex → Scene.id` and writes `EntityMention` nodes plus `Scene -[:MENTIONS]-> EntityMention` links using persisted scene IDs.
+
+The implemented scene-local evidence lanes are:
+
+- `IndividualPersistenceService`
+- `LocationPersistenceService`
+- `ObjectPersistenceService`
+- `CollectivePersistenceService`
 
 The evidence layer is written before any entity consolidation happens.
 
-### 2) `ScenesDetectedEvent` fans out into entity branches
+### 2) `ScenesDetectedEvent` fans out into sibling branches
 
-Once scene persistence is complete, `SceneDetectionHandler` publishes `ScenesDetectedEvent`.
+Once scene persistence and scene-local evidence persistence are complete, `SceneDetectionHandler` publishes `ScenesDetectedEvent`.
 
-That event feeds three required follow-up flows:
+That event feeds:
 
-- **content branch** — chunking then embedding
-- **Individual branch** — chapter resolution then book reduction
-- **Location branch** — chapter resolution then book reduction
+- content branch — chunking then embedding
+- Individual branch — chapter resolution then book reduction
+- Location branch — chapter resolution then book reduction
+- Object branch — chapter resolution then book reduction
+- Collective branch — chapter resolution then book reduction
+- Event branch — chapter event resolution, event embedding, and same-book ANN candidate generation
 
 Entity lanes are sibling branches, not sub-steps of each other or of the content branch.
 
 ### 3) Chapter-level resolution groups mentions and creates chapter entities
 
-Each entity lane has a `ChapterEntityResolutionHandler` that listens to `ScenesDetectedEvent` and calls its `ChapterEntityResolutionService.resolveChapter(chapterId)`.
+Each regular entity lane has a `Chapter*ResolutionHandler` that listens to `ScenesDetectedEvent` and calls its `Chapter*ResolutionService.resolveChapter(chapterId)`.
 
-The shared behavior across lanes:
+Shared behavior across lanes:
 
-- existing chapter-level entity state for the chapter is deleted
-- mention candidates are grouped by normalized name (details differ per entity type — see entity sections below)
-- one `ChapterEntity` node is created per group
-- `EntityMention -[:REFERS_TO]-> ChapterEntity` links are recreated
+- existing chapter-level entity state for the chapter is removed inside the chapter-resolution transaction
+- mention candidates are grouped by lane-specific deterministic rules
+- one `Chapter*` node is created per group
+- `EntityMention -[:REFERS_TO]-> Chapter*` links are recreated
 - linked mentions are marked `chapter-resolved`
+- empty mention sets are valid terminal results and still emit chapter-resolved events
 
-Chapter entity state is intentionally minimal in both lanes. Both proove the graph shape before adding richer aggregate facts.
+Chapter aggregate nodes are derived projections. They may be rebuilt by their owning chapter resolver as long as downstream dependent projections are recomputed or invalidated according to the handler retry-safety contract.
 
 ### 4) Book-level reduction groups chapter entities upward
 
-Each entity lane has a `BookEntityReductionHandler` that listens to its lane's `ChapterEntitiesResolvedEvent` and calls its `BookEntityReductionService.resolveBook(bookId)`.
+Each regular entity lane has a `Book*ReductionHandler` that listens to its lane's `Chapter*ResolvedEvent` and calls its `Book*ReductionService.resolveBook(bookId)`.
 
-The shared behavior across lanes:
+Shared behavior across lanes:
 
-- existing book-level entity state for the book is deleted
-- `ChapterEntity` nodes for the book are gathered and clustered by normalized name
+- book reduction is serialized per book using the persisted `BookReductionClaim` guard
+- `Chapter*` nodes for the book are gathered and grouped deterministically
 - a representative chapter entity and first-seen chapter reference are kept
-- thin `BookEntity` nodes are rebuilt
-- `ChapterEntity -[:REFERS_TO]-> BookEntity` links are recreated
+- thin `Book*` nodes are replaced as one coherent transactional write
+- `Chapter* -[:REFERS_TO]-> Book*` links are recreated
+- empty candidate sets are valid terminal empty replacements and still emit book-reduced events
 
-`BookEntity` is deliberately thin in both lanes. It is a continuity structure for retrieval and navigation, not a rich aggregate facts model.
+Book reducers must not publish `Book*ReducedEvent` for claim contention, retry exhaustion, or work that did not reach a coherent terminal state. Claim contention is represented as retryable stage failure rather than alternate success.
 
-Book reduction is serialized per book using a per-book lock to prevent concurrent delete-and-rebuild races when multiple chapter completions for the same book arrive close together.
+`Book*` nodes are deliberately thin continuity structures for retrieval and navigation, not rich aggregate fact models.
 
----
+## Implemented Lanes
 
-## Individual Lane
+### Individual Lane
 
 **Ladder:** `Scene -[:MENTIONS]-> IndividualMention -[:REFERS_TO]-> ChapterIndividual -[:REFERS_TO]-> BookIndividual`
 
-### Evidence fields (IndividualMention)
+**Evidence fields:** `displayName`, `normalizedName`, `aliases`, `activity`, `age`, `physicalProperties`, scope IDs, `resolutionStatus`, and `extractionIndex`.
 
-- `displayName`
-- `normalizedName`
-- `aliases`
-- `activity`
-- `age`
-- `physicalProperties`
-- `sceneId`, `chapterId`, `bookId`
-- `resolutionStatus`
-- `extractionIndex`
+**Grouping:** mentions and chapter aggregates are grouped by `normalizedName` only.
 
-### Chapter grouping
+**Aggregate state:** `ChapterIndividual` carries display/name/count state; `BookIndividual` carries display/name/count plus representative chapter individual and first-seen chapter IDs.
 
-Mentions are grouped by `normalizedName` only. One `ChapterIndividual` is created per distinct normalized name group.
+**Key components:** `IndividualPersistenceService`, `ChapterIndividualResolutionHandler`, `ChapterIndividualResolutionService`, `BookIndividualReductionHandler`, `BookIndividualReductionService`, `ChapterIndividualsResolvedEvent`, `BookIndividualsReducedEvent`.
 
-### ChapterIndividual state
-
-- `chapterId`
-- `displayName`
-- `normalizedName`
-- `mentionCount`
-
-### BookIndividual state
-
-- `bookId`
-- `displayName`
-- `normalizedName`
-- `chapterIndividualCount`
-- `representativeChapterIndividualId`
-- `firstSeenChapterId`
-
-### Key handlers and services
-
-- `IndividualPersistenceService` — writes `IndividualMention` nodes and scene links
-- `ChapterIndividualResolutionHandler` / `ChapterIndividualResolutionService` — chapter-level grouping
-- `BookIndividualReductionHandler` / `BookIndividualReductionService` — book-level reduction
-- Events: `ChapterIndividualsResolvedEvent`, `BookIndividualsReducedEvent`
-
----
-
-## Location Lane
+### Location Lane
 
 **Ladder:** `Scene -[:MENTIONS]-> LocationMention -[:REFERS_TO]-> ChapterLocation -[:REFERS_TO]-> BookLocation`
 
-### Evidence fields (LocationMention)
+**Evidence fields:** `displayName`, `normalizedName`, `aliases`, `kind`, `region`, `description`, scope IDs, `resolutionStatus`, and `extractionIndex`.
 
-- `displayName`
-- `normalizedName`
-- `aliases`
-- `kind`
-- `region`
-- `description`
-- `sceneId`, `chapterId`, `bookId`
-- `resolutionStatus`
-- `extractionIndex`
+**Grouping:** mentions are grouped by exact normalized primary/display name and exact normalized aliases. Alias overlap bridges multiple exact-match groups transitively.
 
-The `kind`, `region`, and `description` fields are Location-specific and have no Individual equivalent.
+**Aggregate state:** `ChapterLocation` and `BookLocation` preserve aliases in addition to display/name/count and representative IDs.
 
-### Chapter grouping
+**Key components:** `LocationPersistenceService`, `ChapterLocationResolutionHandler`, `ChapterLocationResolutionService`, `BookLocationReductionHandler`, `BookLocationReductionService`, `ChapterLocationsResolvedEvent`, `BookLocationsReducedEvent`.
 
-Mentions are grouped by exact normalized primary/display name **and** exact normalized aliases. Alias overlap bridges multiple exact-match groups transitively. One `ChapterLocation` is created per resulting cluster.
+### Object Lane
 
-This transitive alias bridging is more sophisticated than the Individual lane's name-only grouping.
+**Ladder:** `Scene -[:MENTIONS]-> ObjectMention -[:REFERS_TO]-> ChapterObject -[:REFERS_TO]-> BookObject`
 
-### ChapterLocation state
+**Evidence fields:** `displayName`, `normalizedName`, `aliases`, `type`, `material`, `purpose`, `description`, scope IDs, `resolutionStatus`, and `extractionIndex`.
 
-- `chapterId`
-- `displayName`
-- `normalizedName`
-- `aliases`
-- `mentionCount`
+**Grouping:** Object v1 groups strictly by `normalizedName`. Aliases and descriptive fields are carried forward as representative metadata, not merge authority. This avoids over-merging generic object language such as “sword”, “door”, “key”, or “ship”.
 
-### BookLocation state
+**Aggregate state:** `ChapterObject` and `BookObject` preserve aliases plus representative `type`, `material`, `purpose`, and `description` metadata.
 
-- `bookId`
-- `displayName`
-- `normalizedName`
-- `aliases`
-- `chapterLocationCount`
-- `representativeChapterLocationId`
-- `firstSeenChapterId`
+**Key components:** `ObjectPersistenceService`, `ChapterObjectResolutionHandler`, `ChapterObjectResolutionService`, `BookObjectReductionHandler`, `BookObjectReductionService`, `ChapterObjectsResolvedEvent`, `BookObjectsReducedEvent`.
 
-Both chapter and book Location state carry `aliases` forward, unlike the Individual lane.
+### Collective Lane
 
-### Key handlers and services
+**Ladder:** `Scene -[:MENTIONS]-> CollectiveMention -[:REFERS_TO]-> ChapterCollective -[:REFERS_TO]-> BookCollective`
 
-- `LocationPersistenceService` — writes `LocationMention` nodes and scene links
-- `ChapterLocationResolutionHandler` / `ChapterLocationResolutionService` — chapter-level grouping
-- `BookLocationReductionHandler` / `BookLocationReductionService` — book-level reduction
-- Events: `ChapterLocationsResolvedEvent`, `BookLocationsReducedEvent`
+**Evidence fields:** `displayName`, `normalizedName`, `aliases`, `collectiveType`, `certainty`, `evidence`, scope IDs, `resolutionStatus`, and `extractionIndex`.
 
----
+**Grouping:** Collective v1 groups strictly by `normalizedName`. Aliases, type, certainty, and evidence are retained as representative metadata rather than transitive merge keys.
+
+**Aggregate state:** `ChapterCollective` and `BookCollective` preserve aliases plus representative `collectiveType`, `certainty`, and `evidence` metadata.
+
+**Key components:** `CollectivePersistenceService`, `ChapterCollectiveResolutionHandler`, `ChapterCollectiveResolutionService`, `BookCollectiveReductionHandler`, `BookCollectiveReductionService`, `ChapterCollectivesResolvedEvent`, `BookCollectivesReducedEvent`.
 
 ## Event Chain
 
@@ -206,63 +170,71 @@ graph LR
     ChapterResolvedLoc --> BookReduceLoc["BookLocationReductionHandler"]
     BookReduceLoc --> BookReducedLoc["BookLocationsReducedEvent"]
 
+    ScenesEvt --> ChapterResolveObj["ChapterObjectResolutionHandler"]
+    ChapterResolveObj --> ChapterResolvedObj["ChapterObjectsResolvedEvent"]
+    ChapterResolvedObj --> BookReduceObj["BookObjectReductionHandler"]
+    BookReduceObj --> BookReducedObj["BookObjectsReducedEvent"]
+
+    ScenesEvt --> ChapterResolveCol["ChapterCollectiveResolutionHandler"]
+    ChapterResolveCol --> ChapterResolvedCol["ChapterCollectivesResolvedEvent"]
+    ChapterResolvedCol --> BookReduceCol["BookCollectiveReductionHandler"]
+    BookReduceCol --> BookReducedCol["BookCollectivesReducedEvent"]
+
+    ScenesEvt --> ChapterResolveEvt["ChapterEventResolutionHandler"]
+    ChapterResolveEvt --> ChapterResolvedEvt["ChapterEventsResolvedEvent"]
+    ChapterResolvedEvt --> EventEmbedding["ChapterEventEmbeddingHandler"]
+    EventEmbedding --> BookEventCandidates["BookEventCandidatesGeneratedEvent"]
+
     EmbeddingsDone --> Complete["IngestionCompletionCoordinator"]
     BookReducedInd --> Complete
     BookReducedLoc --> Complete
+    BookReducedObj --> Complete
+    BookReducedCol --> Complete
+    ChapterResolvedEvt --> Complete
+    BookEventCandidates --> Complete
     Complete --> Done["IngestionCompletedEvent"]
 ```
 
-### Completion semantics
+## Completion semantics
 
 `IngestionCompletedEvent` is terminal for chapter ingestion.
 
-`IngestionCompletionCoordinator` waits for all three required branches to complete for the same `(jobId, chapterId)` before publishing `IngestionCompletedEvent`:
+`IngestionCompletionCoordinator` waits for all required completion-barrier events for the same `(jobId, chapterId)` before publishing `IngestionCompletedEvent`:
 
 - `EmbeddingsCompletedEvent` (content branch)
 - `BookIndividualsReducedEvent` (Individual lane)
 - `BookLocationsReducedEvent` (Location lane)
+- `BookObjectsReducedEvent` (Object lane)
+- `BookCollectivesReducedEvent` (Collective lane)
+- `ChapterEventsResolvedEvent` (event-resolution path)
+- `BookEventCandidatesGeneratedEvent` (event embedding and ANN candidate path)
 
-Entity lanes are part of the completion contract, not optional post-processing.
+Entity lanes and the event path are part of the completion contract, not optional post-processing.
 
-## Idempotency
+## Retry and replay safety
 
-### Scene detection
+Regular entity handlers follow the [Handler Retry-Safety Pattern](handler-retry-safety.md): each handler owns its projection scope, emits downstream events only after coherent output exists, and treats retryable/deferred work as something other than alternate success.
 
-`SceneDetectionHandler` checks for existing scenes before rerunning detection. If scenes already exist, it emits `ScenesDetectedEvent` from the persisted state and skips duplicate scene creation.
-
-### Chapter resolution (both lanes)
-
-Both `ChapterIndividualResolutionService` and `ChapterLocationResolutionService` use a delete-and-rebuild strategy for one chapter at a time. Given the same mention set, the result is deterministic and safe to rerun.
-
-### Book reduction (both lanes)
-
-Both book reduction services use delete-and-rebuild semantics. Automatic triggering is serialized per book via a per-book `ReentrantLock` keyed by `bookId` to prevent concurrent reduction races from violating unique constraints.
-
-## Manual Trigger Points
-
-Automatic event-driven processing is the default for both entity lanes, but manual command endpoints remain available at both the chapter resolution and book reduction level for each lane.
-
-These allow explicit reruns without disabling the automatic path.
+Manual rerun endpoints exist for chapter resolution and book reduction in each regular lane. They follow the same ownership and event semantics as automatic event-driven processing.
 
 ## Future Entity Lanes
 
-The Individual and Location lanes follow the same structural template and can serve as a reference for adding further entity types.
-
-Future event resolution (timeline events, `FutureEvent`) is a **distinct special case** not addressed by this pattern. FutureEvent resolution involves different semantics than the mention-evidence-to-identity aggregation described here, and is documented separately when implemented.
+The remaining regular entity lane currently planned is Concept: `ConceptMention → ChapterConcept → BookConcept`. Concept is intentionally deferred until its extraction boundaries and subtype discipline are specified.
 
 ## Boundaries
 
 This pattern covers:
 
-- the shared entity resolution ladder structure
-- the Individual and Location lane implementations
-- the event chain and fan-out shape
-- idempotency and completion semantics across lanes
+- the shared regular entity resolution ladder structure
+- Individual, Location, Object, and Collective lane implementations
+- event-chain placement and fan-out/fan-in shape for regular entity lanes
+- retry-safety and completion semantics across regular entity lanes
 
 This pattern does **not** cover:
 
-- future event resolution (separate special case)
-- embedding-assisted candidate generation for entity matching
+- event resolution internals, event embeddings, ANN candidate generation, semantic merge verification, or BookEvent writes
+- Concept resolution, which is not implemented yet
+- embedding-assisted candidate generation for regular entity matching
 - claim extraction or canonical fact modeling
 - cross-book or cross-series entity resolution
 - Location geocoding, lat/lng, external place IDs, containment graphs, or geo heuristics
@@ -270,26 +242,17 @@ This pattern does **not** cover:
 ## Primary References
 
 - `ingestion-pipeline.md`
+- `handler-retry-safety.md`
 - `../../adr/008-define-ingestion-completion-across-parallel-branches.md`
 
 ## Key Code References
 
-**Individual lane:**
-- `IndividualPersistenceService.java`
-- `ChapterIndividualResolutionHandler.java`
-- `ChapterIndividualResolutionService.java`
-- `BookIndividualReductionHandler.java`
-- `BookIndividualReductionService.java`
-- `IndividualMention.java`, `ChapterIndividual.java`, `BookIndividual.java`
+**Individual lane:** `IndividualPersistenceService`, `ChapterIndividualResolutionHandler`, `ChapterIndividualResolutionService`, `BookIndividualReductionHandler`, `BookIndividualReductionService`, `IndividualMention`, `ChapterIndividual`, `BookIndividual`.
 
-**Location lane:**
-- `LocationPersistenceService.java`
-- `ChapterLocationResolutionHandler.java`
-- `ChapterLocationResolutionService.java`
-- `BookLocationReductionHandler.java`
-- `BookLocationReductionService.java`
-- `LocationMention.java`, `ChapterLocation.java`, `BookLocation.java`
+**Location lane:** `LocationPersistenceService`, `ChapterLocationResolutionHandler`, `ChapterLocationResolutionService`, `BookLocationReductionHandler`, `BookLocationReductionService`, `LocationMention`, `ChapterLocation`, `BookLocation`.
 
-**Shared:**
-- `SceneDetectionHandler.java`
-- `IngestionCompletionCoordinator.java`
+**Object lane:** `ObjectPersistenceService`, `ChapterObjectResolutionHandler`, `ChapterObjectResolutionService`, `BookObjectReductionHandler`, `BookObjectReductionService`, `ObjectMention`, `ChapterObject`, `BookObject`.
+
+**Collective lane:** `CollectivePersistenceService`, `ChapterCollectiveResolutionHandler`, `ChapterCollectiveResolutionService`, `BookCollectiveReductionHandler`, `BookCollectiveReductionService`, `CollectiveMention`, `ChapterCollective`, `BookCollective`.
+
+**Shared:** `SceneDetectionHandler`, `SceneRelationshipAnalysisService`, `TriadAnalysisModels`, `IngestionCompletionCoordinator`, `BookReductionClaimService`.

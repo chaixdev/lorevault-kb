@@ -1,10 +1,10 @@
 # LoreVault Project Status
 
-**Last Updated:** April 24, 2026  
-**Reviewed Through Commit:** `18c2309`  
-**Status:** Active — core ingestion and retrieval slices are stable enough to iterate on event extraction and aggregation  
-**Functional Goals:** Expand event extraction, aggregation, and downstream event-aware retrieval while continuing targeted ingestion hardening  
-**Technical Goals:** Guard the architecture now that the codebase is split into separate `core` and `web` Maven modules
+**Last Updated:** April 30, 2026  
+**Reviewed Through Commit:** `491e0f8`  
+**Status:** Active — regular entity resolution now covers Individual, Location, Object, and Collective lanes end to end, while the event entity resolution pipeline remains shipped through EventMention, ChapterEvent, ANN candidate generation, semantic merge verification, and BookEvent writes  
+**Functional Goals:** Validate retrieval quality against the richer entity graph, decide the next Concept/typed-relation slices from evidence, and continue improving event extraction quality  
+**Technical Goals:** Preserve retry-safe ingestion semantics, keep completion fan-in aligned with the implemented branch graph, and plan durable provenance/stage-run recovery without overextending the current patch
 
 ## What LoreVault Is
 
@@ -19,18 +19,24 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Maven structure: `lorevault-core` contains the feature-oriented core packages, and `lorevault-web` contains the HTTP/UI edge
 - Core package structure: 7 top-level feature-oriented packages under `com.lorevault.api` in `lorevault-core` (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`)
 - Edge package structure: `com.lorevault.api.web/**` lives in `lorevault-web`, with `web.command/`, `web.query/`, and `web.ui/` as the canonical edge shape
-- `content` is no longer a flat bucket; `content.entities` and `content.timeline` are current semantic subareas, and `support/` plus top-level `timeline/` are no longer part of the active package map
+- `lorevault-core` now uses capability-oriented internal packages instead of the old per-context `application/domain/infrastructure` split: `content/{association,chapter,chunk,mention,scene,timeline}`, `ingestion/{completion,content,events,job,pipeline,resolution,scene,submission,triad}`, `library/{book,series,service,universe}`, `search/{extraction,model,rag,semantic}`, and `ai/{chunking,embedding,llm}` plus shared local support packages where they remain semantically justified
 - Scene detection now enforces context-budget checks and deterministic segmented fallback for oversized chapters
 - Individual mentions are persisted from scene detection output, with normalized-name and resolution metadata
-- Scoped entity resolution is now active for two lanes:
+- Scoped regular entity resolution is now active for four lanes:
   - `IndividualMention -> ChapterIndividual -> BookIndividual`
   - `LocationMention -> ChapterLocation -> BookLocation`
-- Stage-1 event extraction now persists event-mention evidence as groundwork for a future event-resolution lane
-- Ingestion completion is coordinated across required post-scene branches: embedding completion, book-level Individual reduction, and book-level Location reduction
+  - `ObjectMention -> ChapterObject -> BookObject`
+  - `CollectiveMention -> ChapterCollective -> BookCollective`
+- Stage-1 event extraction now persists event-mention evidence, and the full event lane now carries chapter events through embedding, same-book ANN candidate generation, LLM semantic merge verification, and BookEvent write path — Stages 1–6 are shipped end to end
+- Scene analysis now persists Individual, Location, Object, and Collective mention evidence end to end from triad-analysis output
+- Ingestion completion is coordinated across required post-scene branches: embedding completion, book-level Individual reduction, book-level Location reduction, book-level Object reduction, book-level Collective reduction, chapter event resolution, and event ANN candidate generation
 - Query routing now distinguishes direct entity lookup from broader narrative Q&A, with entity-aware RAG grounded in scene-level individual and location context
 - Search and submission workflows now fail closed more consistently: typed lookup/backend failures remain distinct from legitimate empty retrieval outcomes or new-work creation paths
 - Retrieval now supports baseline, graph-aware, and hybrid modes, with reciprocal-rank-fusion-style hybrid composition available through the ask surface and operator UI
 - Temporal relation handling now uses a practical canonical vocabulary, and scene temporal linking preserves cross-chapter signals through both materialization and read-time ordering
+- Async ingestion handlers have been realigned with transaction guidance, and recent status/LLM-call persistence fixes reduced mismatch risk between pipeline progress and durable records
+- Architecture boundaries between `ai`, `content`, and `ingestion` are now enforced more explicitly in code, with follow-up test alignment on the current ingestion/triad flow
+- Neo4j semantic-search test wiring and related book-reduction claim persistence paths have received another stabilization pass
 - SSE job streaming is live at `/api/query/jobs/stream`, with keepalives and normalized status-update payloads for ingestion lifecycle events
 - A basic operator UI is present under the Thymeleaf `ui/` surface: hierarchical library selection, batch chapter upload, live job visibility, operator actions, a query panel, and retrieval-mode selection
 
@@ -44,27 +50,35 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Recent ingestion/runtime hardening shipped** — recent fixes serialized follow-up execution for stability, shifted triad-status correlation to stable scene IDs (with scene indexes retained as ordering metadata), aligned chunking with content-property configuration, and kept temporal-edge persistence mechanically consistent
 - **Exception-semantics hardening shipped** — scene detection, chapter submission, semantic search/entity lookup, embedding generation, and query/UI boundaries now preserve typed business-failure meaning instead of collapsing known failure modes into generic runtime errors, false-success counters, or misleading no-evidence responses
 - **Initial modern domain-modeling slice landed** — added a narrow `Mention` capability contract implemented by `IndividualMention`, `LocationMention`, and `EventMention`; added focused mention-contract tests; and wired a first concrete search-side consumer path while keeping persisted mention fields flat (no SDN nested value-object migration)
+- **Object and Collective resolution lanes shipped** — scene-analysis Object and Collective outputs now flow through triad normalization into persisted mentions, chapter-scoped aggregates, book-scoped aggregates, manual rerun endpoints, schema/index support, and ingestion completion fan-in
 - **Strong cycle containment completed** — completed four bounded passes of architectural cycle-containment work: moved triad-status ownership to ingestion handler with per-triad callback semantics, removed AI→timeline inverter coupling, extracted normalized triad result contracts for ingestion workflows, removed `Scene implements timeline.Event` reverse edge while keeping Scene as the current Event carrier, introduced an ingestion-owned triad artifact lookup seam for timeline provenance reads, and turned architecture profile cycle test from failing (17→8→6→2) to passing (0 current violations in `CorePackageBoundaryArchitectureTest`)
-- **Scene/triad ownership clarification shipped** — moved scene and triad workflow semantics out of legacy `ai` ownership into ingestion-owned packages: triad orchestration/builders now live under `ingestion.application.triad`, scene-stage workflow result carriers now live under `ingestion.application.scene`, stage failures now live under `ingestion.domain`, and `ai` stays focused on generic LLM infrastructure such as `LlmClient` and retry strategy wiring
+- **Capability-oriented package reorg shipped** — completed the bounded `lorevault-core` package restructure across `ingestion`, `content`, `ai`, `library`, and `search`, replacing legacy internal layered buckets with capability-owned packages and adding a narrow `search.model` seam to keep `rag` and `semantic` cycle-free
+- **Stage 4 event path shipped** — chapter events now continue beyond extraction into vector embedding and same-book ANN candidate generation, and ingestion completion now explicitly waits on the event branch alongside the regular entity lanes
+- **Stages 5–6 event path shipped** — LLM semantic merge verification (Stage 5) evaluates each ANN candidate pair and decides MERGE / KEEP_SEPARATE / UNRESOLVED; BookEvent write path (Stage 6) clusters MERGE decisions and writes thin `BookEvent` nodes plus `ChapterEvent -[:REFERS_TO]-> BookEvent` edges; the event entity resolution pipeline is now end-to-end from EventMention through BookEvent
+- **Post-split architecture and ingestion hardening continued** — recent follow-up commits enforced architecture boundaries across `ai`, `content`, and `ingestion`; aligned async ingestion handlers with transaction rules; tightened LLM-call/status persistence and book-reduction claim handling; stabilized semantic-search test wiring; refreshed individual-resolution coverage to match the current triad-analysis flow; and codified retry-safe handler ownership guidance
 
 ## What Is Next
 
 Near-term execution slices:
-1. **Event extraction iteration**
-   - Build on the current EventMention groundwork with better extraction quality, stronger boundaries, and clearer durable semantics for event evidence captured during ingestion
-2. **Event aggregation and graph shaping**
-   - Define and implement the next aggregation layer that groups extracted event evidence into more useful chapter/book-level structures without overcommitting to premature ontology complexity
-3. **Ingestion reliability follow-up**
-   - Resolve remaining cases where ingestion state can stick in intermediate states, especially around async completion signaling and status persistence alignment
-4. **Retrieval and timeline quality follow-up**
-   - Validate temporal-linking behavior and explore how event-aware retrieval should interact with existing baseline, graph-aware, and hybrid modes
-5. **Web transport boundaries and type visibility**
-   - Tighten the remaining edge-boundary leaks, type-visibility hotspots, and architecture-facing doc drift now that executable guardrails and strong cycle containment are in place
-6. **Revisit domain modeling with modern Java contracts and value objects**
-   - Continue the bounded modern-Java modeling pass by validating where additional narrow capability contracts are justified, while deferring value-object extraction until an explicit SDN-compatible migration path is planned
+1. **Q&A and retrieval quality validation**
+    - Use the richer four-lane entity graph to identify which question categories still fail because of missing retrieval paths, missing typed relations, or answer assembly gaps
+2. **Minimal relation type catalog**
+    - Define the first curated relation vocabulary and extraction integration for typed inter-entity edges such as participation, location, affiliation, and membership
+3. **Concept entity lane**
+   - Decide and implement the remaining regular entity ladder for Concept once subtype discipline and extraction boundaries are clear
+4. **Event extraction iteration**
+    - Build on the current EventMention groundwork with better extraction quality, stronger boundaries, and clearer durable semantics for event evidence captured during ingestion
+5. **Event aggregation and graph shaping**
+    - Define and implement the next aggregation layer that groups extracted event evidence into more useful chapter/book-level structures without overcommitting to premature ontology complexity
+6. **Ingestion reliability and provenance follow-up**
+    - Continue bounded retry-safety hardening, then evaluate the proposed ProjectionGeneration and StageRun DAG models for durable invalidation and crash recovery
+7. **Web transport boundaries and type visibility**
+    - Tighten the remaining edge-boundary leaks, type-visibility hotspots, and architecture-facing doc drift now that executable guardrails and strong cycle containment are in place
+8. **Revisit domain modeling with modern Java contracts and value objects**
+    - Continue the bounded modern-Java modeling pass by validating where additional narrow capability contracts are justified, while deferring value-object extraction until an explicit SDN-compatible migration path is planned
 
 Broader planned directions remain intact after these slices:
-- Broader entity extraction (Collectives and later claims)
+- Broader entity extraction (Concept and later claims)
 - Broader event modeling beyond the current Scene-as-Event carrier
 - Production hardening (observability, rate limiting, error budgets)
 - Improved candidate generation and scoring for identity resolution after the current deterministic ladder
@@ -74,7 +88,7 @@ Broader planned directions remain intact after these slices:
 - Keep Neo4j for graph + vectors
 - Keep Spring AI current
 - Prefer direct services and repositories over internal indirection layers
-- Flatten toward feature-oriented packages
+- Keep feature-oriented top-level packages and capability-oriented internal packages
 - Keep event-driven ingestion where it adds real value
 
 ## Open Decisions

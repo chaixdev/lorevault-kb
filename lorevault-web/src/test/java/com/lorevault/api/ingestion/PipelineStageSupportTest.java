@@ -1,10 +1,11 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.domain.*;
+import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
+import com.lorevault.api.ingestion.job.IngestionJobService;
 
-import com.lorevault.api.ingestion.domain.SceneLocalizationException;
+import com.lorevault.api.ingestion.scene.SceneLocalizationException;
 import com.lorevault.api.ingestion.events.IngestionFailedEvent;
+import com.lorevault.api.ingestion.job.IngestionFailure;
+import com.lorevault.api.ingestion.job.IngestionStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

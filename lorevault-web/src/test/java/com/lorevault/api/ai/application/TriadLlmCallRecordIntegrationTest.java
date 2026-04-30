@@ -1,37 +1,30 @@
 package com.lorevault.api.ai.application;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
+import com.lorevault.api.ingestion.job.IngestionJobService;
 
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
+import com.lorevault.api.ingestion.job.IngestionJob;
+import com.lorevault.api.ingestion.job.IngestionStatus;
+import com.lorevault.api.ingestion.resolution.event.LlmCallRecord;
+import com.lorevault.api.ingestion.resolution.event.LlmCallRequest;
+import com.lorevault.api.ingestion.resolution.event.LlmCallResponse;
+import com.lorevault.api.ingestion.job.StatusRecord;
+import com.lorevault.api.ingestion.job.IngestionJobGraphRepository;
 import com.lorevault.api.ingestion.infrastructure.LlmCallRecordGraphRepository;
-import com.lorevault.api.ingestion.infrastructure.StatusRecordGraphRepository;
-import com.lorevault.api.ingestion.application.IngestionJobService;
+import com.lorevault.api.ingestion.job.StatusRecordGraphRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import com.lorevault.api.testing.TestImages;
+import com.lorevault.api.integration.TestConfig;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -50,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Tag("integration")
 @Testcontainers
 @DisplayName("Triad LLM Call Record Integration")
+@Import(TestConfig.class)
 class TriadLlmCallRecordIntegrationTest {
 
     @SuppressWarnings("resource") // Testcontainers manages lifecycle
@@ -101,7 +95,6 @@ class TriadLlmCallRecordIntegrationTest {
     }
 
     @Test
-    @Transactional
     @DisplayName("Should link LlmCallRecord to SCENE_TRIAD_ANALYSIS StatusRecord with triad metadata")
     void shouldLinkLlmCallRecordToTriadStatusRecord() {
         // Arrange - Create a SCENE_TRIAD_ANALYSIS status record with triad metadata
@@ -140,9 +133,16 @@ class TriadLlmCallRecordIntegrationTest {
         llmCallRecord.setTopP(0.9);
         llmCallRecord.setMaxTokens(6000);
         llmCallRecord.setPromptTemplateId("scene-analysis.txt");
-        llmCallRecord.setRenderedPrompt("System prompt for triad analysis");
-        llmCallRecord.setInputPreview("[userTemplate=scene-analysis-user] Triad user input...");
-        llmCallRecord.setResponseBody("<scene_analysis>...</scene_analysis>");
+        llmCallRecord.setStoreRenderedPrompt(true);
+        llmCallRecord.setRequest(new LlmCallRequest(
+                UUID.randomUUID(),
+                "System prompt for triad analysis",
+                "[userTemplate=scene-analysis-user] Triad user input..."
+        ));
+        llmCallRecord.setResponse(new LlmCallResponse(
+                UUID.randomUUID(),
+                "<scene_analysis>...</scene_analysis>"
+        ));
         llmCallRecord.setLatencyMs(1500L);
         llmCallRecord.setCreatedAt(LocalDateTime.now());
 
@@ -157,7 +157,8 @@ class TriadLlmCallRecordIntegrationTest {
         LlmCallRecord savedRecord = callRecords.get(0);
         assertThat(savedRecord.getStatusRecordId()).isEqualTo(currentStatus.getId());
         assertThat(savedRecord.getStep()).isEqualTo("scene-analysis");
-        assertThat(savedRecord.getInputPreview()).startsWith("[userTemplate=scene-analysis-user]");
+        assertThat(savedRecord.getRequest()).isNotNull();
+        assertThat(savedRecord.getRequest().getInputBody()).startsWith("[userTemplate=scene-analysis-user]");
 
         // Verify graph relationships exist
         assertThat(llmCallRepo.hasOfJobRelation(savedRecord.getId(), testJobId)).isTrue();
@@ -186,7 +187,6 @@ class TriadLlmCallRecordIntegrationTest {
     }
 
     @Test
-    @Transactional
     @DisplayName("Should handle multiple triad LLM calls with different status records")
     void shouldHandleMultipleTriadLlmCallsWithDifferentStatusRecords() {
         // Arrange - Create two SCENE_TRIAD_ANALYSIS status records
@@ -259,7 +259,6 @@ class TriadLlmCallRecordIntegrationTest {
     }
 
     @Test
-    @Transactional
     @DisplayName("Should persist triad metadata in status properties for query and debugging")
     void shouldPersistTriadMetadataInStatusProperties() {
         // Arrange
@@ -323,9 +322,16 @@ class TriadLlmCallRecordIntegrationTest {
         record.setTopP(0.9);
         record.setMaxTokens(6000);
         record.setPromptTemplateId("scene-analysis.txt");
-        record.setRenderedPrompt("System prompt content");
-        record.setInputPreview("[userTemplate=scene-analysis-user] User content preview");
-        record.setResponseBody("<scene_analysis>mock response</scene_analysis>");
+        record.setStoreRenderedPrompt(true);
+        record.setRequest(new LlmCallRequest(
+                UUID.randomUUID(),
+                "System prompt content",
+                "[userTemplate=scene-analysis-user] User content preview"
+        ));
+        record.setResponse(new LlmCallResponse(
+                UUID.randomUUID(),
+                "<scene_analysis>mock response</scene_analysis>"
+        ));
         record.setLatencyMs(1200L);
         record.setCreatedAt(LocalDateTime.now());
         return record;

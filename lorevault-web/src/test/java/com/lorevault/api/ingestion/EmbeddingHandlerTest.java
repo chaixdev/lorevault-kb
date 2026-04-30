@@ -1,19 +1,21 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ai.domain.EmbeddingGenerationException;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
 
-import com.lorevault.api.ai.application.EmbeddingService;
-import com.lorevault.api.content.entities.Chapter;
-import com.lorevault.api.content.entities.ChapterGraphRepository;
-import com.lorevault.api.content.entities.ChunkGraphRepository;
-import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.content.entities.SceneGraphRepository;
+import com.lorevault.api.ai.embedding.EmbeddingFailure;
+import com.lorevault.api.ai.embedding.EmbeddingGenerationException;
+import com.lorevault.api.ingestion.content.EmbeddingHandler;
+import com.lorevault.api.ingestion.job.IngestionJobGraphRepository;
+import com.lorevault.api.ingestion.job.IngestionJobService;
+
+import com.lorevault.api.ai.embedding.EmbeddingService;
+import com.lorevault.api.content.chapter.Chapter;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.content.chunk.ChunkGraphRepository;
+import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.content.scene.SceneGraphRepository;
 import com.lorevault.api.ingestion.events.ChunksCreatedEvent;
 import com.lorevault.api.ingestion.events.EmbeddingsCompletedEvent;
 import com.lorevault.api.ingestion.events.IngestionFailedEvent;
+import com.lorevault.api.ingestion.job.IngestionStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -176,7 +178,7 @@ class EmbeddingHandlerTest {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
 
-        IngestionFailure failure = IngestionFailure.builder(
+        EmbeddingFailure failure = EmbeddingFailure.builder(
                         "EMBEDDING_BACKEND_UNAVAILABLE",
                         "Embedding backend failed while generating chunk vectors")
                 .exceptionType(EmbeddingGenerationException.class.getSimpleName())
@@ -223,7 +225,7 @@ class EmbeddingHandlerTest {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
 
-        IngestionFailure failure = IngestionFailure.builder(
+        EmbeddingFailure failure = EmbeddingFailure.builder(
                         "EMBEDDING_RESPONSE_EMPTY",
                         "Embedding backend returned no vectors for requested chunks")
                 .exceptionType(EmbeddingGenerationException.class.getSimpleName())

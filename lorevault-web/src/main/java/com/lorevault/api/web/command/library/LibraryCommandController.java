@@ -1,10 +1,10 @@
 package com.lorevault.api.web.command.library;
 
-import com.lorevault.api.library.domain.Universe;
-import com.lorevault.api.library.domain.Series;
-import com.lorevault.api.library.domain.Book;
-import com.lorevault.api.library.application.LibraryResult;
-import com.lorevault.api.library.application.LibraryService;
+import com.lorevault.api.library.universe.Universe;
+import com.lorevault.api.library.series.Series;
+import com.lorevault.api.library.book.Book;
+import com.lorevault.api.library.service.LibraryResult;
+import com.lorevault.api.library.service.LibraryService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

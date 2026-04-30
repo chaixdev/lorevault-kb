@@ -1,11 +1,6 @@
 package com.lorevault.api.web.query.job;
-import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.domain.LlmCallRecord;
-import com.lorevault.api.ingestion.domain.IngestionFailure;
+import com.lorevault.api.ingestion.job.IngestionStatus;
 
-import com.lorevault.api.ingestion.domain.IngestionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

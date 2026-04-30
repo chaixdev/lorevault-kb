@@ -51,6 +51,20 @@ Entity Categories — definitions (for <scene_entities>)
 - Event: a temporal occurrence, anything that can serve as a timeline marker (battles, meetings, journeys, ceremonies).
   - Include: “first contact on vega”, “Council Vote”, "The Winter War",
 
+**Event Extraction Rules (important):**
+- Extract one `<event>` per distinct event occurrence, not one per paraphrase or repeated reference.
+- If the current scene refers to the same incident multiple times, output a single `<event>` with the strongest combined evidence.
+- If the scene is recapping, remembering, reporting, or discussing an earlier incident, treat that as the same underlying occurrence unless the text clearly introduces a separate episode or a new development.
+- `<name>` is a scene-local descriptive label, not a global canonical identifier. Make it specific and readable, but do not try to force cross-scene consistency.
+- When the text supports it, prefer a specific human-readable name that combines the most salient actor, occurrence, and place or context, such as `black rider encounter on road to Bree`, `council vote on succession`, or `formal interview with the prisoner`.
+- Avoid vague labels like `meeting` or `attack` when the scene supports a more specific description, but do not invent details that are not grounded in the text.
+- `<event_type>` should use broad reusable categories when possible, such as: `battle`, `meeting`, `journey`, `discovery`, `report`, `marriage`,
+- Every `<event>` must include a `<temporal_type>` showing the event's relation to the current scene.
+    - For recalled or reported past events, usually prefer `R:temporal.before`.
+    - For concurrent or ongoing background situations, usually prefer `R:temporal.overlaps`.
+    - Use `R:temporal.during` and `R:temporal.contains` only with strong enclosure evidence.
+- Do not leave `<temporal_type>` empty. If the relation is uncertain, choose the best-supported relation and lower the certainty instead of omitting it.
+
 **Output Format:**
 ```xml
 <scene_analysis>
@@ -85,7 +99,17 @@ Entity Categories — definitions (for <scene_entities>)
         <activity>two or three sentences on what the individual is doing in the scene</activity>
       </individual>
     </individuals>
-    <collectives></collectives>
+    <collectives>
+      <collective>
+        <aliases>
+          <alias>the order</alias>
+          <alias>order of the veil</alias>
+        </aliases>
+        <collective_type>faction | organization | military | government | other</collective_type>
+        <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied</certainty>
+        <evidence>≤180 chars, verbatim or tight paraphrase grounding why this collective is present</evidence>
+      </collective>
+    </collectives>
     <objects>
       <object>
         <type></type>
@@ -106,18 +130,13 @@ Entity Categories — definitions (for <scene_entities>)
         <description></description>
       </location>
     </locations>
-    <concepts>
-      <concept>
-        <type></type>
-        <description></description>
-      </concept>
-    </concepts>
     <events>
       <event>
         <name></name>
-        <event_type>e.g. 'meeting' or 'era'</event_type>
-        <!-- temporal_type in relation to the scene-->
-         <temporal_type>Choose one of: R:temporal.before | R:temporal.after | R:temporal.overlaps | R:temporal.contains | R:temporal.during</temporal_type>
+        <event_type>use a broad reusable category, e.g. 'meeting', 'battle', 'interview', 'announcement', 'investigation'</event_type>
+        <!-- temporal_type must describe this event in relation to the current scene. example: "event before scene" or "event overlaps scene" -->
+        <description>All that can be known about the event from only reading the scene.</description>
+        <temporal_type>Choose one of: R:temporal.before | R:temporal.after | R:temporal.overlaps | R:temporal.contains | R:temporal.during</temporal_type>
         <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied </certainty>
         <evidence>≤180 chars, verbatim or tight paraphrase grounding the relation</evidence>
       </event>
@@ -131,3 +150,4 @@ Entity Categories — definitions (for <scene_entities>)
 - Pay special attention to time markers, character continuity, and environmental changes
 - For `contains` and `during`, require evidence that supports both boundaries of enclosure, not just that one thing happened during another ongoing situation
 - Interruptions usually imply `during` unless the enclosing interval is clearly shown to stop after the interruption event, in which case it is `after`.
+- For `<events>`, prefer distinct occurrences over exhaustive paraphrase capture. A recap-heavy scene should not produce multiple event nodes for the same underlying incident.

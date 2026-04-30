@@ -1,22 +1,10 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.application.pipeline.*;
-import com.lorevault.api.ingestion.application.resolution.*;
-import com.lorevault.api.ingestion.application.result.*;
-import com.lorevault.api.ingestion.domain.*;
-import com.lorevault.api.ingestion.infrastructure.*;
-import com.lorevault.api.search.application.*;
-import com.lorevault.api.search.domain.*;
-import com.lorevault.api.search.infrastructure.*;
 
 import java.util.List;
 import java.util.UUID;
+
+import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionHandler;
+import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.lorevault.api.ingestion.application.result.ChapterIndividualResolutionResult;
+import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionResult;
 import com.lorevault.api.ingestion.events.ChapterIndividualsResolvedEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 

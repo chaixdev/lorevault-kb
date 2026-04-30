@@ -1,6 +1,6 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.library.application.LibraryQueryService;
+import com.lorevault.api.library.service.LibraryQueryService;
 import com.lorevault.api.web.ui.form.ChapterUploadForm;
 import com.lorevault.api.web.ui.form.CreateBookForm;
 import com.lorevault.api.web.ui.form.CreateLibraryForm;

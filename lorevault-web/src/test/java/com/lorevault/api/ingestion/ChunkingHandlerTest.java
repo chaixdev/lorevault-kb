@@ -1,14 +1,14 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.pipeline.*;
+import com.lorevault.api.ingestion.content.ChunkingHandler;
+import com.lorevault.api.ingestion.job.IngestionJobService;
 
-import com.lorevault.api.ai.application.TextChunkingService;
-import com.lorevault.api.content.entities.Chapter;
-import com.lorevault.api.content.entities.ChapterGraphRepository;
-import com.lorevault.api.content.entities.Chunk;
-import com.lorevault.api.content.entities.ChunkGraphRepository;
-import com.lorevault.api.content.entities.Scene;
-import com.lorevault.api.content.entities.SceneGraphRepository;
+import com.lorevault.api.ai.chunking.TextChunkingService;
+import com.lorevault.api.content.chapter.Chapter;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.content.chunk.Chunk;
+import com.lorevault.api.content.chunk.ChunkGraphRepository;
+import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.content.scene.SceneGraphRepository;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

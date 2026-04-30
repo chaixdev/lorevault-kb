@@ -1,21 +1,23 @@
 package com.lorevault.api.ingestion;
-import com.lorevault.api.ingestion.application.IngestionJobService;
-import com.lorevault.api.ingestion.application.IngestionService;
-import com.lorevault.api.ingestion.domain.ChapterPersistenceException;
-import com.lorevault.api.ingestion.domain.ChapterSubmissionLookupException;
+import com.lorevault.api.ingestion.job.IngestionJobService;
+import com.lorevault.api.ingestion.submission.IngestionIsolatedLookupService;
+import com.lorevault.api.ingestion.submission.IngestionService;
+import com.lorevault.api.ingestion.job.IngestionFailure;
+import com.lorevault.api.ingestion.submission.ChapterPersistenceException;
+import com.lorevault.api.ingestion.submission.ChapterSubmissionLookupException;
 
-import com.lorevault.api.library.domain.Book;
-import com.lorevault.api.content.entities.Chapter;
-import com.lorevault.api.ingestion.domain.IngestionJob;
-import com.lorevault.api.ingestion.domain.IngestionStatus;
-import com.lorevault.api.ingestion.domain.StatusRecord;
-import com.lorevault.api.ingestion.application.result.IngestionSubmissionResult;
-import com.lorevault.api.ingestion.application.result.JobStatusDetails;
-import com.lorevault.api.ingestion.application.result.PaginatedJobSummaries;
+import com.lorevault.api.library.book.Book;
+import com.lorevault.api.content.chapter.Chapter;
+import com.lorevault.api.ingestion.job.IngestionJob;
+import com.lorevault.api.ingestion.job.IngestionStatus;
+import com.lorevault.api.ingestion.job.StatusRecord;
+import com.lorevault.api.ingestion.submission.IngestionSubmissionResult;
+import com.lorevault.api.ingestion.job.JobStatusDetails;
+import com.lorevault.api.ingestion.job.PaginatedJobSummaries;
 import com.lorevault.api.web.command.ingestion.SubmitChapterRequest;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
-import com.lorevault.api.library.infrastructure.BookGraphRepository;
-import com.lorevault.api.content.entities.ChapterGraphRepository;
+import com.lorevault.api.library.book.BookGraphRepository;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,7 +27,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import com.lorevault.api.ingestion.infrastructure.IngestionJobGraphRepository;
+import com.lorevault.api.ingestion.job.IngestionJobGraphRepository;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -53,6 +55,7 @@ class IngestionServiceTest {
     @Mock private IngestionJobService ingestionJobService;
     @Mock private IngestionJobGraphRepository jobRepo;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private IngestionIsolatedLookupService isolatedLookup;
 
     @InjectMocks
     private IngestionService ingestionService;
@@ -84,7 +87,7 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should create new chapter and job for fresh content")
         void submitChapter_newContent_createsChapterAndJob() {
-            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.empty());
+            when(isolatedLookup.findChapterByContentHash(anyString())).thenReturn(Optional.empty());
             when(bookRepo.findById(bookId)).thenReturn(Optional.of(testBook));
             when(chapterRepo.save(any(Chapter.class))).thenReturn(testChapter);
             when(ingestionJobService.createIngestionJob(chapterId)).thenReturn(testJob);
@@ -107,9 +110,9 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should return existing job for duplicate content with active job")
         void submitChapter_duplicateContentWithActiveJob_returnsExistingJob() {
-            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
-            when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(true);
-            when(jobRepo.findFirstByChapterIdOrderByCreatedAtDesc(chapterId)).thenReturn(Optional.of(testJob));
+            when(isolatedLookup.findChapterByContentHash(anyString())).thenReturn(Optional.of(testChapter));
+            when(isolatedLookup.existsActiveForChapter(chapterId)).thenReturn(true);
+            when(isolatedLookup.findMostRecentJobId(chapterId)).thenReturn(Optional.of(jobId));
 
             IngestionSubmissionResult response = ingestionService.submitChapter(
                     testRequest.getBookId(),
@@ -128,8 +131,8 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should create new job for duplicate content without active job")
         void submitChapter_duplicateContentNoActiveJob_createsNewJob() {
-            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
-            when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(false);
+            when(isolatedLookup.findChapterByContentHash(anyString())).thenReturn(Optional.of(testChapter));
+            when(isolatedLookup.existsActiveForChapter(chapterId)).thenReturn(false);
             when(ingestionJobService.createIngestionJob(chapterId)).thenReturn(testJob);
 
             IngestionSubmissionResult response = ingestionService.submitChapter(
@@ -150,7 +153,7 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should throw exception when book not found")
         void submitChapter_bookNotFound_throwsException() {
-            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.empty());
+            when(isolatedLookup.findChapterByContentHash(anyString())).thenReturn(Optional.empty());
             when(bookRepo.findById(bookId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> ingestionService.submitChapter(
@@ -166,7 +169,7 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should handle chapter creation failure gracefully")
         void submitChapter_chapterCreationFails_throwsException() {
-            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.empty());
+            when(isolatedLookup.findChapterByContentHash(anyString())).thenReturn(Optional.empty());
             when(bookRepo.findById(bookId)).thenReturn(Optional.of(testBook));
             when(chapterRepo.save(any(Chapter.class)))
                     .thenThrow(new RuntimeException("Database error"));
@@ -230,9 +233,9 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should fail closed when active job exists but recent job id is missing")
         void submitChapter_missingActiveJobId_throwsTypedException() {
-            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
-            when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(true);
-            when(jobRepo.findFirstByChapterIdOrderByCreatedAtDesc(chapterId)).thenReturn(Optional.empty());
+            when(isolatedLookup.findChapterByContentHash(anyString())).thenReturn(Optional.of(testChapter));
+            when(isolatedLookup.existsActiveForChapter(chapterId)).thenReturn(true);
+            when(isolatedLookup.findMostRecentJobId(chapterId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> ingestionService.submitChapter(
                     testRequest.getBookId(),
@@ -249,9 +252,18 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should surface active job lookup failure instead of creating new job")
         void submitChapter_activeJobLookupFailure_throwsTypedException() {
-            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
-            when(jobRepo.existsActiveForChapter(chapterId))
-                    .thenThrow(new RuntimeException("Connection failed"));
+            when(isolatedLookup.findChapterByContentHash(anyString())).thenReturn(Optional.of(testChapter));
+            when(isolatedLookup.existsActiveForChapter(chapterId))
+                    .thenThrow(new ChapterSubmissionLookupException(
+                            IngestionFailure.builder(
+                                            "CHAPTER_ACTIVE_JOB_LOOKUP_FAILED",
+                                            "Chapter submission lookup failed during hasActiveJobForChapter: Connection failed")
+                                    .exceptionType("RuntimeException")
+                                    .stage("CHAPTER_SUBMISSION")
+                                    .detail("chapterId", chapterId)
+                                    .detail("lookupType", "activeJob")
+                                    .build(),
+                            new RuntimeException("Connection failed")));
 
             assertThatThrownBy(() -> ingestionService.submitChapter(
                     testRequest.getBookId(),
@@ -267,8 +279,17 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should surface content hash lookup failure instead of treating chapter as new")
         void submitChapter_contentHashLookupFailure_throwsTypedException() {
-            when(chapterRepo.findByContentHash(anyString()))
-                    .thenThrow(new RuntimeException("Hash lookup failed"));
+            when(isolatedLookup.findChapterByContentHash(anyString()))
+                    .thenThrow(new ChapterSubmissionLookupException(
+                            IngestionFailure.builder(
+                                            "CHAPTER_HASH_LOOKUP_FAILED",
+                                            "Chapter submission lookup failed during findChapterByContentHash: Hash lookup failed")
+                                    .exceptionType("RuntimeException")
+                                    .stage("CHAPTER_SUBMISSION")
+                                    .detail("lookupType", "contentHash")
+                                    .detail("contentHash", "testhash123")
+                                    .build(),
+                            new RuntimeException("Hash lookup failed")));
 
             assertThatThrownBy(() -> ingestionService.submitChapter(
                     testRequest.getBookId(),
@@ -285,10 +306,19 @@ class IngestionServiceTest {
         @Test
         @DisplayName("Should surface recent job lookup failure instead of creating duplicate work")
         void submitChapter_recentJobLookupFailure_throwsTypedException() {
-            when(chapterRepo.findByContentHash(anyString())).thenReturn(Optional.of(testChapter));
-            when(jobRepo.existsActiveForChapter(chapterId)).thenReturn(true);
-            when(jobRepo.findFirstByChapterIdOrderByCreatedAtDesc(chapterId))
-                    .thenThrow(new RuntimeException("Recent job lookup failed"));
+            when(isolatedLookup.findChapterByContentHash(anyString())).thenReturn(Optional.of(testChapter));
+            when(isolatedLookup.existsActiveForChapter(chapterId)).thenReturn(true);
+            when(isolatedLookup.findMostRecentJobId(chapterId))
+                    .thenThrow(new ChapterSubmissionLookupException(
+                            IngestionFailure.builder(
+                                            "CHAPTER_RECENT_JOB_LOOKUP_FAILED",
+                                            "Chapter submission lookup failed during findMostRecentJobForChapter: Recent job lookup failed")
+                                    .exceptionType("RuntimeException")
+                                    .stage("CHAPTER_SUBMISSION")
+                                    .detail("chapterId", chapterId)
+                                    .detail("lookupType", "recentJob")
+                                    .build(),
+                            new RuntimeException("Recent job lookup failed")));
 
             assertThatThrownBy(() -> ingestionService.submitChapter(
                     testRequest.getBookId(),
