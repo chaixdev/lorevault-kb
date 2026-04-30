@@ -19,21 +19,22 @@ public class ChapterIndividualResolutionHandler {
     private final ChapterIndividualResolutionService chapterIndividualResolutionService;
     private final ApplicationEventPublisher eventPublisher;
 
-    @Async("ingestionTaskExecutor")
+    @Async("ingestionLaneTaskExecutor")
     @EventListener
     public void handleScenesDetected(ScenesDetectedEvent event) {
         UUID chapterId = event.getChapterId();
         UUID jobId = event.getJobId();
+        UUID correlationId = event.getCorrelationId();
         UUID bookId = event.getBookId();
 
-        log.info("[CHAPTER_INDIVIDUAL_RESOLUTION] Started: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId);
+        log.info("[LANE:INDIVIDUAL] [CHAPTER_INDIVIDUAL_RESOLUTION] Started: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId);
 
         try {
             ChapterIndividualResolutionResult response = chapterIndividualResolutionService.resolveChapter(chapterId);
 
             if (response.success()) {
                 log.info(
-                        "[CHAPTER_INDIVIDUAL_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterIndividualCount={}",
+                        "[LANE:INDIVIDUAL] [CHAPTER_INDIVIDUAL_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterIndividualCount={}",
                         jobId,
                         chapterId,
                         bookId,
@@ -42,7 +43,7 @@ public class ChapterIndividualResolutionHandler {
                 );
             } else {
                 log.warn(
-                        "[CHAPTER_INDIVIDUAL_RESOLUTION] Skipped: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterIndividualCount={}, reason={}",
+                        "[LANE:INDIVIDUAL] [CHAPTER_INDIVIDUAL_RESOLUTION] Skipped: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterIndividualCount={}, reason={}",
                         jobId,
                         chapterId,
                         bookId,
@@ -55,6 +56,7 @@ public class ChapterIndividualResolutionHandler {
             eventPublisher.publishEvent(new ChapterIndividualsResolvedEvent(
                     this,
                     jobId,
+                    correlationId,
                     chapterId,
                     bookId,
                     response.success(),
@@ -62,7 +64,7 @@ public class ChapterIndividualResolutionHandler {
                     response.chapterIndividualsCreated()
             ));
         } catch (Exception e) {
-            log.error("[CHAPTER_INDIVIDUAL_RESOLUTION] Failed: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId, e);
+            log.error("[LANE:INDIVIDUAL] [CHAPTER_INDIVIDUAL_RESOLUTION] Failed: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId, e);
             throw e;
         }
     }

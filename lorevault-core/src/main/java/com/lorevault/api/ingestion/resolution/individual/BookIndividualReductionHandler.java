@@ -33,7 +33,7 @@ public class BookIndividualReductionHandler {
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
 
-    @Async("ingestionTaskExecutor")
+    @Async("ingestionLaneTaskExecutor")
     @EventListener
     public void handleChapterIndividualsResolved(ChapterIndividualsResolvedEvent event) {
         UUID jobId = event.getJobId();
@@ -48,12 +48,12 @@ public class BookIndividualReductionHandler {
                 correlationId,
                 chapterId,
                 () -> {
-                    log.info("[BOOK_INDIVIDUAL_REDUCTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}", jobId, correlationId, chapterId, bookId);
+                    log.info("[LANE:INDIVIDUAL] [BOOK_INDIVIDUAL_REDUCTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}", jobId, correlationId, chapterId, bookId);
                     BookIndividualResolutionResult response = bookIndividualReductionService.resolveBook(bookId);
 
                     if (response.success()) {
                         log.info(
-                                "[BOOK_INDIVIDUAL_REDUCTION] Completed: jobId={}, chapterId={}, bookId={}, chapterIndividualCount={}, bookIndividualCount={}",
+                                "[LANE:INDIVIDUAL] [BOOK_INDIVIDUAL_REDUCTION] Completed: jobId={}, chapterId={}, bookId={}, chapterIndividualCount={}, bookIndividualCount={}",
                                 jobId,
                                 chapterId,
                                 bookId,
@@ -62,7 +62,7 @@ public class BookIndividualReductionHandler {
                         );
                     } else {
                         log.warn(
-                                "[BOOK_INDIVIDUAL_REDUCTION] Skipped: jobId={}, chapterId={}, bookId={}, chapterIndividualCount={}, bookIndividualCount={}, reason={}",
+                                "[LANE:INDIVIDUAL] [BOOK_INDIVIDUAL_REDUCTION] Skipped: jobId={}, chapterId={}, bookId={}, chapterIndividualCount={}, bookIndividualCount={}, reason={}",
                                 jobId,
                                 chapterId,
                                 bookId,
@@ -75,6 +75,7 @@ public class BookIndividualReductionHandler {
                     eventPublisher.publishEvent(new BookIndividualsReducedEvent(
                             this,
                             jobId,
+                            correlationId,
                             chapterId,
                             bookId,
                             response.success(),

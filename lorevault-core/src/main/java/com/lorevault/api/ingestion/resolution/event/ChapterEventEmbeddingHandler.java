@@ -61,7 +61,7 @@ public class ChapterEventEmbeddingHandler {
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
 
-    @Async("ingestionTaskExecutor")
+    @Async("ingestionLaneTaskExecutor")
     @EventListener
     public void handleChapterEventsResolved(ChapterEventsResolvedEvent event) {
         UUID jobId = event.getJobId();
@@ -70,7 +70,7 @@ public class ChapterEventEmbeddingHandler {
         UUID correlationId = event.getCorrelationId();
 
         log.info(
-                "[EVENT_EMBEDDING] Started: jobId={}, correlationId={}, chapterId={}, bookId={}, chapterEventCount={}",
+                "[LANE:EVENT] [EVENT_EMBEDDING] Started: jobId={}, correlationId={}, chapterId={}, bookId={}, chapterEventCount={}",
                 jobId,
                 correlationId,
                 chapterId,
@@ -122,7 +122,7 @@ public class ChapterEventEmbeddingHandler {
                     currentChapterEventsById.forEach(chapterEventsById::putIfAbsent);
 
                     log.info(
-                            "[EVENT_MERGE] Starting semantic merge verification: jobId={}, chapterId={}, candidatePairCount={}",
+                            "[LANE:EVENT] [EVENT_MERGE] Starting semantic merge verification: jobId={}, chapterId={}, candidatePairCount={}",
                             jobId,
                             chapterId,
                             candidatePairs.size()
@@ -140,7 +140,7 @@ public class ChapterEventEmbeddingHandler {
                             .toList();
 
                     log.info(
-                            "[BOOK_EVENT] Starting write path: jobId={}, chapterId={}, chapterEventCount={}, mergeDecisionCount={}",
+                            "[LANE:EVENT] [BOOK_EVENT] Starting write path: jobId={}, chapterId={}, chapterEventCount={}, mergeDecisionCount={}",
                             jobId,
                             chapterId,
                             chapterEvents.size(),
@@ -167,7 +167,7 @@ public class ChapterEventEmbeddingHandler {
                     ));
 
                     log.info(
-                            "[EVENT_EMBEDDING] Completed: jobId={}, correlationId={}, chapterId={}, bookId={}, embeddedCount={}, candidatePairCount={}, bookEventsCreated={}, referenceLinksWritten={}",
+                            "[LANE:EVENT] [EVENT_EMBEDDING] Completed: jobId={}, correlationId={}, chapterId={}, bookId={}, embeddedCount={}, candidatePairCount={}, bookEventsCreated={}, referenceLinksWritten={}",
                             jobId,
                             correlationId,
                             chapterId,

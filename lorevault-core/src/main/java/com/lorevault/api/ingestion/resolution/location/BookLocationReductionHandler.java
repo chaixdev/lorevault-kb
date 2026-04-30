@@ -31,7 +31,7 @@ public class BookLocationReductionHandler {
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
 
-    @Async("ingestionTaskExecutor")
+    @Async("ingestionLaneTaskExecutor")
     @EventListener
     public void handleChapterLocationsResolved(ChapterLocationsResolvedEvent event) {
         UUID jobId = event.getJobId();
@@ -46,12 +46,12 @@ public class BookLocationReductionHandler {
                 correlationId,
                 chapterId,
                 () -> {
-                    log.info("[BOOK_LOCATION_REDUCTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}", jobId, correlationId, chapterId, bookId);
+                    log.info("[LANE:LOCATION] [BOOK_LOCATION_REDUCTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}", jobId, correlationId, chapterId, bookId);
                     BookLocationResolutionResult response = bookLocationReductionService.resolveBook(bookId);
 
                     if (response.success()) {
                         log.info(
-                                "[BOOK_LOCATION_REDUCTION] Completed: jobId={}, chapterId={}, bookId={}, chapterLocationCount={}, bookLocationCount={}",
+                                "[LANE:LOCATION] [BOOK_LOCATION_REDUCTION] Completed: jobId={}, chapterId={}, bookId={}, chapterLocationCount={}, bookLocationCount={}",
                                 jobId,
                                 chapterId,
                                 bookId,
@@ -60,7 +60,7 @@ public class BookLocationReductionHandler {
                         );
                     } else {
                         log.warn(
-                                "[BOOK_LOCATION_REDUCTION] Skipped: jobId={}, chapterId={}, bookId={}, chapterLocationCount={}, bookLocationCount={}, reason={}",
+                                "[LANE:LOCATION] [BOOK_LOCATION_REDUCTION] Skipped: jobId={}, chapterId={}, bookId={}, chapterLocationCount={}, bookLocationCount={}, reason={}",
                                 jobId,
                                 chapterId,
                                 bookId,
@@ -73,6 +73,7 @@ public class BookLocationReductionHandler {
                     eventPublisher.publishEvent(new BookLocationsReducedEvent(
                             this,
                             jobId,
+                            correlationId,
                             chapterId,
                             bookId,
                             response.success(),

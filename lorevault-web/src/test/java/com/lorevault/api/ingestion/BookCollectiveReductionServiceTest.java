@@ -30,10 +30,15 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.annotation.MergedAnnotations;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.retry.annotation.Retryable;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("BookCollectiveReductionService")
 class BookCollectiveReductionServiceTest {
+
+    private static final String CLAIM_LANE = "BOOK_COLLECTIVE_REDUCTION";
 
     @Mock
     private BookGraphRepository bookGraphRepository;
@@ -106,7 +111,7 @@ class BookCollectiveReductionServiceTest {
                 1
         );
 
-        when(claimService.tryAcquireClaimWithRetry(any(), anyInt(), anyLong())).thenReturn(true);
+        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(chapterCollectiveRepository.findByBookId(bookId)).thenReturn(List.of(council, bridgeB, bridgeA));
         when(bookCollectivePersistenceService.replaceBookCollectives(any(), any(), any()))
                 .thenAnswer(invocation -> invocation.getArgument(1));
@@ -158,7 +163,7 @@ class BookCollectiveReductionServiceTest {
     @DisplayName("Returns successful zero-count result when no chapter collectives exist for the book")
     void returnsSuccessfulNoOpWhenNoChapterCollectivesExist() {
         UUID bookId = UUID.randomUUID();
-        when(claimService.tryAcquireClaimWithRetry(any(), anyInt(), anyLong())).thenReturn(true);
+        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(chapterCollectiveRepository.findByBookId(bookId)).thenReturn(List.of());
 
         BookCollectiveResolutionResult response = service.resolveBook(bookId);
@@ -174,7 +179,7 @@ class BookCollectiveReductionServiceTest {
     @DisplayName("Throws when book reduction claim cannot be acquired")
     void throwsWhenBookReductionClaimCannotBeAcquired() {
         UUID bookId = UUID.randomUUID();
-        when(claimService.tryAcquireClaimWithRetry(any(), anyInt(), anyLong())).thenReturn(false);
+        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(false);
 
         assertThatThrownBy(() -> service.resolveBook(bookId))
                 .isInstanceOf(BookReductionClaimUnavailableException.class)
@@ -183,7 +188,18 @@ class BookCollectiveReductionServiceTest {
 
         verify(chapterCollectiveRepository, never()).findByBookId(any());
         verify(bookCollectivePersistenceService, never()).replaceBookCollectives(any(), any(), any());
-        verify(claimService, never()).releaseClaim(any());
+        verify(claimService, never()).releaseClaim(any(), eq(CLAIM_LANE));
+    }
+
+    @Test
+    @DisplayName("Retries transient Neo4j lock conflicts at the reducer boundary")
+    void retriesTransientNeo4jLockConflictsAtReducerBoundary() throws NoSuchMethodException {
+        Retryable retryable = MergedAnnotations.from(BookCollectiveReductionService.class.getMethod("resolveBook", UUID.class))
+                .get(Retryable.class)
+                .synthesize();
+
+        assertThat(retryable.retryFor()).contains(TransientDataAccessException.class, org.neo4j.driver.exceptions.TransientException.class);
+        assertThat(retryable.maxAttempts()).isEqualTo(3);
     }
 
     private ChapterCollective chapterCollective(
