@@ -3,7 +3,7 @@
 **Last Updated:** April 30, 2026  
 **Reviewed Through Commit:** `491e0f8`  
 **Status:** Active — regular entity resolution now covers Individual, Location, Object, and Collective lanes end to end, while the event entity resolution pipeline remains shipped through EventMention, ChapterEvent, ANN candidate generation, semantic merge verification, and BookEvent writes  
-**Functional Goals:** Validate retrieval quality against the richer entity graph, decide the next Concept/typed-relation slices from evidence, and continue improving event extraction quality  
+**Functional Goals:** Run Q&A retrieval quality validation as the immediate next focus, then use those findings to prioritize event extraction tuning, typed relations, Concept, or retrieval assembly work  
 **Technical Goals:** Preserve retry-safe ingestion semantics, keep completion fan-in aligned with the implemented branch graph, and plan durable provenance/stage-run recovery without overextending the current patch
 
 ## What LoreVault Is
@@ -60,14 +60,16 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 ## What Is Next
 
 Near-term execution slices:
-1. **Q&A and retrieval quality validation**
-    - Use the richer four-lane entity graph to identify which question categories still fail because of missing retrieval paths, missing typed relations, or answer assembly gaps
-2. **Minimal relation type catalog**
-    - Define the first curated relation vocabulary and extraction integration for typed inter-entity edges such as participation, location, affiliation, and membership
-3. **Concept entity lane**
-   - Decide and implement the remaining regular entity ladder for Concept once subtype discipline and extraction boundaries are clear
-4. **Event extraction iteration**
-    - Build on the current EventMention groundwork with better extraction quality, stronger boundaries, and clearer durable semantics for event evidence captured during ingestion
+1. **Q&A and retrieval quality validation — immediate next focus**
+    - Run representative lore questions against baseline, graph-aware, and hybrid retrieval using the richer four-lane entity graph
+    - Classify failures as missing graph data, missing typed edges, missing retrieval paths, answer assembly gaps, or spoiler-gating issues
+    - Use the findings as the decision point for whether the next implementation slice should be event extraction tuning, typed relation catalog work, Concept, or retrieval assembly
+2. **Event extraction and resolution tuning — evidence-triggered follow-up**
+    - Return to prompt/coref/reduction tuning when validation shows event questions fail because of over-extraction, missed merges, weak temporal qualifiers, or unstable canonicalization
+3. **Minimal relation type catalog**
+    - Define the first curated relation vocabulary and extraction integration for typed inter-entity edges after validation identifies the highest-value relation gaps
+4. **Concept entity lane**
+   - Decide and implement the remaining regular entity ladder for Concept when validation shows species/category/technology questions are blocked by missing Concept anchors
 5. **Event aggregation and graph shaping**
     - Define and implement the next aggregation layer that groups extracted event evidence into more useful chapter/book-level structures without overcommitting to premature ontology complexity
 6. **Ingestion reliability and provenance follow-up**

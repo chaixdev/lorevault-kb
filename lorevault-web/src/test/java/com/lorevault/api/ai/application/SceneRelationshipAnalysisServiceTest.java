@@ -210,6 +210,53 @@ class SceneRelationshipAnalysisServiceTest {
         assertThatThrownBy(() -> sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter))
                 .isInstanceOf(TriadAnalysisException.class)
                 .hasMessageContaining("omitted required relation 'previousToCurrent'");
+
+        verify(llmClient, times(2)).detectSceneAnalysisTriad(
+                eq(testJobId),
+                eq("mock system prompt"),
+                any(),
+                eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)
+        );
+    }
+
+    @Test
+    @DisplayName("Should retry semantic triad validation failures before succeeding")
+    void shouldRetrySemanticTriadValidationFailuresBeforeSucceeding() {
+        Chapter testChapter = createTestChapter();
+        List<TriadBuilderService.SceneTriad> triads = List.of(createTriadWithPreviousAndCurrent());
+
+        PromptTemplate mockTemplate = mock(PromptTemplate.class);
+        when(promptRepository.get("scene-analysis")).thenReturn(mockTemplate);
+        when(mockTemplate.render(any())).thenReturn("mock system prompt");
+        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+
+        SceneRelationshipAnalysisService.TriadStructuredResult invalid =
+                new SceneRelationshipAnalysisService.TriadStructuredResult("marker", null,
+                        new SceneRelationshipAnalysisService.TriadRelation("R:temporal.before", "Explicit", "evidence"));
+        SceneRelationshipAnalysisService.TriadStructuredResult valid =
+                new SceneRelationshipAnalysisService.TriadStructuredResult(
+                        "marker",
+                        new SceneRelationshipAnalysisService.TriadRelation("R:temporal.before", "Explicit", "retry evidence"),
+                        null
+                );
+
+        when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
+                .thenReturn(invalid)
+                .thenReturn(valid);
+
+        List<TriadAnalysisModels.SceneRelationshipAnalysis> result =
+                sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
+
+        assertThat(result).singleElement().satisfies(analysis -> {
+            assertThat(analysis.prevToCurrType()).isEqualTo("R:temporal.before");
+            assertThat(analysis.prevToCurrEvidence()).isEqualTo("retry evidence");
+        });
+        verify(llmClient, times(2)).detectSceneAnalysisTriad(
+                eq(testJobId),
+                eq("mock system prompt"),
+                any(),
+                eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)
+        );
     }
 
     @Test
