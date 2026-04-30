@@ -11,6 +11,11 @@
         <p class="mt-1 text-sm text-white" th:text="${question}"></p>
     </div>
 
+    <div th:if="${visibilitySummary != null}" class="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] text-slate-300">
+        <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Active spoiler scope</p>
+        <p class="mt-1 font-mono text-slate-400" th:text="${visibilitySummary}"></p>
+    </div>
+
     <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-xs text-amber-100">
         <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300">Search unavailable</p>
         <p class="mt-2 leading-6" th:text="${errorMessage}">Search is temporarily unavailable. Please try again.</p>
@@ -32,6 +37,11 @@
         <p class="mt-2 whitespace-pre-wrap leading-6" th:text="${response.answer}"></p>
     </div>
 
+    <div th:if="${visibilitySummary != null}" class="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] text-slate-300">
+        <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Active spoiler scope</p>
+        <p class="mt-1 font-mono text-slate-400" th:text="${visibilitySummary}"></p>
+    </div>
+
     <div th:if="${response.citations != null && !response.citations.isEmpty()}" class="space-y-2">
         <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Citations</p>
         <div th:each="citation : ${response.citations}" class="rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2 text-[11px] text-slate-400">
@@ -49,6 +59,11 @@
     <div class="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-3 text-xs text-slate-200">
         <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-400">Question</p>
         <p class="mt-1 text-sm text-white" th:text="${question}"></p>
+    </div>
+
+    <div th:if="${visibilitySummary != null}" class="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] text-slate-300">
+        <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Active spoiler scope</p>
+        <p class="mt-1 font-mono text-slate-400" th:text="${visibilitySummary}"></p>
     </div>
 
     <div th:if="${response.results != null && !response.results.isEmpty()}" class="space-y-2">

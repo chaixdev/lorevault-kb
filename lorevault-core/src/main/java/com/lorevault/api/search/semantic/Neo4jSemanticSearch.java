@@ -240,7 +240,7 @@ public class Neo4jSemanticSearch {
               AND (
                 ANY(p IN $visibilityProgress WHERE
                   chapter.universe = $visibilityUniverse
-                  AND chapter.series = p.series
+                  AND (chapter.series = p.series OR (chapter.series IS NULL AND p.series IS NULL))
                   AND (
                     chapter.bookNumber < p.readThroughBookNumber
                     OR (chapter.bookNumber = p.readThroughBookNumber
@@ -253,7 +253,7 @@ public class Neo4jSemanticSearch {
             progressPredicate += """
                   OR NOT ANY(p IN $visibilityProgress WHERE
                     chapter.universe = $visibilityUniverse
-                    AND chapter.series = p.series
+                    AND (chapter.series = p.series OR (chapter.series IS NULL AND p.series IS NULL))
                   )
                 )
                 """;
