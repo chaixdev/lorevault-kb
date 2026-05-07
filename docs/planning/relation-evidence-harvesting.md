@@ -286,3 +286,109 @@ Key ideas carried forward:
 - `docs/concepts/core-domain-model-and-graph-process-restructured.md` — core domain model, claim bins, catalog module
 - `docs/patterns/ingestion/entity-resolution-ladder.md` — entity resolution pattern
 - `docs/patterns/ingestion/triad-analysis.md` — triad normalization pipeline
+
+---
+
+## Implementation Notes
+
+### Phase 0 — Architecture Survey (May 7, 2026)
+
+**Current extraction pipeline flow:**
+
+```
+SceneDetectionHandler.handleChapterIngestion()
+  → detectAndPersistScenes()           (scene segmentation)
+  → defaultTemporalEdgeService.createAllDefaults()  (NEXT_IN_READING_ORDER edges)
+  → sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals()  (triad analysis)
+  → sceneTemporalRelationshipPersistenceService.applyTemporalRelationships() (TEMPORAL edges)
+  → individualPersistenceService.persistExtractedIndividuals()
+  → collectivePersistenceService.persistExtractedCollectives()
+  → objectPersistenceService.persistExtractedObjects()
+  → locationPersistenceService.persistExtractedLocations()
+  → eventPersistenceService.persistExtractedEvents()
+  → emit ScenesDetectedEvent
+```
+
+**Key insertion point:** After the five entity persistence calls and before `ScenesDetectedEvent`, a new `relationClaimPersistenceService.persistExtractedRelationClaims()` call would fit naturally. The relation claims reference entity mentions that have already been persisted.
+
+**Current scene analysis prompt structure:**
+
+The LLM is asked to extract per-triad:
+1. Temporal relationships (`previous_to_current`, `current_to_next`) with `temporalType`, `certainty`, `evidence`
+2. Current scene entities in 5 categories: `individuals`, `collectives`, `objects`, `locations`, `events`
+
+There is **no inter-entity relationship section** in the current prompt. The new `<relations>` section will be additive.
+
+**Current data model (TriadAnalysisModels.java):**
+
+- `TriadStructuredResult` — top-level LLM output record
+- `TriadCurrentSceneEntities` — holds the 5 entity lists
+- Per-entity extraction records: `TriadIndividualExtraction`, `TriadCollectiveExtraction`, `TriadObjectExtraction`, `TriadLocationExtraction`, `TriadEventExtraction`
+- `SceneRelationshipOutcome` — aggregated result across all triads
+- `SceneRelationshipAnalysis` — per-triad analysis with temporal edges
+
+**Current Neo4j schema — no inter-entity edges:**
+
+The graph currently has:
+- `Scene -[:MENTIONS]-> *Mention` (provenance only)
+- `*Mention -[:REFERS_TO]-> Chapter* -[:REFERS_TO]-> Book*` (resolution ladder)
+- `Chapter -[:HAS_INDIVIDUAL]-> ChapterIndividual`, etc.
+- `Book -[:HAS_INDIVIDUAL]-> BookIndividual`, etc.
+- `Scene -[:TEMPORAL]-> Scene` (temporal edges)
+- `Scene -[:NEXT_IN_READING_ORDER]-> Scene` (structural ordering)
+
+There are **no edges between entity nodes of different types** (no `IndividualMention -[:LOCATED_AT]-> LocationMention`, etc.).
+
+**Design decisions for Phase 0:**
+
+1. **Relation claim node model:** `RelationClaim` node with properties:
+   - `id` (UUID)
+   - `relationName` (raw LLM phrase, e.g. "betrayed", "trained under")
+   - `relationDescription` / `usageHint` (one-sentence context)
+   - `provisionalRelTypeId` (normalized key, e.g. `R:provisional.betrayed`)
+   - `subjectKind` (Individual/Collective/Object/Location/Concept/Event)
+   - `subjectName` (raw name from LLM)
+   - `objectKind` (Individual/Collective/Object/Location/Concept/Event)
+   - `objectName` (raw name from LLM)
+   - `certainty` (0.0–1.0)
+   - `evidenceText` (original sentence/clause)
+   - `source` ("ai-scene-analysis")
+   - `sceneId`, `chapterId`, `bookId`
+   - `pubCoords` (universe, series, bookNumber, chapterNumber, sceneIndex, pubOrdinal, pubKey)
+   - `createdAt`, `updatedAt`
+
+2. **Relationship model:**
+   - `(Scene)-[:MENTIONS]->(RelationClaim)` — provenance, same pattern as all other mentions
+   - `(RelationClaim)-[:RELATES_SUBJECT]->(*Mention)` — link to subject entity mention (if resolved)
+   - `(RelationClaim)-[:RELATES_OBJECT]->(*Mention)` — link to object entity mention (if resolved)
+   - Subject/object links are best-effort at Phase 0: if the LLM names match a persisted mention, link them; if not, store the raw names only.
+
+3. **Aggregate label:** `RelationClaim` gets the `Mention` aggregate label, consistent with the existing pattern (`IndividualMention` has `Mention`, etc.). This allows generic mention queries to include relation claims.
+
+4. **Prompt extension:** Add a `<relations>` section to `scene-analysis.txt` after `<current_scene_entities>`, asking the LLM to list inter-entity relationships observed in the current scene with subject, relation name, description, object, certainty, and evidence.
+
+5. **Persistence service:** New `RelationClaimPersistenceService` in `lorevault-core/.../ingestion/infrastructure/`, following the same pattern as `IndividualPersistenceService` but writing `RelationClaim` nodes and `RELATES_SUBJECT`/`RELATES_OBJECT` edges.
+
+6. **Dev-console harvest view:** New tab or section in the operator dashboard showing:
+   - Grouped relation phrases (by `provisionalRelTypeId`)
+   - Frequency counts
+   - Subject kind → object kind distribution
+   - Sample evidence snippets
+   - Source chapters/scenes
+   This can be a simple Cypher aggregation query exposed via a new controller endpoint and rendered as an HTMX table fragment.
+
+**Files to create/modify:**
+
+| Action | File | Purpose |
+|---|---|---|
+| Modify | `lorevault-core/.../resources/prompts/scene-analysis.txt` | Add `<relations>` section |
+| Modify | `lorevault-core/.../resources/prompts/scene-analysis-usertemplate.st` | No change needed (user template provides scene text, not extraction schema) |
+| Create | `lorevault-core/.../ingestion/triad/TriadAnalysisModels.java` (add records) | `TriadRelationClaimExtraction`, add `relations` field to `TriadCurrentSceneEntities` |
+| Modify | `lorevault-core/.../ingestion/triad/SceneRelationshipAnalysisService.java` | Add `normalizeRelationClaims()` method |
+| Create | `lorevault-core/.../ingestion/infrastructure/RelationClaimPersistenceService.java` | Persist `RelationClaim` nodes and edges |
+| Create | `lorevault-core/.../content/relation/RelationClaim.java` | `@Node` record for relation claims |
+| Create | `lorevault-core/.../content/relation/RelationClaimGraphRepository.java` | Neo4j repository for relation claims |
+| Modify | `lorevault-core/.../ingestion/scene/SceneDetectionHandler.java` | Call `relationClaimPersistenceService.persistExtractedRelationClaims()` after entity persistence |
+| Modify | `lorevault-core/.../config/Neo4jSchemaInitializer.java` | Add `RelationClaim` constraints and indexes |
+| Create | `lorevault-web/.../web/ui/UiRelationHarvestController.java` | Harvest view endpoint |
+| Create | `lorevault-web/.../resources/templates/ui/relations.html` | HTMX fragment for harvest table |
