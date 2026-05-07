@@ -82,6 +82,10 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     private static final String BOOK_COLLECTIVE_SCOPE_UNIQUE =
             "CREATE CONSTRAINT book_collective_scope_unique IF NOT EXISTS FOR (bc:BookCollective) REQUIRE (bc.bookId, bc.normalizedName) IS UNIQUE";
 
+    // RelationClaim constraints
+    private static final String RELATION_CLAIM_ID_UNIQUE =
+            "CREATE CONSTRAINT relation_claim_id_unique IF NOT EXISTS FOR (rc:RelationClaim) REQUIRE rc.id IS UNIQUE";
+
     // Book reduction claim uniqueness (mutex for concurrent book-level reduction per lane)
     private static final String DROP_LEGACY_BOOK_REDUCTION_CLAIM_BOOK_ID_UNIQUE =
             "DROP CONSTRAINT book_reduction_claim_book_id_unique IF EXISTS";
@@ -138,6 +142,12 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     private static final String LLM_CALL_RECORD_JOB_STEP_STATUS_INDEX =
             "CREATE INDEX llm_call_record_job_step_status IF NOT EXISTS FOR (r:LlmCallRecord) ON (r.jobId, r.step, r.statusRecordId)";
 
+    // RelationClaim query indexes
+    private static final String RELATION_CLAIM_CHAPTER_RELTYPE_INDEX =
+            "CREATE INDEX relation_claim_chapter_reltype IF NOT EXISTS FOR (rc:RelationClaim) ON (rc.chapterId, rc.provisionalRelTypeId)";
+    private static final String RELATION_CLAIM_BOOK_RELTYPE_INDEX =
+            "CREATE INDEX relation_claim_book_reltype IF NOT EXISTS FOR (rc:RelationClaim) ON (rc.bookId, rc.provisionalRelTypeId)";
+
     // Per-chapter ordering index for events
     private static final String EVENT_PER_CHAPTER_SCENE_INDEX =
             "CREATE INDEX event_per_chapter_scene_idx IF NOT EXISTS FOR (e:Event) ON (e.chapterId, e.sceneIndex)";
@@ -148,6 +158,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "MATCH (m:ObjectMention) SET m:Mention",
             "MATCH (m:CollectiveMention) SET m:Mention",
             "MATCH (m:EventMention) SET m:Mention",
+            "MATCH (rc:RelationClaim) SET rc:Mention",
             "MATCH (ce:ChapterEvent) SET ce:ChapterEntity",
             "MATCH (ci:ChapterIndividual) SET ci:ChapterEntity",
             "MATCH (cl:ChapterLocation) SET cl:ChapterEntity",
@@ -194,6 +205,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(DROP_LEGACY_BOOK_REDUCTION_CLAIM_BOOK_ID_UNIQUE, "Legacy BookReductionClaim.bookId unique dropped"));
         results.add(executeConstraint(DELETE_LEGACY_BOOK_REDUCTION_CLAIMS, "Legacy BookReductionClaim rows deleted"));
         results.add(executeConstraint(BOOK_REDUCTION_CLAIM_ID_UNIQUE, "BookReductionClaim.id unique"));
+        results.add(executeConstraint(RELATION_CLAIM_ID_UNIQUE, "RelationClaim.id unique"));
         
         // Event identity constraint
         results.add(executeConstraint(EVENT_ID_UNIQUE, "Event.id unique"));
@@ -219,6 +231,10 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_INDEX, "LlmCallRecord(jobId, step)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_STATUS_INDEX, "LlmCallRecord(jobId, step, statusRecordId)"));
         
+        // RelationClaim indexes
+        results.add(executeIndex(RELATION_CLAIM_CHAPTER_RELTYPE_INDEX, "RelationClaim(chapterId, provisionalRelTypeId)"));
+        results.add(executeIndex(RELATION_CLAIM_BOOK_RELTYPE_INDEX, "RelationClaim(bookId, provisionalRelTypeId)"));
+
         // Event per-chapter ordering index
         results.add(executeIndex(EVENT_PER_CHAPTER_SCENE_INDEX, "Event(chapterId, sceneIndex)"));
 

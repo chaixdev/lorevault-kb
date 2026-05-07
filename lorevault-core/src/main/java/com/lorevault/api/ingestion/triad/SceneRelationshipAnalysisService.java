@@ -88,18 +88,28 @@ public class SceneRelationshipAnalysisService {
             String evidence
     ) {}
 
+    public record TriadRelationClaimExtraction(
+            String subject,
+            String relationName,
+            String relationDescription,
+            String object,
+            String certainty,
+            String evidence
+    ) {}
+
     public record TriadCurrentSceneEntities(
             List<TriadIndividualExtraction> individuals,
             List<TriadCollectiveExtraction> collectives,
             List<TriadObjectExtraction> objects,
             List<TriadLocationExtraction> locations,
-            List<TriadEventExtraction> events
+            List<TriadEventExtraction> events,
+            List<TriadRelationClaimExtraction> relations
     ) {
         public TriadCurrentSceneEntities(
                 List<TriadIndividualExtraction> individuals,
                 List<TriadLocationExtraction> locations
         ) {
-            this(individuals, List.of(), List.of(), locations, List.of());
+            this(individuals, List.of(), List.of(), locations, List.of(), List.of());
         }
 
         public TriadCurrentSceneEntities(
@@ -107,7 +117,7 @@ public class SceneRelationshipAnalysisService {
                 List<TriadObjectExtraction> objects,
                 List<TriadLocationExtraction> locations
         ) {
-            this(individuals, List.of(), objects, locations, List.of());
+            this(individuals, List.of(), objects, locations, List.of(), List.of());
         }
     }
 
@@ -161,6 +171,7 @@ public class SceneRelationshipAnalysisService {
         Map<Integer, List<TriadAnalysisModels.ObjectExtraction>> extractedObjectsBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadAnalysisModels.LocationExtraction>> extractedLocationsBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadAnalysisModels.EventExtraction>> extractedEventsBySceneIndex = new HashMap<>();
+        Map<Integer, List<TriadAnalysisModels.RelationClaimExtraction>> extractedRelationClaimsBySceneIndex = new HashMap<>();
 
         int triadIndex = 0;
         for (TriadBuilderService.SceneTriad t : triads) {
@@ -236,6 +247,13 @@ public class SceneRelationshipAnalysisService {
                             .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
                             .addAll(triadEvents);
                 }
+
+                List<TriadAnalysisModels.RelationClaimExtraction> triadRelationClaims = normalizeRelationClaims(normalized);
+                if (!triadRelationClaims.isEmpty()) {
+                    extractedRelationClaimsBySceneIndex
+                            .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
+                            .addAll(triadRelationClaims);
+                }
             }
         }
 
@@ -264,13 +282,19 @@ public class SceneRelationshipAnalysisService {
                 .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneEventExtraction::sceneIndex))
                 .toList();
 
+        List<TriadAnalysisModels.SceneRelationClaimExtraction> sceneRelationClaimExtractions = extractedRelationClaimsBySceneIndex.entrySet().stream()
+                .map(e -> new TriadAnalysisModels.SceneRelationClaimExtraction(e.getKey(), List.copyOf(e.getValue())))
+                .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneRelationClaimExtraction::sceneIndex))
+                .toList();
+
         return new TriadAnalysisModels.SceneRelationshipOutcome(
                 analyses,
                 sceneExtractions,
                 sceneCollectiveExtractions,
                 sceneObjectExtractions,
                 sceneLocationExtractions,
-                sceneEventExtractions
+                sceneEventExtractions,
+                sceneRelationClaimExtractions
         );
     }
 
@@ -408,6 +432,88 @@ public class SceneRelationshipAnalysisService {
     private String normalizeEventTemporalType(String temporalType) {
         String normalized = normalizeText(temporalType);
         return normalized == null ? null : normalizeTemporalType(normalized);
+    }
+
+    private List<TriadAnalysisModels.RelationClaimExtraction> normalizeRelationClaims(TriadStructuredResult parsed) {
+        if (parsed == null || parsed.currentSceneEntities() == null || parsed.currentSceneEntities().relations() == null) {
+            return List.of();
+        }
+        return parsed.currentSceneEntities().relations().stream()
+                .filter(claim -> claim != null)
+                .map(claim -> {
+                    String[] subjectParts = parseEntityRef(claim.subject());
+                    String[] objectParts = parseEntityRef(claim.object());
+
+                    String normalizedRelationName = normalizeText(claim.relationName());
+                    if (normalizedRelationName != null) {
+                        normalizedRelationName = normalizedRelationName.replaceAll("\\s+", " ");
+                    }
+
+                    String provisionalRelTypeId = generateProvisionalRelTypeId(normalizedRelationName);
+
+                    String normalizedDescription = truncate(normalizeText(claim.relationDescription()), 1000);
+                    String normalizedEvidence = truncate(normalizeText(claim.evidence()), 500);
+
+                    return new TriadAnalysisModels.RelationClaimExtraction(
+                            provisionalRelTypeId,
+                            subjectParts[0],
+                            subjectParts[1],
+                            normalizedRelationName,
+                            normalizedDescription,
+                            objectParts[0],
+                            objectParts[1],
+                            normalizeCertainty(claim.certainty()),
+                            normalizedEvidence
+                    );
+                })
+                .toList();
+    }
+
+    private String[] parseEntityRef(String entityRef) {
+        String normalized = normalizeText(entityRef);
+        if (normalized == null) {
+            return new String[]{null, null};
+        }
+        int colonIdx = normalized.indexOf(": ");
+        if (colonIdx > 0 && colonIdx < normalized.length() - 2) {
+            return new String[]{normalized.substring(0, colonIdx).trim(), normalized.substring(colonIdx + 2).trim()};
+        }
+        return new String[]{null, normalized};
+    }
+
+    private String generateProvisionalRelTypeId(String relationName) {
+        if (relationName == null) {
+            return null;
+        }
+        String id = relationName.toLowerCase()
+                .replace(' ', '_')
+                .replaceAll("[^a-z0-9_]", "");
+        return "R:provisional." + id;
+    }
+
+    private String normalizeCertainty(String certainty) {
+        String normalized = normalizeText(certainty);
+        if (normalized == null) {
+            return "WeaklyImplied";
+        }
+        String lower = normalized.toLowerCase();
+        if (lower.contains("explicit")) {
+            return "Explicit";
+        }
+        if (lower.contains("strongly implied") || lower.contains("strongly_implied")) {
+            return "StronglyImplied";
+        }
+        if (lower.contains("weakly implied") || lower.contains("weakly_implied") || lower.contains("implied")) {
+            return "WeaklyImplied";
+        }
+        return "WeaklyImplied";
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        return value.length() <= maxLength ? value : value.substring(0, maxLength);
     }
 
     private List<String> normalizeAliases(List<String> aliases) {
