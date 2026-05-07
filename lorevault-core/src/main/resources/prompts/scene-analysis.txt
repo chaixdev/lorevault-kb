@@ -70,6 +70,12 @@ Between entities within the current scene, extract explicit or implicit inter-en
 
 This section is optional. If the current scene contains no inter-entity relations evident from the text, output an empty `<relations/>` element.
 
+Important:
+- Only extract relations that carry narrative significance — the kind of connection a reader would remember. Do not extract trivial co-occurrence (e.g., "was in the same room as") or relations that add no information beyond what entity presence already implies.
+- Describe relations in your own words — there is no predefined relation type menu.
+- Relations are between entities IN the current scene, not across scenes.
+- Do not extract relations unless they are grounded in the current scene text.
+
 Relation fields:
 - subject: the entity initiating or experiencing the relation (format: "Kind: Name", e.g. "Individual: Frodo")
 - relationName: a short verb phrase describing the relation (e.g. "betrayed", "trained under", "was disguised as", "located in", "member of", "opposed")
@@ -79,6 +85,7 @@ Relation fields:
 - evidence: ≤180 chars, verbatim or tight paraphrase grounding the relation
 
 Important:
+- Only extract relations that carry narrative significance — the kind of connection a reader would remember. Do not extract trivial co-occurrence (e.g., "was in the same room as") or relations that add no information beyond what entity presence already implies.
 - Describe relations in your own words — there is no predefined relation type menu.
 - Relations are between entities IN the current scene, not across scenes.
 - Do not extract relations unless they are grounded in the current scene text.
