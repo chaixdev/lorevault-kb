@@ -11,12 +11,12 @@ Validate the current Q&A and retrieval quality against the lore question space t
 
 The current retrieval pipeline supports chunk-level semantic search, entity-aware RAG grounded in resolved entity context, and hybrid retrieval modes. However, it has not been systematically tested against the broad lore question space — identity continuity, scene reconstruction, social/structural relations, temporal development, causal explanations, and comparative questions.
 
-Without a validation pass, it is unclear which question types work adequately today, which fail due to missing graph data, and which fail due to retrieval or assembly logic gaps. Prioritization of the catalog, typed edges, and new entity type lanes should be grounded in this evidence.
+Without a validation pass, it is unclear which question types work adequately today, which fail due to missing graph data, and which fail due to retrieval or assembly logic gaps. Prioritization of relation evidence harvesting, catalog discovery, typed-edge projection, and new entity type lanes should be grounded in this evidence.
 
 ## Product Context
 
 - Users asking lore questions expect grounded, spoiler-safe answers that go beyond "find a chunk containing this term"
-- Relational and temporal questions (how is X related to Y, what changed after event Z) are likely to fail or produce poor answers today because the graph has no typed inter-entity edges
+- Relational and temporal questions (how is X related to Y, what changed after event Z) are likely to fail or produce poor answers today because the graph has no typed inter-entity relation claim layer or promoted relation edges
 - Without validation, engineering investment may go to the wrong layer — more extraction may not help if retrieval assembly is the bottleneck
 - Validation evidence also establishes a baseline to measure future improvements against
 
@@ -79,7 +79,7 @@ The question space taxonomy is documented in:
 - Graph-aware retrieval is available but has not been stress-tested against relational and temporal question types
 - The current chat window is an afterthought inside the operator dashboard; moving it to a dedicated validation page should happen before the manual validation pass so mode comparison and diagnostics are practical
 - The dedicated Q&A page can be implemented incrementally with the existing Thymeleaf/HTMX stack; no frontend framework migration is required
-- No typed inter-entity edges exist today (no `participated_in`, `member_of`, `located_in` between entity nodes) — relational questions are likely to fail
+- No typed inter-entity relation claim layer exists today, and stable typed `REL` edges should wait until observed relation phrases have been harvested, clustered, and promoted through the catalog module — relational questions are likely to fail or rely on weaker co-mention/context signals
 - Object and Collective entities are now resolved. Concept entities are still not resolved, so species/category questions will lack Concept graph anchors until the Concept lane lands.
 
 ## Open Questions
@@ -100,7 +100,7 @@ The question space taxonomy is documented in:
 - The Q&A workspace includes reserved diagnostics areas for retrieved chunks/citations, graph context, and future retrieval trace visualization
 - Each question result is classified by failure mode (missing data / missing retrieval / assembly gap / spoiler issue / pass)
 - A findings report exists that maps failure categories to specific missing graph capabilities
-- The findings report is usable as prioritization input for the catalog, typed edges, and new entity lane planning items
+- The findings report is usable as prioritization input for relation evidence harvesting, catalog discovery, typed-edge projection, and new entity lane planning items
 
 ## Links
 

@@ -57,7 +57,9 @@ When a brainstorm becomes stable enough, either:
 ### Query and retrieval
 
 - [Robust Q&A strategy report — April 2026](query/2026-04-15_robust-qa-strategy-report.md) — long-horizon strategy analysis: substrate vs mycelium vs fruiting body, question-space ambition, concept-model fit, bottleneck map, and phased direction for growing LoreVault into a robust lore Q&A system
-- [Graph-aware Q&A design — April 2026](query/2026-04-12_graph-aware-qa-design-april-2026.md) — applies external GraphRAG pattern research to LoreVault's schema: vector-seeded entity expansion, Cypher template registry, intent router, spoiler-safe entity injection, and a prioritized implementation plan
+- [Graph-aware Q&A design — April/May 2026](query/2026-04-12_graph-aware-qa-design-april-2026.md) — applies external GraphRAG pattern research to LoreVault's schema and now frames typed relation work as relation evidence harvesting plus catalog discovery before stable graph-aware routing
+- [Claims event-sourcing proposal — May 2026](query/2026-05-05_event-sourcing-claims-proposed.md) — proposes append-only relation claims, per-boundary replay, and derived relation projections for spoiler-aware relation state
+- [Claims model extensions parked — May 2026](query/2026-05-05_claims-model-extensions-parked.md) — parked relation/claims extensions including ClaimedEvent, hearsay chains, provisional relation clustering, and future catalog-module expansion
 - [Multi-entity retrieval: external research — April 2026](query/2026-04-12_multi-entity-retrieval-external-research.md) — pressure-tests the shortestPath() proposal against 10+ external sources; verdict: scene co-occurrence beats path traversal for narrative "X+Y at Z" questions; includes Java/Spring/Neo4j stack mapping and staged implementation plan
 
 ### DevX and operator tooling
