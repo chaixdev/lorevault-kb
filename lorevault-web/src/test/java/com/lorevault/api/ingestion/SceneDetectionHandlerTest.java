@@ -1,6 +1,7 @@
 package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.job.IngestionJobService;
 import com.lorevault.api.ingestion.infrastructure.*;
+import com.lorevault.api.ingestion.infrastructure.RelationClaimPersistenceService;
 
 import com.lorevault.api.ingestion.scene.SceneLocalizationException;
 import com.lorevault.api.ingestion.scene.SceneDetectionException;
@@ -68,6 +69,7 @@ class SceneDetectionHandlerTest {
     @Mock private TriadTemporalEdgeRequestFactory triadTemporalEdgeRequestFactory;
     @Mock private SceneRelationshipAnalysisService sceneRelationshipAnalysisService;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private RelationClaimPersistenceService relationClaimPersistenceService;
 
     @InjectMocks
     private SceneDetectionHandler handler;
@@ -136,6 +138,7 @@ class SceneDetectionHandlerTest {
             verify(objectPersistenceService).persistExtractedObjects(persistedScenes, List.of());
             verify(locationPersistenceService).persistExtractedLocations(persistedScenes, List.of());
             verify(eventPersistenceService).persistExtractedEvents(persistedScenes, List.of());
+            verify(relationClaimPersistenceService).persistExtractedRelationClaims(persistedScenes, List.of());
             verify(defaultTemporalEdgeService).createAllDefaults(bookId);
             verify(sceneTemporalRelationshipPersistenceService).applyTemporalRelationships(eq(List.of()));
 
@@ -207,7 +210,8 @@ class SceneDetectionHandlerTest {
                             collectiveExtractions,
                             objectExtractions,
                             locationExtractions,
-                            eventExtractions
+                            eventExtractions,
+                            List.of()
                     ));
             when(triadTemporalEdgeRequestFactory.buildRequests(eq(chapterId), eq(List.of()), anyMap())).thenReturn(List.of());
 
@@ -218,6 +222,7 @@ class SceneDetectionHandlerTest {
             verify(objectPersistenceService).persistExtractedObjects(persistedScenes, objectExtractions);
             verify(locationPersistenceService).persistExtractedLocations(persistedScenes, locationExtractions);
             verify(eventPersistenceService).persistExtractedEvents(persistedScenes, eventExtractions);
+            verify(relationClaimPersistenceService).persistExtractedRelationClaims(persistedScenes, List.of());
             verify(sceneTemporalRelationshipPersistenceService).applyTemporalRelationships(eq(List.of()));
             verify(eventPublisher).publishEvent(any(ScenesDetectedEvent.class));
             InOrder inOrder = inOrder(
@@ -226,6 +231,7 @@ class SceneDetectionHandlerTest {
                     objectPersistenceService,
                     locationPersistenceService,
                     eventPersistenceService,
+                    relationClaimPersistenceService,
                     eventPublisher
             );
             inOrder.verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, extractions);
@@ -233,6 +239,7 @@ class SceneDetectionHandlerTest {
             inOrder.verify(objectPersistenceService).persistExtractedObjects(persistedScenes, objectExtractions);
             inOrder.verify(locationPersistenceService).persistExtractedLocations(persistedScenes, locationExtractions);
             inOrder.verify(eventPersistenceService).persistExtractedEvents(persistedScenes, eventExtractions);
+            inOrder.verify(relationClaimPersistenceService).persistExtractedRelationClaims(persistedScenes, List.of());
             inOrder.verify(eventPublisher).publishEvent(any(ScenesDetectedEvent.class));
         }
 
@@ -392,6 +399,7 @@ class SceneDetectionHandlerTest {
             verify(objectPersistenceService, never()).persistExtractedObjects(any(), any());
             verify(locationPersistenceService, never()).persistExtractedLocations(any(), any());
             verify(eventPersistenceService, never()).persistExtractedEvents(any(), any());
+            verify(relationClaimPersistenceService, never()).persistExtractedRelationClaims(any(), any());
             verify(sceneTemporalRelationshipPersistenceService, never()).applyTemporalRelationships(any());
             verify(defaultTemporalEdgeService, never()).createAllDefaults(any());
             
@@ -542,6 +550,7 @@ class SceneDetectionHandlerTest {
             verify(collectivePersistenceService, never()).persistExtractedCollectives(any(), any());
             verify(objectPersistenceService, never()).persistExtractedObjects(any(), any());
             verify(eventPersistenceService, never()).persistExtractedEvents(any(), any());
+            verify(relationClaimPersistenceService, never()).persistExtractedRelationClaims(any(), any());
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());

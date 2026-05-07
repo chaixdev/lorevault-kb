@@ -469,16 +469,41 @@ public class SceneRelationshipAnalysisService {
                 .toList();
     }
 
+    private static final Set<String> VALID_ENTITY_KINDS = Set.of(
+            "Individual", "Collective", "Object", "Location", "Concept", "Event"
+    );
+
     private String[] parseEntityRef(String entityRef) {
         String normalized = normalizeText(entityRef);
         if (normalized == null) {
             return new String[]{null, null};
         }
-        int colonIdx = normalized.indexOf(": ");
-        if (colonIdx > 0 && colonIdx < normalized.length() - 2) {
-            return new String[]{normalized.substring(0, colonIdx).trim(), normalized.substring(colonIdx + 2).trim()};
+        // Try "Kind: Name" format first (prompt-specified)
+        int colonSpaceIdx = normalized.indexOf(": ");
+        if (colonSpaceIdx > 0 && colonSpaceIdx < normalized.length() - 2) {
+            String kind = normalized.substring(0, colonSpaceIdx).trim();
+            String name = normalized.substring(colonSpaceIdx + 2).trim();
+            return new String[]{validateKind(kind), name};
         }
+        // Fallback: try "Kind:Name" (no space after colon) — LLM deviation
+        int colonIdx = normalized.indexOf(':');
+        if (colonIdx > 0 && colonIdx < normalized.length() - 1) {
+            String kind = normalized.substring(0, colonIdx).trim();
+            String name = normalized.substring(colonIdx + 1).trim();
+            if (!name.isEmpty()) {
+                return new String[]{validateKind(kind), name};
+            }
+        }
+        LOG.debug("[RELATION_CLAIM] Entity ref missing kind separator: entityRef={}", normalized);
         return new String[]{null, normalized};
+    }
+
+    private String validateKind(String kind) {
+        if (kind == null || !VALID_ENTITY_KINDS.contains(kind)) {
+            LOG.warn("[RELATION_CLAIM] Unknown entity kind '{}': falling back to null", kind);
+            return null;
+        }
+        return kind;
     }
 
     private String generateProvisionalRelTypeId(String relationName) {
@@ -488,6 +513,10 @@ public class SceneRelationshipAnalysisService {
         String id = relationName.toLowerCase()
                 .replace(' ', '_')
                 .replaceAll("[^a-z0-9_]", "");
+        if (id.isEmpty()) {
+            LOG.debug("[RELATION_CLAIM] Provisional rel type ID empty after normalization for relationName='{}', using 'unparseable'", relationName);
+            return "R:provisional.unparseable";
+        }
         return "R:provisional." + id;
     }
 
@@ -500,10 +529,13 @@ public class SceneRelationshipAnalysisService {
         if (lower.contains("explicit")) {
             return "Explicit";
         }
-        if (lower.contains("strongly implied") || lower.contains("strongly_implied")) {
+        if (lower.contains("strongly") && lower.contains("impl")) {
             return "StronglyImplied";
         }
-        if (lower.contains("weakly implied") || lower.contains("weakly_implied") || lower.contains("implied")) {
+        if (lower.contains("weakly") || lower.equals("implied")) {
+            return "WeaklyImplied";
+        }
+        if (lower.contains("impl")) {
             return "WeaklyImplied";
         }
         return "WeaklyImplied";
@@ -513,7 +545,16 @@ public class SceneRelationshipAnalysisService {
         if (value == null) {
             return null;
         }
-        return value.length() <= maxLength ? value : value.substring(0, maxLength);
+        if (value.length() <= maxLength) {
+            return value;
+        }
+        // Code-point-aware truncation to avoid splitting surrogate pairs
+        int codePointCount = value.codePointCount(0, value.length());
+        if (codePointCount <= maxLength) {
+            return value;
+        }
+        int offset = value.offsetByCodePoints(0, maxLength);
+        return value.substring(0, offset) + "…";
     }
 
     private List<String> normalizeAliases(List<String> aliases) {
