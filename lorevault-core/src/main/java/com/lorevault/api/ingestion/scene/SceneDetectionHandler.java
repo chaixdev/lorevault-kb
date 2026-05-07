@@ -18,6 +18,7 @@ import com.lorevault.api.ingestion.infrastructure.ObjectPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.CollectivePersistenceService;
 import com.lorevault.api.ingestion.infrastructure.LocationPersistenceService;
 import com.lorevault.api.ingestion.infrastructure.EventPersistenceService;
+import com.lorevault.api.ingestion.infrastructure.RelationClaimPersistenceService;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeService;
 import com.lorevault.api.ingestion.resolution.event.SceneTemporalRelationshipPersistenceService;
@@ -61,6 +62,7 @@ public class SceneDetectionHandler {
     private final ObjectPersistenceService objectPersistenceService;
     private final LocationPersistenceService locationPersistenceService;
     private final EventPersistenceService eventPersistenceService;
+    private final RelationClaimPersistenceService relationClaimPersistenceService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
     private final SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService;
     private final TriadTemporalEdgeRequestFactory triadTemporalEdgeRequestFactory;
@@ -78,6 +80,7 @@ public class SceneDetectionHandler {
             ObjectPersistenceService objectPersistenceService,
             LocationPersistenceService locationPersistenceService,
             EventPersistenceService eventPersistenceService,
+            RelationClaimPersistenceService relationClaimPersistenceService,
             IngestionJobService ingestionJobService,
             DefaultTemporalEdgeService defaultTemporalEdgeService,
             SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService,
@@ -94,6 +97,7 @@ public class SceneDetectionHandler {
         this.objectPersistenceService = objectPersistenceService;
         this.locationPersistenceService = locationPersistenceService;
         this.eventPersistenceService = eventPersistenceService;
+        this.relationClaimPersistenceService = relationClaimPersistenceService;
         this.defaultTemporalEdgeService = defaultTemporalEdgeService;
         this.sceneTemporalRelationshipPersistenceService = sceneTemporalRelationshipPersistenceService;
         this.triadTemporalEdgeRequestFactory = triadTemporalEdgeRequestFactory;
@@ -206,6 +210,10 @@ public class SceneDetectionHandler {
                 eventPersistenceService.persistExtractedEvents(
                         scenes,
                         sceneRelationshipOutcome.sceneEventExtractions()
+                );
+                relationClaimPersistenceService.persistExtractedRelationClaims(
+                        scenes,
+                        sceneRelationshipOutcome.sceneRelationClaimExtractions()
                 );
             }
             

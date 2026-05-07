@@ -67,6 +67,22 @@ public final class TriadAnalysisModels {
     public record SceneEventExtraction(int sceneIndex, List<EventExtraction> events) {
     }
 
+    public record RelationClaimExtraction(
+            String provisionalRelTypeId,
+            String subjectKind,
+            String subjectName,
+            String relationName,
+            String relationDescription,
+            String objectKind,
+            String objectName,
+            String certainty,
+            String evidence
+    ) {
+    }
+
+    public record SceneRelationClaimExtraction(int sceneIndex, List<RelationClaimExtraction> relationClaims) {
+    }
+
     public record SceneRelationshipAnalysis(
             UUID previousSceneId,
             UUID currentSceneId,
@@ -91,14 +107,15 @@ public final class TriadAnalysisModels {
             List<SceneCollectiveExtraction> sceneCollectiveExtractions,
             List<SceneObjectExtraction> sceneObjectExtractions,
             List<SceneLocationExtraction> sceneLocationExtractions,
-            List<SceneEventExtraction> sceneEventExtractions
+            List<SceneEventExtraction> sceneEventExtractions,
+            List<SceneRelationClaimExtraction> sceneRelationClaimExtractions
     ) {
         public SceneRelationshipOutcome(
                 List<SceneRelationshipAnalysis> triadAnalyses,
                 List<SceneIndividualExtraction> sceneIndividualExtractions,
                 List<SceneLocationExtraction> sceneLocationExtractions
         ) {
-            this(triadAnalyses, sceneIndividualExtractions, List.of(), List.of(), sceneLocationExtractions, List.of());
+            this(triadAnalyses, sceneIndividualExtractions, List.of(), List.of(), sceneLocationExtractions, List.of(), List.of());
         }
 
         public SceneRelationshipOutcome(
@@ -107,7 +124,7 @@ public final class TriadAnalysisModels {
                 List<SceneLocationExtraction> sceneLocationExtractions,
                 List<SceneEventExtraction> sceneEventExtractions
         ) {
-            this(triadAnalyses, sceneIndividualExtractions, List.of(), List.of(), sceneLocationExtractions, sceneEventExtractions);
+            this(triadAnalyses, sceneIndividualExtractions, List.of(), List.of(), sceneLocationExtractions, sceneEventExtractions, List.of());
         }
 
         public SceneRelationshipOutcome(
@@ -123,7 +140,8 @@ public final class TriadAnalysisModels {
                     List.of(),
                     sceneObjectExtractions,
                     sceneLocationExtractions,
-                    sceneEventExtractions
+                    sceneEventExtractions,
+                    List.of()
             );
         }
     }

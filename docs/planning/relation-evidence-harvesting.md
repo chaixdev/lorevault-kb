@@ -390,5 +390,81 @@ There are **no edges between entity nodes of different types** (no `IndividualMe
 | Create | `lorevault-core/.../content/relation/RelationClaimGraphRepository.java` | Neo4j repository for relation claims |
 | Modify | `lorevault-core/.../ingestion/scene/SceneDetectionHandler.java` | Call `relationClaimPersistenceService.persistExtractedRelationClaims()` after entity persistence |
 | Modify | `lorevault-core/.../config/Neo4jSchemaInitializer.java` | Add `RelationClaim` constraints and indexes |
-| Create | `lorevault-web/.../web/ui/UiRelationHarvestController.java` | Harvest view endpoint |
-| Create | `lorevault-web/.../resources/templates/ui/relations.html` | HTMX fragment for harvest table |
+| ~~Create~~ | ~~`lorevault-web/.../web/ui/UiRelationHarvestController.java`~~ | ~~Harvest view endpoint~~ — deferred; inspect directly in Neo4j for Phase 0 |
+| ~~Create~~ | ~~`lorevault-web/.../resources/templates/ui/relations.html`~~ | ~~HTMX fragment for harvest table~~ — deferred; inspect directly in Neo4j for Phase 0 |
+
+### Phase 0 — Implementation (May 7, 2026)
+
+**Status: Core pipeline implemented. Dev-console harvest view deferred — inspect directly in Neo4j.**
+
+**What was built:**
+
+1. **RelationClaim data model** (`lorevault-core/.../content/relation/RelationClaim.java`):
+   - Java 21 record with `@Node(primaryLabel = "RelationClaim", labels = "Mention")`
+   - 18 properties: id, relationName, relationDescription, provisionalRelTypeId, subjectKind, subjectName, objectKind, objectName, certainty, evidenceText, source, sceneId, chapterId, bookId, extractionIndex, resolutionStatus, createdAt, updatedAt
+   - `certainty` uses String values ("Explicit", "StronglyImplied", "WeaklyImplied") matching existing certainty enum
+   - `bookId` is null at creation time (filled later during book-level processing, same as other mentions)
+
+2. **RelationClaimGraphRepository** (`lorevault-core/.../content/relation/RelationClaimGraphRepository.java`):
+   - `Neo4jRepository<RelationClaim, UUID>` with Cypher methods for `linkClaimToScene`, `linkSubjectMention`, `linkObjectMention`
+
+3. **Neo4j schema** (`lorevault-core/.../config/Neo4jSchemaInitializer.java`):
+   - `RELATION_CLAIM_ID_UNIQUE` constraint on `RelationClaim.id`
+   - `RELATION_CLAIM_CHAPTER_RELTYPE_INDEX` on `(chapterId, provisionalRelTypeId)` for harvest aggregation queries
+   - `RELATION_CLAIM_BOOK_RELTYPE_INDEX` on `(bookId, provisionalRelTypeId)` for book-level aggregation
+   - `RelationClaim` added to the `Mention` aggregate label backfill
+
+4. **Scene analysis prompt** (`lorevault-core/.../resources/prompts/scene-analysis.txt`):
+   - Added `**relations**` section after entity extraction instructions
+   - Added `<relations>` XML output template with `<subject>`, `<relationName>`, `<relationDescription>`, `<object>`, `<certainty>`, `<evidence>` elements
+   - Two example relations (`trusted`, `opposed`) with different entity kinds and certainty levels
+   - Explicit instruction: "Describe relations in your own words — there is no predefined relation type menu"
+   - Section is optional: empty `<relations/>` if no inter-entity relations are evident
+
+5. **Triad analysis models** (`lorevault-core/.../ingestion/triad/TriadAnalysisModels.java`):
+   - Added `RelationClaimExtraction` record with: subjectKind, subjectName, relationName, relationDescription, provisionalRelTypeId, objectKind, objectName, certainty, evidence
+   - Added `SceneRelationClaimExtraction` record with: sceneIndex, List<RelationClaimExtraction>
+   - Added `sceneRelationClaimExtractions` field to `SceneRelationshipOutcome` (all constructors updated)
+
+6. **Triad analysis service** (`lorevault-core/.../ingestion/triad/SceneRelationshipAnalysisService.java`):
+   - Added `TriadRelationClaimExtraction` inner record (subject, relationName, relationDescription, object, certainty, evidence)
+   - Added `List<TriadRelationClaimExtraction> relations` to `TriadCurrentSceneEntities` (all constructors updated)
+   - Added `normalizeRelationClaims()` method with:
+     - `parseEntityRef()` — splits "Kind: Name" into kind/name parts
+     - `generateProvisionalRelTypeId()` — lowercases, replaces spaces with underscores, strips non-alphanumeric, prefixes "R:provisional."
+     - `normalizeCertainty()` — maps to "Explicit"/"StronglyImplied"/"WeaklyImplied" (default)
+     - `truncate()` — caps evidence at 500 chars, description at 1000 chars
+   - Wired into `analyzeChapterTriadsWithIndividuals()` alongside existing entity extraction maps
+
+7. **RelationClaimPersistenceService** (`lorevault-core/.../ingestion/infrastructure/RelationClaimPersistenceService.java`):
+   - Follows the exact same pattern as `IndividualPersistenceService`
+   - `persistExtractedRelationClaims(List<Scene>, List<SceneRelationClaimExtraction>)`
+   - Creates `RelationClaim` records, saves via repository, links to scene via `linkClaimToScene()`
+   - Subject/object mention linking is best-effort at Phase 0 (stored as raw names; linking to resolved mentions is a future enhancement)
+
+8. **SceneDetectionHandler** (`lorevault-core/.../ingestion/scene/SceneDetectionHandler.java`):
+   - Added `RelationClaimPersistenceService` as constructor parameter
+   - Calls `persistExtractedRelationClaims()` after the five entity persistence calls, inside the `if (!scenes.isEmpty())` block
+
+**What was deferred:**
+
+- Dev-console harvest view (controller + template) — inspect directly in Neo4j for Phase 0
+- Subject/object mention linking (`RELATES_SUBJECT`/`RELATES_OBJECT` edges) — the repository methods exist but are not called yet; linking requires matching LLM-extracted names to persisted mention IDs, which needs a name-resolution step
+- `pubCoords` on RelationClaim nodes — the fields are in the data model but not yet populated from scene/chapter metadata during persistence; this will be added when the first book is processed and the pubCoords derivation is wired
+
+**Neo4j inspection queries for Phase 0:**
+
+```cypher
+// List all relation claims
+MATCH (rc:RelationClaim) RETURN rc.relationName, rc.provisionalRelTypeId, rc.subjectKind, rc.subjectName, rc.objectKind, rc.objectName, rc.certainty, rc.evidenceText LIMIT 50
+
+// Aggregate by provisional relation type
+MATCH (rc:RelationClaim)
+RETURN rc.provisionalRelTypeId, count(*) AS count, collect(DISTINCT rc.subjectKind) AS subjectKinds, collect(DISTINCT rc.objectKind) AS objectKinds, collect(rc.evidenceText)[0..3] AS samples
+ORDER BY count DESC
+
+// Find claims for a specific scene
+MATCH (s:Scene)-[:MENTIONS]->(rc:RelationClaim)
+WHERE s.id = $sceneId
+RETURN rc.relationName, rc.subjectKind + ': ' + rc.subjectName AS subject, rc.objectKind + ': ' + rc.objectName AS object, rc.certainty, rc.evidenceText
+```
