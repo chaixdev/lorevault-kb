@@ -607,19 +607,92 @@ If needed, add explicit routing between:
 
 ---
 
-## 15. Updated View Of The First Implementation Slice
+## 15. May 2026 Revision: Relation Discovery Before Relation Routing
 
-The earlier MVP section remains directionally right, but the first slice should now be evaluated as a **hybrid retrieval improvement**, not merely an entity-expansion feature.
+The earlier entity-expansion MVP remains useful for improving the current RAG path, but it is not the right starting point for typed inter-entity semantics. The relation layer should begin as **evidence harvesting plus catalog discovery**, not as a fixed hand-authored routing table.
 
-The first implementation slice should answer this question:
+The first relation slice should answer this question:
 
-> Can LoreVault improve answer quality and disambiguation by enriching spoiler-safe chunk retrieval with bounded scene/entity/location context, without changing the public Q&A contract yet?
+> Can LoreVault extract rich inter-entity relation claims from scenes, preserve the LLM's semantic detail, and use a catalog module to accumulate candidate meanings without prematurely flattening prose into a small predefined taxonomy?
 
-That is the best next experiment because it:
+This changes the order of work:
 
-- preserves the current API and citation model
-- exercises both shipped Entity ladders (`Individual` and `Location`)
-- creates a concrete evidence base for deciding whether template lanes or query routing are worth the added complexity
+1. The scene-analysis LLM emits open-ended relation claims: `subject`, `relationName`, `usageHint` / `relationDescription`, `object`, evidence text, certainty, and publication coordinates.
+2. A catalog module receives `{name, usageHint, subjectKind, objectKind}` and returns candidate relation IDs with correlation scores and descriptions.
+3. High-confidence matches can attach a known `relTypeId`; otherwise the claim is retained with a provisional key such as `R:provisional.turned_against`.
+4. Provisional observations accumulate across ingestion runs, then get clustered, reviewed, merged, or promoted into canonical catalog entries.
+5. Stable graph-aware routing is introduced only after enough promoted relation types exist to traverse reliably.
+
+This preserves semantic richness while still creating a path toward queryable typed edges.
+
+### Catalog module shape
+
+Conceptually, the catalog owns relation vocabulary intelligence. It can be queried like:
+
+```json
+{
+  "name": "betrayed",
+  "usageHint": "the general turned against the king and deposed him",
+  "subjectKind": "Individual",
+  "objectKind": "Individual"
+}
+```
+
+and respond with candidates:
+
+```json
+[
+  {
+    "id": "R:turned_against",
+    "correlation": 0.9,
+    "description": "Previously aligned party consciously acted against the other party"
+  },
+  {
+    "id": "R:cheated_on",
+    "correlation": 0.3,
+    "description": "Violation of romantic exclusivity or relationship integrity"
+  }
+]
+```
+
+For now this should be a module / bounded context in the modulith, not a separately deployed microservice. It owns relation definitions, aliases, examples, embeddings or semantic matching, candidate scoring, provisional observations, and promotion / merge decisions. It should not own scene analysis, claim persistence, entity resolution, edge projection, Q&A routing, or Allen-style temporal relations.
+
+### Revised first relation slice
+
+The first relation slice is now:
+
+1. **Prompt extension** — ask scene analysis to extract open-ended inter-entity relation claims without forcing a fixed relation menu.
+2. **Relation claim persistence** — store raw relation phrase, usage hint, subject/object references, evidence, certainty, source/chunk/scene provenance, and `pubCoords` append-only.
+3. **Catalog candidate matching** — call the catalog module with the extracted phrase and context; store candidate IDs, correlation scores, and whether a high-confidence match was selected.
+4. **Provisional observation harvest** — assign `R:provisional.<normalized_phrase>` when no confident match exists; aggregate observed phrases by normalized form, endpoint kinds, frequency, examples, and candidate cluster.
+5. **Review-ready output** — surface relation clusters and examples for later curation. Promotion to stable `R:*` IDs is an explicit follow-up, not a prerequisite for retaining evidence.
+
+Projected query edges should distinguish exploratory/provisional observations from stable canonical relations. A provisional edge, if materialized at all, is a derived debug/query-assist view:
+
+```text
+(:Entity)-[:PROVISIONAL_REL {
+  relationName,
+  provisionalRelTypeId,
+  claimId,
+  pubCoords
+}]->(:Entity)
+```
+
+Stable `REL {relTypeId}` edges are replayed from claims after catalog promotion. This avoids rewriting the canonical evidence store when provisional phrases later merge into a canonical relation.
+
+### Downstream retrieval implication
+
+Fixed routing tables can return later, but they should route over **promoted catalog IDs**, not speculative first-pass names. Until then, graph-aware retrieval should either ignore provisional relations or use them only in diagnostic / experimental modes where fuzzy matching and cluster uncertainty are visible.
+
+### Multi-bin fan-out remains correct behavior
+
+The same semantic fact can live in different claim bins depending on how the source text framed it:
+
+- "He's a police officer" → **Ascription** (`P:occupation`, value = police_officer concept)
+- "He was part of the force" → **Relation** (raw phrase: `part of`, possible catalog candidate later)
+- "He carried a badge" → relation-like evidence that may support occupation or affiliation after catalog/claim aggregation
+
+**Store it where you find it. Retrieve it from everywhere — but only promote stable traversal semantics after observed data earns them.**
 
 ---
 

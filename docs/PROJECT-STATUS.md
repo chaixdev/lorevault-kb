@@ -63,11 +63,11 @@ Near-term execution slices:
 1. **Q&A and retrieval quality validation — immediate next focus**
     - Run representative lore questions against baseline, graph-aware, and hybrid retrieval using the richer four-lane entity graph
     - Classify failures as missing graph data, missing typed edges, missing retrieval paths, answer assembly gaps, or spoiler-gating issues
-    - Use the findings as the decision point for whether the next implementation slice should be event extraction tuning, typed relation catalog work, Concept, or retrieval assembly
+    - Use the findings as the decision point for whether the next implementation slice should be event extraction tuning, relation evidence harvesting/catalog discovery, Concept, or retrieval assembly
 2. **Event extraction and resolution tuning — evidence-triggered follow-up**
     - Return to prompt/coref/reduction tuning when validation shows event questions fail because of over-extraction, missed merges, weak temporal qualifiers, or unstable canonicalization
-3. **Minimal relation type catalog**
-    - Define the first curated relation vocabulary and extraction integration for typed inter-entity edges after validation identifies the highest-value relation gaps
+3. **Relation evidence harvesting and catalog discovery**
+    - Let scene analysis emit open-ended inter-entity relation claims, preserve raw relation names and usage hints, and use an in-process catalog module to return candidate relation IDs/correlation scores while unmatched observations accumulate for clustering and later promotion
 4. **Concept entity lane**
    - Decide and implement the remaining regular entity ladder for Concept when validation shows species/category/technology questions are blocked by missing Concept anchors
 5. **Event aggregation and graph shaping**
