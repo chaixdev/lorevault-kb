@@ -15,7 +15,7 @@ import java.util.concurrent.Executor;
  * Configuration for asynchronous processing
  */
 @Configuration
-@EnableAsync
+@EnableAsync(proxyTargetClass = true)
 public class AsyncConfig {
 
     @Value("${lorevault.async.shutdown.wait-for-tasks:true}")
@@ -24,17 +24,19 @@ public class AsyncConfig {
     @Value("${lorevault.async.shutdown.ingestion-await-seconds:60}")
     private int ingestionAwaitTerminationSeconds;
 
+    @Value("${lorevault.async.shutdown.ingestion-lane-await-seconds:60}")
+    private int ingestionLaneAwaitTerminationSeconds;
+
     @Value("${lorevault.async.shutdown.scene-detection-await-seconds:120}")
     private int sceneDetectionAwaitTerminationSeconds;
 
     /**
-     * Custom thread pool for ingestion processing.
+     * Custom thread pool for ingestion orchestration and fan-in processing.
      * This ensures that async operations don't block the main HTTP thread pool.
      *
      * Current product stance: we do not support concurrent chapter uploads within the same
-     * narrative universe. Keep this executor single-threaded for now so ingestion follow-up
-     * work remains serialized. A more targeted concurrency model may still be needed later,
-     * but that design work is explicitly deferred.
+     * narrative universe. Keep this executor single-threaded so cross-branch orchestration
+     * and completion fan-in remain serialized.
      */
     @Bean(name = "ingestionTaskExecutor")
     public Executor taskExecutor() {
@@ -46,6 +48,28 @@ public class AsyncConfig {
         executor.setTaskDecorator(mdcTaskDecorator());
         executor.setWaitForTasksToCompleteOnShutdown(waitForTasksToCompleteOnShutdown);
         executor.setAwaitTerminationSeconds(ingestionAwaitTerminationSeconds);
+        executor.initialize();
+        return executor;
+    }
+
+    /**
+     * Bounded pool for independent branches within a single chapter ingestion.
+     *
+     * <p>Scene detection remains isolated on its own executor.  Completion fan-in remains on the
+     * single-threaded {@code ingestionTaskExecutor}.  This pool is for branch work between those
+     * boundaries: chunking/embedding, chapter-level entity resolution, book-level lane reduction,
+     * and event embedding/candidate generation.</p>
+     */
+    @Bean(name = "ingestionLaneTaskExecutor")
+    public Executor ingestionLaneTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(6);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("ingestion-lane-");
+        executor.setTaskDecorator(mdcTaskDecorator());
+        executor.setWaitForTasksToCompleteOnShutdown(waitForTasksToCompleteOnShutdown);
+        executor.setAwaitTerminationSeconds(ingestionLaneAwaitTerminationSeconds);
         executor.initialize();
         return executor;
     }

@@ -40,5 +40,32 @@
         + New book...
     </option>
 </th:block>
+
+<div th:fragment="qaBookCheckboxes" class="space-y-2">
+    <div th:if="${books == null || books.isEmpty()}" class="rounded-lg border border-dashed border-slate-700 bg-slate-950/50 px-3 py-4 text-center text-[11px] text-slate-500">
+        Select a universe to load books.
+    </div>
+
+    <label th:each="book : ${books}"
+           class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-300 transition hover:border-slate-700 hover:bg-slate-900/70">
+        <input type="checkbox"
+               name="selectedBookId"
+               th:value="${book.id}"
+               th:attr="data-book-number=${book.bookNumber},data-book-title=${book.title}"
+               class="mt-0.5 rounded border-slate-600 bg-slate-950 text-emerald-500 focus:ring-emerald-500/40"
+               @change="selectQaBook($event)">
+        <span class="min-w-0">
+            <span class="block font-medium text-slate-200" th:text="${book.label}"></span>
+            <span class="block text-[10px] text-slate-500" th:text="${book.bookNumber == null ? 'No book number configured' : 'Book ' + book.bookNumber}"></span>
+        </span>
+    </label>
+</div>
+
+<th:block th:fragment="qaChapterOptions">
+    <option value="">Entire selected book</option>
+    <option th:each="chapter : ${chapters}"
+            th:value="${chapter.chapterNumber}"
+            th:text="${'Ch ' + chapter.chapterNumber + ' — ' + chapter.title}"></option>
+</th:block>
 </body>
 </html>

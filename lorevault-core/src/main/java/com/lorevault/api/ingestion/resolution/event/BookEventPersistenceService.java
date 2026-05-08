@@ -23,6 +23,7 @@ public class BookEventPersistenceService {
 
     @Transactional
     public BookEventWriteSummary saveAndLinkBookEvents(
+            UUID bookId,
             UUID chapterId,
             UUID jobId,
             List<BookEvent> bookEvents,
@@ -40,6 +41,7 @@ public class BookEventPersistenceService {
 
         for (int i = 0; i < savedBookEvents.size(); i++) {
             BookEvent bookEvent = savedBookEvents.get(i);
+            bookEventRepository.linkBookToEvent(bookId, bookEvent.id());
             List<UUID> chapterEventIds = chapterEventIdsByBookEvent.get(i);
             writtenLinks += linkChapterEventsToBookEvent(chapterEventIds, bookEvent.id());
         }

@@ -6,7 +6,8 @@ import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.scene.Scene;
 import com.lorevault.api.ingestion.job.IngestionFailure;
 import com.lorevault.api.ingestion.job.IngestionStatus;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.stereotype.Service;
 
@@ -24,8 +25,9 @@ import java.util.function.Consumer;
  * Orchestrates triad-based scene analysis end-to-end, fully in-memory.
  */
 @Service
-@Slf4j
 public class SceneRelationshipAnalysisService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SceneRelationshipAnalysisService.class);
 
     private static final Set<String> ALLOWED_TRIAD_RELATIONS = Set.of(
             "R:temporal.before",
@@ -33,6 +35,16 @@ public class SceneRelationshipAnalysisService {
             "R:temporal.overlaps",
             "R:temporal.contains",
             "R:temporal.during"
+    );
+
+    private static final int MAX_SEMANTIC_TRIAD_ATTEMPTS = 2;
+
+    private static final Set<String> RETRYABLE_TRIAD_ANALYSIS_FAILURE_CODES = Set.of(
+            "TRIAD_RESPONSE_MISSING",
+            "TRIAD_RELATION_MISSING",
+            "TRIAD_RELATION_TYPE_MISSING",
+            "TRIAD_RELATION_CERTAINTY_MISSING",
+            "TRIAD_RELATION_TYPE_INVALID"
     );
 
     public record TriadRelation(String temporalType, String certainty, String evidence) {}
@@ -76,18 +88,28 @@ public class SceneRelationshipAnalysisService {
             String evidence
     ) {}
 
+    public record TriadRelationClaimExtraction(
+            String subject,
+            String relationName,
+            String relationDescription,
+            String object,
+            String certainty,
+            String evidence
+    ) {}
+
     public record TriadCurrentSceneEntities(
             List<TriadIndividualExtraction> individuals,
             List<TriadCollectiveExtraction> collectives,
             List<TriadObjectExtraction> objects,
             List<TriadLocationExtraction> locations,
-            List<TriadEventExtraction> events
+            List<TriadEventExtraction> events,
+            List<TriadRelationClaimExtraction> relations
     ) {
         public TriadCurrentSceneEntities(
                 List<TriadIndividualExtraction> individuals,
                 List<TriadLocationExtraction> locations
         ) {
-            this(individuals, List.of(), List.of(), locations, List.of());
+            this(individuals, List.of(), List.of(), locations, List.of(), List.of());
         }
 
         public TriadCurrentSceneEntities(
@@ -95,7 +117,7 @@ public class SceneRelationshipAnalysisService {
                 List<TriadObjectExtraction> objects,
                 List<TriadLocationExtraction> locations
         ) {
-            this(individuals, List.of(), objects, locations, List.of());
+            this(individuals, List.of(), objects, locations, List.of(), List.of());
         }
     }
 
@@ -149,6 +171,7 @@ public class SceneRelationshipAnalysisService {
         Map<Integer, List<TriadAnalysisModels.ObjectExtraction>> extractedObjectsBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadAnalysisModels.LocationExtraction>> extractedLocationsBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadAnalysisModels.EventExtraction>> extractedEventsBySceneIndex = new HashMap<>();
+        Map<Integer, List<TriadAnalysisModels.RelationClaimExtraction>> extractedRelationClaimsBySceneIndex = new HashMap<>();
 
         int triadIndex = 0;
         for (TriadBuilderService.SceneTriad t : triads) {
@@ -165,13 +188,7 @@ public class SceneRelationshipAnalysisService {
 
             onTriadStart.accept(new HashMap<>(statusProps));
 
-            TriadStructuredResult parsed = llmClient.detectSceneAnalysisTriad(
-                    jobId,
-                    systemPrompt,
-                    vars,
-                    TriadStructuredResult.class
-            );
-            TriadStructuredResult normalized = validateAndNormalizeTriadResult(parsed, t, statusProps);
+            TriadStructuredResult normalized = analyzeTriadWithSemanticRetry(jobId, systemPrompt, vars, t, statusProps);
 
             String inv = normalized.previousToCurrent() != null
                     ? invertPrevToCurr(normalized.previousToCurrent().temporalType())
@@ -230,6 +247,13 @@ public class SceneRelationshipAnalysisService {
                             .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
                             .addAll(triadEvents);
                 }
+
+                List<TriadAnalysisModels.RelationClaimExtraction> triadRelationClaims = normalizeRelationClaims(normalized);
+                if (!triadRelationClaims.isEmpty()) {
+                    extractedRelationClaimsBySceneIndex
+                            .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
+                            .addAll(triadRelationClaims);
+                }
             }
         }
 
@@ -258,18 +282,69 @@ public class SceneRelationshipAnalysisService {
                 .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneEventExtraction::sceneIndex))
                 .toList();
 
+        List<TriadAnalysisModels.SceneRelationClaimExtraction> sceneRelationClaimExtractions = extractedRelationClaimsBySceneIndex.entrySet().stream()
+                .map(e -> new TriadAnalysisModels.SceneRelationClaimExtraction(e.getKey(), List.copyOf(e.getValue())))
+                .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneRelationClaimExtraction::sceneIndex))
+                .toList();
+
         return new TriadAnalysisModels.SceneRelationshipOutcome(
                 analyses,
                 sceneExtractions,
                 sceneCollectiveExtractions,
                 sceneObjectExtractions,
                 sceneLocationExtractions,
-                sceneEventExtractions
+                sceneEventExtractions,
+                sceneRelationClaimExtractions
         );
     }
 
     public List<TriadAnalysisModels.SceneRelationshipAnalysis> analyzeChapterTriads(UUID jobId, Chapter chapter) {
         return analyzeChapterTriadsWithIndividuals(jobId, chapter).triadAnalyses();
+    }
+
+    private TriadStructuredResult analyzeTriadWithSemanticRetry(UUID jobId,
+                                                               String systemPrompt,
+                                                               Map<String, Object> userVariables,
+                                                               TriadBuilderService.SceneTriad triad,
+                                                               Map<String, Object> statusProps) {
+        TriadAnalysisException lastFailure = null;
+
+        for (int attempt = 1; attempt <= MAX_SEMANTIC_TRIAD_ATTEMPTS; attempt++) {
+            try {
+                TriadStructuredResult parsed = llmClient.detectSceneAnalysisTriad(
+                        jobId,
+                        systemPrompt,
+                        userVariables,
+                        TriadStructuredResult.class
+                );
+                return validateAndNormalizeTriadResult(parsed, triad, statusProps);
+            } catch (TriadAnalysisException e) {
+                if (!isRetryableTriadAnalysisFailure(e) || attempt == MAX_SEMANTIC_TRIAD_ATTEMPTS) {
+                    throw e;
+                }
+                lastFailure = e;
+                LOG.warn("[TRIAD_ANALYSIS] Retrying semantic validation: jobId={}, triadIndex={}, attempt={}/{}, failureCode={}, message={}",
+                        jobId,
+                        statusProps.get("triadIndex"),
+                        attempt + 1,
+                        MAX_SEMANTIC_TRIAD_ATTEMPTS,
+                        e.failure() != null ? e.failure().code() : null,
+                        e.getMessage());
+            }
+        }
+
+        throw lastFailure != null ? lastFailure : triadFailure(
+                "TRIAD_RESPONSE_MISSING",
+                "Triad analysis returned no structured result",
+                triad,
+                statusProps,
+                null
+        );
+    }
+
+    private boolean isRetryableTriadAnalysisFailure(TriadAnalysisException exception) {
+        return exception.failure() != null
+                && RETRYABLE_TRIAD_ANALYSIS_FAILURE_CODES.contains(exception.failure().code());
     }
 
     private List<TriadAnalysisModels.IndividualExtraction> normalizeIndividuals(TriadStructuredResult parsed) {
@@ -357,6 +432,129 @@ public class SceneRelationshipAnalysisService {
     private String normalizeEventTemporalType(String temporalType) {
         String normalized = normalizeText(temporalType);
         return normalized == null ? null : normalizeTemporalType(normalized);
+    }
+
+    private List<TriadAnalysisModels.RelationClaimExtraction> normalizeRelationClaims(TriadStructuredResult parsed) {
+        if (parsed == null || parsed.currentSceneEntities() == null || parsed.currentSceneEntities().relations() == null) {
+            return List.of();
+        }
+        return parsed.currentSceneEntities().relations().stream()
+                .filter(claim -> claim != null)
+                .map(claim -> {
+                    String[] subjectParts = parseEntityRef(claim.subject());
+                    String[] objectParts = parseEntityRef(claim.object());
+
+                    String normalizedRelationName = normalizeText(claim.relationName());
+                    if (normalizedRelationName != null) {
+                        normalizedRelationName = normalizedRelationName.replaceAll("\\s+", " ");
+                    }
+
+                    String provisionalRelTypeId = generateProvisionalRelTypeId(normalizedRelationName);
+
+                    String normalizedDescription = truncate(normalizeText(claim.relationDescription()), 1000);
+                    String normalizedEvidence = truncate(normalizeText(claim.evidence()), 500);
+
+                    return new TriadAnalysisModels.RelationClaimExtraction(
+                            provisionalRelTypeId,
+                            subjectParts[0],
+                            subjectParts[1],
+                            normalizedRelationName,
+                            normalizedDescription,
+                            objectParts[0],
+                            objectParts[1],
+                            normalizeCertainty(claim.certainty()),
+                            normalizedEvidence
+                    );
+                })
+                .toList();
+    }
+
+    private static final Set<String> VALID_ENTITY_KINDS = Set.of(
+            "Individual", "Collective", "Object", "Location", "Concept", "Event"
+    );
+
+    private String[] parseEntityRef(String entityRef) {
+        String normalized = normalizeText(entityRef);
+        if (normalized == null) {
+            return new String[]{null, null};
+        }
+        // Try "Kind: Name" format first (prompt-specified)
+        int colonSpaceIdx = normalized.indexOf(": ");
+        if (colonSpaceIdx > 0 && colonSpaceIdx < normalized.length() - 2) {
+            String kind = normalized.substring(0, colonSpaceIdx).trim();
+            String name = normalized.substring(colonSpaceIdx + 2).trim();
+            return new String[]{validateKind(kind), name};
+        }
+        // Fallback: try "Kind:Name" (no space after colon) — LLM deviation
+        int colonIdx = normalized.indexOf(':');
+        if (colonIdx > 0 && colonIdx < normalized.length() - 1) {
+            String kind = normalized.substring(0, colonIdx).trim();
+            String name = normalized.substring(colonIdx + 1).trim();
+            if (!name.isEmpty()) {
+                return new String[]{validateKind(kind), name};
+            }
+        }
+        LOG.debug("[RELATION_CLAIM] Entity ref missing kind separator: entityRef={}", normalized);
+        return new String[]{null, normalized};
+    }
+
+    private String validateKind(String kind) {
+        if (kind == null || !VALID_ENTITY_KINDS.contains(kind)) {
+            LOG.warn("[RELATION_CLAIM] Unknown entity kind '{}': falling back to null", kind);
+            return null;
+        }
+        return kind;
+    }
+
+    private String generateProvisionalRelTypeId(String relationName) {
+        if (relationName == null) {
+            return null;
+        }
+        String id = relationName.toLowerCase()
+                .replace(' ', '_')
+                .replaceAll("[^a-z0-9_]", "");
+        if (id.isEmpty()) {
+            LOG.debug("[RELATION_CLAIM] Provisional rel type ID empty after normalization for relationName='{}', using 'unparseable'", relationName);
+            return "R:provisional.unparseable";
+        }
+        return "R:provisional." + id;
+    }
+
+    private String normalizeCertainty(String certainty) {
+        String normalized = normalizeText(certainty);
+        if (normalized == null) {
+            return "WeaklyImplied";
+        }
+        String lower = normalized.toLowerCase();
+        if (lower.contains("explicit")) {
+            return "Explicit";
+        }
+        if (lower.contains("strongly") && lower.contains("impl")) {
+            return "StronglyImplied";
+        }
+        if (lower.contains("weakly") || lower.equals("implied")) {
+            return "WeaklyImplied";
+        }
+        if (lower.contains("impl")) {
+            return "WeaklyImplied";
+        }
+        return "WeaklyImplied";
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        if (value.length() <= maxLength) {
+            return value;
+        }
+        // Code-point-aware truncation to avoid splitting surrogate pairs
+        int codePointCount = value.codePointCount(0, value.length());
+        if (codePointCount <= maxLength) {
+            return value;
+        }
+        int offset = value.offsetByCodePoints(0, maxLength);
+        return value.substring(0, offset) + "…";
     }
 
     private List<String> normalizeAliases(List<String> aliases) {

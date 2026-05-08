@@ -1,6 +1,7 @@
 package com.lorevault.api.timeline;
 
 import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeService;
+import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeCreationResult;
 import com.lorevault.api.content.timeline.infrastructure.TemporalGraphRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,8 +54,11 @@ public class DefaultTemporalEdgeServiceIntegrationTest {
         // Given - a non-existent book ID
         UUID emptyBookId = UUID.randomUUID();
 
-        // When/Then - should not throw exception
-        assertDoesNotThrow(() -> defaultTemporalEdgeService.createAllDefaults(emptyBookId));
+        // When/Then - should not throw exception and return empty creation result
+        DefaultTemporalEdgeCreationResult result = assertDoesNotThrow(() -> defaultTemporalEdgeService.createAllDefaults(emptyBookId));
+        assertThat(result.inChapterEdgesCreated()).isZero();
+        assertThat(result.crossChapterEdgesCreated()).isZero();
+        assertThat(result.newlyCreatedCrossChapterBoundaries()).isEmpty();
     }
 
     @Test

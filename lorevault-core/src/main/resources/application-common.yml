@@ -1,0 +1,102 @@
+# Shared LoreVault configuration used by the web module.
+# Imported via spring.config.import in the module's application.yml.
+#
+# CONSUMERS: lorevault-web
+# GUARDRAIL: Do not add web-only config (server.*, springdoc, management) here —
+# put those in the module's own application.yml instead. This file must remain
+# environment-agnostic.
+lorevault:
+  schema:
+    enabled: true
+    mode: ensure
+    backend: neo4j
+    fail-on-error: false
+
+  ai:
+    retry:
+      max-attempts: 3
+      base-delay-ms: 1000
+      backoff-multiplier: 2.0
+      max-delay-ms: 10000
+      jitter-factor: 0.1
+
+    models:
+      embedding:
+        provider: openai-compatible
+        base-url: https://openrouter.ai/api
+        api-key: ${OPENROUTER_API_KEY:}
+        model: perplexity/pplx-embed-v1-4b
+
+      nlp-small:
+        provider: openai-compatible
+        base-url: https://api.groq.com/openai/v1
+        completions-path: /chat/completions
+        api-key: ${GROQ_API_KEY}
+        model: openai/gpt-oss-120b
+        temperature: 0.3
+        top-p: 1.0
+        max-context-tokens: 128000
+
+      nlp-big:
+        provider: openai-compatible
+        base-url: https://api.groq.com/openai/v1
+        completions-path: /chat/completions
+        api-key: ${GROQ_API_KEY}
+        model: openai/gpt-oss-120b
+        temperature: 0.2
+        top-p: 1.0
+        max-context-tokens: 128000
+
+    prompts:
+      base-path: classpath:prompts
+      chapter-segmentation:
+        system-prompt: chapter-segmentation.txt
+        model: nlp-big
+      scene-analysis:
+        system-prompt: scene-analysis.txt
+        model: nlp-small
+      entity-extraction:
+        system-prompt: entity-extraction.txt
+        model: nlp-big
+      rag-answer-generation:
+        system-prompt: rag-answer-generation.txt
+        model: nlp-big
+
+  content:
+    chunking:
+      decision-threshold: 1500
+      target-size: 800
+      overlap-percentage: 25
+      min-chunk-size: 400
+      max-chunk-size: 1200
+
+  embedding:
+    model:
+      provider: openai-compatible
+      model: perplexity/pplx-embed-v1-4b
+      dimensions: 2560
+      batch-size: 32
+    health:
+      expected-dim: 2560
+
+  event-ann:
+    top-k: 8
+    oversample-factor: 3
+    ann-floor: 0.70
+    max-candidates-per-event: 3
+    embedding-dimension: ${lorevault.embedding.model.dimensions:2560}
+
+  search:
+    provider: neo4j
+    oversample-multiplier: 3
+    hybrid:
+      enabled: false
+      rag-only: true
+      branch-n: 20
+      rrf-k: 60
+    snippet:
+      max-length: 800
+    neo4j:
+      vector-index-name: chunk_embedding_idx
+      similarity-function: cosine
+      dimensions: 2560

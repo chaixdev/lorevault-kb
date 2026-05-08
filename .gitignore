@@ -167,3 +167,6 @@ docker-data/
 postgres-data/
 
 .volumes/
+picocli/
+.opencode/pilot-state.json
+.opencode/pilot-banner.txt

@@ -21,7 +21,6 @@ import com.lorevault.api.ingestion.resolution.object.BookObjectResolutionResult;
 import com.lorevault.api.library.book.BookGraphRepository;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,10 +28,15 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.annotation.MergedAnnotations;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.retry.annotation.Retryable;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("BookObjectReductionService")
 class BookObjectReductionServiceTest {
+
+    private static final String CLAIM_LANE = "BOOK_OBJECT_REDUCTION";
 
     @Mock
     private BookGraphRepository bookGraphRepository;
@@ -49,11 +53,6 @@ class BookObjectReductionServiceTest {
     @InjectMocks
     private BookObjectReductionService service;
 
-    @BeforeEach
-    void setUp() {
-        when(claimService.tryAcquireClaimWithRetry(any(), anyInt(), anyLong())).thenReturn(true);
-    }
-
     @Test
     @DisplayName("Rebuilds book objects by normalized name only")
     void rebuildsBookObjectsByNormalizedNameOnly() {
@@ -68,6 +67,7 @@ class BookObjectReductionServiceTest {
         ChapterObject swordB = chapterObject(swordBId, chapterBId, "Moonblade", "silver sword", List.of("Silver Sword"), null, null, "ritual", "Alias mention", 1);
         ChapterObject door = chapterObject(doorId, chapterAId, "Stone Door", "stone door", List.of("gate"), "door", "stone", "barrier", "Blocks the hall", 1);
 
+        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(chapterObjectRepository.findByBookId(bookId)).thenReturn(List.of(door, swordB, swordA));
         when(bookObjectPersistenceService.replaceBookObjects(any(), any(), any()))
                 .thenAnswer(invocation -> invocation.getArgument(1));
@@ -116,6 +116,7 @@ class BookObjectReductionServiceTest {
     @DisplayName("Returns successful zero-count result when no chapter objects exist for the book")
     void returnsSuccessfulNoOpWhenNoChapterObjectsExist() {
         UUID bookId = UUID.randomUUID();
+        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(chapterObjectRepository.findByBookId(bookId)).thenReturn(List.of());
 
         BookObjectResolutionResult response = service.resolveBook(bookId);
@@ -131,7 +132,7 @@ class BookObjectReductionServiceTest {
     @DisplayName("Throws typed claim exception when book reduction claim cannot be acquired")
     void throwsTypedClaimExceptionWhenClaimCannotBeAcquired() {
         UUID bookId = UUID.randomUUID();
-        when(claimService.tryAcquireClaimWithRetry(bookId, 6, 500)).thenReturn(false);
+        when(claimService.tryAcquireClaimWithRetry(bookId, CLAIM_LANE, 6, 500)).thenReturn(false);
 
         assertThatThrownBy(() -> service.resolveBook(bookId))
                 .isInstanceOf(BookReductionClaimUnavailableException.class)
@@ -140,7 +141,18 @@ class BookObjectReductionServiceTest {
 
         verify(chapterObjectRepository, never()).findByBookId(any());
         verify(bookObjectPersistenceService, never()).replaceBookObjects(any(), any(), any());
-        verify(claimService, never()).releaseClaim(any());
+        verify(claimService, never()).releaseClaim(any(), eq(CLAIM_LANE));
+    }
+
+    @Test
+    @DisplayName("Retries transient Neo4j lock conflicts at the reducer boundary")
+    void retriesTransientNeo4jLockConflictsAtReducerBoundary() throws NoSuchMethodException {
+        Retryable retryable = MergedAnnotations.from(BookObjectReductionService.class.getMethod("resolveBook", UUID.class))
+                .get(Retryable.class)
+                .synthesize();
+
+        assertThat(retryable.retryFor()).contains(TransientDataAccessException.class, org.neo4j.driver.exceptions.TransientException.class);
+        assertThat(retryable.maxAttempts()).isEqualTo(3);
     }
 
     @Test
@@ -155,6 +167,7 @@ class BookObjectReductionServiceTest {
         ChapterObject sword = chapterObject(swordId, chapterAId, "Silver Sword", "silver sword", List.of("Moonblade"), "weapon", "silver", "duel", "A named blade", 1);
         ChapterObject dagger = chapterObject(daggerId, chapterBId, "Ceremonial Dagger", "ceremonial dagger", List.of("Moonblade"), "weapon", "silver", "duel", "Shares an alias", 1);
 
+        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(chapterObjectRepository.findByBookId(bookId)).thenReturn(List.of(dagger, sword));
         when(bookObjectPersistenceService.replaceBookObjects(any(), any(), any()))
                 .thenAnswer(invocation -> invocation.getArgument(1));

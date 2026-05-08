@@ -63,14 +63,14 @@ public class ChunkingHandler {
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
 
-    @Async("ingestionTaskExecutor")
+    @Async("ingestionLaneTaskExecutor")
     @EventListener
     public void handleScenesDetected(ScenesDetectedEvent event) {
         UUID jobId = event.getJobId();
         UUID chapterId = event.getChapterId();
         UUID bookId = event.getBookId();
         
-        log.info("[CHUNKING] Starting for job={}, chapter={}, sceneCount={}", 
+        log.info("[LANE:CONTENT] [CHUNKING] Starting for job={}, chapter={}, sceneCount={}", 
                 jobId, chapterId, event.getSceneCount());
         
         stageSupport.runStage(
@@ -87,7 +87,7 @@ public class ChunkingHandler {
             if (chunksExist) {
                 int via = chunkRepo.countByChapterIdViaScenes(chapterId);
                 int existingCount = via > 0 ? via : chunkRepo.countByChapterId(chapterId);
-                log.info("[CHUNKING] Found {} existing chunks for chapter {}, skipping", 
+                log.info("[LANE:CONTENT] [CHUNKING] Found {} existing chunks for chapter {}, skipping", 
                         existingCount, chapterId);
                 emitChunksCreated(jobId, chapterId, bookId, existingCount);
                 return null;
@@ -99,7 +99,7 @@ public class ChunkingHandler {
             
             String chapterText = chapter.getRawText();
             if (chapterText == null || chapterText.isEmpty()) {
-                log.warn("[CHUNKING] Chapter {} has no text content", chapterId);
+                log.warn("[LANE:CONTENT] [CHUNKING] Chapter {} has no text content", chapterId);
                 emitChunksCreated(jobId, chapterId, bookId, 0);
                 return null;
             }
@@ -111,7 +111,7 @@ public class ChunkingHandler {
                 stageSupport.updateJobStatus(jobId, IngestionStatus.EMBEDDING_CHUNKS,
                     String.format("Created %d chunks from %d scenes", totalChunks, scenes.size()));
             
-            log.info("[CHUNKING] Completed for chapter {}: {} chunks from {} scenes", 
+            log.info("[LANE:CONTENT] [CHUNKING] Completed for chapter {}: {} chunks from {} scenes", 
                     chapterId, totalChunks, scenes.size());
             
             emitChunksCreated(jobId, chapterId, bookId, totalChunks);
@@ -129,7 +129,7 @@ public class ChunkingHandler {
             totalChunks += processSceneIntoChunks(chapterText, scene);
         }
         
-        log.debug("[CHUNKING] Created {} total chunks from {} scenes", totalChunks, scenes.size());
+        log.debug("[LANE:CONTENT] [CHUNKING] Created {} total chunks from {} scenes", totalChunks, scenes.size());
         return totalChunks;
     }
 
@@ -192,7 +192,7 @@ public class ChunkingHandler {
     }
 
     private void emitChunksCreated(UUID jobId, UUID chapterId, UUID bookId, int chunkCount) {
-        log.info("[CHUNKING] Emitting ChunksCreatedEvent: job={}, chapter={}, chunkCount={}", 
+        log.info("[LANE:CONTENT] [CHUNKING] Emitting ChunksCreatedEvent: job={}, chapter={}, chunkCount={}", 
                 jobId, chapterId, chunkCount);
         
         eventPublisher.publishEvent(new ChunksCreatedEvent(this, jobId, chapterId, bookId, chunkCount));

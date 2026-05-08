@@ -10,6 +10,7 @@ import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
 import com.lorevault.api.ingestion.triad.TriadBuilderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -17,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -210,6 +212,53 @@ class SceneRelationshipAnalysisServiceTest {
         assertThatThrownBy(() -> sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter))
                 .isInstanceOf(TriadAnalysisException.class)
                 .hasMessageContaining("omitted required relation 'previousToCurrent'");
+
+        verify(llmClient, times(2)).detectSceneAnalysisTriad(
+                eq(testJobId),
+                eq("mock system prompt"),
+                any(),
+                eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)
+        );
+    }
+
+    @Test
+    @DisplayName("Should retry semantic triad validation failures before succeeding")
+    void shouldRetrySemanticTriadValidationFailuresBeforeSucceeding() {
+        Chapter testChapter = createTestChapter();
+        List<TriadBuilderService.SceneTriad> triads = List.of(createTriadWithPreviousAndCurrent());
+
+        PromptTemplate mockTemplate = mock(PromptTemplate.class);
+        when(promptRepository.get("scene-analysis")).thenReturn(mockTemplate);
+        when(mockTemplate.render(any())).thenReturn("mock system prompt");
+        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+
+        SceneRelationshipAnalysisService.TriadStructuredResult invalid =
+                new SceneRelationshipAnalysisService.TriadStructuredResult("marker", null,
+                        new SceneRelationshipAnalysisService.TriadRelation("R:temporal.before", "Explicit", "evidence"));
+        SceneRelationshipAnalysisService.TriadStructuredResult valid =
+                new SceneRelationshipAnalysisService.TriadStructuredResult(
+                        "marker",
+                        new SceneRelationshipAnalysisService.TriadRelation("R:temporal.before", "Explicit", "retry evidence"),
+                        null
+                );
+
+        when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
+                .thenReturn(invalid)
+                .thenReturn(valid);
+
+        List<TriadAnalysisModels.SceneRelationshipAnalysis> result =
+                sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter);
+
+        assertThat(result).singleElement().satisfies(analysis -> {
+            assertThat(analysis.prevToCurrType()).isEqualTo("R:temporal.before");
+            assertThat(analysis.prevToCurrEvidence()).isEqualTo("retry evidence");
+        });
+        verify(llmClient, times(2)).detectSceneAnalysisTriad(
+                eq(testJobId),
+                eq("mock system prompt"),
+                any(),
+                eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)
+        );
     }
 
     @Test
@@ -395,6 +444,219 @@ class SceneRelationshipAnalysisServiceTest {
             mockPrevToCurr,
             mockCurrToNext
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // Relation claim normalization tests (private methods via reflection)
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Relation Claim Normalization")
+    class RelationClaimNormalizationTests {
+
+        private Object invokePrivateMethod(String methodName, Class<?>[] paramTypes, Object... args) throws Exception {
+            Method method = SceneRelationshipAnalysisService.class.getDeclaredMethod(methodName, paramTypes);
+            method.setAccessible(true);
+            return method.invoke(sceneRelationshipAnalysisService, args);
+        }
+
+        // -- parseEntityRef --------------------------------------------------
+
+        @Test
+        @DisplayName("Should parse standard 'Kind: Name' format")
+        void shouldParseStandardKindNameFormat() throws Exception {
+            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
+                    new Class<?>[]{String.class}, "Individual: Frodo");
+            assertThat(result).containsExactly("Individual", "Frodo");
+        }
+
+        @Test
+        @DisplayName("Should parse 'Collective: Bridge Crew' as Collective kind")
+        void shouldParseCollectiveKindNameFormat() throws Exception {
+            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
+                    new Class<?>[]{String.class}, "Collective: Bridge Crew");
+            assertThat(result).containsExactly("Collective", "Bridge Crew");
+        }
+
+        @Test
+        @DisplayName("Should parse 'Kind:Name' without space after colon")
+        void shouldParseKindNameWithoutSpaceAfterColon() throws Exception {
+            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
+                    new Class<?>[]{String.class}, "Individual:Frodo");
+            assertThat(result).containsExactly("Individual", "Frodo");
+        }
+
+        @Test
+        @DisplayName("Should return null kind and full name when no kind separator present")
+        void shouldReturnNullKindWhenNoSeparator() throws Exception {
+            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
+                    new Class<?>[]{String.class}, "Frodo");
+            assertThat(result[0]).isNull();
+            assertThat(result[1]).isEqualTo("Frodo");
+        }
+
+        @Test
+        @DisplayName("Should return null array entries for null input")
+        void shouldReturnNullsForNullInput() throws Exception {
+            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
+                    new Class<?>[]{String.class}, (Object) null);
+            assertThat(result[0]).isNull();
+            assertThat(result[1]).isNull();
+        }
+
+        @Test
+        @DisplayName("Should return null kind for non-standard entity kind with WARN")
+        void shouldReturnNullKindForNonStandardKind() throws Exception {
+            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
+                    new Class<?>[]{String.class}, "Person: Frodo");
+            assertThat(result[0]).isNull();
+            assertThat(result[1]).isEqualTo("Frodo");
+        }
+
+        @Test
+        @DisplayName("Should handle empty name after colon-space gracefully")
+        void shouldHandleEmptyNameAfterColonSpace() throws Exception {
+            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
+                    new Class<?>[]{String.class}, "Object: ");
+            assertThat(result[0]).isNull();
+            assertThat(result[1]).isNotNull();
+        }
+
+        // -- generateProvisionalRelTypeId ------------------------------------
+
+        @Test
+        @DisplayName("Should generate provisional rel type id for 'betrayed'")
+        void shouldGenerateProvisionalIdForBetrayed() throws Exception {
+            String result = (String) invokePrivateMethod("generateProvisionalRelTypeId",
+                    new Class<?>[]{String.class}, "betrayed");
+            assertThat(result).isEqualTo("R:provisional.betrayed");
+        }
+
+        @Test
+        @DisplayName("Should generate provisional rel type id for 'trained under'")
+        void shouldGenerateProvisionalIdForTrainedUnder() throws Exception {
+            String result = (String) invokePrivateMethod("generateProvisionalRelTypeId",
+                    new Class<?>[]{String.class}, "trained under");
+            assertThat(result).isEqualTo("R:provisional.trained_under");
+        }
+
+        @Test
+        @DisplayName("Should generate provisional rel type id for 'turned on'")
+        void shouldGenerateProvisionalIdForTurnedOn() throws Exception {
+            String result = (String) invokePrivateMethod("generateProvisionalRelTypeId",
+                    new Class<?>[]{String.class}, "turned on");
+            assertThat(result).isEqualTo("R:provisional.turned_on");
+        }
+
+        @Test
+        @DisplayName("Should return null for null relation name")
+        void shouldReturnNullForNullRelationName() throws Exception {
+            String result = (String) invokePrivateMethod("generateProvisionalRelTypeId",
+                    new Class<?>[]{String.class}, (Object) null);
+            assertThat(result).isNull();
+        }
+
+        @Test
+        @DisplayName("Should return unparseable fallback for all-non-alphanumeric input")
+        void shouldReturnUnparseableForNonAlphanumericInput() throws Exception {
+            String result = (String) invokePrivateMethod("generateProvisionalRelTypeId",
+                    new Class<?>[]{String.class}, "!!!");
+            assertThat(result).isEqualTo("R:provisional.unparseable");
+        }
+
+        @Test
+        @DisplayName("Should generate provisional rel type id for 'member of'")
+        void shouldGenerateProvisionalIdForMemberOf() throws Exception {
+            String result = (String) invokePrivateMethod("generateProvisionalRelTypeId",
+                    new Class<?>[]{String.class}, "member of");
+            assertThat(result).isEqualTo("R:provisional.member_of");
+        }
+
+        // -- normalizeCertainty ----------------------------------------------
+
+        @Test
+        @DisplayName("Should normalize 'Explicit' certainty")
+        void shouldNormalizeExplicitCertainty() throws Exception {
+            String result = (String) invokePrivateMethod("normalizeCertainty",
+                    new Class<?>[]{String.class}, "Explicit");
+            assertThat(result).isEqualTo("Explicit");
+        }
+
+        @Test
+        @DisplayName("Should normalize 'StronglyImplied' certainty")
+        void shouldNormalizeStronglyImpliedCertainty() throws Exception {
+            String result = (String) invokePrivateMethod("normalizeCertainty",
+                    new Class<?>[]{String.class}, "StronglyImplied");
+            assertThat(result).isEqualTo("StronglyImplied");
+        }
+
+        @Test
+        @DisplayName("Should normalize 'WeaklyImplied' certainty")
+        void shouldNormalizeWeaklyImpliedCertainty() throws Exception {
+            String result = (String) invokePrivateMethod("normalizeCertainty",
+                    new Class<?>[]{String.class}, "WeaklyImplied");
+            assertThat(result).isEqualTo("WeaklyImplied");
+        }
+
+        @Test
+        @DisplayName("Should normalize lowercase 'explicit' to 'Explicit'")
+        void shouldNormalizeLowercaseExplicit() throws Exception {
+            String result = (String) invokePrivateMethod("normalizeCertainty",
+                    new Class<?>[]{String.class}, "explicit");
+            assertThat(result).isEqualTo("Explicit");
+        }
+
+        @Test
+        @DisplayName("Should return WeaklyImplied default for null certainty")
+        void shouldReturnWeaklyImpliedForNull() throws Exception {
+            String result = (String) invokePrivateMethod("normalizeCertainty",
+                    new Class<?>[]{String.class}, (Object) null);
+            assertThat(result).isEqualTo("WeaklyImplied");
+        }
+
+        @Test
+        @DisplayName("Should return WeaklyImplied default for unknown certainty value")
+        void shouldReturnWeaklyImpliedForUnknownValue() throws Exception {
+            String result = (String) invokePrivateMethod("normalizeCertainty",
+                    new Class<?>[]{String.class}, "probably");
+            assertThat(result).isEqualTo("WeaklyImplied");
+        }
+
+        // -- truncate --------------------------------------------------------
+
+        @Test
+        @DisplayName("Should return null for null value")
+        void shouldReturnNullForNullValue() throws Exception {
+            String result = (String) invokePrivateMethod("truncate",
+                    new Class<?>[]{String.class, int.class}, (Object) null, 10);
+            assertThat(result).isNull();
+        }
+
+        @Test
+        @DisplayName("Should not truncate when value is shorter than maxLength")
+        void shouldNotTruncateShortValue() throws Exception {
+            String result = (String) invokePrivateMethod("truncate",
+                    new Class<?>[]{String.class, int.class}, "short", 10);
+            assertThat(result).isEqualTo("short");
+        }
+
+        @Test
+        @DisplayName("Should truncate with ellipsis when value exceeds maxLength")
+        void shouldTruncateWithEllipsis() throws Exception {
+            String result = (String) invokePrivateMethod("truncate",
+                    new Class<?>[]{String.class, int.class}, "a very long string", 7);
+            assertThat(result).isEqualTo("a very …");
+        }
+
+        @Test
+        @DisplayName("Should not split surrogate pairs when truncating emoji")
+        void shouldNotSplitSurrogatePairs() throws Exception {
+            // "🌍🌎test" has 6 code points; truncate to first 2 code points
+            String result = (String) invokePrivateMethod("truncate",
+                    new Class<?>[]{String.class, int.class}, "\uD83C\uDF0D\uD83C\uDF0Etest", 2);
+            // Should keep 2 code points (🌍🌎 = 2 surrogate pairs = 4 chars) + ellipsis
+            assertThat(result).isEqualTo("\uD83C\uDF0D\uD83C\uDF0E…");
+        }
     }
 
 }

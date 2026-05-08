@@ -1,11 +1,13 @@
 package com.lorevault.api.ingestion.resolution.event;
 
 import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
+import com.lorevault.api.content.timeline.infrastructure.CrossChapterBoundaryProjection;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -27,7 +29,7 @@ public class DefaultTemporalEdgeService {
      * @param bookId the book to create edges for
      */
     @Transactional
-    public void createAllDefaults(UUID bookId) {
+    public DefaultTemporalEdgeCreationResult createAllDefaults(UUID bookId) {
         log.info("Creating default NEXT_IN_READING_ORDER edges for book {}", bookId);
         // Pre-flight: log potential cycle candidates for observability
         try {
@@ -44,11 +46,18 @@ public class DefaultTemporalEdgeService {
         }
 
         int inChapterEdges = createInChapterDefaults(bookId);
-        int crossChapterEdges = createCrossChapterDefault(bookId);
-        
+        List<CrossChapterBoundaryProjection> newlyCreatedCrossChapterBoundaries =
+                createCrossChapterDefault(bookId);
+        int crossChapterEdges = newlyCreatedCrossChapterBoundaries.size();
+
         int totalEdges = inChapterEdges + crossChapterEdges;
         log.info("Created {} NEXT_IN_READING_ORDER edges for book {} ({} in-chapter, {} cross-chapter)", 
                 totalEdges, bookId, inChapterEdges, crossChapterEdges);
+        return new DefaultTemporalEdgeCreationResult(
+                inChapterEdges,
+                crossChapterEdges,
+                newlyCreatedCrossChapterBoundaries
+        );
     }
     
     /**
@@ -82,17 +91,18 @@ public class DefaultTemporalEdgeService {
      * @param bookId the book to create cross-chapter edges for
      * @return number of edges created
      */
-    public int createCrossChapterDefault(UUID bookId) {
+    public List<CrossChapterBoundaryProjection> createCrossChapterDefault(UUID bookId) {
         log.debug("Creating default cross-chapter NEXT_IN_READING_ORDER edges for book {}", bookId);
         
         try {
-            int edgeCount = temporalEdgeWriteRepository.mergeCrossChapterDefaultEdge(bookId);
-            log.debug("Created {} cross-chapter NEXT_IN_READING_ORDER edges for book {}", edgeCount, bookId);
-            return edgeCount;
+            List<CrossChapterBoundaryProjection> boundaries =
+                    temporalEdgeWriteRepository.mergeCrossChapterDefaultEdges(bookId);
+            log.debug("Created {} cross-chapter NEXT_IN_READING_ORDER edges for book {}", boundaries.size(), bookId);
+            return boundaries;
         } catch (Exception e) {
             log.warn("Failed to create cross-chapter NEXT_IN_READING_ORDER edges for book {}: {}", 
                     bookId, e.getMessage());
-            return 0;
+            return List.of();
         }
     }
     

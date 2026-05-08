@@ -374,6 +374,7 @@ This document describes the orchestration contract, not every internal sub-step.
 - The internal triad window logic and temporal relation classification stay in the Triad Analysis Pattern.
 - The append-only status model and LLM call correlation stay in the Observability Pattern.
 - Per-service heuristics such as segmentation fallback, coordinate localization, or reduction internals are intentionally summarized here rather than exhaustively specified.
+- **Concurrency and ordering guarantees** — The runtime threading model, cross-chapter ordering guarantees, late boundary repair behavior, and known concurrent-submission gaps are documented in the [Ingestion Concurrency Model](ingestion-concurrency-model.md).
 
 The goal of this document is to make the causal event graph legible: which task runs, which event it emits, and which downstream tasks that event unlocks.
 
@@ -396,6 +397,7 @@ State checks such as existing-scene or existing-chunk lookups are useful guards,
 - **Scene coordinate localization** — The 3-tier fallback matching logic resides within the `SceneProcessingService` and is not covered here.
 - **LLM prompt templates** — Templates are managed by the `PromptRepository` and are external to the pipeline flow.
 - **Content hierarchy** — The management of Universes, Series, and Books is the responsibility of the `LibraryService`.
+- **Ingestion concurrency model** — Threading executors, cross-chapter ordering guarantees, late boundary repair, and concurrent-submission gaps are documented in the [Ingestion Concurrency Model](ingestion-concurrency-model.md).
 
 ### Primary References
 - `../../adr/004-keep-the-event-driven-ingestion-pipeline.md`

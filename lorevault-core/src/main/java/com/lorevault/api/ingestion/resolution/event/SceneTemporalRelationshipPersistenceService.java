@@ -31,6 +31,16 @@ public class SceneTemporalRelationshipPersistenceService {
         }
     }
 
+    public boolean hasAnyTemporalRelationshipBetween(UUID fromId, UUID toId) {
+        String directType = temporalEdgeWriteRepository.findTemporalRelationBetween(fromId, toId);
+        if (directType != null && !directType.isBlank()) {
+            return true;
+        }
+
+        String reverseType = temporalEdgeWriteRepository.findTemporalRelationBetween(toId, fromId);
+        return reverseType != null && !reverseType.isBlank();
+    }
+
     private void upsertWithAmbiguityHandling(TemporalEdgeWriteRequest request) {
         TemporalEdgeProvenance provenance = request.provenance();
         String normalizedIncomingRawType = normalizeTemporalType(request.temporalType());

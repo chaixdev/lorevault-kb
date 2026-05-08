@@ -10,7 +10,6 @@ import com.lorevault.api.ingestion.resolution.individual.BookIndividualResolutio
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +17,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.annotation.MergedAnnotations;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.data.neo4j.core.Neo4jClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,6 +33,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("BookIndividualReductionService")
 class BookIndividualReductionServiceTest {
+
+    private static final String CLAIM_LANE = "BOOK_INDIVIDUAL_REDUCTION";
 
     @Mock
     private BookIndividualGraphRepository bookIndividualRepository;
@@ -59,11 +63,6 @@ class BookIndividualReductionServiceTest {
     @InjectMocks
     private BookIndividualReductionService service;
 
-    @BeforeEach
-    void setUp() {
-        when(claimService.tryAcquireClaimWithRetry(any(), anyInt(), anyLong())).thenReturn(true);
-    }
-
     @Test
     @DisplayName("Rebuilds one BookIndividual per normalized name and links chapter individuals")
     void rebuildsBookIndividualsFromCandidates() {
@@ -71,6 +70,7 @@ class BookIndividualReductionServiceTest {
         UUID nyxChapterIndividualId = UUID.randomUUID();
         UUID orionChapterIndividualId = UUID.randomUUID();
 
+        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(neo4jClient.query(anyString())).thenReturn(unboundRunnableSpec);
         when(unboundRunnableSpec.bind(bookId.toString())).thenReturn(ongoingBindSpec);
         when(ongoingBindSpec.to("bookId")).thenReturn(runnableSpec);
@@ -109,6 +109,7 @@ class BookIndividualReductionServiceTest {
     @DisplayName("Returns no-op response when no chapter individuals exist for book")
     void noOpWhenNoCandidates() {
         UUID bookId = UUID.randomUUID();
+        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(neo4jClient.query(anyString())).thenReturn(unboundRunnableSpec);
         when(unboundRunnableSpec.bind(bookId.toString())).thenReturn(ongoingBindSpec);
         when(ongoingBindSpec.to("bookId")).thenReturn(runnableSpec);
@@ -127,7 +128,7 @@ class BookIndividualReductionServiceTest {
     @DisplayName("Throws typed claim exception when book reduction claim cannot be acquired")
     void throwsTypedClaimExceptionWhenClaimCannotBeAcquired() {
         UUID bookId = UUID.randomUUID();
-        when(claimService.tryAcquireClaimWithRetry(bookId, 6, 500)).thenReturn(false);
+        when(claimService.tryAcquireClaimWithRetry(bookId, CLAIM_LANE, 6, 500)).thenReturn(false);
 
         assertThatThrownBy(() -> service.resolveBook(bookId))
                 .isInstanceOf(BookReductionClaimUnavailableException.class)
@@ -136,7 +137,18 @@ class BookIndividualReductionServiceTest {
 
         verify(neo4jClient, never()).query(anyString());
         verify(bookIndividualPersistenceService, never()).replaceBookIndividuals(any(), any());
-        verify(claimService, never()).releaseClaim(any());
+        verify(claimService, never()).releaseClaim(any(), eq(CLAIM_LANE));
+    }
+
+    @Test
+    @DisplayName("Retries transient Neo4j lock conflicts at the reducer boundary")
+    void retriesTransientNeo4jLockConflictsAtReducerBoundary() throws NoSuchMethodException {
+        Retryable retryable = MergedAnnotations.from(BookIndividualReductionService.class.getMethod("resolveBook", UUID.class))
+                .get(Retryable.class)
+                .synthesize();
+
+        assertThat(retryable.retryFor()).contains(TransientDataAccessException.class, org.neo4j.driver.exceptions.TransientException.class);
+        assertThat(retryable.maxAttempts()).isEqualTo(3);
     }
 
     private Map<String, Object> row(

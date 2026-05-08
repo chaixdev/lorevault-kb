@@ -11,6 +11,8 @@ server:
 
 # Database Configuration
 spring:
+  config:
+    import: classpath:application-common.yml
   mvc:
     async:
       request-timeout: -1
@@ -54,124 +56,10 @@ management:
         liveness:
           include: "*"
 
-# LoreVault Configuration (cleaned)
+# Web-specific overrides (shared config in application-common.yml)
 lorevault:
   web:
     multipart:
       # Batch ingestion sends several multipart fields per file, so Tomcat's default
       # 50-part parser limit is too low for medium-sized chapter batches.
       max-part-count: 200
-
-  # Schema initialization - disabled by default (enabled in dev profile)
-  schema:
-    enabled: true
-    mode: ensure
-    backend: neo4j
-    fail-on-error: false
-  
-  # LLM settings used by existing services
-  ai:
-    # Retry config (for repeating failed requests)
-    retry:
-      max-attempts: 3
-      base-delay-ms: 1000
-      backoff-multiplier: 2.0
-      max-delay-ms: 10000
-      jitter-factor: 0.1
-
-    models:
-    # Embedding model configuration (OpenRouter - perplexity/pplx-embed-v1-4b, 2560 dims)
-      embedding:
-        provider: openai-compatible
-        base-url: https://openrouter.ai/api
-        api-key: ${OPENROUTER_API_KEY:}
-        model: perplexity/pplx-embed-v1-4b
-        # Embedding-specific options can be added here in the future if needed
-
-      # Small/cheap chat model slot
-      nlp-small:
-        provider: openai-compatible
-        base-url: https://api.groq.com/openai/v1
-        completions-path: /chat/completions
-        api-key: ${GROQ_API_KEY}
-        model: openai/gpt-oss-120b
-        temperature: 0.3
-        top-p: 1.0
-        max-context-tokens: 128000
-
-      # Powerful chat model slot (also used as failover if small fails)
-      nlp-big:
-        provider: openai-compatible
-        base-url: https://api.groq.com/openai/v1
-        completions-path: /chat/completions
-        api-key: ${GROQ_API_KEY}
-        model: openai/gpt-oss-120b
-        temperature: 0.2
-        top-p: 1.0
-        max-context-tokens: 128000
-
-    # Prompt locations (used by PromptLoaderService)
-    prompts:
-      base-path: classpath:prompts
-      # scene-detection: 
-      #   system-prompt: scene-detection-v2.txt
-      #   model: nlp-small
-      chapter-segmentation: 
-        system-prompt: chapter-segmentation.txt
-        model: nlp-big
-      scene-analysis: 
-        system-prompt: scene-analysis.txt
-        model: nlp-small
-      entity-extraction: 
-        system-prompt: entity-extraction.txt
-        model: nlp-big
-      rag-answer-generation:
-        system-prompt: rag-answer-generation.txt
-        model: nlp-big
-
-  # Text chunking settings (aligned with TextChunkingService @Value keys)
-  content:
-    chunking:
-      decision-threshold: 1500  # Lower threshold for smaller chunks (was 5000)
-      target-size: 800         # 800 char chunks with padding (was 3000)
-      overlap-percentage: 25   # 200 chars each side = 25% of 800 (was 15%)
-      min-chunk-size: 400      # Allow smaller chunks for scene boundaries (was 2000)
-      max-chunk-size: 1200     # Upper bound with padding (was 4000)
-
-  # Embedding configuration standardized on 2560 dimensions (perplexity/pplx-embed-v1-4b via OpenRouter)
-  embedding:
-    model:
-      provider: openai-compatible
-      model: perplexity/pplx-embed-v1-4b
-      dimensions: 2560
-      batch-size: 32
-    health:
-      expected-dim: 2560
-
-  # ChapterEvent ANN candidate generation (Stage 4)
-  event-ann:
-    top-k: 8
-    oversample-factor: 3
-    ann-floor: 0.70
-    max-candidates-per-event: 3
-    embedding-dimension: ${lorevault.embedding.model.dimensions:2560}
-
-  # Semantic search configuration
-  search:
-    provider: neo4j  # Options: neo4j (default), memory
-    oversample-multiplier: 3  # topK * multiplier candidates fetched before spoiler filtering
-    hybrid:
-      enabled: false
-      rag-only: true
-      branch-n: 20
-      rrf-k: 60
-    snippet:
-      # Maximum characters per snippet returned from search, used in RAG context.
-      # With smaller 800-char chunks, we can return full chunks instead of snippets.
-      max-length: 800
-    neo4j:
-      vector-index-name: chunk_embedding_idx
-      similarity-function: cosine
-      dimensions: 2560
-
-  

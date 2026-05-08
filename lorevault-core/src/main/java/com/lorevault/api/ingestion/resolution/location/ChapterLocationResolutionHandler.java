@@ -18,21 +18,22 @@ public class ChapterLocationResolutionHandler {
     private final ChapterLocationResolutionService chapterLocationResolutionService;
     private final ApplicationEventPublisher eventPublisher;
 
-    @Async("ingestionTaskExecutor")
+    @Async("ingestionLaneTaskExecutor")
     @EventListener
     public void handleScenesDetected(ScenesDetectedEvent event) {
         UUID chapterId = event.getChapterId();
         UUID jobId = event.getJobId();
+        UUID correlationId = event.getCorrelationId();
         UUID bookId = event.getBookId();
 
-        log.info("[CHAPTER_LOCATION_RESOLUTION] Started: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId);
+        log.info("[LANE:LOCATION] [CHAPTER_LOCATION_RESOLUTION] Started: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId);
 
         try {
             ChapterLocationResolutionResult response = chapterLocationResolutionService.resolveChapter(chapterId);
 
             if (response.success()) {
                 log.info(
-                        "[CHAPTER_LOCATION_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterLocationCount={}",
+                        "[LANE:LOCATION] [CHAPTER_LOCATION_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterLocationCount={}",
                         jobId,
                         chapterId,
                         bookId,
@@ -41,7 +42,7 @@ public class ChapterLocationResolutionHandler {
                 );
             } else {
                 log.warn(
-                        "[CHAPTER_LOCATION_RESOLUTION] Skipped: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterLocationCount={}, reason={}",
+                        "[LANE:LOCATION] [CHAPTER_LOCATION_RESOLUTION] Skipped: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterLocationCount={}, reason={}",
                         jobId,
                         chapterId,
                         bookId,
@@ -54,6 +55,7 @@ public class ChapterLocationResolutionHandler {
             eventPublisher.publishEvent(new ChapterLocationsResolvedEvent(
                     this,
                     jobId,
+                    correlationId,
                     chapterId,
                     bookId,
                     response.success(),
@@ -61,7 +63,7 @@ public class ChapterLocationResolutionHandler {
                     response.chapterLocationsCreated()
             ));
         } catch (Exception e) {
-            log.error("[CHAPTER_LOCATION_RESOLUTION] Failed: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId, e);
+            log.error("[LANE:LOCATION] [CHAPTER_LOCATION_RESOLUTION] Failed: jobId={}, chapterId={}, bookId={}", jobId, chapterId, bookId, e);
             throw e;
         }
     }

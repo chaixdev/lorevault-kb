@@ -118,6 +118,7 @@ public class LibraryOptionsController {
                 .map(ch -> new ChapterSummary(
                         ch.id(),
                         ch.chapterNumber(),
+                        ch.bookNumber(),
                         ch.title(),
                         ch.sceneCount(),
                         null // Status not available yet
@@ -133,9 +134,54 @@ public class LibraryOptionsController {
         return "ui/ingestion :: bookChaptersContent";
     }
 
+    @GetMapping("/qa-books")
+    public String qaBookOptions(@RequestParam(value = "universeId", required = false) String universeId,
+                                @RequestParam(value = "seriesId", required = false) String seriesId,
+                                Model model) {
+        UUID resolvedSeriesId = parseUuid(seriesId);
+        UUID resolvedUniverseId = parseUuid(universeId);
+        List<BookOption> books;
+        if (resolvedSeriesId != null) {
+            books = libraryQueryService.listBooksForSeries(resolvedSeriesId).stream()
+                    .map(BookOption::from)
+                    .toList();
+        } else if (resolvedUniverseId != null) {
+            books = libraryQueryService.listBooksForUniverse(resolvedUniverseId).stream()
+                    .map(BookOption::from)
+                    .toList();
+        } else {
+            books = List.of();
+        }
+
+        model.addAttribute("books", books);
+        return "ui/options :: qaBookCheckboxes";
+    }
+
+    @GetMapping("/qa-chapters")
+    public String qaChapterOptions(@RequestParam(value = "bookId", required = false) String bookId,
+                                   Model model) {
+        UUID resolvedBookId = parseUuid(bookId);
+        List<ChapterSummary> chapters = resolvedBookId == null
+                ? List.of()
+                : libraryQueryService.listChaptersForBook(resolvedBookId).stream()
+                        .map(ch -> new ChapterSummary(
+                                ch.id(),
+                                ch.chapterNumber(),
+                                ch.bookNumber(),
+                                ch.title(),
+                                ch.sceneCount(),
+                                null
+                        ))
+                        .toList();
+
+        model.addAttribute("chapters", chapters);
+        return "ui/options :: qaChapterOptions";
+    }
+
     public record ChapterSummary(
             UUID chapterId,
             Integer chapterNumber,
+            Integer bookNumber,
             String title,
             Integer sceneCount,
             String status

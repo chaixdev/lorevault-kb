@@ -65,6 +65,31 @@ Entity Categories — definitions (for <scene_entities>)
     - Use `R:temporal.during` and `R:temporal.contains` only with strong enclosure evidence.
 - Do not leave `<temporal_type>` empty. If the relation is uncertain, choose the best-supported relation and lower the certainty instead of omitting it.
 
+**relations**
+Between entities within the current scene, extract explicit or implicit inter-entity relation claims. These describe how entities relate to one another — actions, affiliations, locations, dispositions, or changes in state.
+
+This section is optional. If the current scene contains no inter-entity relations evident from the text, output an empty `<relations/>` element.
+
+Important:
+- Only extract relations that carry narrative significance — the kind of connection a reader would remember. Do not extract trivial co-occurrence (e.g., "was in the same room as") or relations that add no information beyond what entity presence already implies.
+- Describe relations in your own words — there is no predefined relation type menu.
+- Relations are between entities IN the current scene, not across scenes.
+- Do not extract relations unless they are grounded in the current scene text.
+
+Relation fields:
+- subject: the entity initiating or experiencing the relation (format: "Kind: Name", e.g. "Individual: Frodo")
+- relationName: a short verb phrase describing the relation (e.g. "betrayed", "trained under", "was disguised as", "located in", "member of", "opposed")
+- relationDescription: one sentence of context
+- object: the other entity in the relation (format: "Kind: Name")
+- certainty: Choose one of: Explicit | StronglyImplied | WeaklyImplied
+- evidence: ≤180 chars, verbatim or tight paraphrase grounding the relation
+
+Important:
+- Only extract relations that carry narrative significance — the kind of connection a reader would remember. Do not extract trivial co-occurrence (e.g., "was in the same room as") or relations that add no information beyond what entity presence already implies.
+- Describe relations in your own words — there is no predefined relation type menu.
+- Relations are between entities IN the current scene, not across scenes.
+- Do not extract relations unless they are grounded in the current scene text.
+
 **Output Format:**
 ```xml
 <scene_analysis>
@@ -142,6 +167,25 @@ Entity Categories — definitions (for <scene_entities>)
       </event>
     </events>
   </current_scene_entities>
+  <!-- optional: if no inter-entity relations are evident, output empty <relations/> -->
+  <relations>
+    <relation>
+      <subject>Individual: Frodo</subject>
+      <relationName>trusted</relationName>
+      <relationDescription>Frodo placed his trust in Samwise, relying on him to accompany the journey.</relationDescription>
+      <object>Individual: Samwise</object>
+      <certainty>Explicit</certainty>
+      <evidence>Frodo turned to Sam and said, "I trust you more than anyone."</evidence>
+    </relation>
+    <relation>
+      <subject>Individual: Aragorn</subject>
+      <relationName>opposed</relationName>
+      <relationDescription>Aragorn stood against the Ringwraiths, refusing to let them pass.</relationDescription>
+      <object>Collective: Ringwraiths</object>
+      <certainty>StronglyImplied</certainty>
+      <evidence>Aragorn barred the path, sword drawn, facing the nine riders.</evidence>
+    </relation>
+  </relations>
 </scene_analysis>
 ```
 

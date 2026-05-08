@@ -38,36 +38,40 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
     /**
      * Create default NEXT_IN_READING_ORDER edges across adjacent chapters within a book.
      * Links the last scene of chapter N to the first scene of chapter N+1.
-     * Idempotent via MERGE. Processes all adjacent pairs in the given book.
+     * Returns metadata only for boundaries created during this call.
      *
      * @param bookId The book ID to create cross-chapter edges for
-     * @return Number of cross-chapter edges created
+     * @return Metadata for newly created cross-chapter boundaries
      */
     @Query("""
             MATCH (b:Book {id: $bookId})
             MATCH (c1:Chapter)-[:IN_BOOK]->(b)
             MATCH (c2:Chapter)-[:IN_BOOK]->(b)
             WHERE c2.chapterNumber = c1.chapterNumber + 1
-            
-            // last scene of c1
+
             OPTIONAL MATCH (c1)-[:HAS_SCENE]->(s1:Scene)
-            WITH b, c1, c2, s1
+            WITH c1, c2, s1
             ORDER BY c1.chapterNumber, s1.sceneIndex DESC
-            WITH b, c1, c2, head(collect(s1)) AS lastScene
-            
-            // first scene of c2
+            WITH c1, c2, head(collect(s1)) AS lastScene
+
             OPTIONAL MATCH (c2)-[:HAS_SCENE]->(s2:Scene)
-            WITH lastScene, c2, s2
+            WITH c1, c2, lastScene, s2
             ORDER BY c2.chapterNumber, s2.sceneIndex ASC
-            WITH lastScene, head(collect(s2)) AS firstScene
-            
+            WITH c1, c2, lastScene, head(collect(s2)) AS firstScene
+
             WHERE lastScene IS NOT NULL AND firstScene IS NOT NULL
-            WITH lastScene, firstScene
+            OPTIONAL MATCH (lastScene)-[existing:NEXT_IN_READING_ORDER]->(firstScene)
+            WITH c1, c2, lastScene, firstScene, count(existing) AS existingCount
             MERGE (lastScene)-[a:NEXT_IN_READING_ORDER]->(firstScene)
-            SET a.source = coalesce(a.source, 'default-ordering')
-            RETURN count(a)
+            ON CREATE SET a.source = 'default-ordering'
+            WITH c1, c2, lastScene, firstScene, existingCount
+            WHERE existingCount = 0
+            RETURN c1.id AS previousChapterId,
+                   c2.id AS nextChapterId,
+                   lastScene.id AS previousSceneId,
+                   firstScene.id AS nextSceneId
             """)
-    int mergeCrossChapterDefaultEdge(@Param("bookId") UUID bookId);
+    java.util.List<CrossChapterBoundaryProjection> mergeCrossChapterDefaultEdges(@Param("bookId") UUID bookId);
 
     /**
      * Count existing TEMPORAL edges for a chapter (for testing/verification).

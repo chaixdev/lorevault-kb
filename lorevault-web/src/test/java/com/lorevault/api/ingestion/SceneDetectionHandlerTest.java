@@ -1,6 +1,7 @@
 package com.lorevault.api.ingestion;
 import com.lorevault.api.ingestion.job.IngestionJobService;
 import com.lorevault.api.ingestion.infrastructure.*;
+import com.lorevault.api.ingestion.infrastructure.RelationClaimPersistenceService;
 
 import com.lorevault.api.ingestion.scene.SceneLocalizationException;
 import com.lorevault.api.ingestion.scene.SceneDetectionException;
@@ -9,13 +10,16 @@ import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
 import com.lorevault.api.ingestion.triad.TriadTemporalEdgeRequestFactory;
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.content.timeline.infrastructure.CrossChapterBoundaryProjection;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.scene.SceneGraphRepository;
 import com.lorevault.api.ingestion.scene.SceneDetectionService;
 import com.lorevault.api.ingestion.scene.SceneProcessingService;
+import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeCreationResult;
 import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeService;
 import com.lorevault.api.ingestion.resolution.event.SceneTemporalRelationshipPersistenceService;
+import com.lorevault.api.ingestion.resolution.event.TemporalEdgeWriteRequest;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import com.lorevault.api.ingestion.events.IngestionFailedEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
@@ -65,6 +69,7 @@ class SceneDetectionHandlerTest {
     @Mock private TriadTemporalEdgeRequestFactory triadTemporalEdgeRequestFactory;
     @Mock private SceneRelationshipAnalysisService sceneRelationshipAnalysisService;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private RelationClaimPersistenceService relationClaimPersistenceService;
 
     @InjectMocks
     private SceneDetectionHandler handler;
@@ -87,6 +92,12 @@ class SceneDetectionHandlerTest {
         testChapter.setRawText("Test chapter content for scene detection.");
 
         testEvent = new ChapterIngestionEvent(this, jobId, chapterId);
+
+        lenient().doReturn(new DefaultTemporalEdgeCreationResult(0, 0, List.of()))
+                .when(defaultTemporalEdgeService).createAllDefaults(bookId);
+        lenient().doReturn(false)
+                .when(sceneTemporalRelationshipPersistenceService)
+                .hasAnyTemporalRelationshipBetween(any(), any());
     }
 
     @Nested
@@ -127,6 +138,7 @@ class SceneDetectionHandlerTest {
             verify(objectPersistenceService).persistExtractedObjects(persistedScenes, List.of());
             verify(locationPersistenceService).persistExtractedLocations(persistedScenes, List.of());
             verify(eventPersistenceService).persistExtractedEvents(persistedScenes, List.of());
+            verify(relationClaimPersistenceService).persistExtractedRelationClaims(persistedScenes, List.of());
             verify(defaultTemporalEdgeService).createAllDefaults(bookId);
             verify(sceneTemporalRelationshipPersistenceService).applyTemporalRelationships(eq(List.of()));
 
@@ -198,7 +210,8 @@ class SceneDetectionHandlerTest {
                             collectiveExtractions,
                             objectExtractions,
                             locationExtractions,
-                            eventExtractions
+                            eventExtractions,
+                            List.of()
                     ));
             when(triadTemporalEdgeRequestFactory.buildRequests(eq(chapterId), eq(List.of()), anyMap())).thenReturn(List.of());
 
@@ -209,6 +222,7 @@ class SceneDetectionHandlerTest {
             verify(objectPersistenceService).persistExtractedObjects(persistedScenes, objectExtractions);
             verify(locationPersistenceService).persistExtractedLocations(persistedScenes, locationExtractions);
             verify(eventPersistenceService).persistExtractedEvents(persistedScenes, eventExtractions);
+            verify(relationClaimPersistenceService).persistExtractedRelationClaims(persistedScenes, List.of());
             verify(sceneTemporalRelationshipPersistenceService).applyTemporalRelationships(eq(List.of()));
             verify(eventPublisher).publishEvent(any(ScenesDetectedEvent.class));
             InOrder inOrder = inOrder(
@@ -217,6 +231,7 @@ class SceneDetectionHandlerTest {
                     objectPersistenceService,
                     locationPersistenceService,
                     eventPersistenceService,
+                    relationClaimPersistenceService,
                     eventPublisher
             );
             inOrder.verify(individualPersistenceService).persistExtractedIndividuals(persistedScenes, extractions);
@@ -224,7 +239,145 @@ class SceneDetectionHandlerTest {
             inOrder.verify(objectPersistenceService).persistExtractedObjects(persistedScenes, objectExtractions);
             inOrder.verify(locationPersistenceService).persistExtractedLocations(persistedScenes, locationExtractions);
             inOrder.verify(eventPersistenceService).persistExtractedEvents(persistedScenes, eventExtractions);
+            inOrder.verify(relationClaimPersistenceService).persistExtractedRelationClaims(persistedScenes, List.of());
             inOrder.verify(eventPublisher).publishEvent(any(ScenesDetectedEvent.class));
+        }
+
+        @Test
+        @DisplayName("Should replay boundary temporal projection when a new cross-chapter boundary is created")
+        void handleChapterPersisted_newBoundary_replaysBoundaryTemporalProjection() {
+            UUID nextChapterId = UUID.randomUUID();
+            UUID previousSceneId = UUID.randomUUID();
+            UUID nextSceneId = UUID.randomUUID();
+
+            Chapter nextChapter = new Chapter();
+            nextChapter.setId(nextChapterId);
+            nextChapter.setBookId(bookId);
+            nextChapter.setChapterNumber(2);
+            nextChapter.setRawText("Later chapter text.");
+
+            Scene laterScene = new Scene(nextSceneId, 0, 0L, 10L, "later", "later scene", nextChapterId, null, null, null, null, null);
+            List<Scene> persistedScenes = List.of(createScene(0));
+
+            CrossChapterBoundaryProjection boundary = mock(CrossChapterBoundaryProjection.class);
+            when(boundary.getNextChapterId()).thenReturn(nextChapterId);
+            when(boundary.getPreviousSceneId()).thenReturn(previousSceneId);
+            when(boundary.getNextSceneId()).thenReturn(nextSceneId);
+
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            when(sceneRepo.findByChapterId(nextChapterId)).thenReturn(List.of(laterScene));
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(chapterRepo.findById(nextChapterId)).thenReturn(Optional.of(nextChapter));
+            when(sceneDetectionService.detectScenesInChapter(jobId, testChapter))
+                    .thenReturn(new SceneDetectionService.SceneSegmentationOutcome(List.of(new SceneWithCoordinates(0, 0, 12, "Scene 1"))));
+            when(sceneProcessingService.persistDetectedScenes(chapterId, List.of(new SceneWithCoordinates(0, 0, 12, "Scene 1"))))
+                    .thenReturn(persistedScenes);
+            when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
+                    eq(jobId), any(Chapter.class), anyConsumer()))
+                    .thenReturn(
+                            new TriadAnalysisModels.SceneRelationshipOutcome(List.of(), List.of(), List.of()),
+                            new TriadAnalysisModels.SceneRelationshipOutcome(
+                                    List.of(new TriadAnalysisModels.SceneRelationshipAnalysis(
+                                            previousSceneId,
+                                            nextSceneId,
+                                            null,
+                                            0,
+                                            0,
+                                            null,
+                                            "boundary marker",
+                                            "R:temporal.before",
+                                            "Explicit",
+                                            "boundary evidence",
+                                            null,
+                                            null,
+                                            null,
+                                            "R:temporal.after"
+                                    )),
+                                    List.of(),
+                                    List.of()
+                            )
+                    );
+            when(defaultTemporalEdgeService.createAllDefaults(bookId))
+                    .thenReturn(new DefaultTemporalEdgeCreationResult(0, 1, List.of(boundary)));
+            when(triadTemporalEdgeRequestFactory.buildRequests(eq(chapterId), eq(List.of()), anyMap()))
+                    .thenReturn(List.of());
+
+            handler.handleChapterIngestion(testEvent);
+
+            verify(sceneRelationshipAnalysisService, times(2)).analyzeChapterTriadsWithIndividuals(eq(jobId), any(Chapter.class), anyConsumer());
+            ArgumentCaptor<List<TemporalEdgeWriteRequest>> requestsCaptor = ArgumentCaptor.forClass(List.class);
+            verify(sceneTemporalRelationshipPersistenceService, times(2)).applyTemporalRelationships(requestsCaptor.capture());
+            assertThat(requestsCaptor.getAllValues().get(1))
+                    .singleElement()
+                    .satisfies(request -> {
+                        assertThat(request.fromSceneId()).isEqualTo(previousSceneId);
+                        assertThat(request.toSceneId()).isEqualTo(nextSceneId);
+                        assertThat(request.temporalType()).isEqualTo("R:temporal.before");
+                        assertThat(request.certainty()).isEqualTo("Explicit");
+                        assertThat(request.evidence()).isEqualTo("boundary evidence");
+                        assertThat(request.timelineMarker()).isEqualTo("boundary marker");
+                    });
+        }
+
+        @Test
+        @DisplayName("Should not replay when default boundary creation is idempotent")
+        void handleChapterPersisted_existingBoundary_doesNotReplay() {
+            List<SceneWithCoordinates> sceneCoords = List.of(new SceneWithCoordinates(0, 0, 20, "Scene 1"));
+            Scene scene = createScene(0);
+            List<Scene> persistedScenes = List.of(scene);
+
+            when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
+            when(sceneDetectionService.detectScenesInChapter(jobId, testChapter))
+                    .thenReturn(new SceneDetectionService.SceneSegmentationOutcome(sceneCoords));
+            when(sceneProcessingService.persistDetectedScenes(chapterId, sceneCoords)).thenReturn(persistedScenes);
+            when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
+                    eq(jobId), any(Chapter.class), anyConsumer()))
+                    .thenReturn(new TriadAnalysisModels.SceneRelationshipOutcome(List.of(), List.of(), List.of()));
+            when(defaultTemporalEdgeService.createAllDefaults(bookId))
+                    .thenReturn(new DefaultTemporalEdgeCreationResult(0, 0, List.of()));
+
+            handler.handleChapterIngestion(testEvent);
+
+            verify(sceneRelationshipAnalysisService, times(1)).analyzeChapterTriadsWithIndividuals(eq(jobId), any(Chapter.class), anyConsumer());
+            verify(sceneTemporalRelationshipPersistenceService, times(1)).applyTemporalRelationships(any());
+        }
+
+        @Test
+        @DisplayName("Should skip replay when a temporal relationship already exists")
+        void handleChapterPersisted_existingTemporalRelationship_skipsReplay() {
+            UUID nextChapterId = UUID.randomUUID();
+            UUID previousSceneId = UUID.randomUUID();
+            UUID nextSceneId = UUID.randomUUID();
+
+            Chapter nextChapter = new Chapter();
+            nextChapter.setId(nextChapterId);
+            nextChapter.setBookId(bookId);
+            nextChapter.setChapterNumber(2);
+            nextChapter.setRawText("Later chapter text.");
+
+            CrossChapterBoundaryProjection boundary = mock(CrossChapterBoundaryProjection.class);
+            when(boundary.getPreviousSceneId()).thenReturn(previousSceneId);
+            when(boundary.getNextSceneId()).thenReturn(nextSceneId);
+
+            lenient().when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            lenient().when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
+            lenient().when(sceneDetectionService.detectScenesInChapter(jobId, testChapter))
+                    .thenReturn(new SceneDetectionService.SceneSegmentationOutcome(List.of(new SceneWithCoordinates(0, 0, 12, "Scene 1"))));
+            lenient().when(sceneProcessingService.persistDetectedScenes(chapterId, List.of(new SceneWithCoordinates(0, 0, 12, "Scene 1"))))
+                    .thenReturn(List.of(createScene(0)));
+            lenient().when(sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
+                    eq(jobId), any(Chapter.class), anyConsumer()))
+                    .thenReturn(new TriadAnalysisModels.SceneRelationshipOutcome(List.of(), List.of(), List.of()));
+            lenient().when(defaultTemporalEdgeService.createAllDefaults(bookId))
+                    .thenReturn(new DefaultTemporalEdgeCreationResult(0, 1, List.of(boundary)));
+            lenient().when(sceneTemporalRelationshipPersistenceService.hasAnyTemporalRelationshipBetween(previousSceneId, nextSceneId))
+                    .thenReturn(true);
+
+            handler.handleChapterIngestion(testEvent);
+
+            verify(sceneRelationshipAnalysisService, times(1)).analyzeChapterTriadsWithIndividuals(eq(jobId), any(Chapter.class), anyConsumer());
+            verify(sceneTemporalRelationshipPersistenceService, times(1)).applyTemporalRelationships(any());
         }
 
         @Test
@@ -246,6 +399,7 @@ class SceneDetectionHandlerTest {
             verify(objectPersistenceService, never()).persistExtractedObjects(any(), any());
             verify(locationPersistenceService, never()).persistExtractedLocations(any(), any());
             verify(eventPersistenceService, never()).persistExtractedEvents(any(), any());
+            verify(relationClaimPersistenceService, never()).persistExtractedRelationClaims(any(), any());
             verify(sceneTemporalRelationshipPersistenceService, never()).applyTemporalRelationships(any());
             verify(defaultTemporalEdgeService, never()).createAllDefaults(any());
             
@@ -396,6 +550,7 @@ class SceneDetectionHandlerTest {
             verify(collectivePersistenceService, never()).persistExtractedCollectives(any(), any());
             verify(objectPersistenceService, never()).persistExtractedObjects(any(), any());
             verify(eventPersistenceService, never()).persistExtractedEvents(any(), any());
+            verify(relationClaimPersistenceService, never()).persistExtractedRelationClaims(any(), any());
             
             ArgumentCaptor<ScenesDetectedEvent> eventCaptor = ArgumentCaptor.forClass(ScenesDetectedEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());

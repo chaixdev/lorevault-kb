@@ -14,6 +14,23 @@ public class ChapterIndividualsResolvedEvent extends IngestionEvent {
     public ChapterIndividualsResolvedEvent(
             Object source,
             UUID jobId,
+            UUID correlationId,
+            UUID chapterId,
+            UUID bookId,
+            boolean processed,
+            int mentionCount,
+            int chapterIndividualCount
+    ) {
+        super(source, jobId, correlationId, chapterId);
+        this.bookId = bookId;
+        this.processed = processed;
+        this.mentionCount = mentionCount;
+        this.chapterIndividualCount = chapterIndividualCount;
+    }
+
+    public ChapterIndividualsResolvedEvent(
+            Object source,
+            UUID jobId,
             UUID chapterId,
             UUID bookId,
             boolean processed,

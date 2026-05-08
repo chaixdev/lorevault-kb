@@ -57,12 +57,20 @@ Scenes are detected through LLM analysis of chapters, identifying natural breaks
 
 ### Entity extraction and graph projection intent
 
-Within each Scene, we extract **Entities**—the people, places, objects, concepts, and events that populate the narrative universe. Our goal is to project these entities into a durable knowledge graph where:
+Within each Scene, we extract **Entities** that populate the narrative universe. Our goal is to project these entities into a durable knowledge graph where:
 
 - Entities persist across scenes and books  
 - Relationships between entities are explicit and queryable
 - The graph grows incrementally as new content is processed
 - Multiple perspectives on the same facts can coexist
+
+6 Cardinal Entity types are identified:
+- Event
+- Location
+- Individual
+- Collective
+- Object
+- Concept
 
 The challenge is handling the **shifting messages** inherent in prose: unreliable narrators, character opinions, gradual revelation of facts, and contradictory information. This is where **Claims** become essential.
 
@@ -82,12 +90,12 @@ Claims aggregate over time into consensus facts. If multiple reliable sources as
 Claims fall into three fundamental patterns:
 
 1. **Ascription** — "subject has/is property=value"
-   - `Luke has force_sensitivity=high`
-   - `Alien endoskeleton composed_of=silica`
+   - `Obi-Wan says "Luke has high force sensitivity"`-> (obi:Individual)-[:claims]->(:Claim{type=ascription,key=A:ability.force_sensitivity, value=high})-[:is_claimed_about]->(luke:Individual)
+   - `Alien endoskeleton composed_of=silica` -> (drBrady:Individual)-[:claims]->(c:Claim{type=ascription,key=A:physical_property.body_composition, value=silica})-[:is_claimed_about]->(hunters:Collective)
 
 2. **Relation** — "subject relates_to object via relationship"
-   - `Luke participated_in=Battle of Hoth`
-   - `Tatooine located_in=Outer Rim`
+   - narrator says `Luke participated_in=Battle of Hoth` -> ...
+   - Adliral Akbar says `Tatooine located_in=Outer Rim`
 
 3. **Comparison** — "subject vs target on dimension"
    - `Luke force_sensitivity > Han force_sensitivity`
@@ -155,10 +163,6 @@ To ensure timeline continuity, the ingestion process provides the LLM with conte
 -   **Cross-Book**: When processing Book M, a summary of the final scene of Book M-1 can be provided.
 
 This allows the LLM to establish an explicit temporal link (e.g., `meets`, `before`) across boundaries, preventing temporal gaps and correctly handling multi-part narratives.
-
-## Canonical JSON for Claims
-
-While a human-readable DSL is useful for examples, the canonical, machine-parseable format for claims extracted by the LLM is **JSON**, validated against a strict schema. This ensures data quality and decouples the extraction process from the taxonomy management.
 
 ### The Two-Phase Vocabulary Process
 
@@ -316,6 +320,10 @@ All claims carry: `sourceId`, `subjectId`, `certainty (0..1)`, `polarity (assert
 - Value: literal carrier node for typed values (text/number/date), target of ascriptions when not an entity.
 - Claim: append‑only provenance records; may be projected as lightweight nodes but are not `:Entity`.
 
+### Relation type taxonomy
+
+See `../brainstorm/query/2026-05-05_claims-model-extensions-parked.md` for the parked relation type taxonomy (three bins: SPATIAL, PARTICIPANT, INFLUENCE), meta-layer relation types for the claims hypergraph, and provisional relation clustering notes.
+
 ### Publication coordinates
 
 Used for spoiler gating, reproducibility, and cross‑work federation.
@@ -345,18 +353,16 @@ Identity node → HAS_VERSION → Version node → supported by Claim(s)
 - Clean separation of enduring identity from time‑bounded state.
 - Enables "character development" queries without complicating base IDs.
 
-## Catalog microservice (taxonomy)
+## Catalog module (taxonomy)
 
-Purpose: standardize properties and relation types; enable semantic retrieval and drift control.
+Purpose: standardize properties, relation types, and actions; enable semantic retrieval and drift control.
 
 **Minimal tables (logical)**:
 - properties(id, label, description, valueType, allowedKinds, subjectTypes, comparable?, directionality?, synonyms[], status, replacedBy?, embedding)
 - reltypes(id, label, description, subjectTypes, objectTypes, inverseId?, synonyms[], status, embedding)
 - actions(id, label, description, synonyms[], status, embedding)
 
-**Retrieval**: hybrid search (BM25 + vector) → filter by constraints → top‑K options (IDs + gloss). Unknowns are emitted as `provisional_*` and queued for curation.
-
-**Statuses**: `active | provisional | deprecated | merged` with `replacedBy` for migrations.
+For the revised relation discovery and graph-aware routing sequence, see `../brainstorm/query/2026-04-12_graph-aware-qa-design-april-2026.md` and `../planning/minimal-reltype-catalog.md`.
 
 ## Confidence aggregation
 
@@ -371,9 +377,9 @@ Per aggregate key, compute support/deny with source weights and claim certainty.
 
 **Default reliabilities**: narrator 0.95, domain expert 0.75, named witness 0.6, unreliable 0.3. Apply hedge penalties via qualifiers.
 
-## The Catalog: a separate vocabulary service
+## The Catalog: a vocabulary capability
 
-Role: provide a canonical, curated vocabulary for properties, relationships, and entity types to prevent semantic drift and simplify querying.
+Role: provide a canonical, curated vocabulary for properties, relationships, and entity types to prevent semantic drift and simplify querying. In the current repo shape this should be treated as an in-process module / bounded context, not a separately deployed microservice.
 
 **Minimal tables (logical)**:
 - properties(id, label, description, valueType, allowedKinds, subjectTypes, comparable?, directionality?, synonyms[], status, replacedBy?, embedding)

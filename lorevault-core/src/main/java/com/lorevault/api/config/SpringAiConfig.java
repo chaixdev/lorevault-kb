@@ -14,15 +14,46 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
+
+import java.time.Duration;
 
 /**
  * Manual Spring AI configuration using our own model properties.
  * Completely bypasses Spring AI auto-configuration for full control.
+ *
+ * <p>All OpenAI-compatible API clients are configured with a 60-second
+ * HTTP timeout to prevent indefinite hangs on unresponsive LLM providers.
  */
 @Configuration
 @Profile("!test")
 @EnableConfigurationProperties(LoreVaultModelsProperties.class)
 public class SpringAiConfig {
+
+    /** HTTP timeout for all LLM and embedding API calls. */
+    private static final Duration API_TIMEOUT = Duration.ofSeconds(60);
+
+    /**
+     * Creates a {@link RestClient.Builder} with connection and read timeouts configured.
+     * Used by all OpenAI-compatible API clients to prevent indefinite hangs.
+     */
+    private RestClient.Builder restClientBuilderWithTimeout() {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(API_TIMEOUT);
+        requestFactory.setReadTimeout(API_TIMEOUT);
+        return RestClient.builder().requestFactory(requestFactory);
+    }
+
+    private OpenAiApi buildApi(LoreVaultModelsProperties.ModelProperties cfg) {
+        return OpenAiApi.builder()
+                .baseUrl(cfg.baseUrl())
+                .apiKey(cfg.apiKey())
+                .completionsPath(cfg.completionsPath())
+                .restClientBuilder(restClientBuilderWithTimeout())
+                .build();
+    }
 
     /**
      * Primary ChatClient for the "big" model - used as default.
@@ -32,11 +63,7 @@ public class SpringAiConfig {
     @Profile("!test")
     public ChatClient chatClient(LoreVaultModelsProperties models) {
         var cfg = models.nlpBig();
-        var openAiApi = OpenAiApi.builder()
-            .baseUrl(cfg.baseUrl())
-            .apiKey(cfg.apiKey())
-            .completionsPath(cfg.completionsPath())
-            .build();
+        var openAiApi = buildApi(cfg);
         OpenAiChatOptions defaults = OpenAiChatOptions.builder()
             .model(cfg.model())
             .temperature(cfg.temperature())
@@ -57,11 +84,7 @@ public class SpringAiConfig {
     @Qualifier("nlpSmall")
     public ChatClient nlpSmallChatClient(LoreVaultModelsProperties models) {
         var cfg = models.nlpSmall();
-        var openAiApi = OpenAiApi.builder()
-            .baseUrl(cfg.baseUrl())
-            .apiKey(cfg.apiKey())
-            .completionsPath(cfg.completionsPath())
-            .build();
+        var openAiApi = buildApi(cfg);
         OpenAiChatOptions defaults = OpenAiChatOptions.builder()
             .model(cfg.model())
             .temperature(cfg.temperature())
@@ -82,11 +105,7 @@ public class SpringAiConfig {
     @Qualifier("nlpBig")
     public ChatClient nlpBigChatClient(LoreVaultModelsProperties models) {
         var cfg = models.nlpBig();
-        var openAiApi = OpenAiApi.builder()
-            .baseUrl(cfg.baseUrl())
-            .apiKey(cfg.apiKey())
-            .completionsPath(cfg.completionsPath())
-            .build();
+        var openAiApi = buildApi(cfg);
         OpenAiChatOptions defaults = OpenAiChatOptions.builder()
             .model(cfg.model())
             .temperature(cfg.temperature())
@@ -110,10 +129,11 @@ public class SpringAiConfig {
             LoreVaultEmbeddingProperties embeddingProperties
     ) {
         var cfg = models.embedding();
-        var openAiApi = OpenAiApi.builder()
-            .baseUrl(cfg.baseUrl())
-            .apiKey(cfg.apiKey())
-            .build();
+var openAiApi = OpenAiApi.builder()
+                .baseUrl(cfg.baseUrl())
+                .apiKey(cfg.apiKey())
+                .restClientBuilder(restClientBuilderWithTimeout())
+                .build();
         OpenAiEmbeddingOptions options = OpenAiEmbeddingOptions.builder()
                 .model(cfg.model())
                 .dimensions(embeddingProperties.model().dimensions())
