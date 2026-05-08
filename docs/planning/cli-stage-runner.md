@@ -1,7 +1,7 @@
 # CLI Module with Step-by-Step Pipeline Control
 
-**Status:** NOT STARTED  
-**Last Updated:** May 07, 2026
+**Status:** SUPERSEDED — replaced by [Agent-Driven Step Execution API](agent-driven-step-execution-api.md). The CLI module will be removed; step execution moves to the REST API with `fireEvents` control.  
+**Last Updated:** May 08, 2026
 
 ## Summary
 

@@ -33,7 +33,6 @@
 <modules>
         <module>lorevault-core</module>
         <module>lorevault-web</module>
-        <module>lorevault-cli</module>
     </modules>
 
     <dependencyManagement>

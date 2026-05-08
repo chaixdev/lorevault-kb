@@ -15,7 +15,7 @@ import java.util.concurrent.Executor;
  * Configuration for asynchronous processing
  */
 @Configuration
-@EnableAsync
+@EnableAsync(proxyTargetClass = true)
 public class AsyncConfig {
 
     @Value("${lorevault.async.shutdown.wait-for-tasks:true}")
