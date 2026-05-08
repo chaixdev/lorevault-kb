@@ -1,6 +1,7 @@
 package com.lorevault.api.ingestion.scene;
 
 import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
+import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.ingestion.job.IngestionJobService;
 import com.lorevault.api.ingestion.job.IngestionStatus;
 
@@ -27,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -38,20 +40,17 @@ import java.util.stream.Collectors;
 
 /**
  * Handler for scene detection stage of the ingestion pipeline.
- * 
+ *
  * Listens to: ChapterIngestionEvent (legacy event from IngestionService)
  * Emits: ScenesDetectedEvent (on success) or IngestionFailedEvent (on failure)
- * 
- * Responsibilities:
- * - Bridge from legacy ingestion event to new pipeline
- * - Use AI to detect semantic scene boundaries in chapter text
- * - Persist detected scenes to the database
- * - Create default temporal edges between scenes
- * - Update job status throughout the process
+ *
+ * Implements {@link SceneDetectionOperation} so the CLI module can invoke
+ * scene detection directly without going through Spring event dispatch.
+ * The CLI provides the transaction context; this handler provides the logic.
  */
 @Component
 @Slf4j
-public class SceneDetectionHandler {
+public class SceneDetectionHandler implements SceneDetectionOperation {
 
     private final ChapterGraphRepository chapterRepo;
     private final SceneGraphRepository sceneRepo;
@@ -106,45 +105,78 @@ public class SceneDetectionHandler {
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
 
+    /**
+     * Event-driven entry point for the async pipeline.
+     * Delegates to {@link #execute(UUID, UUID)} for the actual work.
+     */
     @Async("sceneDetectionTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleChapterIngestion(ChapterIngestionEvent event) {
         UUID jobId = event.getJobId();
         UUID chapterId = event.getChapterId();
-        
+
         log.info("[SCENE_DETECTION] Starting pipeline for job={}, chapter={}", jobId, chapterId);
-        
+
         stageSupport.runStage(
             this,
             "SCENE_DETECTION",
             jobId,
             chapterId,
             () -> {
+                execute(jobId, chapterId);
+                return null;
+            },
+            this::isRetryableError
+        );
+    }
+
+    /**
+     * Synchronous scene detection logic, callable from CLI with an existing transaction.
+     *
+     * <p>When called from the event listener, the {@code @Async} + {@code AFTER_COMMIT}
+     * wrapper handles transaction boundaries. When called from the CLI, the caller
+     * must provide an active transaction (e.g., via {@code @Transactional} on the
+     * orchestrator method).
+     *
+     * @param jobId     the ingestion job ID
+     * @param chapterId the chapter to process
+     * @return result summarising scene detection outcome
+     */
+    @Override
+    @Transactional
+    public StepResult execute(UUID jobId, UUID chapterId) {
+        long start = System.currentTimeMillis();
+
+        try {
             // Look up the chapter to get the bookId
             Chapter chapter = chapterRepo.findById(chapterId)
                     .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
-            
+
             UUID bookId = chapter.getBookId();
-            
-                    stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
+
+            stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
                     "Analyzing chapter text with AI to identify semantic scene boundaries");
 
             // Check for existing scenes (idempotency)
             List<Scene> existingScenes = sceneRepo.findByChapterId(chapterId);
             if (!existingScenes.isEmpty()) {
-                log.info("[SCENE_DETECTION] Found {} existing scenes for chapter {}, skipping detection", 
+                log.info("[SCENE_DETECTION] Found {} existing scenes for chapter {}, skipping detection",
                         existingScenes.size(), chapterId);
                 emitScenesDetected(jobId, chapterId, bookId, existingScenes);
-                return null;
+                long elapsed = System.currentTimeMillis() - start;
+                return StepResult.success("SCENE_DETECTION",
+                        String.format("Skipped — %d scenes already exist", existingScenes.size()),
+                        Map.of("scenesDetected", existingScenes.size()),
+                        elapsed);
             }
 
             // Detect and persist new scenes
             List<Scene> scenes = detectAndPersistScenes(jobId, chapter);
-            
+
             if (scenes.isEmpty()) {
                 log.warn("[SCENE_DETECTION] No scenes detected for chapter {}", chapterId);
             }
-            
+
             // Create default temporal edges
             log.info("[SCENE_DETECTION] Creating default temporal edges for book {}", bookId);
             var temporalDefaults = defaultTemporalEdgeService.createAllDefaults(bookId);
@@ -216,16 +248,25 @@ public class SceneDetectionHandler {
                         sceneRelationshipOutcome.sceneRelationClaimExtractions()
                 );
             }
-            
-                    stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
+
+            stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
                     String.format("Detected %d semantic scenes from chapter text", scenes.size()));
-            
+
             emitScenesDetected(jobId, chapterId, bookId, scenes);
 
-            return null;
-                },
-                this::isRetryableError
-        );
+            long elapsed = System.currentTimeMillis() - start;
+            return StepResult.success("SCENE_DETECTION",
+                    String.format("Detected %d scenes", scenes.size()),
+                    Map.of("scenesDetected", scenes.size()),
+                    elapsed);
+
+        } catch (Exception e) {
+            long elapsed = System.currentTimeMillis() - start;
+            log.error("[SCENE_DETECTION] Failed for job={} chapter={}: {}", jobId, chapterId, e.getMessage(), e);
+            return StepResult.failure("SCENE_DETECTION",
+                    PipelineStageSupport.sanitizeExceptionMessage(e),
+                    elapsed);
+        }
     }
 
     private List<Scene> detectAndPersistScenes(UUID jobId, Chapter chapter) {
@@ -252,11 +293,12 @@ public class SceneDetectionHandler {
     }
 
     private void emitScenesDetected(UUID jobId, UUID chapterId, UUID bookId, List<Scene> scenes) {
-        List<UUID> sceneIds = scenes.stream().map(Scene::getEventId).toList();
-        
-        log.info("[SCENE_DETECTION] Emitting ScenesDetectedEvent: job={}, chapter={}, sceneCount={}", 
-                jobId, chapterId, scenes.size());
-        
+        List<Scene> safeScenes = scenes != null ? scenes : List.of();
+        List<UUID> sceneIds = safeScenes.stream().map(Scene::getEventId).toList();
+
+        log.info("[SCENE_DETECTION] Emitting ScenesDetectedEvent: job={}, chapter={}, sceneCount={}",
+                jobId, chapterId, safeScenes.size());
+
         eventPublisher.publishEvent(new ScenesDetectedEvent(this, jobId, chapterId, bookId, sceneIds));
     }
 
@@ -330,9 +372,9 @@ public class SceneDetectionHandler {
         }
         String message = e.getMessage();
         return message != null && (
-                message.contains("LLM API") || 
-                message.contains("scene detection failed") || 
-                message.contains("Empty response") || 
+                message.contains("LLM API") ||
+                message.contains("scene detection failed") ||
+                message.contains("Empty response") ||
                 message.contains("timeout") ||
                 message.contains("rate limit"));
     }

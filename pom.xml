@@ -30,9 +30,10 @@
     <lombok.version>1.18.36</lombok.version>
     </properties>
 
-    <modules>
+<modules>
         <module>lorevault-core</module>
         <module>lorevault-web</module>
+        <module>lorevault-cli</module>
     </modules>
 
     <dependencyManagement>

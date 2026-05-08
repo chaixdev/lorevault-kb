@@ -122,6 +122,30 @@ public class IngestionService {
     }
 
     /**
+     * Prepare a chapter for step-by-step pipeline execution.
+     *
+     * <p>Creates the chapter (if new) and an ingestion job, but does <em>not</em>
+     * publish {@link ChapterIngestionEvent}. The caller (CLI) is responsible for
+     * invoking individual pipeline steps via their Operation interfaces.
+     *
+     * @return the job and chapter IDs
+     */
+    @Transactional
+    public IngestionSubmissionResult prepareChapter(UUID bookId, Integer chapterNumber, String chapterTitle, String chapterText) {
+        log.info("Preparing chapter for step-by-step ingestion: bookId={}, chapterNumber={}, title={}",
+            bookId, chapterNumber, chapterTitle);
+
+        ChapterValidationResult validationResult = validateAndProcessChapter(bookId, chapterNumber, chapterTitle, chapterText);
+        UUID chapterId = validationResult.getChapterId();
+
+        // Create job but do NOT publish ChapterIngestionEvent — CLI will drive steps manually
+        IngestionJob job = ingestionJobService.createIngestionJob(chapterId);
+        log.info("Prepared chapter {} for step-by-step processing, jobId={}", chapterId, job.getId());
+
+        return new IngestionSubmissionResult(job.getId(), chapterId);
+    }
+
+    /**
      * Get the status of an ingestion job
      */
     public Optional<JobStatusDetails> getJobStatus(UUID jobId) {
