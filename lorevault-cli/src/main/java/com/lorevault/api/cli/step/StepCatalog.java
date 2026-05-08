@@ -1,13 +1,11 @@
 package com.lorevault.api.cli.step;
 
-import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.ingestion.scene.SceneDetectionOperation;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.BiFunction;
 
 /**
  * Registry of available pipeline steps.
@@ -26,7 +24,7 @@ public class StepCatalog {
                         StepKey.SCENE_DETECTION,
                         "Detect semantic scene boundaries in chapter text",
                         Set.of(),
-                        wrapOperation(sceneDetectionOperation::execute)
+                        sceneDetectionOperation::execute
                 )
         );
     }
@@ -47,13 +45,5 @@ public class StepCatalog {
     /** All registered step definitions. */
     public Map<StepKey, StepDefinition> all() {
         return steps;
-    }
-
-    /**
-     * Wraps an {@code Operation::execute} method reference into the
-     * {@code BiFunction<UUID, UUID, StepResult>} shape expected by {@link StepDefinition}.
-     */
-    private static BiFunction<UUID, UUID, StepResult> wrapOperation(BiFunction<UUID, UUID, StepResult> op) {
-        return op;
     }
 }

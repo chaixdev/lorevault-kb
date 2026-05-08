@@ -73,8 +73,9 @@ public class LibraryCommand implements Callable<Integer> {
                 // 2. Create series (if provided)
                 UUID seriesId = null;
                 String seriesLabel = null;
+                LibraryResult<Series> seriesResult = null;
                 if (seriesName != null && !seriesName.isBlank()) {
-                    LibraryResult<Series> seriesResult = libraryService.createSeries(universeId, seriesName);
+                    seriesResult = libraryService.createSeries(universeId, seriesName);
                     seriesId = seriesResult.entity().getId();
                     seriesLabel = seriesResult.entity().getName();
                 }
@@ -91,7 +92,7 @@ public class LibraryCommand implements Callable<Integer> {
                 if (seriesId != null) {
                     output.put("seriesId", seriesId.toString())
                             .put("seriesName", seriesLabel)
-                            .put("seriesCreated", true); // simplified
+                            .put("seriesCreated", seriesResult.isNew());
                 }
 
                 output.put("bookId", bookResult.entity().getId().toString())

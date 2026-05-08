@@ -130,19 +130,23 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
     }
 
     /**
-     * Synchronous scene detection logic, callable from CLI with an existing transaction.
+     * Synchronous scene detection logic, callable from CLI or event listener.
+     *
+     * <p>Transaction boundaries are managed internally by the individual
+     * persistence services (each has its own {@code @Transactional}).
+     * LLM calls execute outside any transaction, which is intentional —
+     * holding a Neo4j transaction open across network calls would exhaust
+     * the connection pool and create lock contention.
      *
      * <p>When called from the event listener, the {@code @Async} + {@code AFTER_COMMIT}
-     * wrapper handles transaction boundaries. When called from the CLI, the caller
-     * must provide an active transaction (e.g., via {@code @Transactional} on the
-     * orchestrator method).
+     * wrapper handles the scheduling boundary. When called from the CLI,
+     * the orchestrator does not need to provide a transaction context.
      *
      * @param jobId     the ingestion job ID
      * @param chapterId the chapter to process
      * @return result summarising scene detection outcome
      */
     @Override
-    @Transactional
     public StepResult execute(UUID jobId, UUID chapterId) {
         long start = System.currentTimeMillis();
 
@@ -359,6 +363,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
     }
 
     private boolean isRetryableError(Exception e) {
+        // Structured exception types — always retryable
         if (e instanceof SceneLocalizationException) {
             return true;
         }
@@ -372,13 +377,29 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                     || "SCENE_COORDINATE_LOCALIZATION_EMPTY".equals(code)
                     || "SCENE_COORDINATE_LOCALIZATION_DROPPED_SCENES".equals(code);
         }
+        // Transient infrastructure errors — retryable
+        if (e instanceof org.springframework.web.client.ResourceAccessException) {
+            // Connection refused, read timeout, I/O errors from HTTP client
+            return true;
+        }
+        if (e instanceof org.springframework.web.client.HttpClientErrorException.TooManyRequests) {
+            // HTTP 429 — rate limited
+            return true;
+        }
+        if (e instanceof org.springframework.web.client.HttpServerErrorException) {
+            // HTTP 5xx — server errors are generally transient
+            return true;
+        }
+        // Fallback: message-based matching for LLM-specific errors only.
+        // Intentionally narrow — Neo4j/driver timeouts must NOT be classified as retryable.
         String message = e.getMessage();
-        return message != null && (
-                message.contains("LLM API") ||
-                message.contains("scene detection failed") ||
-                message.contains("Empty response") ||
-                message.contains("timeout") ||
-                message.contains("rate limit"));
+        if (message == null) {
+            return false;
+        }
+        return message.contains("LLM API")
+                || message.contains("scene detection failed")
+                || message.contains("Empty response")
+                || message.contains("rate limit");
     }
 
 }

@@ -3,6 +3,7 @@ package com.lorevault.api.cli.step;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.UUID;
 
@@ -27,8 +28,8 @@ public class StepOrchestrator {
      *
      * <p>The caller is responsible for ensuring prerequisites are met.
      * Transaction boundaries are managed by the underlying Operation
-     * implementations (e.g., {@code SceneDetectionHandler.execute()} is
-     * {@code @Transactional}).
+     * implementations — each handler method declares its own {@code @Transactional}
+     * scope for DB writes, keeping LLM calls outside transaction boundaries.
      *
      * @param key       which step to run
      * @param jobId     the ingestion job ID (created by {@code prepare})

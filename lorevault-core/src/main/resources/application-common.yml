@@ -1,5 +1,10 @@
 # Shared LoreVault configuration used by both web and CLI modules.
 # Imported via spring.config.import in each module's application.yml.
+#
+# CONSUMERS: lorevault-web, lorevault-cli
+# GUARDRAIL: Do not add web-only config (server.*, springdoc, management) or
+# CLI-only config (spring.main.web-application-type) here — put those in the
+# module's own application.yml instead. This file must remain environment-agnostic.
 lorevault:
   schema:
     enabled: true

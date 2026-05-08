@@ -12,7 +12,6 @@ import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfigurat
 import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.data.neo4j.repository.config.EnableNeo4jRepositories;
-import org.springframework.scheduling.annotation.EnableAsync;
 import picocli.CommandLine.Command;
 
 import java.util.concurrent.Callable;
@@ -43,7 +42,6 @@ import java.util.concurrent.Callable;
 )
 @ConfigurationPropertiesScan("com.lorevault.api")
 @EnableNeo4jRepositories(basePackages = "com.lorevault.api")
-@EnableAsync
 @Command(name = "lorevault", mixinStandardHelpOptions = true,
         description = "LoreVault CLI for library management and pipeline execution")
 public class LoreVaultCliApplication implements Callable<Integer> {
