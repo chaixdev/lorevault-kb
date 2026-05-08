@@ -481,6 +481,47 @@ Rename book-level endpoints from `resolve-*` to `reduce-*`, add redirects, stand
 - The curl catalog provides complete, copy-pasteable examples for every endpoint
 - Book-level endpoints use `reduce-*` naming consistently
 
+## Implementation Notes
+
+Implementation notes are appended here as each phase is completed. Each entry records what was done, deviations from the design, and patterns worth promoting to canonical docs.
+
+### Phase 1 — (not yet started)
+
+**Date:**  
+**Status:** Not started
+
+**What was built:**
+
+*(Fill in during implementation)*
+
+**Deviations from design:**
+
+*(Record any deviations here — changed URLs, different response shapes, renamed classes, etc.)*
+
+**Patterns worth promoting:**
+
+*(Record patterns discovered during implementation that should be promoted to `docs/patterns/` or `docs/rules/`)*
+
+**Verification:**
+
+*(Record the curl commands used to verify end-to-end, and their results)*
+
+---
+
+### Phase 2 — (not yet started)
+
+*(Template repeats for each phase)*
+
+---
+
+### Phase 3 — (not yet started)
+
+---
+
+### Phase 4 — (not yet started)
+
+---
+
 ## Links
 
 - [Relation Evidence Harvesting](relation-evidence-harvesting.md) — Phase 0 validated with step-wise execution; Phase 1 needs this API
