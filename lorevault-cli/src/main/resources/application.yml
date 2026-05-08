@@ -3,13 +3,18 @@ spring:
     name: lorevault-cli
   main:
     web-application-type: none
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+  config:
+    import: classpath:application-common.yml
+  neo4j:
+    uri: bolt://localhost:7687
+    authentication:
+      username: ${NEO4J_USERNAME}
+      password: ${NEO4J_PASSWORD}
+    pool:
+      metrics-enabled: false
 
 logging:
   level:
     com.lorevault: INFO
     org.springframework: WARN
+    org.neo4j: WARN

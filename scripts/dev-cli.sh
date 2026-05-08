@@ -3,11 +3,14 @@
 #
 # Usage:
 #   ./scripts/dev-cli.sh run <command> [options]
-#   ./scripts/dev-cli.sh run ingest prepare <bookId> <chapterNumber> --text "chapter text"
-#   ./scripts/dev-cli.sh run step run-step SCENE_DETECTION --job <uuid> --chapter <uuid>
-#   ./scripts/dev-cli.sh run step steps
-#   ./scripts/dev-cli.sh run ingest status <jobId>
-#   ./scripts/dev-cli.sh run ingest list
+#
+# Commands:
+#   library create  -u "Universe" [-s "Series"] -b "Book Title" [-n bookNumber]
+#   prepare         -b <bookUuid> -n <chapterNumber> [-t "Title"] <chapter-file|->
+#   step run        SCENE_DETECTION --job <uuid> --chapter <uuid>
+#   step list
+#   status          <jobId>
+#   jobs list       [--universe U] [--status S] [--limit N] [--offset O]
 #
 # Environment:
 #   Sources .env automatically (same as dev-api.sh)
@@ -60,10 +63,11 @@ case "${1:-help}" in
         echo "  $0 build                       Build the CLI module"
         echo ""
         echo "Commands:"
-        echo "  ingest prepare <bookId> <chapterNumber> --title <title> --text <text>"
-        echo "  ingest status <jobId>"
-        echo "  ingest list [--universe <u>] [--status <s>] [--limit <n>]"
-        echo "  step run-step <STEP_KEY> --job <jobId> --chapter <chapterId>"
-        echo "  step steps"
+        echo "  library create  -u \"Universe\" [-s \"Series\"] -b \"Book Title\" [-n bookNumber]"
+        echo "  prepare         -b <bookUuid> -n <chapterNumber> [-t \"Title\"] <chapter-file|->"
+        echo "  step run        SCENE_DETECTION --job <uuid> --chapter <uuid>"
+        echo "  step list"
+        echo "  status          <jobId>"
+        echo "  jobs list       [--universe U] [--status S] [--limit N] [--offset O]"
         ;;
 esac

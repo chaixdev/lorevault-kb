@@ -15,13 +15,15 @@ import java.util.Map;
  * @param summary     human-readable summary of what happened
  * @param counts      step-specific integer metrics (e.g., "scenesDetected" → 5)
  * @param durationMs  wall-clock time in milliseconds
+ * @param retryable   whether the failure is retryable (false for success results)
  */
 public record StepResult(
         boolean success,
         String stepName,
         String summary,
         Map<String, Integer> counts,
-        long durationMs
+        long durationMs,
+        boolean retryable
 ) {
     public StepResult {
         counts = counts != null ? Map.copyOf(counts) : Map.of();
@@ -29,16 +31,21 @@ public record StepResult(
 
     /** Create a successful result with counts. */
     public static StepResult success(String stepName, String summary, Map<String, Integer> counts, long durationMs) {
-        return new StepResult(true, stepName, summary, counts, durationMs);
+        return new StepResult(true, stepName, summary, counts, durationMs, false);
     }
 
     /** Create a successful result with no counts. */
     public static StepResult success(String stepName, String summary, long durationMs) {
-        return new StepResult(true, stepName, summary, Collections.emptyMap(), durationMs);
+        return new StepResult(true, stepName, summary, Collections.emptyMap(), durationMs, false);
     }
 
-    /** Create a failure result. */
+    /** Create a failure result (non-retryable by default). */
     public static StepResult failure(String stepName, String summary, long durationMs) {
-        return new StepResult(false, stepName, summary, Collections.emptyMap(), durationMs);
+        return new StepResult(false, stepName, summary, Collections.emptyMap(), durationMs, false);
+    }
+
+    /** Create a retryable failure result. */
+    public static StepResult retryableFailure(String stepName, String summary, long durationMs) {
+        return new StepResult(false, stepName, summary, Collections.emptyMap(), durationMs, true);
     }
 }

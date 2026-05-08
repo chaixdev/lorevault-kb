@@ -11,6 +11,7 @@ import com.lorevault.api.content.timeline.infrastructure.CrossChapterBoundaryPro
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.scene.SceneGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
+import com.lorevault.api.ingestion.events.IngestionFailedEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
 import com.lorevault.api.ingestion.triad.TriadTemporalEdgeRequestFactory;
@@ -107,7 +108,8 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
 
     /**
      * Event-driven entry point for the async pipeline.
-     * Delegates to {@link #execute(UUID, UUID)} for the actual work.
+     * Delegates to {@link #execute(UUID, UUID)} for the actual work,
+     * then publishes failure events if the step returned an unsuccessful result.
      */
     @Async("sceneDetectionTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -117,17 +119,14 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
 
         log.info("[SCENE_DETECTION] Starting pipeline for job={}, chapter={}", jobId, chapterId);
 
-        stageSupport.runStage(
-            this,
-            "SCENE_DETECTION",
-            jobId,
-            chapterId,
-            () -> {
-                execute(jobId, chapterId);
-                return null;
-            },
-            this::isRetryableError
-        );
+        StepResult result = execute(jobId, chapterId);
+
+        if (!result.success()) {
+            eventPublisher.publishEvent(new IngestionFailedEvent(
+                    this, jobId, chapterId, "SCENE_DETECTION", result.summary(), result.retryable()));
+            stageSupport.updateJobStatus(jobId, IngestionStatus.FAILED,
+                    "SCENE_DETECTION failed: " + result.summary());
+        }
     }
 
     /**
@@ -263,9 +262,12 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
             log.error("[SCENE_DETECTION] Failed for job={} chapter={}: {}", jobId, chapterId, e.getMessage(), e);
-            return StepResult.failure("SCENE_DETECTION",
-                    PipelineStageSupport.sanitizeExceptionMessage(e),
-                    elapsed);
+            boolean retryable = isRetryableError(e);
+            return retryable
+                    ? StepResult.retryableFailure("SCENE_DETECTION",
+                            PipelineStageSupport.sanitizeExceptionMessage(e), elapsed)
+                    : StepResult.failure("SCENE_DETECTION",
+                            PipelineStageSupport.sanitizeExceptionMessage(e), elapsed);
         }
     }
 
