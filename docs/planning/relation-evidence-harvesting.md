@@ -468,3 +468,42 @@ MATCH (s:Scene)-[:MENTIONS]->(rc:RelationClaim)
 WHERE s.id = $sceneId
 RETURN rc.relationName, rc.subjectKind + ': ' + rc.subjectName AS subject, rc.objectKind + ': ' + rc.objectName AS object, rc.certainty, rc.evidenceText
 ```
+
+### Phase 0 — Review Fixes (May 8, 2026)
+
+**Status: All review findings addressed. Ready for user testing.**
+
+Two independent reviews (oracle conceptual + council code quality) identified 14 findings. All addressed:
+
+**Critical & High:**
+
+| ID | Finding | Fix |
+|---|---|---|
+| CRIT-1 | `SceneDetectionHandlerTest` missing `@Mock` for `RelationClaimPersistenceService` — NPE on all tests | Added `@Mock` field + verification calls in 4 tests + InOrder chain |
+| HIGH-1 | No idempotency guard — pipeline retry creates duplicate `RelationClaim` nodes | Added `countBySceneIdAndExtractionIndexAndRelationName` query + skip logic in persistence service |
+| HIGH-2 | `parseEntityRef()` silently discards entity kind on `"Kind:Name"` (no space) format | Added fallback colon parsing + `validateKind()` against `VALID_ENTITY_KINDS` set with WARN logging |
+| HIGH-3 | `generateProvisionalRelTypeId()` produces empty ID for all-non-alphanumeric input | Guard against empty result, fall back to `"R:provisional.unparseable"` |
+
+**Medium:**
+
+| ID | Finding | Fix |
+|---|---|---|
+| MED-1 | No logging in `RelationClaimPersistenceService` | Added `[RELATION_CLAIM_PERSIST]` skip/complete logs with counts |
+| MED-2 | `truncate()` can split surrogate pairs; no truncation indicator | Code-point-aware truncation + `…` ellipsis |
+| MED-3 | Existing tests don't verify `relationClaimPersistenceService` calls | Added `verify()` calls + InOrder chain in `SceneDetectionHandlerTest` |
+| MED-4 | No `RelationClaimPersistenceServiceTest` | Created — 8 tests covering null/empty, normal flow, idempotency, scene-not-found |
+| MED-5 | No tests for `normalizeRelationClaims()` | Added 22 tests via reflection for `parseEntityRef`, `generateProvisionalRelTypeId`, `normalizeCertainty`, `truncate` |
+| MED-6 | No integration tests for RelationClaim Neo4j constraints/indexes | Created `Neo4jSchemaInitializerRelationClaimIndexesIT` |
+
+**Oracle conceptual review:**
+
+| Finding | Fix |
+|---|---|
+| Missing `pubCoords` fields on `RelationClaim` | Added `pubUniverse`, `pubSeries`, `pubBookNumber`, `pubChapterNumber`, `pubSceneIndex`, `pubKey` — null at creation, populated during book-level processing |
+| `RelationClaim` carries `Mention` label but doesn't implement `Mention` interface | Added `implements Mention` with `displayName() → relationName`, `normalizedName() → provisionalRelTypeId` |
+| Prompt says "implicit" without filtering guidance — noise flood risk | Added: "Only extract relations that carry narrative significance — do not extract trivial co-occurrence" |
+| Certainty String vs `CertaintyLevel` enum divergence | Documented in Javadoc on `RelationClaim.certainty()` — String preserves raw LLM output; Phase 1 bridges via `CertaintyWeights` |
+
+**Bug found during testing:**
+
+- `normalizeCertainty("StronglyImplied")` returned `"WeaklyImplied"` because the PascalCase input lowercased to `"stronglyimplied"` which didn't match `"strongly implied"` or `"strongly_implied"`. Fixed to check for `"strongly"` + `"impl"` substrings.
