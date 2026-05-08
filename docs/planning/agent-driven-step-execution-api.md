@@ -110,7 +110,7 @@ Each handler implements its interface, and `@EventListener` delegates to `execut
 
 ### Out of scope
 
-- Removing the `lorevault-cli` module (separate cleanup)
+- ~~Removing the `lorevault-cli` module~~ — already done
 - StageRun DAG persistence (separate planning item)
 - Operator dashboard UI (separate brainstorm)
 - LLM call result caching/replay
@@ -170,6 +170,9 @@ The full-pipeline endpoint (`POST /api/command/ingest`) always fires events — 
 
 ### Prepare endpoint
 
+Two content types are supported:
+
+1. **JSON body** — for programmatic use (agents, scripts):
 ```json
 POST /api/command/ingest/prepare
 Content-Type: application/json
@@ -186,6 +189,17 @@ Content-Type: application/json
   "jobId": "75c97b8b-...",
   "chapterId": "be7fc5c7-..."
 }
+```
+
+2. **Multipart form** — for file upload (same as the existing `POST /api/command/ingest` but without triggering the pipeline):
+```
+POST /api/command/ingest/prepare
+Content-Type: multipart/form-data
+
+file=@chapter.txt
+bookId=5187466d-...
+chapterNumber=1
+chapterTitle=The Kevin Jenkins Experience
 ```
 
 Calls `IngestionService.prepareChapter()` — creates chapter + job, does NOT publish `ChapterIngestionEvent`.
@@ -213,6 +227,36 @@ All step endpoints return the same shape:
 ```
 
 The `counts` map varies per step. The envelope is constant.
+
+### Error response format
+
+All step endpoints return the same error envelope:
+
+```json
+{
+  "step": "detect-scenes",
+  "scope": "chapter",
+  "scopeId": "be7fc5c7-...",
+  "success": false,
+  "summary": "Scene detection failed: LLM API timeout after 60s",
+  "durationMs": 60043,
+  "retryable": true,
+  "counts": {}
+}
+```
+
+HTTP status codes:
+
+| Scenario | HTTP status |
+|---|---|
+| Step succeeded | `200 OK` |
+| Step failed but is retryable (LLM timeout, rate limit) | `200 OK` with `success: false, retryable: true` |
+| Step failed permanently (bad input, not found) | `200 OK` with `success: false, retryable: false` |
+| Chapter/book not found | `404 Not Found` |
+| Invalid UUID | `400 Bad Request` |
+| Claim contention on book-level reduction | `409 Conflict` |
+
+Step failures return `200 OK` because the step *ran* — it just didn't succeed. This lets the agent distinguish between "the request was malformed" (4xx) and "the step ran but failed" (200 with `success: false`).
 
 ### Steps query endpoint
 
@@ -316,17 +360,55 @@ Each `*Operation.execute()` method currently does not publish events — that's 
 
 When `fireEvents=true`, the controller publishes the appropriate completion event after `execute()` returns. This requires the controller to know which event to publish for each step — a small mapping table in the controller or a `StepEventMapper`.
 
-### `StepCatalog` moves to core
+### `StepCatalog` must be created in core
 
-`StepKey`, `StepDefinition`, and `StepCatalog` currently live in `lorevault-cli`. They move to `lorevault-core` since the REST API now needs them. The CLI module's copy is removed when the CLI module is deleted.
+`StepKey`, `StepDefinition`, and `StepCatalog` were in the deleted `lorevault-cli` module. They need to be recreated in `lorevault-core` since the REST API needs them. The `StepKey` enum should list all pipeline steps; `StepDefinition` records the key, description, scope, and prerequisites; `StepCatalog` is a Spring `@Component` that registers all steps with their `*Operation` delegates.
 
 ### `StepResult` already in core
 
 `StepResult` is already in `lorevault-core/src/main/java/com/lorevault/api/ingestion/pipeline/StepResult.java`. The REST response envelope maps directly from it.
 
-### `*Operation` interfaces already in core
+### `*Operation` interfaces — which exist, which need creation
 
-All handler interfaces (`SceneDetectionOperation`, etc.) are already extracted. The REST controllers inject these interfaces and call `execute()` directly — same pattern the existing resolution controllers use with their service classes.
+Only `SceneDetectionOperation` currently exists in core. The remaining interfaces need to be extracted from their handlers following the same pattern:
+
+| Interface | Status | Handler |
+|---|---|---|
+| `SceneDetectionOperation` | **Exists** | `SceneDetectionHandler` |
+| `ChunkingOperation` | Needs creation | `ChunkingHandler` |
+| `EmbeddingOperation` | Needs creation | `EmbeddingHandler` |
+| `ChapterIndividualResolutionOperation` | Needs creation | `ChapterIndividualResolutionHandler` |
+| `ChapterCollectiveResolutionOperation` | Needs creation | `ChapterCollectiveResolutionHandler` |
+| `ChapterLocationResolutionOperation` | Needs creation | `ChapterLocationResolutionHandler` |
+| `ChapterObjectResolutionOperation` | Needs creation | `ChapterObjectResolutionHandler` |
+| `ChapterEventResolutionOperation` | Needs creation | `ChapterEventResolutionHandler` |
+| `BookIndividualReductionOperation` | Needs creation | `BookIndividualReductionHandler` |
+| `BookCollectiveReductionOperation` | Needs creation | `BookCollectiveReductionHandler` |
+| `BookLocationReductionOperation` | Needs creation | `BookLocationReductionHandler` |
+| `BookObjectReductionOperation` | Needs creation | `BookObjectReductionHandler` |
+
+Each interface follows the same pattern: `StepResult execute(UUID jobId, UUID chapterId)` for chapter-scoped steps, `StepResult execute(UUID jobId, UUID bookId)` for book-scoped steps. The handler's `@EventListener` method delegates to `execute()`, and the REST controller calls `execute()` directly.
+
+### Event mapping for `fireEvents=true`
+
+When `fireEvents=true`, the controller must publish the domain-specific event that the async pipeline would publish. The mapping is:
+
+| Step | Event to publish |
+|---|---|
+| detect-scenes | `ScenesDetectedEvent` |
+| chunk | `ChunksCreatedEvent` |
+| resolve-individuals | `ChapterIndividualsResolvedEvent` |
+| resolve-collectives | `ChapterCollectivesResolvedEvent` |
+| resolve-locations | `ChapterLocationsResolvedEvent` |
+| resolve-objects | `ChapterObjectsResolvedEvent` |
+| resolve-events | `ChapterEventsResolvedEvent` |
+| reduce-individuals | `BookIndividualsReducedEvent` |
+| reduce-collectives | `BookCollectivesReducedEvent` |
+| reduce-locations | `BookLocationsReducedEvent` |
+| reduce-objects | `BookObjectsReducedEvent` |
+| embed | No downstream event (embedding is a leaf step) |
+
+This mapping should live in a `StepEventMapper` component in `lorevault-web`, not in core — it's a web-layer concern.
 
 ## Phased Implementation
 
@@ -372,8 +454,8 @@ Rename book-level endpoints from `resolve-*` to `reduce-*`, add redirects, stand
 | Deliverable | What |
 |---|---|
 | `docs/curl-catalog.md` | Complete curl examples for all endpoints |
-| Delete `lorevault-cli` module | Remove module, POM reference, `application.yml` |
-| `StepKey`/`StepCatalog`/`StepOrchestrator` | Remove CLI-specific copies from `lorevault-cli`; core versions remain |
+| Response standardization | Migrate existing resolution controllers to `StepExecutionResponse` |
+| `StepKey`/`StepDefinition`/`StepCatalog` | Create in `lorevault-core` (were in deleted CLI module) |
 
 ## Known Constraints / Prior Findings
 
@@ -401,7 +483,6 @@ Rename book-level endpoints from `resolve-*` to `reduce-*`, add redirects, stand
 
 ## Links
 
-- [CLI Stage Runner planning](cli-stage-runner.md) — the CLI module that will be removed; this doc replaces its step-execution goals
 - [Relation Evidence Harvesting](relation-evidence-harvesting.md) — Phase 0 validated with step-wise execution; Phase 1 needs this API
 - [Ingestion pipeline pattern](../patterns/ingestion/ingestion-pipeline.md) — established pipeline step documentation
 - [Handler design contract](../rules/handler-design-contract.md) — handler ownership and retry safety rules
