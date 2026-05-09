@@ -1,7 +1,8 @@
 package com.lorevault.api.ingestion.resolution.event;
 
+import com.lorevault.api.content.timeline.domain.CrossChapterBoundary;
+import com.lorevault.api.content.timeline.domain.CrossChapterBoundaryProjection;
 import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
-import com.lorevault.api.content.timeline.infrastructure.CrossChapterBoundaryProjection;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -46,17 +47,20 @@ public class DefaultTemporalEdgeService {
         }
 
         int inChapterEdges = createInChapterDefaults(bookId);
-        List<CrossChapterBoundaryProjection> newlyCreatedCrossChapterBoundaries =
+        List<CrossChapterBoundary> newlyCreatedCrossChapterBoundaries =
                 createCrossChapterDefault(bookId);
         int crossChapterEdges = newlyCreatedCrossChapterBoundaries.size();
 
         int totalEdges = inChapterEdges + crossChapterEdges;
         log.info("Created {} NEXT_IN_READING_ORDER edges for book {} ({} in-chapter, {} cross-chapter)", 
                 totalEdges, bookId, inChapterEdges, crossChapterEdges);
+        // Adapt CrossChapterBoundary records to CrossChapterBoundaryProjection for callers
+        List<CrossChapterBoundaryProjection> boundaryProjections = 
+                newlyCreatedCrossChapterBoundaries.stream().map(b -> (CrossChapterBoundaryProjection) b).toList();
         return new DefaultTemporalEdgeCreationResult(
                 inChapterEdges,
                 crossChapterEdges,
-                newlyCreatedCrossChapterBoundaries
+                boundaryProjections
         );
     }
     
@@ -89,13 +93,13 @@ public class DefaultTemporalEdgeService {
      * Called internally by {@link #createAllDefaults(UUID)} — transaction is inherited from the caller.
      *
      * @param bookId the book to create cross-chapter edges for
-     * @return number of edges created
+     * @return list of newly created cross-chapter boundaries
      */
-    public List<CrossChapterBoundaryProjection> createCrossChapterDefault(UUID bookId) {
+    public List<CrossChapterBoundary> createCrossChapterDefault(UUID bookId) {
         log.debug("Creating default cross-chapter NEXT_IN_READING_ORDER edges for book {}", bookId);
         
         try {
-            List<CrossChapterBoundaryProjection> boundaries =
+            List<CrossChapterBoundary> boundaries =
                     temporalEdgeWriteRepository.mergeCrossChapterDefaultEdges(bookId);
             log.debug("Created {} cross-chapter NEXT_IN_READING_ORDER edges for book {}", boundaries.size(), bookId);
             return boundaries;
