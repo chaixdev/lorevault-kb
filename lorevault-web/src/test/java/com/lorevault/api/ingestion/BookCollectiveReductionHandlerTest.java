@@ -10,11 +10,13 @@ import com.lorevault.api.ingestion.events.BookCollectivesReducedEvent;
 import com.lorevault.api.ingestion.events.ChapterCollectivesResolvedEvent;
 import com.lorevault.api.ingestion.events.IngestionFailedEvent;
 import com.lorevault.api.ingestion.job.IngestionJobService;
+import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
 import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
 import com.lorevault.api.ingestion.resolution.collective.BookCollectiveReductionHandler;
 import com.lorevault.api.ingestion.resolution.collective.BookCollectiveReductionService;
 import com.lorevault.api.ingestion.resolution.collective.BookCollectiveResolutionResult;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,8 +39,16 @@ class BookCollectiveReductionHandlerTest {
     @Mock
     private IngestionJobService ingestionJobService;
 
+    @Mock
+    private BookReductionClaimService bookReductionClaimService;
+
     @InjectMocks
     private BookCollectiveReductionHandler handler;
+
+    @BeforeEach
+    void setUp() {
+        when(bookReductionClaimService.tryAcquireClaim(any(), any())).thenReturn(true);
+    }
 
     @Test
     @DisplayName("Publishes book collectives reduced event when chapter collectives are resolved")

@@ -6,6 +6,7 @@ import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import java.util.List;
 import java.util.UUID;
 
+import com.lorevault.api.ingestion.job.IngestionJobService;
 import com.lorevault.api.ingestion.resolution.location.ChapterLocationResolutionHandler;
 import com.lorevault.api.ingestion.resolution.location.ChapterLocationResolutionService;
 import org.junit.jupiter.api.DisplayName;
@@ -31,6 +32,9 @@ class ChapterLocationResolutionHandlerTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private IngestionJobService ingestionJobService;
 
     @InjectMocks
     private ChapterLocationResolutionHandler handler;

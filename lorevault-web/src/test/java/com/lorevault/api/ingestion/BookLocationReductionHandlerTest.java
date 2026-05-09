@@ -9,7 +9,9 @@ import java.util.UUID;
 
 import com.lorevault.api.ingestion.resolution.location.BookLocationReductionHandler;
 import com.lorevault.api.ingestion.resolution.location.BookLocationReductionService;
+import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
 import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,8 +40,16 @@ class BookLocationReductionHandlerTest {
     @Mock
     private IngestionJobService ingestionJobService;
 
+    @Mock
+    private BookReductionClaimService bookReductionClaimService;
+
     @InjectMocks
     private BookLocationReductionHandler handler;
+
+    @BeforeEach
+    void setUp() {
+        when(bookReductionClaimService.tryAcquireClaim(any(), any())).thenReturn(true);
+    }
 
     @Test
     @DisplayName("Reduces book locations automatically when chapter locations are resolved")

@@ -10,7 +10,7 @@ import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
 import com.lorevault.api.ingestion.triad.TriadTemporalEdgeRequestFactory;
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.scene.Scene;
-import com.lorevault.api.content.timeline.infrastructure.CrossChapterBoundaryProjection;
+import com.lorevault.api.content.timeline.domain.CrossChapterBoundaryProjection;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.scene.SceneGraphRepository;
@@ -116,7 +116,9 @@ class SceneDetectionHandlerTest {
             Scene scene2 = createScene(1);
             List<Scene> persistedScenes = List.of(scene1, scene2);
 
-            when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            when(sceneRepo.findByChapterId(chapterId))
+                    .thenReturn(Collections.emptyList())
+                    .thenReturn(persistedScenes);
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
             when(sceneDetectionService.detectScenesInChapter(jobId, testChapter)).thenReturn(
                     new SceneDetectionService.SceneSegmentationOutcome(sceneCoords)
@@ -197,7 +199,9 @@ class SceneDetectionHandlerTest {
                     )
             );
 
-            when(sceneRepo.findByChapterId(chapterId)).thenReturn(Collections.emptyList());
+            when(sceneRepo.findByChapterId(chapterId))
+                    .thenReturn(Collections.emptyList())
+                    .thenReturn(persistedScenes);
             when(chapterRepo.findById(chapterId)).thenReturn(Optional.of(testChapter));
             when(sceneDetectionService.detectScenesInChapter(jobId, testChapter))
                     .thenReturn(new SceneDetectionService.SceneSegmentationOutcome(sceneCoords));

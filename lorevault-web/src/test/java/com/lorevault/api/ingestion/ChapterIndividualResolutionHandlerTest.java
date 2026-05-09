@@ -3,6 +3,7 @@ package com.lorevault.api.ingestion;
 import java.util.List;
 import java.util.UUID;
 
+import com.lorevault.api.ingestion.job.IngestionJobService;
 import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionHandler;
 import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionService;
 import org.junit.jupiter.api.DisplayName;
@@ -30,6 +31,9 @@ class ChapterIndividualResolutionHandlerTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private IngestionJobService ingestionJobService;
 
     @InjectMocks
     private ChapterIndividualResolutionHandler handler;

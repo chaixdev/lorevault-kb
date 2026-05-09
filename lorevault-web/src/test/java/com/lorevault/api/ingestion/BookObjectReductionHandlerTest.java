@@ -10,11 +10,13 @@ import com.lorevault.api.ingestion.events.BookObjectsReducedEvent;
 import com.lorevault.api.ingestion.events.ChapterObjectsResolvedEvent;
 import com.lorevault.api.ingestion.events.IngestionFailedEvent;
 import com.lorevault.api.ingestion.job.IngestionJobService;
+import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
 import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
 import com.lorevault.api.ingestion.resolution.object.BookObjectReductionHandler;
 import com.lorevault.api.ingestion.resolution.object.BookObjectReductionService;
 import com.lorevault.api.ingestion.resolution.object.BookObjectResolutionResult;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,8 +39,16 @@ class BookObjectReductionHandlerTest {
     @Mock
     private IngestionJobService ingestionJobService;
 
+    @Mock
+    private BookReductionClaimService bookReductionClaimService;
+
     @InjectMocks
     private BookObjectReductionHandler handler;
+
+    @BeforeEach
+    void setUp() {
+        when(bookReductionClaimService.tryAcquireClaim(any(), any())).thenReturn(true);
+    }
 
     @Test
     @DisplayName("Publishes book objects reduced event when chapter objects are resolved")

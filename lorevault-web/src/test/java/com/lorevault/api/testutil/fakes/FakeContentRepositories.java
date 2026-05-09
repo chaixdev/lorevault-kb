@@ -226,6 +226,13 @@ public class FakeContentRepositories {
         }
 
         @Override
+        public int countEmbeddingsByChapterId(UUID chapterId) {
+            return (int) findByChapterId(chapterId).stream()
+                    .filter(c -> c.getEmbedding() != null)
+                    .count();
+        }
+
+        @Override
         public void deleteByChapterId(UUID chapterId) {
             List<Chunk> removed = chunksByChapter.remove(chapterId);
             if (removed != null) removed.forEach(c -> chunksById.remove(c.getId()));

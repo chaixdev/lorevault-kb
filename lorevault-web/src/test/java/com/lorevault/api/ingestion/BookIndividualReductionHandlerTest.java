@@ -7,7 +7,9 @@ import com.lorevault.api.ingestion.events.IngestionFailedEvent;
 import com.lorevault.api.ingestion.job.IngestionJobService;
 import com.lorevault.api.ingestion.resolution.individual.BookIndividualReductionHandler;
 import com.lorevault.api.ingestion.resolution.individual.BookIndividualReductionService;
+import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
 import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,8 +40,16 @@ class BookIndividualReductionHandlerTest {
     @Mock
     private IngestionJobService ingestionJobService;
 
+    @Mock
+    private BookReductionClaimService bookReductionClaimService;
+
     @InjectMocks
     private BookIndividualReductionHandler handler;
+
+    @BeforeEach
+    void setUp() {
+        when(bookReductionClaimService.tryAcquireClaim(any(), any())).thenReturn(true);
+    }
 
     @Test
     @DisplayName("Reduces book individuals automatically when chapter individuals are resolved")
