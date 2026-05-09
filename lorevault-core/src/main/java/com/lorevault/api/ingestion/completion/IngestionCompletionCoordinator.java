@@ -41,6 +41,10 @@ public class IngestionCompletionCoordinator {
     @Async("ingestionTaskExecutor")
     @EventListener
     public void handleEmbeddingsCompleted(EmbeddingsCompletedEvent event) {
+        if (event.getChapterId() == null) {
+            log.warn("[INGESTION_COMPLETION] Ignoring event with null chapterId: jobId={}, branch=EMBEDDINGS_COMPLETED", event.getJobId());
+            return;
+        }
         CompletionKey key = new CompletionKey(
                 event.getJobId(),
                 event.getCorrelationId(),
@@ -73,6 +77,10 @@ public class IngestionCompletionCoordinator {
     @Async("ingestionTaskExecutor")
     @EventListener
     public void handleBookIndividualsReduced(BookIndividualsReducedEvent event) {
+        if (event.getChapterId() == null) {
+            log.warn("[INGESTION_COMPLETION] Ignoring event with null chapterId: jobId={}, branch=BOOK_INDIVIDUALS_REDUCED", event.getJobId());
+            return;
+        }
         CompletionKey key = new CompletionKey(
                 event.getJobId(),
                 event.getCorrelationId(),
@@ -104,6 +112,10 @@ public class IngestionCompletionCoordinator {
     @Async("ingestionTaskExecutor")
     @EventListener
     public void handleBookCollectivesReduced(BookCollectivesReducedEvent event) {
+        if (event.getChapterId() == null) {
+            log.warn("[INGESTION_COMPLETION] Ignoring event with null chapterId: jobId={}, branch=BOOK_COLLECTIVES_REDUCED", event.getJobId());
+            return;
+        }
         CompletionKey key = new CompletionKey(
                 event.getJobId(),
                 event.getCorrelationId(),
@@ -135,6 +147,10 @@ public class IngestionCompletionCoordinator {
     @Async("ingestionTaskExecutor")
     @EventListener
     public void handleBookLocationsReduced(BookLocationsReducedEvent event) {
+        if (event.getChapterId() == null) {
+            log.warn("[INGESTION_COMPLETION] Ignoring event with null chapterId: jobId={}, branch=BOOK_LOCATIONS_REDUCED", event.getJobId());
+            return;
+        }
         CompletionKey key = new CompletionKey(
                 event.getJobId(),
                 event.getCorrelationId(),
@@ -166,6 +182,10 @@ public class IngestionCompletionCoordinator {
     @Async("ingestionTaskExecutor")
     @EventListener
     public void handleBookObjectsReduced(BookObjectsReducedEvent event) {
+        if (event.getChapterId() == null) {
+            log.warn("[INGESTION_COMPLETION] Ignoring event with null chapterId: jobId={}, branch=BOOK_OBJECTS_REDUCED", event.getJobId());
+            return;
+        }
         CompletionKey key = new CompletionKey(
                 event.getJobId(),
                 event.getCorrelationId(),
@@ -197,6 +217,10 @@ public class IngestionCompletionCoordinator {
     @Async("ingestionTaskExecutor")
     @EventListener
     public void handleChapterEventsResolved(ChapterEventsResolvedEvent event) {
+        if (event.getChapterId() == null) {
+            log.warn("[INGESTION_COMPLETION] Ignoring event with null chapterId: jobId={}, branch=CHAPTER_EVENTS_RESOLVED", event.getJobId());
+            return;
+        }
         CompletionKey key = new CompletionKey(
                 event.getJobId(),
                 event.getCorrelationId(),
@@ -228,6 +252,10 @@ public class IngestionCompletionCoordinator {
     @Async("ingestionTaskExecutor")
     @EventListener
     public void handleBookEventCandidatesGenerated(BookEventCandidatesGeneratedEvent event) {
+        if (event.getChapterId() == null) {
+            log.warn("[INGESTION_COMPLETION] Ignoring event with null chapterId: jobId={}, branch=BOOK_EVENT_CANDIDATES_GENERATED", event.getJobId());
+            return;
+        }
         CompletionKey key = new CompletionKey(
                 event.getJobId(),
                 event.getCorrelationId(),
@@ -259,6 +287,11 @@ public class IngestionCompletionCoordinator {
     @Async("ingestionTaskExecutor")
     @EventListener
     public void handleIngestionFailed(IngestionFailedEvent event) {
+        if (event.getChapterId() == null) {
+            log.warn("[INGESTION_COMPLETION] Ignoring failure event with null chapterId: jobId={}, failedStage={}",
+                     event.getJobId(), event.getFailedStage());
+            return;
+        }
         CompletionKey key = new CompletionKey(event.getJobId(), event.getCorrelationId(), event.getChapterId());
         terminalFailures.put(key, System.nanoTime());
         pruneTerminalFailures();
