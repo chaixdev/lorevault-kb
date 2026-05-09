@@ -54,25 +54,35 @@ public enum IngestionStatus {
     EVENT_CANDIDATE_GENERATION,
     
     /**
-     * The system is creating technical chunks from the identified scenes and generating their vector embeddings
+     * The system is creating technical chunks from the identified scenes
+     */
+    CHUNKING,
+
+    /**
+     * The system is generating vector embeddings for the chunks
      */
     EMBEDDING_CHUNKS,
     
-    // /**
-    //  * The RAG loop is active for character entities. The system is synthesizing structured data for characters
-    //  */
-    // SYNTHESIZING_CHARACTERS,
-    
-    // /**
-    //  * The RAG loop is active for location entities
-    //  */
-    // SYNTHESIZING_LOCATIONS,
-    
-    // /**
-    //  * The RAG loop is active for item entities
-    //  */
-    // SYNTHESIZING_ITEMS,
-    
+    /**
+     * The system is resolving individual entity mentions into chapter-level individual records.
+     */
+    RESOLVING_INDIVIDUALS,
+
+    /**
+     * The system is resolving collective entity mentions into chapter-level collective records.
+     */
+    RESOLVING_COLLECTIVES,
+
+    /**
+     * The system is resolving location entity mentions into chapter-level location records.
+     */
+    RESOLVING_LOCATIONS,
+
+    /**
+     * The system is resolving object entity mentions into chapter-level object records.
+     */
+    RESOLVING_OBJECTS,
+
     /**
      * All synthesis is complete. The system is performing final conflict resolution and saving enhanced entity data
      */
@@ -110,9 +120,11 @@ public enum IngestionStatus {
             case CHAPTER_EVENT_AGGREGATION -> 46;
             case EVENT_CANDIDATE_GENERATION -> 48;
             case EMBEDDING_CHUNKS -> 50;
-            // case SYNTHESIZING_CHARACTERS -> 60;
-            // case SYNTHESIZING_LOCATIONS -> 75;
-            // case SYNTHESIZING_ITEMS -> 85;
+            case CHUNKING -> 50;
+            case RESOLVING_INDIVIDUALS -> 55;
+            case RESOLVING_COLLECTIVES -> 60;
+            case RESOLVING_LOCATIONS -> 65;
+            case RESOLVING_OBJECTS -> 70;
             case PERSISTING_DATA -> 95;
             case COMPLETE -> 100;
             case FAILED -> -1; // Indicates error state

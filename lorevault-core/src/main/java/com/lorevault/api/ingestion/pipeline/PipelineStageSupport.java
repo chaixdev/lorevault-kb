@@ -38,6 +38,10 @@ public class PipelineStageSupport {
     }
 
     public void updateJobStatus(UUID jobId, IngestionStatus status, String description, Map<String, Object> properties) {
+        if (jobId == null) {
+            // Step executed without job tracking (ad hoc / debugging mode)
+            return;
+        }
         ingestionJobService.updateJobStatus(jobId, status, description, properties == null ? Collections.emptyMap() : properties);
     }
 
@@ -97,11 +101,15 @@ public class PipelineStageSupport {
 
             IngestionFailure failure = extractFailure(stage, e);
 
-            ingestionJobService.updateJobStatus(
-                    jobId,
-                    IngestionStatus.FAILED,
-                    stage + " failed: " + safeMessage(e),
-                    failure.toProperties());
+            if (jobId != null) {
+                ingestionJobService.updateJobStatus(
+                        jobId,
+                        IngestionStatus.FAILED,
+                        stage + " failed: " + safeMessage(e),
+                        failure.toProperties());
+            } else {
+                log.debug("Stage {} failed with no jobId — cannot update job status", stage);
+            }
 
             // Preserve prior handler behavior: swallow exceptions after emitting failure + FAILED status.
             return null;
