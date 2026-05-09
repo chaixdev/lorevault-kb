@@ -1,7 +1,9 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.resolution.object.ChapterObjectResolutionResult;
-import com.lorevault.api.ingestion.resolution.object.ChapterObjectResolutionService;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StepKey;
+import com.lorevault.api.ingestion.pipeline.StepResult;
+import com.lorevault.api.ingestion.resolution.object.ChapterObjectResolutionOperation;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
@@ -12,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -21,10 +24,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ChapterObjectResolutionCommandController {
 
-    private final ChapterObjectResolutionService chapterObjectResolutionService;
+    private final ChapterObjectResolutionOperation chapterObjectResolutionOperation;
+    private final StepEventMapper stepEventMapper;
+    private final ChapterGraphRepository chapterGraphRepository;
 
     @PostMapping("/chapters/{chapterId}/resolve-objects")
-    public ResponseEntity<?> resolveChapterObjects(@PathVariable String chapterId) {
+    public ResponseEntity<?> resolveChapterObjects(
+            @PathVariable String chapterId,
+            @RequestParam(defaultValue = "false") boolean fireEvents,
+            @RequestParam(required = false) String jobId) {
         UUID chapterUuid;
         try {
             chapterUuid = UUID.fromString(chapterId);
@@ -38,19 +46,35 @@ public class ChapterObjectResolutionCommandController {
                     .build());
         }
 
-        if (!chapterObjectResolutionService.chapterExists(chapterUuid)) {
+        UUID jobUuid = null;
+        if (jobId != null) {
+            try {
+                jobUuid = UUID.fromString(jobId);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(ErrorResponse.builder()
+                        .code("INVALID_JOB_ID")
+                        .message("Job ID must be a valid UUID")
+                        .details("jobId", jobId)
+                        .timestamp(LocalDateTime.now())
+                        .path("/api/command/ingest/chapters/" + chapterId + "/resolve-objects")
+                        .build());
+            }
+        }
+
+        if (chapterGraphRepository.findById(chapterUuid).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
-        log.info("[CMD] Resolve chapter objects: chapterId={}", chapterUuid);
-        ChapterObjectResolutionResult result = chapterObjectResolutionService.resolveChapter(chapterUuid);
-        ChapterObjectResolutionResponse response = new ChapterObjectResolutionResponse(
-                result.chapterId(),
-                result.success(),
-                result.rawObjectsProcessed(),
-                result.chapterObjectsCreated(),
-                result.message()
-        );
+        log.info("[CMD] Resolve chapter objects: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
+        StepResult result = chapterObjectResolutionOperation.execute(jobUuid, chapterUuid);
+
+        StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.RESOLVE_OBJECTS, "chapter", chapterId);
+
+        if (fireEvents && result.success()) {
+            log.info("[CMD] Publishing completion event for RESOLVE_OBJECTS: jobId={}, chapterId={}", jobUuid, chapterUuid);
+            stepEventMapper.publishCompletionEvent(StepKey.RESOLVE_OBJECTS, jobUuid, chapterUuid, result);
+        }
+
         return ResponseEntity.ok(response);
     }
 }

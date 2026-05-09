@@ -54,6 +54,13 @@ public interface ChunkGraphRepository extends Neo4jRepository<Chunk, UUID> {
             """)
     List<Chunk> findStaleEmbeddingsByChapterId(UUID chapterId, String expectedHash);
 
+    @Query("""
+            MATCH (c:Chapter {id: $chapterId})-[:HAS_SCENE]->(:Scene)-[:HAS_CHUNK]->(ch:Chunk)
+            WHERE ch.embedding IS NOT NULL
+            RETURN count(ch)
+            """)
+    int countEmbeddingsByChapterId(UUID chapterId);
+
     // Global embedding queries for semantic search
     @Query("""
             MATCH (ch:Chunk)

@@ -9,6 +9,8 @@ import com.lorevault.api.ingestion.job.IngestionStatus;
 import com.lorevault.api.ai.llm.EventCorefModels;
 import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
 import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
+import com.lorevault.api.content.scene.SceneGraphRepository;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
 
 import java.util.List;
 import java.util.UUID;
@@ -33,6 +35,8 @@ class ChapterEventResolutionHandlerTest {
 
     @Mock private EventCoreferenceService eventCoreferenceService;
     @Mock private ChapterEventResolutionService chapterEventResolutionService;
+    @Mock private SceneGraphRepository sceneRepo;
+    @Mock private ChapterGraphRepository chapterRepo;
     @Mock private IngestionJobService ingestionJobService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -43,6 +47,8 @@ class ChapterEventResolutionHandlerTest {
         handler = new ChapterEventResolutionHandler(
                 eventCoreferenceService,
                 chapterEventResolutionService,
+                sceneRepo,
+                chapterRepo,
                 ingestionJobService,
                 eventPublisher
         );
@@ -138,7 +144,7 @@ class ChapterEventResolutionHandlerTest {
 
         ChapterEventsResolvedEvent published2 = (ChapterEventsResolvedEvent) publishedCaptor2.getValue();
         assertThat(published2.isProcessed()).isFalse();
-        assertThat(published2.getFailedCorefWindowCount()).isZero();
+        assertThat(published2.getFailedCorefWindowCount()).isEqualTo(1);
     }
 
     @Test

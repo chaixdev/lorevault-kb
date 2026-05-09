@@ -97,4 +97,3 @@ At minimum, each planning item should include:
 - [Concept Entity Resolution Lane](concept-resolution-lane.md)
 - [Relation Catalog Discovery Module](minimal-reltype-catalog.md)
 - [Relation Evidence Harvesting and Catalog Discovery — Phased Solution Design](relation-evidence-harvesting.md)
-- [Agent-Driven Step Execution API](agent-driven-step-execution-api.md)

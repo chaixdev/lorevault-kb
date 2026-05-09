@@ -1,10 +1,12 @@
 package com.lorevault.api.content.timeline.infrastructure;
 
 import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.content.timeline.domain.CrossChapterBoundary;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.neo4j.repository.query.Query;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -40,6 +42,10 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
      * Links the last scene of chapter N to the first scene of chapter N+1.
      * Returns metadata only for boundaries created during this call.
      *
+     * <p>Returns {@link CrossChapterBoundary} records instead of a projection interface
+     * to avoid Spring Data Neo4j's DirectFieldAccessFallbackBeanWrapper attempting
+     * to map result columns onto the repository's domain entity ({@code Scene}).
+     *
      * @param bookId The book ID to create cross-chapter edges for
      * @return Metadata for newly created cross-chapter boundaries
      */
@@ -71,7 +77,7 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
                    lastScene.id AS previousSceneId,
                    firstScene.id AS nextSceneId
             """)
-    java.util.List<CrossChapterBoundaryProjection> mergeCrossChapterDefaultEdges(@Param("bookId") UUID bookId);
+    List<CrossChapterBoundary> mergeCrossChapterDefaultEdges(@Param("bookId") UUID bookId);
 
     /**
      * Count existing TEMPORAL edges for a chapter (for testing/verification).

@@ -1,4 +1,4 @@
-package com.lorevault.api.content.timeline.infrastructure;
+package com.lorevault.api.content.timeline.domain;
 
 import java.util.UUID;
 

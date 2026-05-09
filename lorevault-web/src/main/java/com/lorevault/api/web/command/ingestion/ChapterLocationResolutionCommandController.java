@@ -1,19 +1,21 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.resolution.location.ChapterLocationResolutionService;
-import com.lorevault.api.ingestion.resolution.location.ChapterLocationResolutionResult;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StepKey;
+import com.lorevault.api.ingestion.pipeline.StepResult;
+import com.lorevault.api.ingestion.resolution.location.ChapterLocationResolutionOperation;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/command/ingest")
@@ -22,10 +24,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ChapterLocationResolutionCommandController {
 
-    private final ChapterLocationResolutionService chapterLocationResolutionService;
+    private final ChapterLocationResolutionOperation chapterLocationResolutionOperation;
+    private final StepEventMapper stepEventMapper;
+    private final ChapterGraphRepository chapterGraphRepository;
 
     @PostMapping("/chapters/{chapterId}/resolve-locations")
-    public ResponseEntity<?> resolveChapterLocations(@PathVariable String chapterId) {
+    public ResponseEntity<?> resolveChapterLocations(
+            @PathVariable String chapterId,
+            @RequestParam(defaultValue = "false") boolean fireEvents,
+            @RequestParam(required = false) String jobId) {
         UUID chapterUuid;
         try {
             chapterUuid = UUID.fromString(chapterId);
@@ -39,19 +46,35 @@ public class ChapterLocationResolutionCommandController {
                     .build());
         }
 
-        if (!chapterLocationResolutionService.chapterExists(chapterUuid)) {
+        UUID jobUuid = null;
+        if (jobId != null) {
+            try {
+                jobUuid = UUID.fromString(jobId);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(ErrorResponse.builder()
+                        .code("INVALID_JOB_ID")
+                        .message("Job ID must be a valid UUID")
+                        .details("jobId", jobId)
+                        .timestamp(LocalDateTime.now())
+                        .path("/api/command/ingest/chapters/" + chapterId + "/resolve-locations")
+                        .build());
+            }
+        }
+
+        if (chapterGraphRepository.findById(chapterUuid).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
-        log.info("[CMD] Resolve chapter locations: chapterId={}", chapterUuid);
-        ChapterLocationResolutionResult result = chapterLocationResolutionService.resolveChapter(chapterUuid);
-        ChapterLocationResolutionResponse response = new ChapterLocationResolutionResponse(
-            result.chapterId(),
-            result.success(),
-            result.rawLocationsProcessed(),
-            result.chapterLocationsCreated(),
-            result.message()
-        );
+        log.info("[CMD] Resolve chapter locations: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
+        StepResult result = chapterLocationResolutionOperation.execute(jobUuid, chapterUuid);
+
+        StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.RESOLVE_LOCATIONS, "chapter", chapterId);
+
+        if (fireEvents && result.success()) {
+            log.info("[CMD] Publishing completion event for RESOLVE_LOCATIONS: jobId={}, chapterId={}", jobUuid, chapterUuid);
+            stepEventMapper.publishCompletionEvent(StepKey.RESOLVE_LOCATIONS, jobUuid, chapterUuid, result);
+        }
+
         return ResponseEntity.ok(response);
     }
 }

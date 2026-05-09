@@ -1,6 +1,7 @@
 package com.lorevault.api.ingestion.resolution.individual;
 
 import com.lorevault.api.content.association.ChapterIndividual;
+import com.lorevault.api.content.association.ChapterIndividualCandidate;
 import com.lorevault.api.content.association.ChapterIndividualGraphRepository;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 
@@ -44,7 +45,7 @@ public class ChapterIndividualResolutionService {
 
         chapterIndividualRepository.deleteByChapterId(chapterId);
 
-        List<ChapterIndividualGraphRepository.ChapterIndividualCandidateView> candidates =
+        List<ChapterIndividualCandidate> candidates =
                 chapterIndividualRepository.findResolutionCandidates(chapterId);
         if (candidates.isEmpty()) {
             return new ChapterIndividualResolutionResult(
@@ -57,7 +58,7 @@ public class ChapterIndividualResolutionService {
         }
 
         List<ChapterIndividual> chapterIndividuals = new ArrayList<>();
-        for (ChapterIndividualGraphRepository.ChapterIndividualCandidateView candidate : candidates) {
+        for (ChapterIndividualCandidate candidate : candidates) {
             if (candidate.getNormalizedName() == null || candidate.getNormalizedName().isBlank()) {
                 continue;
             }

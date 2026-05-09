@@ -29,6 +29,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
@@ -139,6 +140,7 @@ class EmbeddingHandlerTest {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
 
+        when(chunkRepo.countEmbeddingsByChapterId(any())).thenReturn(0);
         when(embeddingService.generateEmbeddingsForChapter(chapterId)).thenReturn(1);
         when(sceneRepo.findByChapterId(chapterId)).thenThrow(new IllegalStateException("scene count failed"));
 

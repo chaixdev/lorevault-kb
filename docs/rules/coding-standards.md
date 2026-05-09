@@ -119,6 +119,16 @@ Merging on a partial key creates duplicate nodes when other properties differ.
 When only a subset of node properties is needed, use an SDN interface projection or
 a custom `@QueryResult` record instead of loading the full entity graph.
 
+**Projection return types on `Neo4jRepository`.**
+When a `@Query` method on a `Neo4jRepository<Entity, ID>` returns custom columns that
+don't match the entity's fields, use a Java record as the return type — not a projection
+interface. Spring Data Neo4j's `DirectFieldAccessFallbackBeanWrapper` will attempt to map
+result columns onto the domain entity when the return type is an interface, causing
+`NotReadablePropertyException` at runtime. Records bypass this path because SDN constructs
+them via canonical constructor, matching parameters to Cypher column names. Projection
+interfaces are safe only on repositories extending the base `Repository<Entity, ID>` (not
+`Neo4jRepository`), which doesn't trigger entity-aware mapping.
+
 ---
 
 ## @Transactional Discipline

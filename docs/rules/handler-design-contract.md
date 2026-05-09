@@ -108,3 +108,11 @@ A handler change is not merge-ready when reviewers cannot answer:
 - what distinguishes completed-empty, deferred, retryable failure, and terminal failure?
 
 Related pattern: [Handler Retry-Safety Pattern](../patterns/ingestion/handler-retry-safety.md).
+
+### 7. `execute()` must not publish domain events
+
+When a handler exposes an `execute()` method for direct REST invocation (the `*Operation` interface pattern), that method must not publish domain events. Event emission is the caller's responsibility — either the `@EventListener` adapter or the REST controller via `StepEventMapper`.
+
+This ensures that direct `execute()` calls from step endpoints don't trigger downstream cascades unless explicitly requested via `fireEvents=true`.
+
+The `@EventListener` method delegates to `execute()` and handles event publication. The REST controller calls `execute()` directly and publishes events conditionally based on the `fireEvents` parameter.

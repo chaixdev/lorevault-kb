@@ -1,6 +1,6 @@
 package com.lorevault.api.ingestion.resolution.event;
 
-import com.lorevault.api.content.timeline.infrastructure.CrossChapterBoundaryProjection;
+import com.lorevault.api.content.timeline.domain.CrossChapterBoundaryProjection;
 
 import java.util.List;
 

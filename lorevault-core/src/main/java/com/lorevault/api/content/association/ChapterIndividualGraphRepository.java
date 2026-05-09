@@ -20,14 +20,6 @@ public interface ChapterIndividualGraphRepository extends Neo4jRepository<Chapte
             """)
     long countChapterIndividualsByChapterId(UUID chapterId);
 
-    interface ChapterIndividualCandidateView {
-        String getDisplayName();
-
-        String getNormalizedName();
-
-        Long getMentionCount();
-    }
-
     @Query("""
             MATCH (m:IndividualMention {chapterId: $chapterId})
             OPTIONAL MATCH (m)-[r:REFERS_TO]->(:ChapterIndividual {chapterId: $chapterId})
@@ -39,6 +31,12 @@ public interface ChapterIndividualGraphRepository extends Neo4jRepository<Chapte
             """)
     void deleteByChapterId(UUID chapterId);
 
+    /**
+     * Find resolution candidates for individual mentions in a chapter.
+     * Returns {@link ChapterIndividualCandidate} records instead of a projection interface
+     * to avoid Spring Data Neo4j's DirectFieldAccessFallbackBeanWrapper mapping
+     * result columns onto the repository's domain entity ({@code ChapterIndividual}).
+     */
     @Query("""
             MATCH (m:IndividualMention {chapterId: $chapterId})
             WHERE m.normalizedName IS NOT NULL AND trim(m.normalizedName) <> ''
@@ -51,7 +49,7 @@ public interface ChapterIndividualGraphRepository extends Neo4jRepository<Chapte
                    size(mentions) AS mentionCount
             ORDER BY normalizedName
             """)
-    List<ChapterIndividualCandidateView> findResolutionCandidates(UUID chapterId);
+    List<ChapterIndividualCandidate> findResolutionCandidates(UUID chapterId);
 
     @Query("""
             MATCH (c:Chapter {id: $chapterId})

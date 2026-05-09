@@ -7,7 +7,7 @@ import com.lorevault.api.ingestion.job.IngestionStatus;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.scene.Scene;
-import com.lorevault.api.content.timeline.infrastructure.CrossChapterBoundaryProjection;
+import com.lorevault.api.content.timeline.domain.CrossChapterBoundaryProjection;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.scene.SceneGraphRepository;
 import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
@@ -109,7 +109,12 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
     /**
      * Event-driven entry point for the async pipeline.
      * Delegates to {@link #execute(UUID, UUID)} for the actual work,
-     * then publishes failure events if the step returned an unsuccessful result.
+     * then publishes completion or failure events.
+     *
+     * <p>Event emission is intentionally kept in this listener method rather than
+     * inside {@code execute()} so that the REST step-execution endpoint can call
+     * {@code execute()} directly without triggering downstream cascade — and
+     * optionally publish events via {@code fireEvents=true}.
      */
     @Async("sceneDetectionTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -121,7 +126,14 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
 
         StepResult result = execute(jobId, chapterId);
 
-        if (!result.success()) {
+        if (result.success()) {
+            // Emit ScenesDetectedEvent so downstream handlers (chunking, etc.) proceed
+            Chapter chapter = chapterRepo.findById(chapterId).orElse(null);
+            if (chapter != null) {
+                List<Scene> scenes = sceneRepo.findByChapterId(chapterId);
+                emitScenesDetected(jobId, chapterId, chapter.getBookId(), scenes);
+            }
+        } else {
             eventPublisher.publishEvent(new IngestionFailedEvent(
                     this, jobId, chapterId, "SCENE_DETECTION", result.summary(), result.retryable()));
             stageSupport.updateJobStatus(jobId, IngestionStatus.FAILED,
@@ -165,7 +177,9 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             if (!existingScenes.isEmpty()) {
                 log.info("[SCENE_DETECTION] Found {} existing scenes for chapter {}, skipping detection",
                         existingScenes.size(), chapterId);
-                emitScenesDetected(jobId, chapterId, bookId, existingScenes);
+                // Note: ScenesDetectedEvent is emitted by the caller (handleChapterIngestion
+                // or StepExecutionCommandController), not here — so that fireEvents=false
+                // can suppress the cascade.
                 long elapsed = System.currentTimeMillis() - start;
                 return StepResult.success("SCENE_DETECTION",
                         String.format("Skipped — %d scenes already exist", existingScenes.size()),
@@ -185,11 +199,11 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             var temporalDefaults = defaultTemporalEdgeService.createAllDefaults(bookId);
 
             Map<Integer, UUID> sceneIndexToId = scenes.stream()
-                    .filter(scene -> scene.getSceneIndex() != null)
+                    .filter(scene -> scene.getSceneIndex() != null && scene.getEventId() != null)
                     .collect(Collectors.toMap(
-                            scene -> scene.getSceneIndex(),
-                            scene -> scene.getEventId(),
-                            (UUID left, UUID right) -> left
+                            Scene::getSceneIndex,
+                            Scene::getEventId,
+                            (left, right) -> left
                     ));
 
             var sceneRelationshipOutcome = new TriadAnalysisModels.SceneRelationshipOutcome(
@@ -255,7 +269,9 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
                     String.format("Detected %d semantic scenes from chapter text", scenes.size()));
 
-            emitScenesDetected(jobId, chapterId, bookId, scenes);
+            // Note: ScenesDetectedEvent is emitted by the caller (handleChapterIngestion
+            // or StepExecutionCommandController), not here — so that fireEvents=false
+            // can suppress the cascade.
 
             long elapsed = System.currentTimeMillis() - start;
             return StepResult.success("SCENE_DETECTION",
@@ -396,10 +412,11 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
         if (message == null) {
             return false;
         }
-        return message.contains("LLM API")
-                || message.contains("scene detection failed")
-                || message.contains("Empty response")
-                || message.contains("rate limit");
+        String lowerMessage = message.toLowerCase();
+        return lowerMessage.contains("llm api")
+                || lowerMessage.contains("scene detection failed")
+                || lowerMessage.contains("empty response")
+                || lowerMessage.contains("rate limit");
     }
 
 }

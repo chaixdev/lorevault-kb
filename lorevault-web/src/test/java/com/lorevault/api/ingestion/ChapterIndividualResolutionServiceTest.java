@@ -1,6 +1,7 @@
 package com.lorevault.api.ingestion;
 
 import com.lorevault.api.content.association.ChapterIndividual;
+import com.lorevault.api.content.association.ChapterIndividualCandidate;
 import com.lorevault.api.content.association.ChapterIndividualGraphRepository;
 import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionResult;
 import java.util.List;
@@ -33,8 +34,8 @@ class ChapterIndividualResolutionServiceTest {
     @DisplayName("Rebuilds one ChapterIndividual per normalized name and relinks mentions")
     void rebuildsChapterIndividualsFromCandidates() {
         UUID chapterId = UUID.randomUUID();
-        ChapterIndividualGraphRepository.ChapterIndividualCandidateView nyx = candidate("Nyx", "nyx", 2L);
-        ChapterIndividualGraphRepository.ChapterIndividualCandidateView orion = candidate("Orion", "orion", 1L);
+        ChapterIndividualCandidate nyx = candidate("Nyx", "nyx", 2L);
+        ChapterIndividualCandidate orion = candidate("Orion", "orion", 1L);
 
         when(chapterIndividualRepository.countMentionsByChapterId(chapterId)).thenReturn(3L);
         when(chapterIndividualRepository.findResolutionCandidates(chapterId)).thenReturn(List.of(nyx, orion));
@@ -95,7 +96,7 @@ class ChapterIndividualResolutionServiceTest {
     @DisplayName("Ignores blank normalized names from candidates")
     void ignoresBlankNormalizedNames() {
         UUID chapterId = UUID.randomUUID();
-        ChapterIndividualGraphRepository.ChapterIndividualCandidateView blank = candidate("Narrator", "   ", 2L);
+        ChapterIndividualCandidate blank = candidate("Narrator", "   ", 2L);
         when(chapterIndividualRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
         when(chapterIndividualRepository.findResolutionCandidates(chapterId)).thenReturn(List.of(blank));
 
@@ -123,27 +124,12 @@ class ChapterIndividualResolutionServiceTest {
         verify(chapterIndividualRepository, never()).deleteByChapterId(any());
     }
 
-    private ChapterIndividualGraphRepository.ChapterIndividualCandidateView candidate(
+    private ChapterIndividualCandidate candidate(
             String displayName,
             String normalizedName,
             Long mentionCount
     ) {
-        return new ChapterIndividualGraphRepository.ChapterIndividualCandidateView() {
-            @Override
-            public String getDisplayName() {
-                return displayName;
-            }
-
-            @Override
-            public String getNormalizedName() {
-                return normalizedName;
-            }
-
-            @Override
-            public Long getMentionCount() {
-                return mentionCount;
-            }
-        };
+        return new ChapterIndividualCandidate(displayName, normalizedName, mentionCount);
     }
 
     private List<ChapterIndividual> toList(Iterable<ChapterIndividual> iterable) {
