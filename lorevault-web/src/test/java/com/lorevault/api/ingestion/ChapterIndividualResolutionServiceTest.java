@@ -129,7 +129,7 @@ class ChapterIndividualResolutionServiceTest {
             String normalizedName,
             Long mentionCount
     ) {
-        return new ChapterIndividualCandidate(displayName, normalizedName, mentionCount);
+        return new ChapterIndividualCandidate(displayName, normalizedName, mentionCount != null ? mentionCount.intValue() : null);
     }
 
     private List<ChapterIndividual> toList(Iterable<ChapterIndividual> iterable) {

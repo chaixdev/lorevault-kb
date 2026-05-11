@@ -1,10 +1,10 @@
 # LoreVault Project Status
 
-**Last Updated:** April 30, 2026  
-**Reviewed Through Commit:** `491e0f8`  
-**Status:** Active — regular entity resolution now covers Individual, Location, Object, and Collective lanes end to end, while the event entity resolution pipeline remains shipped through EventMention, ChapterEvent, ANN candidate generation, semantic merge verification, and BookEvent writes  
-**Functional Goals:** Run Q&A retrieval quality validation as the immediate next focus, then use those findings to prioritize event extraction tuning, typed relations, Concept, or retrieval assembly work  
-**Technical Goals:** Preserve retry-safe ingestion semantics, keep completion fan-in aligned with the implemented branch graph, and plan durable provenance/stage-run recovery without overextending the current patch
+**Last Updated:** May 11, 2026  
+**Reviewed Through Commit:** `3dc3d29`  
+**Status:** Active — Phase 0 of relation evidence harvesting is implemented and validated with improved extraction data (30 relation claims from 5 chapters, 0% action-verb noise, 27% StronglyImplied certainty); ChapterIndividualCandidate constructor bug fixed; WebMvcTest failures fixed  
+**Functional Goals:** Advance relation extraction from Phase 0 evidence into Phase 1 catalog matching; continue using the step execution API for iterative development  
+**Technical Goals:** Preserve retry-safe ingestion semantics; use the agentic API loop for implement-inspect-improve cycles; plan Phase 1 catalog matching based on Phase 0 extraction data
 
 ## What LoreVault Is
 
@@ -56,6 +56,8 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Stage 4 event path shipped** — chapter events now continue beyond extraction into vector embedding and same-book ANN candidate generation, and ingestion completion now explicitly waits on the event branch alongside the regular entity lanes
 - **Stages 5–6 event path shipped** — LLM semantic merge verification (Stage 5) evaluates each ANN candidate pair and decides MERGE / KEEP_SEPARATE / UNRESOLVED; BookEvent write path (Stage 6) clusters MERGE decisions and writes thin `BookEvent` nodes plus `ChapterEvent -[:REFERS_TO]-> BookEvent` edges; the event entity resolution pipeline is now end-to-end from EventMention through BookEvent
 - **Post-split architecture and ingestion hardening continued** — recent follow-up commits enforced architecture boundaries across `ai`, `content`, and `ingestion`; aligned async ingestion handlers with transaction rules; tightened LLM-call/status persistence and book-reduction claim handling; stabilized semantic-search test wiring; refreshed individual-resolution coverage to match the current triad-analysis flow; and codified retry-safe handler ownership guidance
+- **Step execution API surface shipped** — controllers, DTOs, event mapper, query endpoint, StepKey/StepDefinition/StepCatalog, *Operation interfaces, curl-driven skill, and supporting docs/rules; enables agentic step-by-step pipeline execution for iterative development
+- **Relation evidence harvesting Phase 0 shipped** — scene analysis now emits open-ended inter-entity relation claims; `RelationClaim` nodes persisted with provisional type IDs, provenance, and evidence text; 33 unique relation claims extracted from 5 chapters across 11 scenes; Individual→Individual (39%) and Individual→Collective (24%) dominate; all claims Explicit certainty; extraction quality is high with no over-extraction; Phase 0 decision point met: proceed to Phase 1 catalog matching
 
 ## What Is Next
 

@@ -1,8 +1,12 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionResult;
-import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionService;
+import com.lorevault.api.content.chapter.Chapter;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StepResult;
+import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionOperation;
 
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,29 +27,38 @@ class ChapterIndividualResolutionCommandControllerWebMvcTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ChapterIndividualResolutionService chapterIndividualResolutionService;
+    private ChapterIndividualResolutionOperation chapterIndividualResolutionOperation;
+
+    @MockitoBean
+    private StepEventMapper stepEventMapper;
+
+    @MockitoBean
+    private ChapterGraphRepository chapterGraphRepository;
 
     @Test
     void resolveChapterIndividuals_success_returns200() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        when(chapterIndividualResolutionService.chapterExists(chapterId)).thenReturn(true);
-        when(chapterIndividualResolutionService.resolveChapter(chapterId))
-                .thenReturn(new ChapterIndividualResolutionResult(
-                        chapterId,
-                        true,
-                        3,
-                        2,
-                        "Resolved chapter individual mentions"
+        Chapter chapter = new Chapter();
+        chapter.setId(chapterId);
+        when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
+        when(chapterIndividualResolutionOperation.execute(null, chapterId))
+                .thenReturn(StepResult.success(
+                        "RESOLVE_INDIVIDUALS",
+                        "Resolved chapter individual mentions",
+                        Map.of("mentionCount", 3, "chapterIndividualCount", 2),
+                        150L
                 ));
 
         mockMvc.perform(post("/api/command/ingest/chapters/{chapterId}/resolve-individuals", chapterId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.chapterId").value(chapterId.toString()))
-                .andExpect(jsonPath("$.processed").value(true))
-                .andExpect(jsonPath("$.mentionCount").value(3))
-                .andExpect(jsonPath("$.chapterIndividualCount").value(2));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.step").value("resolve-individuals"))
+                .andExpect(jsonPath("$.scope").value("chapter"))
+                .andExpect(jsonPath("$.scopeId").value(chapterId.toString()))
+                .andExpect(jsonPath("$.counts.mentionCount").value(3))
+                .andExpect(jsonPath("$.counts.chapterIndividualCount").value(2));
 
-        verify(chapterIndividualResolutionService).resolveChapter(chapterId);
+        verify(chapterIndividualResolutionOperation).execute(null, chapterId);
     }
 
     @Test
@@ -58,7 +71,7 @@ class ChapterIndividualResolutionCommandControllerWebMvcTest {
     @Test
     void resolveChapterIndividuals_missingChapter_returns404() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        when(chapterIndividualResolutionService.chapterExists(chapterId)).thenReturn(false);
+        when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.empty());
 
         mockMvc.perform(post("/api/command/ingest/chapters/{chapterId}/resolve-individuals", chapterId))
                 .andExpect(status().isNotFound());

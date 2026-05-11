@@ -1,19 +1,24 @@
 package com.lorevault.api.web.command.ingestion;
 
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.lorevault.api.content.chapter.Chapter;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StepResult;
+import com.lorevault.api.ingestion.resolution.object.ChapterObjectResolutionOperation;
 
-import com.lorevault.api.ingestion.resolution.object.ChapterObjectResolutionResult;
-import com.lorevault.api.ingestion.resolution.object.ChapterObjectResolutionService;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = ChapterObjectResolutionCommandController.class)
 class ChapterObjectResolutionCommandControllerWebMvcTest {
@@ -22,23 +27,38 @@ class ChapterObjectResolutionCommandControllerWebMvcTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ChapterObjectResolutionService chapterObjectResolutionService;
+    private ChapterObjectResolutionOperation chapterObjectResolutionOperation;
+
+    @MockitoBean
+    private StepEventMapper stepEventMapper;
+
+    @MockitoBean
+    private ChapterGraphRepository chapterGraphRepository;
 
     @Test
     void resolveChapterObjectsSuccessReturns200() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        when(chapterObjectResolutionService.chapterExists(chapterId)).thenReturn(true);
-        when(chapterObjectResolutionService.resolveChapter(chapterId))
-                .thenReturn(new ChapterObjectResolutionResult(chapterId, true, 3, 2, "Resolved chapter objects"));
+        Chapter chapter = new Chapter();
+        chapter.setId(chapterId);
+        when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
+        when(chapterObjectResolutionOperation.execute(null, chapterId))
+                .thenReturn(StepResult.success(
+                        "RESOLVE_OBJECTS",
+                        "Resolved chapter objects",
+                        Map.of("mentionCount", 3, "chapterObjectCount", 2),
+                        150L
+                ));
 
         mockMvc.perform(post("/api/command/ingest/chapters/{chapterId}/resolve-objects", chapterId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.chapterId").value(chapterId.toString()))
-                .andExpect(jsonPath("$.processed").value(true))
-                .andExpect(jsonPath("$.mentionCount").value(3))
-                .andExpect(jsonPath("$.chapterObjectCount").value(2));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.step").value("resolve-objects"))
+                .andExpect(jsonPath("$.scope").value("chapter"))
+                .andExpect(jsonPath("$.scopeId").value(chapterId.toString()))
+                .andExpect(jsonPath("$.counts.mentionCount").value(3))
+                .andExpect(jsonPath("$.counts.chapterObjectCount").value(2));
 
-        verify(chapterObjectResolutionService).resolveChapter(chapterId);
+        verify(chapterObjectResolutionOperation).execute(null, chapterId);
     }
 
     @Test
@@ -51,7 +71,7 @@ class ChapterObjectResolutionCommandControllerWebMvcTest {
     @Test
     void resolveChapterObjectsMissingChapterReturns404() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        when(chapterObjectResolutionService.chapterExists(chapterId)).thenReturn(false);
+        when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.empty());
 
         mockMvc.perform(post("/api/command/ingest/chapters/{chapterId}/resolve-objects", chapterId))
                 .andExpect(status().isNotFound());

@@ -18,7 +18,7 @@ package com.lorevault.api.content.association;
 public record ChapterIndividualCandidate(
         String displayName,
         String normalizedName,
-        Long mentionCount
+        Integer mentionCount
 ) implements ChapterIndividualCandidateView {
 
     @Override
@@ -33,6 +33,6 @@ public record ChapterIndividualCandidate(
 
     @Override
     public Long getMentionCount() {
-        return mentionCount;
+        return mentionCount != null ? mentionCount.longValue() : null;
     }
 }

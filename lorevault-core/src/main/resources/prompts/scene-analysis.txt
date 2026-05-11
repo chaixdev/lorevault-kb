@@ -66,29 +66,46 @@ Entity Categories — definitions (for <scene_entities>)
 - Do not leave `<temporal_type>` empty. If the relation is uncertain, choose the best-supported relation and lower the certainty instead of omitting it.
 
 **relations**
-Between entities within the current scene, extract explicit or implicit inter-entity relation claims. These describe how entities relate to one another — actions, affiliations, locations, dispositions, or changes in state.
+Between entities within the current scene, extract **enduring inter-entity relations** — connections that define how entities are related to one another in a way that persists beyond the moment of the scene.
 
-This section is optional. If the current scene contains no inter-entity relations evident from the text, output an empty `<relations/>` element.
+This section is optional. If the current scene contains no enduring inter-entity relations evident from the text, output an empty `<relations/>` element.
+
+**What to extract — enduring relations:**
+Relations that describe a lasting or defining connection between entities. These are the kind of connections a reader would remember as part of the story's relationship map:
+- Identity and membership: "is a member of", "leads", "was abducted by", "works for"
+- Social and political bonds: "is allied with", "opposes", "is married to", "is the mentor of"
+- Origin and transformation: "was created by", "was transformed into", "originated from"
+- Location and containment: "is headquartered in", "is located in" (for permanent locations, not transient presence)
+- Possession and ownership: "owns", "carries" (for signature possessions, not incidental props)
+- Disposition and attitude: "distrusts", "is loyal to", "fears"
+
+**What NOT to extract — one-time actions and transient events:**
+Do not extract momentary actions that do not establish a lasting relation. These belong in events, not relations:
+- ❌ "served a drink to" — a one-time action, not a lasting relation
+- ❌ "watched" — a transient observation, not a relation
+- ❌ "retrieved" — a momentary action, not a connection
+- ❌ "greeted" — a brief social gesture, not a defining bond
+- ❌ "asked a question" — conversational framing, not a relation
+- ❌ "transported" — a single trip, not a lasting connection
+- ❌ "described" — a speech act, not a relation
+- ❌ "debated with" — a one-time argument, not a standing relationship (unless the text establishes an ongoing adversarial dynamic)
+
+**Test:** Before extracting a relation, ask: "Would this still be true five minutes later? Would a reader describe this as how these entities are *related*, or just what *happened* between them?" If the answer is "what happened," it is an event, not a relation.
 
 Important:
-- Only extract relations that carry narrative significance — the kind of connection a reader would remember. Do not extract trivial co-occurrence (e.g., "was in the same room as") or relations that add no information beyond what entity presence already implies.
+- Only extract relations that carry narrative significance — the kind of connection a reader would remember as part of the relationship map.
 - Describe relations in your own words — there is no predefined relation type menu.
 - Relations are between entities IN the current scene, not across scenes.
 - Do not extract relations unless they are grounded in the current scene text.
+- Prefer StronglyImplied when a relation is clearly implied by context but not directly stated.
 
 Relation fields:
 - subject: the entity initiating or experiencing the relation (format: "Kind: Name", e.g. "Individual: Frodo")
-- relationName: a short verb phrase describing the relation (e.g. "betrayed", "trained under", "was disguised as", "located in", "member of", "opposed")
-- relationDescription: one sentence of context
+- relationName: a short verb phrase describing the enduring relation (e.g. "is a member of", "leads", "was abducted by", "opposes", "is loyal to", "is headquartered in")
+- relationDescription: one sentence of context explaining the enduring nature of the connection
 - object: the other entity in the relation (format: "Kind: Name")
 - certainty: Choose one of: Explicit | StronglyImplied | WeaklyImplied
 - evidence: ≤180 chars, verbatim or tight paraphrase grounding the relation
-
-Important:
-- Only extract relations that carry narrative significance — the kind of connection a reader would remember. Do not extract trivial co-occurrence (e.g., "was in the same room as") or relations that add no information beyond what entity presence already implies.
-- Describe relations in your own words — there is no predefined relation type menu.
-- Relations are between entities IN the current scene, not across scenes.
-- Do not extract relations unless they are grounded in the current scene text.
 
 **Output Format:**
 ```xml
@@ -167,20 +184,20 @@ Important:
       </event>
     </events>
   </current_scene_entities>
-  <!-- optional: if no inter-entity relations are evident, output empty <relations/> -->
+  <!-- optional: if no enduring inter-entity relations are evident, output empty <relations/> -->
   <relations>
     <relation>
       <subject>Individual: Frodo</subject>
-      <relationName>trusted</relationName>
-      <relationDescription>Frodo placed his trust in Samwise, relying on him to accompany the journey.</relationDescription>
+      <relationName>trusts</relationName>
+      <relationDescription>Frodo relies on Samwise as his most trusted companion on the journey.</relationDescription>
       <object>Individual: Samwise</object>
       <certainty>Explicit</certainty>
       <evidence>Frodo turned to Sam and said, "I trust you more than anyone."</evidence>
     </relation>
     <relation>
       <subject>Individual: Aragorn</subject>
-      <relationName>opposed</relationName>
-      <relationDescription>Aragorn stood against the Ringwraiths, refusing to let them pass.</relationDescription>
+      <relationName>opposes</relationName>
+      <relationDescription>Aragorn is a standing adversary of the Ringwraiths, dedicated to resisting them.</relationDescription>
       <object>Collective: Ringwraiths</object>
       <certainty>StronglyImplied</certainty>
       <evidence>Aragorn barred the path, sword drawn, facing the nine riders.</evidence>

@@ -1,7 +1,7 @@
 # Relation Evidence Harvesting and Catalog Discovery
 
-**Status:** NOT STARTED  
-**Last Updated:** May 07, 2026
+**Status:** Phase 0 IMPLEMENTED — Phase 1 NOT STARTED  
+**Last Updated:** May 09, 2026
 
 ## Summary
 
@@ -344,18 +344,21 @@ There are **no edges between entity nodes of different types** (no `IndividualMe
 1. **Relation claim node model:** `RelationClaim` node with properties:
    - `id` (UUID)
    - `relationName` (raw LLM phrase, e.g. "betrayed", "trained under")
-   - `relationDescription` / `usageHint` (one-sentence context)
+   - `relationDescription` (one-sentence context)
    - `provisionalRelTypeId` (normalized key, e.g. `R:provisional.betrayed`)
    - `subjectKind` (Individual/Collective/Object/Location/Concept/Event)
    - `subjectName` (raw name from LLM)
    - `objectKind` (Individual/Collective/Object/Location/Concept/Event)
    - `objectName` (raw name from LLM)
-   - `certainty` (0.0–1.0)
+   - `certainty` (String: "Explicit" | "StronglyImplied" | "WeaklyImplied" — preserves raw LLM output; Phase 1 bridges via `CertaintyWeights`)
    - `evidenceText` (original sentence/clause)
    - `source` ("ai-scene-analysis")
    - `sceneId`, `chapterId`, `bookId`
-   - `pubCoords` (universe, series, bookNumber, chapterNumber, sceneIndex, pubOrdinal, pubKey)
+   - `extractionIndex` (per-scene ordering for idempotency)
+   - `resolutionStatus` ("unresolved" at creation)
+   - `pubCoords` (pubUniverse, pubSeries, pubBookNumber, pubChapterNumber, pubSceneIndex, pubKey — null at creation, populated during book-level processing)
    - `createdAt`, `updatedAt`
+   - Implements `Mention` interface (`displayName() → relationName`, `normalizedName() → provisionalRelTypeId`)
 
 2. **Relationship model:**
    - `(Scene)-[:MENTIONS]->(RelationClaim)` — provenance, same pattern as all other mentions
@@ -507,3 +510,79 @@ Two independent reviews (oracle conceptual + council code quality) identified 14
 **Bug found during testing:**
 
 - `normalizeCertainty("StronglyImplied")` returned `"WeaklyImplied"` because the PascalCase input lowercased to `"stronglyimplied"` which didn't match `"strongly implied"` or `"strongly_implied"`. Fixed to check for `"strongly"` + `"impl"` substrings.
+
+### Phase 0 — Extraction Results (May 9, 2026)
+
+**5 chapters ingested (chapters 1–5 of Deathworlders: Run Little Monster), 11 scenes, 33 relation claims.**
+
+| Metric | Value |
+|---|---|
+| Chapters processed | 5 |
+| Scenes detected | 11 |
+| Total relation claims | 33 |
+| Unique provisional types | 33 (all unique — no clustering yet) |
+| Certainty distribution | 100% Explicit |
+
+**Entity kind pair distribution:**
+
+| Kind Pair | Count | % |
+|---|---|---|
+| Individual → Individual | 13 | 39% |
+| Individual → Collective | 8 | 24% |
+| Individual → Object | 4 | 12% |
+| Collective → Collective | 2 | 6% |
+| Individual → Concept | 2 | 6% |
+| Other (5 pairs) | 4 | 12% |
+
+**Key observations:**
+
+1. All 33 claims are unique provisional types — no clustering yet. Expected with only 5 chapters; more content will produce repeated phrases.
+2. 100% Explicit certainty — the "only extract narratively significant" prompt guidance is working, but more data needed to see StronglyImplied/WeaklyImplied.
+3. Individual→Individual dominates (39%) — character relationships are the primary extraction target.
+4. Individual→Collective is strong (24%) — membership, leadership, and faction relations well-represented.
+5. Semantic richness is high — "was_abducted_by", "boasts_about_beating", "expresses_frustration", "debates_with", "shared_myth" are all narratively meaningful.
+6. The LLM is not over-extracting — ~3 claims per scene is reasonable.
+
+**Phase 0 decision point assessment:**
+
+- ✅ LLM produces rich, varied relations → **Proceed to Phase 1 (catalog matching)**
+- More content needed for clustering — ingesting additional chapters will help
+- The individual resolution bug (ChapterIndividualCandidate constructor) is separate and doesn't block relation work
+
+### Phase 0 — Prompt Iteration & Bugfix (May 11, 2026)
+
+**Prompt improvement:** Added explicit guidance to `scene-analysis.txt` distinguishing enduring relations from one-time actions, with negative examples (❌ served, watched, retrieved, greeted, asked, transported, described, debated). Changed example relations from past-tense action verbs to present-tense enduring forms ("trusts", "opposes", "is a member of", "was abducted by").
+
+**Bugfix:** `ChapterIndividualCandidate` record had `Long mentionCount` which caused `ClassCastException: Integer cannot be cast to Long` because SDN delivers `size()` as `Integer`. Changed to `Integer mentionCount` with `Long getMentionCount()` conversion in the interface implementation.
+
+**Re-extraction results (5 chapters, improved prompt):**
+
+| Metric | Before | After | Change |
+|---|---|---|---|
+| Scenes detected | 11 | 18 | +7 (more scenes found) |
+| Total relation claims | 33 | 30 | -3 (less noise) |
+| Unique provisional types | 33 | 21 | -12 (clustering emerging) |
+| Certainty: Explicit | 33 (100%) | 22 (73%) | Mixed certainty now |
+| Certainty: StronglyImplied | 0 | 8 (27%) | New |
+| Action-verb noise | ~50% | 0% | Eliminated |
+
+**Top relation clusters (after prompt improvement):**
+
+| Relation | Count | Example |
+|---|---|---|
+| is a member of | 3 | Krrkktnkk → Customs and Immigration |
+| leads | 3 | Alpha → The Brood, Terri Boone → Abductees |
+| was abducted by | 2 | Kevin Jenkins → Corti |
+| travels with | 2 | Charlotte → Kevin Jenkins |
+| reports to | 2 | Major Bartlett → General Tremblay |
+| shares specialist module with | 2 | Kevin Jenkins → Charlotte |
+| works as bartender at | 2 | Kevin Jenkins → Bar |
+| 14 other unique types | 1 each | collaborates with, is acquainted with, etc. |
+
+**Key improvements:**
+
+1. **Action-verb noise eliminated** — no more "served", "watched", "retrieved", "greeted" type claims. All relations are now enduring/structural.
+2. **Certainty distribution is meaningful** — 73% Explicit, 27% StronglyImplied. The LLM now uses the certainty spectrum.
+3. **Clustering emerging** — 21 unique types from 30 claims (70% uniqueness ratio vs 100% before). "is a member of", "leads", "was abducted by" each appear 2-3 times.
+4. **Evidence text populated** — every claim has `evidenceText` with the supporting passage.
+5. **Individual resolution pipeline fixed** — the `ChapterIndividualCandidate` bugfix allows the full pipeline to complete without ClassCastErrors.
