@@ -210,9 +210,9 @@ This matches the current event-driven ingestion direction more cleanly and keeps
 Persist:
 
 - `(:LocationMention)`
-- `(:Scene)-[:MENTIONS]->(:LocationMention)`
+- `(:Scene)-[:CONTAINS]->(:LocationMention)`
 
-Use `MENTIONS` for the first slice rather than a stronger semantic edge.
+Use `CONTAINS` for the first slice rather than a stronger semantic edge.
 
 Reason:
 
@@ -399,7 +399,7 @@ The current implementation remains aligned with the core proposal in these ways:
 - `LocationMention` remains the evidence-bearing layer
 - `ChapterLocation` and `BookLocation` are both included already in the first slice
 - matching stays exact and lightweight: normalized primary name plus normalized aliases only
-- `Scene -[:MENTIONS]-> LocationMention` remains the first semantic edge instead of introducing a stronger claim like `LOCATED_IN`
+- `Scene -[:CONTAINS]-> LocationMention` remains the first semantic edge instead of introducing a stronger claim like `LOCATED_IN`
 
 ### Important implementation details learned while building it
 

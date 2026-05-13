@@ -71,11 +71,11 @@ Read exactly as source-to-target temporal statement.
 
 ### 3) Scene-to-mention evidence shape
 
-- `(:Scene)-[:MENTIONS]->(:IndividualMention)`
-- `(:Scene)-[:MENTIONS]->(:LocationMention)`
-- `(:Scene)-[:MENTIONS]->(:EventMention)`
+- `(:Scene)-[:CONTAINS]->(:IndividualMention)`
+- `(:Scene)-[:CONTAINS]->(:LocationMention)`
+- `(:Scene)-[:CONTAINS]->(:EventMention)`
 
-`MENTIONS` is an evidence-link relation:
+`CONTAINS` is an evidence-link relation:
 
 - it asserts that the source scene mentions the target evidence node
 - it is not itself a temporal-edge type
@@ -84,19 +84,19 @@ Read exactly as source-to-target temporal statement.
 
 Individual ladder:
 
-- `(:Scene)-[:MENTIONS]->(:IndividualMention)`
+- `(:Scene)-[:CONTAINS]->(:IndividualMention)`
 - `(:IndividualMention)-[:REFERS_TO]->(:ChapterIndividual)`
 - `(:ChapterIndividual)-[:REFERS_TO]->(:BookIndividual)`
 
 Location ladder:
 
-- `(:Scene)-[:MENTIONS]->(:LocationMention)`
+- `(:Scene)-[:CONTAINS]->(:LocationMention)`
 - `(:LocationMention)-[:REFERS_TO]->(:ChapterLocation)`
 - `(:ChapterLocation)-[:REFERS_TO]->(:BookLocation)`
 
 Event mention stage-1 evidence:
 
-- `(:Scene)-[:MENTIONS]->(:EventMention)`
+- `(:Scene)-[:CONTAINS]->(:EventMention)`
 
 ## Directionality Ergonomics: Scene -> EventMention
 
@@ -108,7 +108,7 @@ When inspecting the graph, users can misread scene-relative temporal meaning as 
 
 For the pattern:
 
-- `(:Scene)-[:MENTIONS]->(:EventMention {sceneRelativeRelation: X, ...})`
+- `(:Scene)-[:CONTAINS]->(:EventMention {sceneRelativeRelation: X, ...})`
 
 interpretation is:
 
@@ -132,7 +132,7 @@ Read as: `S1` happens before `S2`.
 
 ### Pattern B: Scene mentions event evidence
 
-`S1 -[:MENTIONS]-> E1` and `E1.sceneRelativeRelation = BEFORE`
+`S1 -[:CONTAINS]-> E1` and `E1.sceneRelativeRelation = BEFORE`
 
 Read as: scene `S1` contains an event mention with extracted scene-relative temporal qualifier `BEFORE`.
 
@@ -140,7 +140,7 @@ Do **not** reinterpret this as an inverted scene-event ordering edge.
 
 ### Pattern C: Scene mentions identity/location evidence
 
-`S1 -[:MENTIONS]-> M1` then `M1 -[:REFERS_TO]-> C1`
+`S1 -[:CONTAINS]-> M1` then `M1 -[:REFERS_TO]-> C1`
 
 Read as: evidence mention in scene rolls up to scoped identity aggregate.
 
@@ -149,9 +149,9 @@ Read as: evidence mention in scene rolls up to scoped identity aggregate.
 When reviewing persisted graph data:
 
 1. For timeline questions, inspect `TEMPORAL` edges first.
-2. Treat `MENTIONS` as evidence-link shape, not timeline edges.
+2. Treat `CONTAINS` as evidence-link shape, not timeline edges.
 3. For event mention semantics, inspect mention properties (such as `sceneRelativeRelation`) as extraction metadata.
-4. Avoid inferring scene ordering from `MENTIONS` direction.
+4. Avoid inferring scene ordering from `CONTAINS` direction.
 
 ## Cross-References
 

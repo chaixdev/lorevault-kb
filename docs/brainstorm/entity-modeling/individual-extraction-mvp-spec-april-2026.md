@@ -246,7 +246,7 @@ Important constraint:
 
 Persist scene links as:
 
-- `(:Scene)-[:MENTIONS]->(:Individual)`
+- `(:Scene)-[:CONTAINS]->(:Individual)`
 
 Recommended relationship properties:
 
@@ -288,13 +288,13 @@ Recommended implementation flow:
 4. After `SceneProcessingService.persistDetectedScenes(...)` saves final scenes:
    - resolve persisted scenes by `sceneIndex`
    - create `Individual` nodes
-   - create `MENTIONS` relationships from scene to individual
+   - create `CONTAINS` relationships from scene to individual
 
 Recommended separation of responsibilities:
 
 - `TriadOrchestrationService`: extraction capture only
 - `SceneProcessingService`: final scene persistence
-- new individual persistence service/repository layer: `Individual` node and `MENTIONS` relationship persistence
+- new individual persistence service/repository layer: `Individual` node and `CONTAINS` relationship persistence
 
 This keeps temporal and entity work adjacent but not entangled.
 
@@ -380,7 +380,7 @@ Those are explicitly **not** part of this proposal.
 - Kept persistence ordering as approved: Individuals persist only after final `Scene` save in scene detection stage handling.
 - Added provisional graph persistence for individuals:
   - `(:Individual)` node via new `Individual` node type and `IndividualGraphRepository`
-  - `(:Scene)-[:MENTIONS]->(:Individual)` link via repository query.
+  - `(:Scene)-[:CONTAINS]->(:Individual)` link via repository query.
 - Structured triad call logging now persists readable serialized response bodies instead of placeholder object references.
 - Enforced deterministic MVP display-name rule exactly:
   - first non-blank alias => `displayName`

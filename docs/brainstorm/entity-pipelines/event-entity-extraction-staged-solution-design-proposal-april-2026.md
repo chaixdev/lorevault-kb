@@ -121,7 +121,7 @@ This remains mention-level truth because the same underlying event may be:
 
 V1 should still keep the Scene/EventMention relationship simple and provenance-oriented:
 
-- `(:Scene)-[:MENTIONS]->(:EventMention)`
+- `(:Scene)-[:CONTAINS]->(:EventMention)`
 
 Do **not** add:
 
@@ -262,7 +262,7 @@ Add Event extraction as a persisted evidence lane after scene persistence.
 
 - scene analysis structured output includes extracted events
 - `EventMention` nodes are persisted
-- `Scene -[:MENTIONS]-> EventMention` edges are persisted
+- `Scene -[:CONTAINS]-> EventMention` edges are persisted
 - mention nodes retain enough provenance to audit later grouping decisions
 
 ### Recommended minimum fields

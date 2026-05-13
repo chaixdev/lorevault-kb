@@ -13,7 +13,7 @@ public interface CollectiveMentionGraphRepository extends Neo4jRepository<Collec
             MATCH (s:Scene {id: $sceneId})
             WITH s
             MATCH (m:CollectiveMention {id: $mentionId})
-            MERGE (s)-[:MENTIONS]->(m)
+            MERGE (s)-[:CONTAINS]->(m)
             """)
     void linkMentionToScene(UUID sceneId, UUID mentionId);
 }

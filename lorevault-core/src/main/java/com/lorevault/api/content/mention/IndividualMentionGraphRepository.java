@@ -11,7 +11,7 @@ public interface IndividualMentionGraphRepository extends Neo4jRepository<Indivi
             MATCH (s:Scene {id: $sceneId})
             WITH s
             MATCH (m:IndividualMention {id: $mentionId})
-            MERGE (s)-[:MENTIONS]->(m)
+            MERGE (s)-[:CONTAINS]->(m)
             """)
     void linkMentionToScene(UUID sceneId, UUID mentionId);
 }

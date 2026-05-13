@@ -133,13 +133,6 @@ class RelationClaimPersistenceServiceTest {
         assertThat(first.bookId()).isNull();
         assertThat(first.extractionIndex()).isEqualTo(0);
         assertThat(first.resolutionStatus()).isEqualTo("unresolved");
-        // pubCoords are null at claim-creation time
-        assertThat(first.pubUniverse()).isNull();
-        assertThat(first.pubSeries()).isNull();
-        assertThat(first.pubBookNumber()).isNull();
-        assertThat(first.pubChapterNumber()).isNull();
-        assertThat(first.pubSceneIndex()).isNull();
-        assertThat(first.pubKey()).isNull();
         // timestamps are handled by Spring Data listeners (null before persist)
         assertThat(first.createdAt()).isNull();
         assertThat(first.updatedAt()).isNull();

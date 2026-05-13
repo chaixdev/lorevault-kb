@@ -69,6 +69,6 @@ Neo4j relationship direction for temporal and narrative edges must conform to th
 canonical polarity defined in [temporal-relation-semantics.md](../concepts/temporal-relation-semantics.md).
 This applies to relationships in the scene, location, and individual resolution pipelines.
 
-The `MENTIONS` relation must not be misread as a timeline ordering edge.
+The `CONTAINS` relation must not be misread as a timeline ordering edge.
 See `temporal-relation-semantics.md` for the full Allen relation model and
 canonical polarity rules.

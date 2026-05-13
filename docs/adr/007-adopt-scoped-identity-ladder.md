@@ -9,7 +9,7 @@ LoreVault models extracted identity information as a scoped ladder instead of fl
 
 The accepted shape is:
 
-- `Scene -[:MENTIONS]-> IndividualMention`
+- `Scene -[:CONTAINS]-> IndividualMention`
 - `IndividualMention -[:REFERS_TO]-> ChapterIndividual`
 - `ChapterIndividual -[:REFERS_TO]-> BookIndividual`
 

@@ -89,7 +89,7 @@ This is the key architectural difference.
 
 LoreVault should introduce an explicit event evidence-and-resolution ladder:
 
-- `Scene -[:MENTIONS]-> EventMention`
+- `Scene -[:CONTAINS]-> EventMention`
 - `EventMention -[:REFERS_TO]-> ChapterEvent`
 - `ChapterEvent -[:REFERS_TO]-> BookEvent`
 
@@ -123,24 +123,24 @@ So the model should distinguish:
 
 This follows the same conceptual discipline already used for Individuals and Locations.
 
-### 2. Do not persist both `MENTIONS` and `TEMPORAL` between `Scene` and `EventMention`
+### 2. Do not persist both `CONTAINS` and `TEMPORAL` between `Scene` and `EventMention`
 
 It is tempting to put two separate edges between the same nodes:
 
-- one provenance edge (`MENTIONS`)
+- one provenance edge (`CONTAINS`)
 - one temporal edge (`TEMPORAL`)
 
 Current recommendation: **do not do this**.
 
 Reason:
 
-- `MENTIONS` expresses evidence/provenance
+- `CONTAINS` expresses evidence/provenance
 - `TEMPORAL` is already the language of LoreVault's timeline backbone
 - using both on the same Scene/EventMention pair risks making evidence nodes look like first-class timeline nodes
 
 Instead, keep:
 
-- `Scene -[:MENTIONS]-> EventMention`
+- `Scene -[:CONTAINS]-> EventMention`
 
 and put the temporal classifier on the mention itself.
 
@@ -243,7 +243,7 @@ This means:
 Persist:
 
 - `(:EventMention)`
-- `(:Scene)-[:MENTIONS]->(:EventMention)`
+- `(:Scene)-[:CONTAINS]->(:EventMention)`
 
 The mention node carries scene-specific event semantics.
 
@@ -437,7 +437,7 @@ That future direction is now considered plausible and well-supported, but still 
 
 - extending scene analysis structured output to include event-like extraction results
 - persisting `EventMention` evidence nodes after real scene persistence
-- linking `Scene -> EventMention` with `MENTIONS`
+- linking `Scene -> EventMention` with `CONTAINS`
 - storing scene-relative temporal classification on the mention
 - deterministic or conservative chapter-level grouping into `ChapterEvent`
 - deterministic or conservative book-level grouping into `BookEvent`
@@ -488,7 +488,7 @@ This proposal suggests the following retrieval philosophy.
 For faithful reasoning:
 
 - start from `Scene`
-- follow `MENTIONS` to `EventMention`
+- follow `CONTAINS` to `EventMention`
 - follow `REFERS_TO` upward to chapter/book-level anchors
 
 This preserves provenance and scene-relative temporal semantics.
@@ -595,7 +595,7 @@ LoreVault should treat extracted events as **scene-independent anchors inferred 
 
 Current best proposal:
 
-- `Scene -[:MENTIONS]-> EventMention`
+- `Scene -[:CONTAINS]-> EventMention`
 - `EventMention.sceneRelativeRelation` carries the scene-relative temporal classifier
 - `EventMention -[:REFERS_TO]-> ChapterEvent -[:REFERS_TO]-> BookEvent`
 - `ChapterEvent` and `BookEvent` begin as thin scoped anchors, but some future aggregate/root event nodes may also become genuine DAG participants when they denote stable time-bearing abstractions

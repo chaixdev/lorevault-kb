@@ -86,7 +86,7 @@ MATCH (z:BookLocation   {normalizedName: $nameZ})
 ```cypher
 CALL db.index.vector.queryNodes('chunk_embedding_idx', 20, $embedding) YIELD node AS chunk, score
 MATCH (scene:Scene)-[:HAS_CHUNK]->(chunk)
-MATCH (scene)-[:MENTIONS]->(im:IndividualMention)
+MATCH (scene)-[:CONTAINS]->(im:IndividualMention)
 // ... then link im to ChapterIndividual/BookIndividual
 ```
 
@@ -109,9 +109,9 @@ RETURN apoc.text.join([c in chunks | c.text], '\n') + ...
 ### Approach C — Anchor at the scene (direct co-occurrence query)
 
 ```cypher
-MATCH (scene:Scene)-[:MENTIONS]->(imA:IndividualMention)
-MATCH (scene)-[:MENTIONS]->(imB:IndividualMention)
-MATCH (scene)-[:MENTIONS]->(lm:LocationMention)
+MATCH (scene:Scene)-[:CONTAINS]->(imA:IndividualMention)
+MATCH (scene)-[:CONTAINS]->(imB:IndividualMention)
+MATCH (scene)-[:CONTAINS]->(lm:LocationMention)
 WHERE imA.normalizedRef = $nameA
   AND imB.normalizedRef = $nameB
   AND lm.normalizedRef  = $nameZ
@@ -189,7 +189,7 @@ The paper establishes that the relevant evidence unit for "X and Y argument at Z
 
 Their solution is a **dual-graph** (entity graph + event/scene graph with bipartite mapping), which allows retrieval to be anchored at the event/scene level rather than the entity level. For the "argument" query, retrieval anchors at the scene node, then expands to entities and chunks.
 
-**Advantage for LoreVault:** LoreVault already has `Scene` as a first-class node with `[:MENTIONS]` edges to scene-local entity mentions. The current regular mention families include Individual, Location, Object, and Collective. The scene co-occurrence Cypher is expressible directly against the existing graph. No new nodes or relationships are needed for the co-occurrence traversal itself.
+**Advantage for LoreVault:** LoreVault already has `Scene` as a first-class node with `[:CONTAINS]` edges to scene-local entity mentions. The current regular mention families include Individual, Location, Object, and Collective. The scene co-occurrence Cypher is expressible directly against the existing graph. No new nodes or relationships are needed for the co-occurrence traversal itself.
 
 ### 3.3 Subgraph Retrieval
 
@@ -325,8 +325,8 @@ The safe pattern (from `ugwun/lanchain4j-contentretriever` and the associated Me
 @Repository
 public interface SceneContentRetriever {
     @Query("""
-        MATCH (scene:Scene)-[:MENTIONS]->(im:IndividualMention)
-        MATCH (scene)-[:MENTIONS]->(lm:LocationMention)
+        MATCH (scene:Scene)-[:CONTAINS]->(im:IndividualMention)
+        MATCH (scene)-[:CONTAINS]->(lm:LocationMention)
         WHERE im.normalizedRef IN $individualNames
           AND lm.normalizedRef IN $locationNames
           AND scene.bookId IN $allowedBookIds
@@ -358,8 +358,8 @@ private static final String MULTI_ENTITY_CO_OCCURRENCE_QUERY = """
     
     // Entity co-occurrence filter (when entities are provided)
     WITH chunk, score, scene, chapter
-    OPTIONAL MATCH (scene)-[:MENTIONS]->(im:IndividualMention)
-    OPTIONAL MATCH (scene)-[:MENTIONS]->(lm:LocationMention)
+    OPTIONAL MATCH (scene)-[:CONTAINS]->(im:IndividualMention)
+    OPTIONAL MATCH (scene)-[:CONTAINS]->(lm:LocationMention)
     
     WITH chunk, score, scene, chapter,
          collect(DISTINCT im.normalizedRef) AS individualsInScene,
@@ -416,7 +416,7 @@ This is Approach B from Section 2 (vector-seeded, ascending to scene, with co-oc
 |---|---|---|
 | Single entity lookup | Template query on `BookIndividual` or `BookLocation` | `MATCH (bi:BookIndividual {normalizedName: $name})` |
 | "What scenes feature X?" | Direct ladder traversal | `BookIndividual ← ChapterIndividual ← IndividualMention ← Scene` |
-| "What scenes feature X and Y?" | Scene co-occurrence | Double `MATCH (scene)-[:MENTIONS]->(im)` with entity filter |
+| "What scenes feature X and Y?" | Scene co-occurrence | Double `MATCH (scene)-[:CONTAINS]->(im)` with entity filter |
 | "What happened at X and Y at Z?" | **Vector-seeded expansion + entity boost** | Vector seed → Scene → mentions filter + boost |
 | "General narrative question" | Vector search (current path) | Existing `db.index.vector.queryNodes` |
 
@@ -469,9 +469,9 @@ Once the entity mention pipeline (IndividualMention normalization) is production
 ```cypher
 // Template: "co-occurrence-with-location"
 // Fires when: at least 2 individuals AND 1 location are extracted from the question
-MATCH (scene:Scene)-[:MENTIONS]->(imA:IndividualMention)
-MATCH (scene)-[:MENTIONS]->(imB:IndividualMention)
-MATCH (scene)-[:MENTIONS]->(lm:LocationMention)
+MATCH (scene:Scene)-[:CONTAINS]->(imA:IndividualMention)
+MATCH (scene)-[:CONTAINS]->(imB:IndividualMention)
+MATCH (scene)-[:CONTAINS]->(lm:LocationMention)
 MATCH (chapter:Chapter)-[:HAS_SCENE]->(scene)
 WHERE imA.normalizedRef = $nameA
   AND imB.normalizedRef = $nameB

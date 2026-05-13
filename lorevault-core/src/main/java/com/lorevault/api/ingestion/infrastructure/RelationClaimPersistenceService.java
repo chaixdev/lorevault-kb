@@ -79,13 +79,6 @@ public class RelationClaimPersistenceService {
                         null,
                         extractionIndex,
                         UNRESOLVED,
-                        // pubCoords — populated during book-level processing
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
                         null,
                         null
                 ));

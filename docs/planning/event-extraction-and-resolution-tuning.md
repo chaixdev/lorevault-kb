@@ -29,7 +29,7 @@ The conceptual model is correct: extraction stays evidence-first, aggregation is
 ```
 scene-analysis prompt
   → EventMention (displayName, normalizedName, eventType, sceneRelativeRelation, certainty, evidence)
-  → [scene-linked via Scene-[:MENTIONS]->EventMention]
+  → [scene-linked via Scene-[:CONTAINS]->EventMention]
 
 event-coref (Stage 2)
   → rolling 3-scene windows
@@ -148,7 +148,7 @@ The aggregate card preserves nuance (types, aliases, evidence), but the top-leve
 - Do not make `normalizedName` an identity key across scenes.
 - Do not blindly lower the coref threshold without widening candidate generation and fixing prompt calibration — connected components can over-merge transitively.
 - Do not conflate stage 3 canonicalization improvements with a claim-first rewrite — that is a much larger slice.
-- Do not infer timeline order from `MENTIONS` edges or treat `sceneRelativeRelation` as canonical event order (per `temporal-relation-semantics.md`).
+- Do not infer timeline order from `CONTAINS` edges or treat `sceneRelativeRelation` as canonical event order (per `temporal-relation-semantics.md`).
 
 ---
 
@@ -158,7 +158,7 @@ Per `docs/concepts/evidence-vs-interpretation-layer.md`:
 
 **Evidence layer (durable, auditable):**
 - `EventMention` — including `displayName`, raw `eventType`, `certainty`, `sceneRelativeRelation`, `evidence`
-- `Scene -[:MENTIONS]-> EventMention` relationship
+- `Scene -[:CONTAINS]-> EventMention` relationship
 - Supporting provenance / raw evidence text
 
 **Interpretation layer (rebuildable from evidence):**
@@ -250,7 +250,7 @@ Implementation note: the shipped reducer keeps `displayName`, `normalizedName`, 
 1. Raw extraction should remain auditable. Even if aggregates improve, `EventMention` evidence should trace back to scene text.
 2. `ChapterEvent` is interpretation. Rebuild it freely; never let it become the source of truth that `EventMention` is derived from.
 3. Favor consensus over flat canonicalization. When evidence genuinely varies, preserve the variation in aliases/types.
-4. Temporal qualifiers belong on mentions (`sceneRelativeRelation`), not manufactured at the aggregate level. Per `temporal-relation-semantics.md`, `MENTIONS` edges are evidence links, not timeline ordering.
+4. Temporal qualifiers belong on mentions (`sceneRelativeRelation`), not manufactured at the aggregate level. Per `temporal-relation-semantics.md`, `CONTAINS` edges are evidence links, not timeline ordering.
 5. Ingestion mechanics must remain reliable. All changes should be prompt + projection changes, not pipeline surgery.
 
 ---

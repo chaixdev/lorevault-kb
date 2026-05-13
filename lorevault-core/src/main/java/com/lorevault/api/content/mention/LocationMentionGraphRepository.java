@@ -14,7 +14,7 @@ public interface LocationMentionGraphRepository extends Neo4jRepository<Location
             MATCH (s:Scene {id: $sceneId})
             WITH s
             MATCH (m:LocationMention {id: $mentionId})
-            MERGE (s)-[:MENTIONS]->(m)
+            MERGE (s)-[:CONTAINS]->(m)
             """)
     void linkMentionToScene(UUID sceneId, UUID mentionId);
 }

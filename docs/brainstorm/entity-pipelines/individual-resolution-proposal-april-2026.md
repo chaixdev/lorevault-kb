@@ -59,7 +59,7 @@ The proposal below answers those questions without collapsing mention evidence i
 
 LoreVault should use an explicit scoped identity ladder:
 
-- `Scene -[:MENTIONS]-> IndividualMention`
+- `Scene -[:CONTAINS]-> IndividualMention`
 - `IndividualMention -[:REFERS_TO]-> ChapterIndividual`
 - `ChapterIndividual -[:REFERS_TO]-> BookIndividual`
 
@@ -443,7 +443,7 @@ This is the cleanest current proposal for LoreVault's identity-resolution shape 
 
 LoreVault's ingestion pipeline now persists and links the scoped identity ladder automatically:
 
-- `Scene -[:MENTIONS]-> IndividualMention`
+- `Scene -[:CONTAINS]-> IndividualMention`
 - `IndividualMention -[:REFERS_TO]-> ChapterIndividual`
 - `ChapterIndividual -[:REFERS_TO]-> BookIndividual`
 

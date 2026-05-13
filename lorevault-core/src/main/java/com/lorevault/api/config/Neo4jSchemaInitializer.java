@@ -158,7 +158,6 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "MATCH (m:ObjectMention) SET m:Mention",
             "MATCH (m:CollectiveMention) SET m:Mention",
             "MATCH (m:EventMention) SET m:Mention",
-            "MATCH (rc:RelationClaim) SET rc:Mention",
             "MATCH (ce:ChapterEvent) SET ce:ChapterEntity",
             "MATCH (ci:ChapterIndividual) SET ci:ChapterEntity",
             "MATCH (cl:ChapterLocation) SET cl:ChapterEntity",
@@ -239,7 +238,9 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(EVENT_PER_CHAPTER_SCENE_INDEX, "Event(chapterId, sceneIndex)"));
 
         // Backfill aggregate labels for existing nodes; new writes get these from @Node metadata.
+        // RelationClaim no longer carries the Mention label — remove it from any existing nodes.
         AGGREGATE_LABEL_BACKFILLS.forEach(cypher -> results.add(executeLabelBackfill(cypher)));
+        results.add(executeLabelBackfill("MATCH (rc:RelationClaim) REMOVE rc:Mention"));
         
         // Create vector search indexes
         results.add(ensureChunkVectorIndex());

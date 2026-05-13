@@ -79,7 +79,7 @@ public class CypherTemplateRegistry {
             WHERE bi.normalizedName = $normalizedName
               AND bi.bookId IN $allowedBookIds
             MATCH (bi)<-[:REFERS_TO]-(ci:ChapterIndividual)<-[:REFERS_TO]-(im:IndividualMention)
-            MATCH (scene:Scene)-[:MENTIONS]->(im)
+            MATCH (scene:Scene)-[:CONTAINS]->(im)
             MATCH (chapter:Chapter)-[:HAS_SCENE]->(scene)
             RETURN DISTINCT
                 bi.displayName        AS displayName,
@@ -119,8 +119,8 @@ public class CypherTemplateRegistry {
             WHERE biB.normalizedName = $normalizedNameB
               AND biB.bookId IN $allowedBookIds
             MATCH (biA)<-[:REFERS_TO]-(ciA:ChapterIndividual)<-[:REFERS_TO]-(imA:IndividualMention)
-            MATCH (scene:Scene)-[:MENTIONS]->(imA)
-            MATCH (scene)-[:MENTIONS]->(imB:IndividualMention)
+            MATCH (scene:Scene)-[:CONTAINS]->(imA)
+            MATCH (scene)-[:CONTAINS]->(imB:IndividualMention)
             MATCH (imB)-[:REFERS_TO]->(ciB:ChapterIndividual)-[:REFERS_TO]->(biB)
             MATCH (chapter:Chapter)-[:HAS_SCENE]->(scene)
             RETURN DISTINCT
@@ -141,7 +141,7 @@ public class CypherTemplateRegistry {
             WHERE bi.normalizedName = $normalizedName
               AND bi.bookId IN $allowedBookIds
             MATCH (bi)<-[:REFERS_TO]-(ci:ChapterIndividual)<-[:REFERS_TO]-(im:IndividualMention)
-            MATCH (scene:Scene)-[:MENTIONS]->(im)
+            MATCH (scene:Scene)-[:CONTAINS]->(im)
             MATCH (chapter:Chapter)-[:HAS_SCENE]->(scene)
             RETURN
                 bi.displayName        AS displayName,

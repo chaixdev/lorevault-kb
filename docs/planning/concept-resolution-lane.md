@@ -32,7 +32,7 @@ The reference pattern is documented in `docs/patterns/ingestion/entity-resolutio
 Concept should follow the regular-lane structure now implemented by Individual, Location, Object, and Collective:
 
 ```text
-Scene -[:MENTIONS]-> ConceptMention -[:REFERS_TO]-> ChapterConcept -[:REFERS_TO]-> BookConcept
+Scene -[:CONTAINS]-> ConceptMention -[:REFERS_TO]-> ChapterConcept -[:REFERS_TO]-> BookConcept
 ```
 
 Expected implementation surfaces:
@@ -94,5 +94,5 @@ Expected implementation surfaces:
 - `docs/patterns/ingestion/entity-resolution-ladder.md`
 - `docs/patterns/ingestion/handler-retry-safety.md`
 - `docs/rules/handler-design-contract.md`
-- `docs/planning/minimal-reltype-catalog.md`
+- `docs/planning/relation-catalog-module.md`
 - `docs/planning/qa-retrieval-quality-validation.md`

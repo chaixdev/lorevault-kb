@@ -362,7 +362,7 @@ Purpose: standardize properties, relation types, and actions; enable semantic re
 - reltypes(id, label, description, subjectTypes, objectTypes, inverseId?, synonyms[], status, embedding)
 - actions(id, label, description, synonyms[], status, embedding)
 
-For the revised relation discovery and graph-aware routing sequence, see `../brainstorm/query/2026-04-12_graph-aware-qa-design-april-2026.md` and `../planning/minimal-reltype-catalog.md`.
+For the revised relation discovery and graph-aware routing sequence, see `../brainstorm/query/2026-04-12_graph-aware-qa-design-april-2026.md` and `../planning/relation-catalog-module.md`.
 
 ## Confidence aggregation
 

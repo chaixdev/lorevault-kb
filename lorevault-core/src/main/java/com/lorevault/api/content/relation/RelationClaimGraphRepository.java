@@ -11,7 +11,7 @@ public interface RelationClaimGraphRepository extends Neo4jRepository<RelationCl
             MATCH (s:Scene {id: $sceneId})
             WITH s
             MATCH (rc:RelationClaim {id: $claimId})
-            MERGE (s)-[:MENTIONS]->(rc)
+            MERGE (s)-[:CONTAINS]->(rc)
             """)
     void linkClaimToScene(UUID sceneId, UUID claimId);
 

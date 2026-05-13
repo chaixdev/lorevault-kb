@@ -95,5 +95,5 @@ At minimum, each planning item should include:
 - [Tighten web transport boundaries and internal type visibility](tighten-web-transport-boundaries-and-type-visibility.md)
 - [Q&A Retrieval Quality Validation](qa-retrieval-quality-validation.md)
 - [Concept Entity Resolution Lane](concept-resolution-lane.md)
-- [Relation Catalog Discovery Module](minimal-reltype-catalog.md)
+- [Catalog Module](relation-catalog-module.md)
 - [Relation Evidence Harvesting and Catalog Discovery — Phased Solution Design](relation-evidence-harvesting.md)

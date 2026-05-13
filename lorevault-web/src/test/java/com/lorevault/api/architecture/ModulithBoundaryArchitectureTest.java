@@ -20,6 +20,7 @@ class ModulithBoundaryArchitectureTest {
             .that().resideInAPackage("com.lorevault.api..")
             .and().resideOutsideOfPackages(
                     "com.lorevault.api.ai..",
+                    "com.lorevault.api.catalog..",
                     "com.lorevault.api.config..",
                     "com.lorevault.api.content..",
                     "com.lorevault.api.health..",
@@ -43,6 +44,15 @@ class ModulithBoundaryArchitectureTest {
                     "com.lorevault.api.library..",
                     "com.lorevault.api.search..")
             .should().dependOnClassesThat().resideInAnyPackage("com.lorevault.api.web..");
+
+    @ArchTest
+    static final ArchRule catalog_must_not_depend_on_ingestion_or_web = noClasses()
+            .that().resideInAnyPackage("com.lorevault.api.catalog..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "com.lorevault.api.ingestion..",
+                    "com.lorevault.api.web..",
+                    "com.lorevault.api.search..")
+            .allowEmptyShould(true);
 
     @ArchTest
     static final ArchRule web_controllers_must_stay_inside_web_package = classes()

@@ -8,7 +8,7 @@ This pattern explains how LoreVault turns scene-local entity evidence into chapt
 
 The general ladder shape is:
 
-- `Scene -[:MENTIONS]-> EntityMention`
+- `Scene -[:CONTAINS]-> EntityMention`
 - `EntityMention -[:REFERS_TO]-> ChapterEntity`
 - `ChapterEntity -[:REFERS_TO]-> BookEntity`
 
@@ -39,7 +39,7 @@ The result is a map/reduce entity flow that fits chapter-oriented ingestion and 
 
 `SceneDetectionHandler` persists real `Scene` nodes first.
 
-After scenes are localized and saved, each entity persistence service resolves `sceneIndex → Scene.id` and writes `EntityMention` nodes plus `Scene -[:MENTIONS]-> EntityMention` links using persisted scene IDs.
+After scenes are localized and saved, each entity persistence service resolves `sceneIndex → Scene.id` and writes `EntityMention` nodes plus `Scene -[:CONTAINS]-> EntityMention` links using persisted scene IDs.
 
 The implemented scene-local evidence lanes are:
 
@@ -101,7 +101,7 @@ Book reducers must not publish `Book*ReducedEvent` for claim contention, retry e
 
 ### Individual Lane
 
-**Ladder:** `Scene -[:MENTIONS]-> IndividualMention -[:REFERS_TO]-> ChapterIndividual -[:REFERS_TO]-> BookIndividual`
+**Ladder:** `Scene -[:CONTAINS]-> IndividualMention -[:REFERS_TO]-> ChapterIndividual -[:REFERS_TO]-> BookIndividual`
 
 **Evidence fields:** `displayName`, `normalizedName`, `aliases`, `activity`, `age`, `physicalProperties`, scope IDs, `resolutionStatus`, and `extractionIndex`.
 
@@ -113,7 +113,7 @@ Book reducers must not publish `Book*ReducedEvent` for claim contention, retry e
 
 ### Location Lane
 
-**Ladder:** `Scene -[:MENTIONS]-> LocationMention -[:REFERS_TO]-> ChapterLocation -[:REFERS_TO]-> BookLocation`
+**Ladder:** `Scene -[:CONTAINS]-> LocationMention -[:REFERS_TO]-> ChapterLocation -[:REFERS_TO]-> BookLocation`
 
 **Evidence fields:** `displayName`, `normalizedName`, `aliases`, `kind`, `region`, `description`, scope IDs, `resolutionStatus`, and `extractionIndex`.
 
@@ -125,7 +125,7 @@ Book reducers must not publish `Book*ReducedEvent` for claim contention, retry e
 
 ### Object Lane
 
-**Ladder:** `Scene -[:MENTIONS]-> ObjectMention -[:REFERS_TO]-> ChapterObject -[:REFERS_TO]-> BookObject`
+**Ladder:** `Scene -[:CONTAINS]-> ObjectMention -[:REFERS_TO]-> ChapterObject -[:REFERS_TO]-> BookObject`
 
 **Evidence fields:** `displayName`, `normalizedName`, `aliases`, `type`, `material`, `purpose`, `description`, scope IDs, `resolutionStatus`, and `extractionIndex`.
 
@@ -137,7 +137,7 @@ Book reducers must not publish `Book*ReducedEvent` for claim contention, retry e
 
 ### Collective Lane
 
-**Ladder:** `Scene -[:MENTIONS]-> CollectiveMention -[:REFERS_TO]-> ChapterCollective -[:REFERS_TO]-> BookCollective`
+**Ladder:** `Scene -[:CONTAINS]-> CollectiveMention -[:REFERS_TO]-> ChapterCollective -[:REFERS_TO]-> BookCollective`
 
 **Evidence fields:** `displayName`, `normalizedName`, `aliases`, `collectiveType`, `certainty`, `evidence`, scope IDs, `resolutionStatus`, and `extractionIndex`.
 

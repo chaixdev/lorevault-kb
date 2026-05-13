@@ -97,11 +97,11 @@ Prompt labels are extraction syntax, not final storage contract.
 
 ## Rule 6 — Evidence-Lane Interpretation Guardrail
 
-`MENTIONS` edges are evidence-link semantics, not temporal-edge semantics.
+`CONTAINS` edges are evidence-link semantics, not temporal-edge semantics.
 
 For example:
 
-- `Scene -[:MENTIONS]-> EventMention`
+- `Scene -[:CONTAINS]-> EventMention`
 
 must be read as "this scene mentions this evidence node," not as a timeline ordering edge.
 
@@ -117,7 +117,7 @@ When validating temporal persistence:
 2. Confirm source-to-target interpretation for each directed relation.
 3. Confirm inverse canonicalization has been applied (no duplicate inverse durable truth).
 4. Confirm deprecated inferred labels are not used for normal durable storage.
-5. Do not infer timeline ordering from `MENTIONS` edge direction.
+5. Do not infer timeline ordering from `CONTAINS` edge direction.
 
 ---
 

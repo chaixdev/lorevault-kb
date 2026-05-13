@@ -13,7 +13,7 @@ public interface EventMentionGraphRepository extends Neo4jRepository<EventMentio
             MATCH (s:Scene {id: $sceneId})
             WITH s
             MATCH (m:EventMention {id: $mentionId})
-            MERGE (s)-[:MENTIONS]->(m)
+            MERGE (s)-[:CONTAINS]->(m)
             """)
     void linkMentionToScene(UUID sceneId, UUID mentionId);
 
@@ -23,14 +23,14 @@ public interface EventMentionGraphRepository extends Neo4jRepository<EventMentio
      * Used by Stage 3 (ChapterEventResolutionService) to load all mentions for aggregation.
      */
     @Query("""
-            MATCH (s:Scene {chapterId: $chapterId})-[:MENTIONS]->(m:EventMention {chapterId: $chapterId})
+            MATCH (s:Scene {chapterId: $chapterId})-[:CONTAINS]->(m:EventMention {chapterId: $chapterId})
             RETURN m
             ORDER BY coalesce(s.sceneIndex, 0), coalesce(m.extractionIndex, 0)
             """)
     List<EventMention> findByChapterIdOrdered(UUID chapterId);
 
     @Query("""
-            MATCH (s:Scene)-[:MENTIONS]->(m:EventMention)
+            MATCH (s:Scene)-[:CONTAINS]->(m:EventMention)
             WHERE s.id IN $sceneIds
             RETURN m
             ORDER BY m.sceneId, m.extractionIndex

@@ -24,10 +24,10 @@ LoreVault already has a rich graph that knows:
 
 | Graph fact | Node/Relationship |
 |---|---|
-| Which individuals appeared in a scene | `Scene -[:MENTIONS]-> IndividualMention` |
+| Which individuals appeared in a scene | `Scene -[:CONTAINS]-> IndividualMention` |
 | Chapter-level identity consolidation | `IndividualMention -[:REFERS_TO]-> ChapterIndividual` |
 | Book-level identity backbone | `ChapterIndividual -[:REFERS_TO]-> BookIndividual` |
-| Which locations appeared in a scene | `Scene -[:MENTIONS]-> LocationMention` |
+| Which locations appeared in a scene | `Scene -[:CONTAINS]-> LocationMention` |
 | Chapter-level location consolidation | `LocationMention -[:REFERS_TO]-> ChapterLocation` |
 | Book-level location backbone | `ChapterLocation -[:REFERS_TO]-> BookLocation` |
 | Temporal ordering of scenes | `Scene -[:TEMPORAL {relationType, certaintyLevel}]-> Scene` |
@@ -84,7 +84,7 @@ RETURN bi.displayName        AS displayName,
 
 ### Pattern 2 — Vector-Seeded Graph Expansion (the most impactful near-term step)
 
-**What it is:** Use vector search to find relevant `Chunk` nodes, then traverse `HAS_CHUNK ← Scene → MENTIONS → IndividualMention → ChapterIndividual` to enrich results with entity context.
+**What it is:** Use vector search to find relevant `Chunk` nodes, then traverse `HAS_CHUNK ← Scene → CONTAINS → IndividualMention → ChapterIndividual` to enrich results with entity context.
 
 **LoreVault fit:** This is the `VectorCypherRetriever` pattern applied to LoreVault's graph. It adds entity awareness to the existing vector search with a single Cypher extension.
 
@@ -105,8 +105,8 @@ WHERE score > 0.0
   AND /* spoiler predicate */
 
 // Expand to entity evidence at scene level
-OPTIONAL MATCH (scene)-[:MENTIONS]->(im:IndividualMention)
-OPTIONAL MATCH (scene)-[:MENTIONS]->(lm:LocationMention)
+OPTIONAL MATCH (scene)-[:CONTAINS]->(im:IndividualMention)
+OPTIONAL MATCH (scene)-[:CONTAINS]->(lm:LocationMention)
 
 // Collect entity signals
 WITH chunk, score, scene, chapter,

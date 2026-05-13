@@ -212,8 +212,8 @@ public class Neo4jSemanticSearch {
               AND ($bookNumber    IS NULL OR chapter.bookNumber    = $bookNumber)
               AND ($chapterNumber IS NULL OR chapter.chapterNumber = $chapterNumber)
             """ + spoilerClause + """
-            OPTIONAL MATCH (scene)-[:MENTIONS]->(im:IndividualMention)
-            OPTIONAL MATCH (scene)-[:MENTIONS]->(lm:LocationMention)
+            OPTIONAL MATCH (scene)-[:CONTAINS]->(im:IndividualMention)
+            OPTIONAL MATCH (scene)-[:CONTAINS]->(lm:LocationMention)
             WITH chunk, cosineScore AS score, chapter, scene,
                  collect(DISTINCT im.displayName) AS individualsPresent,
                  collect(DISTINCT lm.displayName) AS locationsPresent

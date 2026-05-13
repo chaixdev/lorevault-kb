@@ -14,7 +14,7 @@ public interface ObjectMentionGraphRepository extends Neo4jRepository<ObjectMent
             MATCH (s:Scene {id: $sceneId})
             WITH s
             MATCH (m:ObjectMention {id: $mentionId})
-            MERGE (s)-[:MENTIONS]->(m)
+            MERGE (s)-[:CONTAINS]->(m)
             """)
     void linkMentionToScene(UUID sceneId, UUID mentionId);
 }

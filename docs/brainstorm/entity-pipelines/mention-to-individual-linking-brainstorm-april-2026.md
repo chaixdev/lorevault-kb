@@ -12,7 +12,7 @@ LoreVault now persists scene-local `IndividualMention` nodes as extracted eviden
 
 That gives us a better model boundary than the previous provisional `Individual` approach:
 
-- `Scene -[:MENTIONS]-> IndividualMention`
+- `Scene -[:CONTAINS]-> IndividualMention`
 - later: `IndividualMention -[:REFERS_TO]-> Individual`
 
 This solves the semantic confusion between:
@@ -35,7 +35,7 @@ This document consolidates the current exploration so we do not lose the useful 
 LoreVault currently persists:
 
 - `IndividualMention` nodes with scene-local evidence
-- `Scene -[:MENTIONS]-> IndividualMention` links
+- `Scene -[:CONTAINS]-> IndividualMention` links
 
 Each mention currently carries mention-ready metadata such as:
 
@@ -310,7 +310,7 @@ Adjacent scenes are not proof of identity, but they are a plausible positive sig
 
 Not stored as dedicated relationships yet, but computable from:
 
-- `Scene -[:MENTIONS]-> IndividualMention`
+- `Scene -[:CONTAINS]-> IndividualMention`
 - scene/chunk neighborhood traversal
 
 So co-occurrence is available as a **derived graph signal**.
@@ -935,7 +935,7 @@ The current instinct is:
 
 The current best-understood path now looks like:
 
-- `Scene -[:MENTIONS]-> IndividualMention`
+- `Scene -[:CONTAINS]-> IndividualMention`
 - `IndividualMention -[:REFERS_TO]-> ChapterIndividual`
 - `ChapterIndividual -[:REFERS_TO]-> BookIndividual`
 

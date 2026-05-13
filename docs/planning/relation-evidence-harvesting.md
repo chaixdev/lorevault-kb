@@ -9,7 +9,7 @@ A phased solution design for extracting inter-entity relation claims from scene 
 
 ## Problem
 
-The knowledge graph has rich entity nodes but no typed edges between them. Relational questions ("how is X related to Y?", "which factions participated in event Z?") cannot be answered with graph traversal because the only connections are provenance edges (`MENTIONS`, `REFERS_TO`).
+The knowledge graph has rich entity nodes but no typed edges between them. Relational questions ("how is X related to Y?", "which factions participated in event Z?") cannot be answered with graph traversal because the only connections are provenance edges (`CONTAINS`, `REFERS_TO`).
 
 Previous planning assumed a curated seed of 5–8 relation types would be defined upfront and the LLM would be forced to emit those IDs. This loses semantic richness: "betrayed", "warned", "trained under", "was disguised as" all get flattened into a small hand-authored set before we know what the text actually produces.
 
@@ -30,7 +30,7 @@ The correct starting point is evidence harvesting: let the LLM describe relation
 |---|---|
 | `scene-analysis.txt` / `scene-analysis-usertemplate.st` | Scene-level extraction prompt — will emit open-ended relation claims |
 | Triad analysis pipeline | Normalizes LLM output into structured entity/relation results |
-| Entity persistence services | Currently write `MENTIONS` edges; will also write relation claim observations |
+| Entity persistence services | Currently write `CONTAINS` edges; will also write relation claim observations |
 | `lorevault-web/src/main/resources/application.yml` | Configuration anchor for catalog seeding |
 
 ### Conceptual model references
@@ -39,7 +39,7 @@ The correct starting point is evidence harvesting: let the LLM describe relation
 - `docs/brainstorm/query/2026-04-12_graph-aware-qa-design-april-2026.md` — revised first slice, catalog module shape, downstream retrieval implications
 - `docs/brainstorm/query/2026-05-05_claims-model-extensions-parked.md` — parked extensions including three-bin taxonomy, hearsay chains, ClaimedEvent
 - `docs/brainstorm/query/2026-05-05_event-sourcing-claims-proposed.md` — append-only claim history, per-boundary replay, derived projections
-- `docs/planning/minimal-reltype-catalog.md` — catalog module scope, success criteria, open questions
+- `docs/planning/relation-catalog-module.md` — catalog module scope, success criteria, open questions
 
 ### Catalog module boundary
 
@@ -100,7 +100,7 @@ It should **not** own: scene analysis, claim persistence, entity resolution, edg
 - Graph-aware retrieval changes
 - Q&A routing changes
 - Confidence aggregation over competing claims
-- `MENTIONS` split (separate concern, can proceed in parallel)
+- `CONTAINS` split (separate concern, can proceed in parallel)
 
 ---
 
@@ -240,7 +240,7 @@ Key ideas carried forward:
 
 - The entity taxonomy has six kinds (Individual, Collective, Object, Location, Concept, Event); relation endpoint kinds reference this taxonomy
 - The Concept lane must exist before relation types involving Concept targets can be used
-- The `MENTIONS` conflation problem (direct occurrence vs. indirect reference) is a separate concern that can proceed in parallel but should not block Phase 0
+- The `CONTAINS` conflation problem (direct occurrence vs. indirect reference) is a separate concern that can proceed in parallel but should not block Phase 0
 - Oracle's advisory recommends expanding from evidence, not speculatively; the catalog module makes this evidence loop explicit
 - The existing stage-run DAG invalidation mechanism provides the projection replay trigger
 - Provisional keys (`R:provisional.*`) must not become stable edge labels — they are observations, not accepted taxonomy
@@ -252,7 +252,7 @@ Key ideas carried forward:
 - **Provisional edge policy:** Should provisional observations be materialized as `PROVISIONAL_REL` edges for diagnostics, or kept only in the claim/catalog observation store until promotion? Recommendation: materialize for dev-console visibility but exclude from production retrieval.
 - **Storage:** Should canonical catalog entries live in Neo4j as `CatalogRelType` nodes, in YAML/JSON seed files, or both? Recommendation: start with in-code/YAML for v1, migrate to Neo4j nodes when the catalog grows past manual review scale.
 - **`inverseId`:** Should inverse relation types be populated in Phase 1 (e.g. `member_of` ↔ `has_member`) or deferred? Recommendation: defer. Directionality is stored on the edge; inverse derivation is a render concern.
-- **`MENTIONS` split:** Can indirect scene references be captured in a single bucket, or do they require a curated vocabulary? This is separable from relation extraction and can proceed in parallel.
+- **`CONTAINS` split:** Can indirect scene references be captured in a single bucket, or do they require a curated vocabulary? This is separable from relation extraction and can proceed in parallel.
 
 ## Success Criteria
 
@@ -278,7 +278,7 @@ Key ideas carried forward:
 
 ## Links
 
-- `docs/planning/minimal-reltype-catalog.md` — catalog module scope, success criteria, open questions
+- `docs/planning/relation-catalog-module.md` — catalog module scope, success criteria, open questions
 - `docs/planning/qa-retrieval-quality-validation.md` — Q&A validation planning
 - `docs/brainstorm/query/2026-04-12_graph-aware-qa-design-april-2026.md` — revised first slice, catalog module shape, retrieval implications
 - `docs/brainstorm/query/2026-05-05_claims-model-extensions-parked.md` — parked extensions (ClaimedEvent, hearsay, three-bin taxonomy)
@@ -330,7 +330,7 @@ There is **no inter-entity relationship section** in the current prompt. The new
 **Current Neo4j schema — no inter-entity edges:**
 
 The graph currently has:
-- `Scene -[:MENTIONS]-> *Mention` (provenance only)
+- `Scene -[:CONTAINS]-> *Mention` (provenance only)
 - `*Mention -[:REFERS_TO]-> Chapter* -[:REFERS_TO]-> Book*` (resolution ladder)
 - `Chapter -[:HAS_INDIVIDUAL]-> ChapterIndividual`, etc.
 - `Book -[:HAS_INDIVIDUAL]-> BookIndividual`, etc.
@@ -356,17 +356,17 @@ There are **no edges between entity nodes of different types** (no `IndividualMe
    - `sceneId`, `chapterId`, `bookId`
    - `extractionIndex` (per-scene ordering for idempotency)
    - `resolutionStatus` ("unresolved" at creation)
-   - `pubCoords` (pubUniverse, pubSeries, pubBookNumber, pubChapterNumber, pubSceneIndex, pubKey — null at creation, populated during book-level processing)
    - `createdAt`, `updatedAt`
-   - Implements `Mention` interface (`displayName() → relationName`, `normalizedName() → provisionalRelTypeId`)
+   - Does NOT implement `Mention` — relation claims have a different lifecycle (catalog matching, not entity resolution)
+   - Does NOT carry `pubCoords` flat fields — provenance anchors (sceneId, chapterId, bookId) are sufficient; coordinates resolved by traversal
 
 2. **Relationship model:**
-   - `(Scene)-[:MENTIONS]->(RelationClaim)` — provenance, same pattern as all other mentions
+   - `(Scene)-[:CONTAINS]->(RelationClaim)` — provenance, same pattern as all other mentions
    - `(RelationClaim)-[:RELATES_SUBJECT]->(*Mention)` — link to subject entity mention (if resolved)
    - `(RelationClaim)-[:RELATES_OBJECT]->(*Mention)` — link to object entity mention (if resolved)
    - Subject/object links are best-effort at Phase 0: if the LLM names match a persisted mention, link them; if not, store the raw names only.
 
-3. **Aggregate label:** `RelationClaim` gets the `Mention` aggregate label, consistent with the existing pattern (`IndividualMention` has `Mention`, etc.). This allows generic mention queries to include relation claims.
+3. **Aggregate label:** `RelationClaim` carries only its own primary label. It does NOT get the `Mention` aggregate label — entity mentions share an entity-resolution lifecycle; relation claims have a different catalog-matching lifecycle.
 
 4. **Prompt extension:** Add a `<relations>` section to `scene-analysis.txt` after `<current_scene_entities>`, asking the LLM to list inter-entity relationships observed in the current scene with subject, relation name, description, object, certainty, and evidence.
 
@@ -403,10 +403,12 @@ There are **no edges between entity nodes of different types** (no `IndividualMe
 **What was built:**
 
 1. **RelationClaim data model** (`lorevault-core/.../content/relation/RelationClaim.java`):
-   - Java 21 record with `@Node(primaryLabel = "RelationClaim", labels = "Mention")`
-   - 18 properties: id, relationName, relationDescription, provisionalRelTypeId, subjectKind, subjectName, objectKind, objectName, certainty, evidenceText, source, sceneId, chapterId, bookId, extractionIndex, resolutionStatus, createdAt, updatedAt
-   - `certainty` uses String values ("Explicit", "StronglyImplied", "WeaklyImplied") matching existing certainty enum
-   - `bookId` is null at creation time (filled later during book-level processing, same as other mentions)
+    - Java 21 record with `@Node(primaryLabel = "RelationClaim")` — no `Mention` aggregate label
+    - 12 properties: id, relationName, relationDescription, provisionalRelTypeId, subjectKind, subjectName, objectKind, objectName, certainty, evidenceText, source, sceneId, chapterId, bookId, extractionIndex, resolutionStatus, createdAt, updatedAt
+    - `certainty` uses String values ("Explicit", "StronglyImplied", "WeaklyImplied") matching existing certainty enum
+    - `bookId` is null at creation time (filled later during book-level processing, same as other mentions)
+    - Does NOT implement `Mention` — relation claims have a different lifecycle than entity mentions
+    - Does NOT carry `pubCoords` flat fields — provenance anchors (sceneId, chapterId, bookId) are sufficient; coordinates resolved by traversal
 
 2. **RelationClaimGraphRepository** (`lorevault-core/.../content/relation/RelationClaimGraphRepository.java`):
    - `Neo4jRepository<RelationClaim, UUID>` with Cypher methods for `linkClaimToScene`, `linkSubjectMention`, `linkObjectMention`
@@ -415,7 +417,7 @@ There are **no edges between entity nodes of different types** (no `IndividualMe
    - `RELATION_CLAIM_ID_UNIQUE` constraint on `RelationClaim.id`
    - `RELATION_CLAIM_CHAPTER_RELTYPE_INDEX` on `(chapterId, provisionalRelTypeId)` for harvest aggregation queries
    - `RELATION_CLAIM_BOOK_RELTYPE_INDEX` on `(bookId, provisionalRelTypeId)` for book-level aggregation
-   - `RelationClaim` added to the `Mention` aggregate label backfill
+   - `RelationClaim` removed from the `Mention` aggregate label backfill (it no longer carries that label)
 
 4. **Scene analysis prompt** (`lorevault-core/.../resources/prompts/scene-analysis.txt`):
    - Added `**relations**` section after entity extraction instructions
@@ -453,7 +455,7 @@ There are **no edges between entity nodes of different types** (no `IndividualMe
 
 - Dev-console harvest view (controller + template) — inspect directly in Neo4j for Phase 0
 - Subject/object mention linking (`RELATES_SUBJECT`/`RELATES_OBJECT` edges) — the repository methods exist but are not called yet; linking requires matching LLM-extracted names to persisted mention IDs, which needs a name-resolution step
-- `pubCoords` on RelationClaim nodes — the fields are in the data model but not yet populated from scene/chapter metadata during persistence; this will be added when the first book is processed and the pubCoords derivation is wired
+- `pubCoords` on RelationClaim nodes — removed; provenance anchors (sceneId, chapterId, bookId) are sufficient; coordinates resolved by traversal per the provenance strategy
 
 **Neo4j inspection queries for Phase 0:**
 
@@ -467,7 +469,7 @@ RETURN rc.provisionalRelTypeId, count(*) AS count, collect(DISTINCT rc.subjectKi
 ORDER BY count DESC
 
 // Find claims for a specific scene
-MATCH (s:Scene)-[:MENTIONS]->(rc:RelationClaim)
+MATCH (s:Scene)-[:CONTAINS]->(rc:RelationClaim)
 WHERE s.id = $sceneId
 RETURN rc.relationName, rc.subjectKind + ': ' + rc.subjectName AS subject, rc.objectKind + ': ' + rc.objectName AS object, rc.certainty, rc.evidenceText
 ```
@@ -502,8 +504,8 @@ Two independent reviews (oracle conceptual + council code quality) identified 14
 
 | Finding | Fix |
 |---|---|
-| Missing `pubCoords` fields on `RelationClaim` | Added `pubUniverse`, `pubSeries`, `pubBookNumber`, `pubChapterNumber`, `pubSceneIndex`, `pubKey` — null at creation, populated during book-level processing |
-| `RelationClaim` carries `Mention` label but doesn't implement `Mention` interface | Added `implements Mention` with `displayName() → relationName`, `normalizedName() → provisionalRelTypeId` |
+| Missing `pubCoords` fields on `RelationClaim` | Removed — provenance anchors (sceneId, chapterId, bookId) are sufficient; coordinates resolved by traversal per provenance strategy |
+| `RelationClaim` carries `Mention` label but doesn't implement `Mention` interface | Removed `implements Mention`, removed `Mention` label from `@Node`, removed `displayName()`/`normalizedName()` overrides, removed `Mention` label backfill for `RelationClaim` |
 | Prompt says "implicit" without filtering guidance — noise flood risk | Added: "Only extract relations that carry narrative significance — do not extract trivial co-occurrence" |
 | Certainty String vs `CertaintyLevel` enum divergence | Documented in Javadoc on `RelationClaim.certainty()` — String preserves raw LLM output; Phase 1 bridges via `CertaintyWeights` |
 
@@ -586,3 +588,27 @@ Two independent reviews (oracle conceptual + council code quality) identified 14
 3. **Clustering emerging** — 21 unique types from 30 claims (70% uniqueness ratio vs 100% before). "is a member of", "leads", "was abducted by" each appear 2-3 times.
 4. **Evidence text populated** — every claim has `evidenceText` with the supporting passage.
 5. **Individual resolution pipeline fixed** — the `ChapterIndividualCandidate` bugfix allows the full pipeline to complete without ClassCastErrors.
+
+### Phase 0 — Mention/Claim Separation Refactoring (May 11, 2026)
+
+**Status: Complete. All 497 tests pass.**
+
+The oracle review identified that `RelationClaim implements Mention` was accidental structural similarity, not genuine shared semantics. Entity mentions share an entity-resolution lifecycle (unresolved → resolved → aggregated); relation claims have a proposition/catalog-matching lifecycle (unresolved → matched → promoted → projected).
+
+**Changes made:**
+
+1. **`RelationClaim.java`** — Removed `implements Mention`, removed `labels = "Mention"` from `@Node`, removed `displayName()`/`normalizedName()` overrides, removed 6 null `pubCoords` fields (`pubUniverse`, `pubSeries`, `pubBookNumber`, `pubChapterNumber`, `pubSceneIndex`, `pubKey`). Record now has 12 fields instead of 18. Javadoc updated to explain why `RelationClaim` is NOT a `Mention`.
+
+2. **`RelationClaimPersistenceService.java`** — Removed 6 null `pubCoords` arguments from the `RelationClaim` constructor call.
+
+3. **`Neo4jSchemaInitializer.java`** — Removed `"MATCH (rc:RelationClaim) SET rc:Mention"` from `AGGREGATE_LABEL_BACKFILLS`. Added `"MATCH (rc:RelationClaim) REMOVE rc:Mention"` migration step to clean up existing data.
+
+4. **`RelationClaimPersistenceServiceTest.java`** — Removed 6 `pubCoords` null assertions.
+
+5. **`docs/brainstorm/query/2026-05-11_provenance-publication-coordinates-strategy.md`** — Added working conclusions: CONTAINS edge is provenance (keep, renamed from MENTIONS); `Mention` Java interface is entity-mention-specific; `chunkId` is not a default durable anchor; ADRs are written after implementation, not before.
+
+**Rationale:**
+
+- `displayName()` → `relationName` and `normalizedName()` → `provisionalRelTypeId` were semantic mismatches. A relation name is a free-text phrase, not a display name. A provisional type ID is a catalog candidate, not a normalized entity name.
+- The 6 `pubCoords` fields were never populated and represented speculative denormalization. Provenance anchors (sceneId, chapterId, bookId) are sufficient; coordinates are resolved by traversal.
+- The `Mention` aggregate label on `RelationClaim` nodes was a dead label — no production Cypher query uses `MATCH (m:Mention)` generically.
