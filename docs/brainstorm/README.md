@@ -51,6 +51,7 @@ When a brainstorm becomes stable enough, either:
 
 - [Pragmatic modulith plan](architecture/pragmatic-modulith-plan.md)
 - [Event-driven architecture plan](architecture/event-driven-architecture-plan.md)
+- [Orchestration / domain separation — May 2026](architecture/2026-05-11_orchestration-domain-separation.md) — explores whether and how to separate pipeline orchestration from domain logic, evaluates options from package convention through Spring Modulith to Maven module extraction, and recommends defining swappable seams (JobStateStore, PipelineEventPublisher, RelationCatalog, ChapterContentStore) before any structural split
 - [Async ingestion logging philosophy brainstorm — April 2026](architecture/2026-04-17_async-ingestion-logging-philosophy-brainstorm.md) — broader proposal for correlation, lifecycle logs, MDC/context propagation, and phased logging rollout around the async ingestion pipeline
 - [StageRun DAG observability and recovery brainstorm — April 2026](architecture/stage-run-dag-observability-and-recovery-brainstorm-april-2026.md) — proposal to replace the linear `StatusRecord` chain with persisted stage-run DAG orchestration, stage-run events, fan-in status, and JVM crash recovery hooks
 
@@ -60,7 +61,12 @@ When a brainstorm becomes stable enough, either:
 - [Graph-aware Q&A design — April/May 2026](query/2026-04-12_graph-aware-qa-design-april-2026.md) — applies external GraphRAG pattern research to LoreVault's schema and now frames typed relation work as relation evidence harvesting plus catalog discovery before stable graph-aware routing
 - [Claims event-sourcing proposal — May 2026](query/2026-05-05_event-sourcing-claims-proposed.md) — proposes append-only relation claims, per-boundary replay, and derived relation projections for spoiler-aware relation state
 - [Claims model extensions parked — May 2026](query/2026-05-05_claims-model-extensions-parked.md) — parked relation/claims extensions including ClaimedEvent, hearsay chains, provisional relation clustering, and future catalog-module expansion
+- [Provenance and publication coordinates lifecycle strategy — May 2026](query/2026-05-11_provenance-publication-coordinates-strategy.md) — consolidates the working distinction between provenance anchors, effective `PublicationCoordinates`, retrieval result contracts, and deliberate read-model materialization
 - [Multi-entity retrieval: external research — April 2026](query/2026-04-12_multi-entity-retrieval-external-research.md) — pressure-tests the shortestPath() proposal against 10+ external sources; verdict: scene co-occurrence beats path traversal for narrative "X+Y at Z" questions; includes Java/Spring/Neo4j stack mapping and staged implementation plan
+
+### AWS cloud-native deployment
+
+- [AWS cloud-native learning path — May 2026](aws-cloud-native/2026-05-11_aws-cloud-native-learning-path.md) — phased plan to transform LoreVault into a cloud-native AWS deployment as a learning project, covering ECS Fargate, S3, SQS/SNS, DynamoDB, Step Functions, CloudWatch, X-Ray, and IaC — mapped to specific CV gaps
 
 ### DevX and operator tooling
 

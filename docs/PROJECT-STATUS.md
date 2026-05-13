@@ -1,10 +1,9 @@
 # LoreVault Project Status
 
-**Last Updated:** May 11, 2026  
-**Reviewed Through Commit:** `3dc3d29`  
-**Status:** Active — Phase 0 of relation evidence harvesting is implemented and validated with improved extraction data (30 relation claims from 5 chapters, 0% action-verb noise, 27% StronglyImplied certainty); ChapterIndividualCandidate constructor bug fixed; WebMvcTest failures fixed  
-**Functional Goals:** Advance relation extraction from Phase 0 evidence into Phase 1 catalog matching; continue using the step execution API for iterative development  
-**Technical Goals:** Preserve retry-safe ingestion semantics; use the agentic API loop for implement-inspect-improve cycles; plan Phase 1 catalog matching based on Phase 0 extraction data
+**Last Updated:** May 14, 2026  
+**Status:** Active — Pre-catalog implementation. Catalog module purged; redeveloping from scratch as `lorevault-catalog` Maven submodule with reverse-dictionary design.  
+**Functional Goals:** Implement `lorevault-catalog` Maven submodule with three-tier matching (exact match → signature match → create new); integrate with ingestion pipeline via `RelationQuery`; expose REST endpoints.  
+**Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite.
 
 ## What LoreVault Is
 
@@ -17,7 +16,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - All domain content entities annotated `@Node` directly (no mirror Node classes)
 - Internal indirection layers removed — services inject concrete beans/repositories directly
 - Maven structure: `lorevault-core` contains the feature-oriented core packages, and `lorevault-web` contains the HTTP/UI edge
-- Core package structure: 7 top-level feature-oriented packages under `com.lorevault.api` in `lorevault-core` (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`)
+- Core package structure: 8 top-level feature-oriented packages under `com.lorevault.api` in `lorevault-core` (`ai/`, `catalog/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`). The `catalog/` package is currently empty — the catalog module is being redeveloped from scratch as a standalone Maven submodule (`lorevault-catalog`).
 - Edge package structure: `com.lorevault.api.web/**` lives in `lorevault-web`, with `web.command/`, `web.query/`, and `web.ui/` as the canonical edge shape
 - `lorevault-core` now uses capability-oriented internal packages instead of the old per-context `application/domain/infrastructure` split: `content/{association,chapter,chunk,mention,scene,timeline}`, `ingestion/{completion,content,events,job,pipeline,resolution,scene,submission,triad}`, `library/{book,series,service,universe}`, `search/{extraction,model,rag,semantic}`, and `ai/{chunking,embedding,llm}` plus shared local support packages where they remain semantically justified
 - Scene detection now enforces context-budget checks and deterministic segmented fallback for oversized chapters
@@ -57,7 +56,6 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Stages 5–6 event path shipped** — LLM semantic merge verification (Stage 5) evaluates each ANN candidate pair and decides MERGE / KEEP_SEPARATE / UNRESOLVED; BookEvent write path (Stage 6) clusters MERGE decisions and writes thin `BookEvent` nodes plus `ChapterEvent -[:REFERS_TO]-> BookEvent` edges; the event entity resolution pipeline is now end-to-end from EventMention through BookEvent
 - **Post-split architecture and ingestion hardening continued** — recent follow-up commits enforced architecture boundaries across `ai`, `content`, and `ingestion`; aligned async ingestion handlers with transaction rules; tightened LLM-call/status persistence and book-reduction claim handling; stabilized semantic-search test wiring; refreshed individual-resolution coverage to match the current triad-analysis flow; and codified retry-safe handler ownership guidance
 - **Step execution API surface shipped** — controllers, DTOs, event mapper, query endpoint, StepKey/StepDefinition/StepCatalog, *Operation interfaces, curl-driven skill, and supporting docs/rules; enables agentic step-by-step pipeline execution for iterative development
-- **Relation evidence harvesting Phase 0 shipped** — scene analysis now emits open-ended inter-entity relation claims; `RelationClaim` nodes persisted with provisional type IDs, provenance, and evidence text; 33 unique relation claims extracted from 5 chapters across 11 scenes; Individual→Individual (39%) and Individual→Collective (24%) dominate; all claims Explicit certainty; extraction quality is high with no over-extraction; Phase 0 decision point met: proceed to Phase 1 catalog matching
 
 ## What Is Next
 
@@ -68,8 +66,14 @@ Near-term execution slices:
     - Use the findings as the decision point for whether the next implementation slice should be event extraction tuning, relation evidence harvesting/catalog discovery, Concept, or retrieval assembly
 2. **Event extraction and resolution tuning — evidence-triggered follow-up**
     - Return to prompt/coref/reduction tuning when validation shows event questions fail because of over-extraction, missed merges, weak temporal qualifiers, or unstable canonicalization
-3. **Relation evidence harvesting and catalog discovery**
-    - Let scene analysis emit open-ended inter-entity relation claims, preserve raw relation names and usage hints, and use an in-process catalog module to return candidate relation IDs/correlation scores while unmatched observations accumulate for clustering and later promotion
+3. **Relation catalog: scratch redevelopment as `lorevault-catalog` Maven submodule**
+    - Create `lorevault-catalog` Maven submodule with own `pom.xml` — depends only on Spring Boot, JDBC, Flyway, PostgreSQL; zero knowledge of Neo4j or LoreVault domains
+    - Implement reverse-dictionary matching engine: `resolve(RelationQuery)` with three-tier matching (exact match → signature match → create new)
+    - Public API types: `RelationCatalogService`, `RelationCatalogDefinition`, `RelationCatalogId`, `RelationQuery`, `RelationKindSignature`
+    - Database schema: `catalog_definition` + `catalog_definition_variant` + `catalog_definition_signature`, with pgvector extension enabled for future embedding matching
+    - Integration: `RelationClaim` stores `catalogId` (UUID); `RelationClaimPersistenceService` calls `catalogService.resolve()` before persisting claims
+    - REST endpoints: `GET /api/catalog/definitions/{id}`, `GET /api/catalog/definitions?definitionKey={key}`
+    - Boundary enforcement: Maven module isolation, Java `internal` package, Spring Modulith `@ApplicationModule(type=CLOSED)`
 4. **Concept entity lane**
    - Decide and implement the remaining regular entity ladder for Concept when validation shows species/category/technology questions are blocked by missing Concept anchors
 5. **Event aggregation and graph shaping**
