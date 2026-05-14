@@ -17,6 +17,16 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         HibernateJpaAutoConfiguration.class,
         FlywayAutoConfiguration.class
         // Spring AI auto-configuration disabled via manual bean creation
+        //
+        // NOTE: When lorevault-catalog is added as a dependency (M1), it brings
+        // spring-boot-starter-jdbc, flyway-core, and postgresql onto the classpath.
+        // These exclusions will silently prevent DataSource/Flyway from being configured,
+        // breaking the catalog's PostgreSQL backend. At that point, either:
+        //   (a) Remove these exclusions and rely on spring.datasource.url being absent
+        //       to skip auto-config for the main app, OR
+        //   (b) Scope the exclusions to only apply when no catalog DataSource is needed,
+        //       and define a @Qualifier-based DataSource bean in the catalog module.
+        // See: docs/planning/relation-catalog-module.md — Implementation Risks
 })
 @ConfigurationPropertiesScan
 @EnableScheduling
