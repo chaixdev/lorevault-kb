@@ -193,7 +193,7 @@ class RelationClaimPersistenceServiceTest {
         TriadAnalysisModels.SceneRelationClaimExtraction extraction =
                 new TriadAnalysisModels.SceneRelationClaimExtraction(0, List.of(claim));
 
-        when(catalogService.resolve(any())).thenThrow(new RuntimeException("Catalog unavailable"));
+        when(catalogService.resolve(any())).thenThrow(new UnsupportedOperationException("Catalog module is disabled"));
         when(relationClaimRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.persistExtractedRelationClaims(List.of(persistedScene), List.of(extraction));

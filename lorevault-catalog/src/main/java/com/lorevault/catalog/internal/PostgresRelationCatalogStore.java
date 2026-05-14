@@ -7,11 +7,14 @@ import com.lorevault.catalog.RelationQuery;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -25,36 +28,65 @@ import org.springframework.stereotype.Repository;
 @ConditionalOnProperty(name = "lorevault.catalog.enabled", havingValue = "true")
 class PostgresRelationCatalogStore implements RelationCatalogStore {
 
-    private final JdbcClient jdbcClient;
+    private final NamedParameterJdbcTemplate jdbcTemplate;
 
-    PostgresRelationCatalogStore(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+    private static final RowMapper<RelationCatalogDefinition> DEFINITION_ROW_MAPPER = (rs, rowNum) ->
+            new RelationCatalogDefinition(
+                    new RelationCatalogId(rs.getObject("id", UUID.class)),
+                    rs.getString("definition_key"),
+                    rs.getString("display_name"),
+                    rs.getString("description"),
+                    List.of(),  // enriched separately
+                    List.of(),  // enriched separately
+                    rs.getTimestamp("created").toInstant(),
+                    rs.getTimestamp("updated").toInstant(),
+                    rs.getTimestamp("last_seen").toInstant()
+            );
+
+    private static final RowMapper<RelationKindSignature> SIGNATURE_ROW_MAPPER = (rs, rowNum) ->
+            new RelationKindSignature(
+                    rs.getString("subject_kind"),
+                    rs.getString("object_kind")
+            );
+
+    PostgresRelationCatalogStore(NamedParameterJdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
     public Optional<RelationCatalogDefinition> findByDefinitionKey(String definitionKey) {
-        return jdbcClient.sql("""
-                SELECT id, definition_key, display_name, description, created, updated, last_seen
-                FROM catalog_definition
-                WHERE definition_key = :definitionKey
-                """)
-                .param("definitionKey", definitionKey)
-                .query(RelationCatalogDefinition.class)
-                .optional()
-                .map(this::enrichWithRelations);
+        try {
+            var def = jdbcTemplate.queryForObject(
+                    """
+                    SELECT id, definition_key, display_name, description, created, updated, last_seen
+                    FROM catalog_definition
+                    WHERE definition_key = :definitionKey
+                    """,
+                    Map.of("definitionKey", definitionKey),
+                    DEFINITION_ROW_MAPPER
+            );
+            return Optional.ofNullable(def).map(this::enrichWithRelations);
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
     }
 
     @Override
     public Optional<RelationCatalogDefinition> findById(RelationCatalogId id) {
-        return jdbcClient.sql("""
-                SELECT id, definition_key, display_name, description, created, updated, last_seen
-                FROM catalog_definition
-                WHERE id = :id
-                """)
-                .param("id", id.value())
-                .query(RelationCatalogDefinition.class)
-                .optional()
-                .map(this::enrichWithRelations);
+        try {
+            var def = jdbcTemplate.queryForObject(
+                    """
+                    SELECT id, definition_key, display_name, description, created, updated, last_seen
+                    FROM catalog_definition
+                    WHERE id = :id
+                    """,
+                    Map.of("id", id.value()),
+                    DEFINITION_ROW_MAPPER
+            );
+            return Optional.ofNullable(def).map(this::enrichWithRelations);
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
     }
 
     @Override
@@ -65,17 +97,20 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
 
         // Idempotent insert: ON CONFLICT DO NOTHING on the unique definition_key.
         // If the insert is a no-op (concurrent caller won the race), re-read the existing row.
-        int inserted = jdbcClient.sql("""
+        int inserted = jdbcTemplate.update(
+                """
                 INSERT INTO catalog_definition (id, definition_key, display_name, description, created, updated, last_seen)
                 VALUES (:id, :definitionKey, :displayName, :description, :now, :now, :now)
                 ON CONFLICT (definition_key) DO NOTHING
-                """)
-                .param("id", id)
-                .param("definitionKey", query.definitionKey())
-                .param("displayName", displayName)
-                .param("description", query.description())
-                .param("now", now)
-                .update();
+                """,
+                Map.of(
+                        "id", id,
+                        "definitionKey", query.definitionKey(),
+                        "displayName", displayName,
+                        "description", query.description(),
+                        "now", now
+                )
+        );
 
         if (inserted == 0) {
             // Concurrent insert won — re-read the existing definition
@@ -86,26 +121,32 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
 
         // We inserted — add signature and variant rows
         if (query.subjectKind() != null && query.objectKind() != null) {
-            jdbcClient.sql("""
+            jdbcTemplate.update(
+                    """
                     INSERT INTO catalog_definition_signature (definition_id, subject_kind, object_kind)
                     VALUES (:definitionId, :subjectKind, :objectKind)
                     ON CONFLICT (definition_id, subject_kind, object_kind) DO NOTHING
-                    """)
-                    .param("definitionId", id)
-                    .param("subjectKind", query.subjectKind())
-                    .param("objectKind", query.objectKind())
-                    .update();
+                    """,
+                    Map.of(
+                            "definitionId", id,
+                            "subjectKind", query.subjectKind(),
+                            "objectKind", query.objectKind()
+                    )
+            );
         }
 
         if (query.rawName() != null) {
-            jdbcClient.sql("""
+            jdbcTemplate.update(
+                    """
                     INSERT INTO catalog_definition_variant (definition_id, raw_name)
                     VALUES (:definitionId, :rawName)
                     ON CONFLICT (definition_id, raw_name) DO NOTHING
-                    """)
-                    .param("definitionId", id)
-                    .param("rawName", query.rawName())
-                    .update();
+                    """,
+                    Map.of(
+                            "definitionId", id,
+                            "rawName", query.rawName()
+                    )
+            );
         }
 
         List<RelationKindSignature> signatures = query.subjectKind() != null && query.objectKind() != null
@@ -128,23 +169,25 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
      * Enrich a definition with its signature and variant rows.
      */
     private RelationCatalogDefinition enrichWithRelations(RelationCatalogDefinition def) {
-        List<RelationKindSignature> signatures = jdbcClient.sql("""
+        List<RelationKindSignature> signatures = jdbcTemplate.query(
+                """
                 SELECT subject_kind, object_kind
                 FROM catalog_definition_signature
                 WHERE definition_id = :id
-                """)
-                .param("id", def.id().value())
-                .query(RelationKindSignature.class)
-                .list();
+                """,
+                Map.of("id", def.id().value()),
+                SIGNATURE_ROW_MAPPER
+        );
 
-        List<String> variants = jdbcClient.sql("""
+        List<String> variants = jdbcTemplate.queryForList(
+                """
                 SELECT raw_name
                 FROM catalog_definition_variant
                 WHERE definition_id = :id
-                """)
-                .param("id", def.id().value())
-                .query(String.class)
-                .list();
+                """,
+                Map.of("id", def.id().value()),
+                String.class
+        );
 
         return new RelationCatalogDefinition(
                 def.id(), def.definitionKey(), def.displayName(), def.description(),

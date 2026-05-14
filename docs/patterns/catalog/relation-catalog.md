@@ -182,7 +182,7 @@ throw `UnsupportedOperationException`. The pipeline degrades gracefully.
 When `enabled=true`, `CatalogConfig` creates:
 - `catalogDataSource` (HikariCP)
 - `catalogTransactionManager` (`DataSourceTransactionManager`)
-- `catalogJdbcClient` (`JdbcClient`)
+- `catalogNamedParameterJdbcTemplate` (`NamedParameterJdbcTemplate`)
 - `catalogFlyway` (migrates `classpath:db/migration/catalog`)
 
 ---
