@@ -66,6 +66,6 @@ lorevault:
   catalog:
     enabled: false
     datasource:
-      url: jdbc:postgresql://localhost:5432/lorevault_catalog
+      url: jdbc:postgresql://localhost:5433/lorevault_catalog
       username: lorevault
       password: lorevault_secret
