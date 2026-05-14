@@ -522,36 +522,36 @@ class SceneRelationshipAnalysisServiceTest {
             assertThat(result[1]).isNotNull();
         }
 
-        // -- generateProvisionalRelTypeId ------------------------------------
+        // -- generateDefinitionKey -------------------------------------------
 
         @Test
-        @DisplayName("Should generate provisional rel type id for 'betrayed'")
-        void shouldGenerateProvisionalIdForBetrayed() throws Exception {
-            String result = (String) invokePrivateMethod("generateProvisionalRelTypeId",
+        @DisplayName("Should generate definition key for 'betrayed'")
+        void shouldGenerateDefinitionKeyForBetrayed() throws Exception {
+            String result = (String) invokePrivateMethod("generateDefinitionKey",
                     new Class<?>[]{String.class}, "betrayed");
-            assertThat(result).isEqualTo("R:provisional.betrayed");
+            assertThat(result).isEqualTo("R:betrayed");
         }
 
         @Test
-        @DisplayName("Should generate provisional rel type id for 'trained under'")
-        void shouldGenerateProvisionalIdForTrainedUnder() throws Exception {
-            String result = (String) invokePrivateMethod("generateProvisionalRelTypeId",
+        @DisplayName("Should generate definition key for 'trained under'")
+        void shouldGenerateDefinitionKeyForTrainedUnder() throws Exception {
+            String result = (String) invokePrivateMethod("generateDefinitionKey",
                     new Class<?>[]{String.class}, "trained under");
-            assertThat(result).isEqualTo("R:provisional.trained_under");
+            assertThat(result).isEqualTo("R:trained_under");
         }
 
         @Test
-        @DisplayName("Should generate provisional rel type id for 'turned on'")
-        void shouldGenerateProvisionalIdForTurnedOn() throws Exception {
-            String result = (String) invokePrivateMethod("generateProvisionalRelTypeId",
+        @DisplayName("Should generate definition key for 'turned on'")
+        void shouldGenerateDefinitionKeyForTurnedOn() throws Exception {
+            String result = (String) invokePrivateMethod("generateDefinitionKey",
                     new Class<?>[]{String.class}, "turned on");
-            assertThat(result).isEqualTo("R:provisional.turned_on");
+            assertThat(result).isEqualTo("R:turned_on");
         }
 
         @Test
         @DisplayName("Should return null for null relation name")
         void shouldReturnNullForNullRelationName() throws Exception {
-            String result = (String) invokePrivateMethod("generateProvisionalRelTypeId",
+            String result = (String) invokePrivateMethod("generateDefinitionKey",
                     new Class<?>[]{String.class}, (Object) null);
             assertThat(result).isNull();
         }
@@ -559,17 +559,17 @@ class SceneRelationshipAnalysisServiceTest {
         @Test
         @DisplayName("Should return unparseable fallback for all-non-alphanumeric input")
         void shouldReturnUnparseableForNonAlphanumericInput() throws Exception {
-            String result = (String) invokePrivateMethod("generateProvisionalRelTypeId",
+            String result = (String) invokePrivateMethod("generateDefinitionKey",
                     new Class<?>[]{String.class}, "!!!");
-            assertThat(result).isEqualTo("R:provisional.unparseable");
+            assertThat(result).isEqualTo("R:unparseable");
         }
 
         @Test
-        @DisplayName("Should generate provisional rel type id for 'member of'")
-        void shouldGenerateProvisionalIdForMemberOf() throws Exception {
-            String result = (String) invokePrivateMethod("generateProvisionalRelTypeId",
+        @DisplayName("Should generate definition key for 'member of'")
+        void shouldGenerateDefinitionKeyForMemberOf() throws Exception {
+            String result = (String) invokePrivateMethod("generateDefinitionKey",
                     new Class<?>[]{String.class}, "member of");
-            assertThat(result).isEqualTo("R:provisional.member_of");
+            assertThat(result).isEqualTo("R:member_of");
         }
 
         // -- normalizeCertainty ----------------------------------------------
