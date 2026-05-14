@@ -1,7 +1,7 @@
 # Catalog Module
 
-**Status:** Design — redeveloping from scratch as `lorevault-catalog` Maven submodule
-**Last Updated:** May 14, 2026 (reviewed — Oracle architecture review + transactionality + field migration decisions)
+**Status:** M0 + M1 Implemented — M0 (contract & interface) and M1 (PostgreSQL + exact match) complete
+**Last Updated:** May 14, 2026 (implemented M0 + M1, updated deviations and implementation notes)
 **Depends on:** Phase 0 relation claim extraction, `RelationClaim` model
 
 ## Summary
@@ -153,7 +153,7 @@ Using `REQUIRES_NEW` ensures the catalog's transaction commits or rolls back ind
 
 ### Idempotency
 
-`resolve()` must be idempotent on the miss path. If two concurrent ingestion calls both miss on "is allied with," both will try to INSERT. Exactly one should win — `ON CONFLICT DO NOTHING` on the unique `(definition_key)` constraint handles this. Phantom definitions from partial failures (catalog INSERT succeeded, Neo4j write failed) are harmless: they're unreferenced rows that a future cleanup job can sweep.
+`resolve()` must be idempotent on the miss path. If two concurrent ingestion calls both miss on "is allied with," both will try to INSERT. Exactly one should win — `ON CONFLICT DO NOTHING` on the unique `(definition_key)` constraint handles this. Phantom definitions from partial failures (catalog INSERT succeeded, Neo4j write failed) are harmless: they're unreferenced rows that a future cleanup job can sweep. **This is an M1 requirement, not optional hardening.**
 
 ## Embedding Integration (M3)
 
@@ -335,8 +335,9 @@ CREATE TABLE IF NOT EXISTS catalog_definition_signature (
     PRIMARY KEY (definition_id, subject_kind, object_kind)
 );
 
-CREATE INDEX IF NOT EXISTS idx_signature_kinds
-    ON catalog_definition_signature(subject_kind, object_kind);
+-- Index deferred to M3: signature matching is not used until embedding similarity is available.
+-- CREATE INDEX IF NOT EXISTS idx_signature_kinds
+--     ON catalog_definition_signature(subject_kind, object_kind);
 ```
 
 **pgvector deferred.** The `CREATE EXTENSION IF NOT EXISTS vector` and embedding column are not in V1. The standard `postgres:16` Docker image does not include pgvector — it requires `pgvector/pgvector:pg16`. Deferring the extension avoids a deployment dependency that isn't needed until embedding matching (a future milestone). When embedding matching is implemented, a V2 migration will add:
@@ -408,9 +409,9 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 
 | Milestone | Capability | Effort | Status |
 |-----------|-----------|--------|--------|
-| **M0: Contract & Interface** | `lorevault-catalog` Maven submodule, public API types, `InMemoryRelationCatalogStore` (exact-match only, no PostgreSQL), `catalogId` + `definitionKey` on `RelationClaim`, `@ApplicationModule(CLOSED)`, ArchUnit rules | S (2-3 days) | 🔲 |
-| **M1: PostgreSQL + Exact Match** | `PostgresRelationCatalogStore`, Flyway V1 schema, Testcontainers PostgreSQL, `docker-compose.yml` postgres service, DataSource exclusion fix, Flyway `locations` scoping | M (1-2 weeks) | 🔲 |
-| **M2: Idempotency & Hardening** | Concurrency-safe `findOrCreate` (`ON CONFLICT DO NOTHING`), backfill detection for orphaned claims, metrics, health indicator, `CatalogDisabledConfiguration` | M (1-2 weeks) | 🔲 |
+| **M0: Contract & Interface** | `lorevault-catalog` Maven submodule, public API types, `InMemoryRelationCatalogStore` (exact-match only, no PostgreSQL), `catalogId` + `definitionKey` on `RelationClaim`, `@ApplicationModule(CLOSED)`, ArchUnit rules | S (2-3 days) | ✅ |
+| **M1: PostgreSQL + Exact Match** | `PostgresRelationCatalogStore`, Flyway V1 schema, Testcontainers PostgreSQL, `docker-compose.yml` postgres service, DataSource exclusion fix, Flyway `locations` scoping, idempotent `findOrCreate` (`ON CONFLICT DO NOTHING`) | M (1-2 weeks) | ✅ |
+| **M2: Hardening** | Metrics, health indicator. ~~Backfill detection~~ (deferred — greenfield, no orphaned claims yet). `CatalogDisabledConfiguration` moved to M0/M1. | M (1-2 weeks) | 🔲 |
 | **M3: Embedding Matching** | `EmbeddingFunction` interface (catalog owns contract, core provides impl), pgvector extension, embedding generation for `description`, similarity threshold, replace exact-only with semantic matching, `pgvector/pgvector:pg16` Docker image | L (2-4 weeks) | 🔲 Planned |
 | **M4: Graph Edge Projection** | `REL` edges in Neo4j from resolved `catalogId`, graph-aware retrieval, Q&A validation | L (3-5 weeks) | 🔲 Planned |
 
@@ -453,22 +454,22 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 
 ## Success Criteria
 
-- [ ] `lorevault-catalog` Maven submodule created with own `pom.xml`, no dependency on `lorevault-core` or `lorevault-web`.
-- [ ] `com.lorevault.catalog` package with public API types: `RelationCatalogService`, `RelationCatalogDefinition`, `RelationCatalogId`, `RelationQuery`, `RelationKindSignature`. (New modules use `com.lorevault.{domain}` — no `api` segment.)
-- [ ] `@ApplicationModule(type = CLOSED)` on `package-info.java`.
-- [ ] `resolve()` implements two-tier matching: exact match → create new. No signature match in MVP.
-- [ ] `resolve()` runs in `REQUIRES_NEW` transaction — catalog owns its PostgreSQL transaction boundary, never nested inside Neo4j transactions.
-- [ ] Database schema: `catalog_definition` + `catalog_definition_variant` + `catalog_definition_signature`. No observation table. No observation counts. No status columns. No pgvector in V1.
-- [ ] `RelationClaim` stores `catalogId` (UUID, nullable) and `definitionKey` (String, nullable). Removes `provisionalRelTypeId` and `resolutionStatus`.
-- [ ] `definitionKey` uses `R:` namespace prefix (e.g., `R:is_a_member_of`).
-- [ ] `RelationClaimPersistenceService` calls `catalogService.resolve()` before Neo4j persistence, stores `catalogId` + `definitionKey` on the claim.
-- [ ] `EmbeddingFunction` interface defined in `com.lorevault.catalog` — catalog owns the contract, core provides the implementation. No shared `lorevault-ai` module.
-- [ ] Integration tests with Testcontainers PostgreSQL verify idempotency and matching logic.
-- [ ] Spring Modulith verification passes.
-- [ ] ArchUnit boundary rules pass.
-- [ ] `LoreVaultApiApplication` DataSource auto-config exclusion addressed (scoped or removed).
-- [ ] Flyway `locations` scoped to `classpath:db/migration/catalog`.
-- [ ] Empty `com.lorevault.api.catalog` package in `lorevault-core` removed.
+- [x] `lorevault-catalog` Maven submodule created with own `pom.xml`, no dependency on `lorevault-core` or `lorevault-web`.
+- [x] `com.lorevault.catalog` package with public API types: `RelationCatalogService`, `RelationCatalogDefinition`, `RelationCatalogId`, `RelationQuery`, `RelationKindSignature`. (New modules use `com.lorevault.{domain}` — no `api` segment.)
+- [x] `@ApplicationModule(type = CLOSED)` on `package-info.java`.
+- [x] `resolve()` implements two-tier matching: exact match → create new. No signature match in MVP.
+- [x] `resolve()` runs in `REQUIRES_NEW` transaction — catalog owns its PostgreSQL transaction boundary, never nested inside Neo4j transactions.
+- [x] Database schema: `catalog_definition` + `catalog_definition_variant` + `catalog_definition_signature`. No observation table. No observation counts. No status columns. No pgvector in V1.
+- [x] `RelationClaim` stores `catalogId` (UUID, nullable) and `definitionKey` (String, nullable). Removes `provisionalRelTypeId` and `resolutionStatus`.
+- [x] `definitionKey` uses `R:` namespace prefix (e.g., `R:is_a_member_of`).
+- [x] `RelationClaimPersistenceService` calls `catalogService.resolve()` before Neo4j persistence, stores `catalogId` + `definitionKey` on the claim. Degrades gracefully on catalog failure (catalogId=null, definitionKey keeps extracted value).
+- [x] `EmbeddingFunction` interface defined in `com.lorevault.catalog` — catalog owns the contract, core provides the implementation. No shared `lorevault-ai` module.
+- [x] Integration tests with Testcontainers PostgreSQL verify idempotency and matching logic.
+- [ ] Spring Modulith verification passes. (ModulithVerificationTest does not exist yet — `@ApplicationModule(CLOSED)` is in place, but no runtime verification test.)
+- [x] ArchUnit boundary rules pass. (Updated to scan `com.lorevault.catalog` + `com.lorevault.api`; added `catalog_internal_must_not_be_accessed_from_outside` rule.)
+- [x] `LoreVaultApiApplication` DataSource auto-config exclusion addressed — kept `DataSourceAutoConfiguration` exclusion (catalog manages its own DataSource via `CatalogConfig`).
+- [x] Flyway `locations` scoped to `classpath:db/migration/catalog` via `CatalogConfig.catalogFlyway` bean.
+- [x] Empty `com.lorevault.api.catalog` package — did not exist, no action needed.
 
 ## Links
 
@@ -479,3 +480,51 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 - `docs/concepts/core-domain-model-and-graph-process-restructured.md` — broader graph process context
 - `docs/patterns/ingestion/triad-analysis.md` — triad normalization pipeline that will consume catalog outputs
 - `docs/brainstorm/architecture/2026-05-11_orchestration-domain-separation.md` — catalog as first closed internal module
+
+## Implementation Notes (M0 + M1)
+
+### Deviations from Plan
+
+| Planned | Implemented | Reason |
+|---------|-------------|--------|
+| `PostgresCatalogSchemaInitializer` class | Flyway migration only (no Java initializer) | Flyway `baselineOnMigrate=true` + `V1__catalog_definition.sql` handles schema creation. No need for a separate Java initializer. |
+| `CatalogDisabledConfiguration` in M2 | Moved to M0/M1 as `NoOpRelationCatalogService` | Needed immediately so the app starts without PostgreSQL when catalog is disabled. All methods throw `UnsupportedOperationException`. Renamed from `*Configuration` to `*Service` because it's a `@Service` implementation, not a config class. |
+| `InMemoryRelationCatalogStore` as M0-only | Kept alongside `PostgresRelationCatalogStore` | `InMemoryRelationCatalogStore` has no `@ConditionalOnProperty` — it's available for unit testing but not activated in production profiles. `PostgresRelationCatalogStore` is `@ConditionalOnProperty(havingValue="true")`. |
+| `resolveAll` method on `RelationCatalogService` | Not implemented | YAGNI — no consumer needs batch resolution yet. |
+| `displayName` heuristic (capitalize first raw name) | Not implemented | Deferred to janitor task. `create()` uses `rawName` if present, falls back to `definitionKey`. |
+| Synonym/variant table | `catalog_definition_variant` exists but no merge/synonym logic | Table is write-only for now — stores raw names for future disambiguation. |
+| Backfill for orphaned claims | Not implemented | Greenfield project — no orphaned claims exist yet. Deferred to M2 or later. |
+| Observability (metrics, health indicator) | Not implemented | Overengineering for current scale. Deferred to M2. |
+| Catalog lifecycle (promotion, review status) | Not implemented | No value yet. Deferred to M4+. |
+| Signature index | Commented out in V1 schema | Deferred to M3 — signature matching isn't used until embedding similarity is available. |
+| `ModulithVerificationTest` | Does not exist | `@ApplicationModule(CLOSED)` is in place on `package-info.java`. ArchUnit boundary rules enforce the same constraints. A runtime Modulith verification test can be added later. |
+
+### Key Implementation Decisions
+
+1. **DataSource exclusion kept.** `LoreVaultApiApplication` still excludes `DataSourceAutoConfiguration`, `FlywayAutoConfiguration`, and `HibernateJpaAutoConfiguration`. The catalog module manages its own `DataSource` via `CatalogConfig` (conditional on `lorevault.catalog.enabled=true`). This avoids Spring Boot trying to auto-configure a default DataSource when no `spring.datasource.url` is set.
+
+2. **Degradation mode in `RelationClaimPersistenceService`.** The catalog `resolve()` call is wrapped in try/catch. On failure (catalog disabled, PostgreSQL down, etc.), `catalogId` is set to null and `definitionKey` keeps the extracted value. The pipeline never blocks on catalog failure.
+
+3. **`ON CONFLICT DO NOTHING` moved from M2 to M1.** Idempotent `findOrCreate` is essential for correctness, not hardening. Concurrent ingestion calls for the same `definitionKey` must produce exactly one definition row.
+
+4. **`definitionKey` format changed.** The old `R:provisional.is_a_member_of` format (from `generateProvisionalRelTypeId`) is now `R:is_a_member_of` (from `generateDefinitionKey`). The `provisional` qualifier is dropped because the catalog assigns stable identities.
+
+5. **Neo4j indexes renamed.** `relation_claim_chapter_reltype` → `relation_claim_chapter_defkey`, `relation_claim_book_reltype` → `relation_claim_book_defkey` — matching the field rename from `provisionalRelTypeId` to `definitionKey`.
+
+6. **ArchUnit rules updated.** `ModulithBoundaryArchitectureTest` now scans both `com.lorevault.api` and `com.lorevault.catalog`. The `catalog_must_not_depend_on_ingestion_or_web` rule references the actual `com.lorevault.catalog..` package. A new `catalog_internal_must_not_be_accessed_from_outside` rule enforces that no class outside `com.lorevault.catalog` may depend on `com.lorevault.catalog.internal..`.
+
+7. **Testcontainers PostgreSQL IT.** `PostgresRelationCatalogStoreIT` uses manual DataSource/Flyway/JdbcClient setup (no Spring context) for fast, focused integration tests. 8 test methods covering create, findById, findByDefinitionKey, idempotent creation, enrichment, and empty results.
+
+8. **Component scanning fix (C1).** `@SpringBootApplication` on `com.lorevault.api` doesn't scan `com.lorevault.catalog`. Added `@ComponentScan(basePackages = "com.lorevault")` to `LoreVaultApiApplication` so catalog beans are discovered.
+
+9. **JDBC transaction manager (C2).** `CatalogConfig` now provides a `catalogTransactionManager` bean (`DataSourceTransactionManager`) and all `@Transactional` annotations on `RelationCatalogServiceImpl` are qualified with `transactionManager = "catalogTransactionManager"`. Without this, `REQUIRES_NEW` would silently bind to the Neo4j transaction manager.
+
+10. **HikariDataSource (H1).** Replaced `DriverManagerDataSource` with `HikariDataSource` via `DataSourceBuilder.create().type(HikariDataSource.class)` for connection pooling.
+
+11. **Read-only method transactions (H2).** `findByKey()` and `findByDefinitionKey()` changed from `REQUIRES_NEW` to `@Transactional(readOnly = true, propagation = SUPPORTS, transactionManager = "catalogTransactionManager")`.
+
+12. **NoOpRelationCatalogService (H3).** Renamed from `CatalogDisabledConfiguration` — the class is a `@Service` implementation, not a configuration class.
+
+13. **Narrowed degradation catch (L7).** Changed `catch (Exception e)` to `catch (UnsupportedOperationException | DataAccessException e)` in `RelationClaimPersistenceService` to avoid swallowing programming errors.
+
+14. **Removed baselineOnMigrate (M1).** Flyway config no longer includes `.baselineOnMigrate(true)` — the V1 migration uses `CREATE TABLE IF NOT EXISTS` for idempotency.
