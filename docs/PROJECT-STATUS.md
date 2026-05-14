@@ -2,7 +2,7 @@
 
 **Last Updated:** May 14, 2026  
 **Status:** Active — Catalog module design reviewed and planning doc updated. Ready to begin M0 implementation.  
-**Functional Goals:** Implement `lorevault-catalog` Maven submodule with two-tier matching (exact match → create new); integrate with ingestion pipeline; expose REST endpoints. Then: entity browser UI, annotated reader.  
+**Functional Goals:** Implement `lorevault-catalog` Maven submodule through M3 (embedding-assisted clustering): two-tier matching → PostgreSQL backend → idempotency hardening → pgvector semantic similarity. Then: entity browser UI, annotated reader.  
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
 ## What LoreVault Is
@@ -75,7 +75,12 @@ Near-term execution slices:
     - `resolve()` uses `REQUIRES_NEW` transaction — catalog owns its PostgreSQL boundary
 3. **Relation catalog: M2 Idempotency & Hardening**
     - Concurrency-safe `findOrCreate` (`ON CONFLICT DO NOTHING`), backfill detection, metrics, health indicator
-4. **Entity browser UI**
+4. **Relation catalog: M3 Embedding Matching**
+    - pgvector extension, embedding generation for `description`, similarity threshold
+    - Replace exact-only matching with semantic similarity (with configurable threshold)
+    - `pgvector/pgvector:pg16` Docker image
+    - This milestone completes the catalog's core purpose — clustering semantically similar relation kinds
+5. **Entity browser UI**
     - Wikia-style entity browser: browse entities by type, see relations, follow graph edges
     - Depends on catalog providing typed `REL` edges with `definitionKey` labels
 5. **Annotated reader**
