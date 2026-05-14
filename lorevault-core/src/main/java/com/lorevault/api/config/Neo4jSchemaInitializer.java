@@ -143,10 +143,10 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE INDEX llm_call_record_job_step_status IF NOT EXISTS FOR (r:LlmCallRecord) ON (r.jobId, r.step, r.statusRecordId)";
 
     // RelationClaim query indexes
-    private static final String RELATION_CLAIM_CHAPTER_RELTYPE_INDEX =
-            "CREATE INDEX relation_claim_chapter_reltype IF NOT EXISTS FOR (rc:RelationClaim) ON (rc.chapterId, rc.provisionalRelTypeId)";
-    private static final String RELATION_CLAIM_BOOK_RELTYPE_INDEX =
-            "CREATE INDEX relation_claim_book_reltype IF NOT EXISTS FOR (rc:RelationClaim) ON (rc.bookId, rc.provisionalRelTypeId)";
+    private static final String RELATION_CLAIM_CHAPTER_DEFKEY_INDEX =
+            "CREATE INDEX relation_claim_chapter_defkey IF NOT EXISTS FOR (rc:RelationClaim) ON (rc.chapterId, rc.definitionKey)";
+    private static final String RELATION_CLAIM_BOOK_DEFKEY_INDEX =
+            "CREATE INDEX relation_claim_book_defkey IF NOT EXISTS FOR (rc:RelationClaim) ON (rc.bookId, rc.definitionKey)";
 
     // Per-chapter ordering index for events
     private static final String EVENT_PER_CHAPTER_SCENE_INDEX =
@@ -231,8 +231,8 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_STATUS_INDEX, "LlmCallRecord(jobId, step, statusRecordId)"));
         
         // RelationClaim indexes
-        results.add(executeIndex(RELATION_CLAIM_CHAPTER_RELTYPE_INDEX, "RelationClaim(chapterId, provisionalRelTypeId)"));
-        results.add(executeIndex(RELATION_CLAIM_BOOK_RELTYPE_INDEX, "RelationClaim(bookId, provisionalRelTypeId)"));
+        results.add(executeIndex(RELATION_CLAIM_CHAPTER_DEFKEY_INDEX, "RelationClaim(chapterId, definitionKey)"));
+        results.add(executeIndex(RELATION_CLAIM_BOOK_DEFKEY_INDEX, "RelationClaim(bookId, definitionKey)"));
 
         // Event per-chapter ordering index
         results.add(executeIndex(EVENT_PER_CHAPTER_SCENE_INDEX, "Event(chapterId, sceneIndex)"));

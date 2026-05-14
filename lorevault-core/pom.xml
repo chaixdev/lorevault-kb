@@ -56,6 +56,11 @@
             <version>0.6.3</version>
         </dependency>
         <dependency>
+            <groupId>com.lorevault</groupId>
+            <artifactId>lorevault-catalog</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>

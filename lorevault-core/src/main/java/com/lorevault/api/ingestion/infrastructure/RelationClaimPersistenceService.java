@@ -4,11 +4,16 @@ import com.lorevault.api.content.relation.RelationClaim;
 import com.lorevault.api.content.relation.RelationClaimGraphRepository;
 import com.lorevault.api.content.scene.Scene;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
+import com.lorevault.catalog.RelationCatalogDefinition;
+import com.lorevault.catalog.RelationCatalogService;
+import com.lorevault.catalog.RelationQuery;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class RelationClaimPersistenceService {
 
     private static final String SOURCE = "ai-scene-analysis";
-    private static final String UNRESOLVED = "unresolved";
 
     private final RelationClaimGraphRepository relationClaimRepository;
+    private final RelationCatalogService catalogService;
 
     @Transactional
     public void persistExtractedRelationClaims(
@@ -62,11 +67,36 @@ public class RelationClaimPersistenceService {
                     continue;
                 }
 
+                // Resolve catalog identity
+                UUID catalogId = null;
+                String definitionKey = extracted.definitionKey();
+                try {
+                    RelationQuery query = new RelationQuery(
+                            extracted.definitionKey(),
+                            extracted.relationName(),
+                            extracted.subjectKind(),
+                            extracted.objectKind(),
+                            extracted.relationDescription(),
+                            extracted.certainty(),
+                            null,  // evidenceReference — not available at extraction time
+                            chapterId,
+                            sceneId,
+                            Optional.ofNullable(extracted.evidence()).map(e -> e.length() > 500 ? e.substring(0, 500) : e)
+                    );
+                    RelationCatalogDefinition definition = catalogService.resolve(query);
+                    catalogId = definition.id().value();
+                    definitionKey = definition.definitionKey();
+                } catch (UnsupportedOperationException | DataAccessException e) {
+                    log.warn("[RELATION_CLAIM_PERSIST] Catalog resolution failed, persisting without catalog identity: {}", e.getMessage());
+                    // catalogId remains null, definitionKey keeps the extracted value
+                }
+
                 RelationClaim saved = relationClaimRepository.save(new RelationClaim(
                         UUID.randomUUID(),
                         extracted.relationName(),
                         extracted.relationDescription(),
-                        extracted.provisionalRelTypeId(),
+                        catalogId,
+                        definitionKey,
                         extracted.subjectKind(),
                         extracted.subjectName(),
                         extracted.objectKind(),
@@ -78,7 +108,6 @@ public class RelationClaimPersistenceService {
                         chapterId,
                         null,
                         extractionIndex,
-                        UNRESOLVED,
                         null,
                         null
                 ));

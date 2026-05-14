@@ -449,13 +449,13 @@ public class SceneRelationshipAnalysisService {
                         normalizedRelationName = normalizedRelationName.replaceAll("\\s+", " ");
                     }
 
-                    String provisionalRelTypeId = generateProvisionalRelTypeId(normalizedRelationName);
+                    String definitionKey = generateDefinitionKey(normalizedRelationName);
 
                     String normalizedDescription = truncate(normalizeText(claim.relationDescription()), 1000);
                     String normalizedEvidence = truncate(normalizeText(claim.evidence()), 500);
 
                     return new TriadAnalysisModels.RelationClaimExtraction(
-                            provisionalRelTypeId,
+                            definitionKey,
                             subjectParts[0],
                             subjectParts[1],
                             normalizedRelationName,
@@ -506,7 +506,7 @@ public class SceneRelationshipAnalysisService {
         return kind;
     }
 
-    private String generateProvisionalRelTypeId(String relationName) {
+    private String generateDefinitionKey(String relationName) {
         if (relationName == null) {
             return null;
         }
@@ -514,10 +514,10 @@ public class SceneRelationshipAnalysisService {
                 .replace(' ', '_')
                 .replaceAll("[^a-z0-9_]", "");
         if (id.isEmpty()) {
-            LOG.debug("[RELATION_CLAIM] Provisional rel type ID empty after normalization for relationName='{}', using 'unparseable'", relationName);
-            return "R:provisional.unparseable";
+            LOG.debug("[RELATION_CLAIM] Definition key empty after normalization for relationName='{}', using 'unparseable'", relationName);
+            return "R:unparseable";
         }
-        return "R:provisional." + id;
+        return "R:" + id;
     }
 
     private String normalizeCertainty(String certainty) {

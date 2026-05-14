@@ -68,7 +68,7 @@ public final class TriadAnalysisModels {
     }
 
     public record RelationClaimExtraction(
-            String provisionalRelTypeId,
+            String definitionKey,
             String subjectKind,
             String subjectName,
             String relationName,

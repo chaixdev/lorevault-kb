@@ -34,7 +34,8 @@ public record RelationClaim(
         @Id UUID id,
         String relationName,
         String relationDescription,
-        String provisionalRelTypeId,
+        UUID catalogId,
+        String definitionKey,
         String subjectKind,
         String subjectName,
         String objectKind,
@@ -46,7 +47,6 @@ public record RelationClaim(
         UUID chapterId,
         UUID bookId,
         Integer extractionIndex,
-        String resolutionStatus,
         @CreatedDate LocalDateTime createdAt,
         @LastModifiedDate LocalDateTime updatedAt
 ) {}
