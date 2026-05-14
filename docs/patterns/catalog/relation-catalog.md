@@ -110,6 +110,7 @@ persistExtractedRelationClaims(catalogId) {
 - `resolve()` runs in `@Transactional(propagation = REQUIRES_NEW, transactionManager = "catalogTransactionManager")`
 - Read methods use `@Transactional(readOnly = true, propagation = SUPPORTS, transactionManager = "catalogTransactionManager")`
 - The catalog manages its own `DataSource`, `DataSourceTransactionManager`, and Flyway — all conditional on `lorevault.catalog.enabled=true`
+- The Neo4j transaction manager is declared `@Primary` via `Neo4jTransactionManagerPrimaryConfiguration` in `lorevault-core`. When both Neo4j and JDBC transaction managers exist, `TransactionOperations` resolves to the Neo4j one, which `Neo4jTemplate` requires.
 
 If the Neo4j write fails after a successful catalog INSERT, the catalog has a phantom
 definition. This is harmless — `ON CONFLICT DO NOTHING` makes catalog writes idempotent.
