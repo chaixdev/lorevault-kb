@@ -2,8 +2,6 @@ package com.lorevault.api.ingestion.resolution.individual;
 
 import com.lorevault.api.content.association.BookIndividual;
 import com.lorevault.api.content.association.BookIndividualGraphRepository;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
 import com.lorevault.api.library.book.BookGraphRepository;
 
 import java.util.ArrayList;
@@ -22,25 +20,20 @@ import org.neo4j.driver.exceptions.TransientException;
 @Service
 public class BookIndividualReductionService {
 
-    private static final String CLAIM_LANE = "BOOK_INDIVIDUAL_REDUCTION";
-
     private final BookIndividualGraphRepository bookIndividualRepository;
     private final BookGraphRepository bookGraphRepository;
     private final Neo4jClient neo4jClient;
-    private final BookReductionClaimService claimService;
     private final BookIndividualPersistenceService bookIndividualPersistenceService;
 
     public BookIndividualReductionService(
             BookIndividualGraphRepository bookIndividualRepository,
             BookGraphRepository bookGraphRepository,
             Neo4jClient neo4jClient,
-            BookReductionClaimService claimService,
             BookIndividualPersistenceService bookIndividualPersistenceService
     ) {
         this.bookIndividualRepository = bookIndividualRepository;
         this.bookGraphRepository = bookGraphRepository;
         this.neo4jClient = neo4jClient;
-        this.claimService = claimService;
         this.bookIndividualPersistenceService = bookIndividualPersistenceService;
     }
 
@@ -59,19 +52,12 @@ public class BookIndividualReductionService {
             return new BookIndividualResolutionResult(null, false, 0, 0, "Book ID is required");
         }
 
-        if (!claimService.tryAcquireClaimWithRetry(bookId, CLAIM_LANE, 6, 500)) {
-            throw new BookReductionClaimUnavailableException(CLAIM_LANE, bookId);
+        List<BookReductionCandidate> candidates = findReductionCandidates(bookId);
+        if (candidates.isEmpty()) {
+            bookIndividualPersistenceService.replaceBookIndividuals(bookId, List.of());
+            return new BookIndividualResolutionResult(bookId, true, 0, 0, "No chapter individuals found for book");
         }
-        try {
-            List<BookReductionCandidate> candidates = findReductionCandidates(bookId);
-            if (candidates.isEmpty()) {
-                bookIndividualPersistenceService.replaceBookIndividuals(bookId, List.of());
-                return new BookIndividualResolutionResult(bookId, true, 0, 0, "No chapter individuals found for book");
-            }
-            return resolveBook(bookId, candidates);
-        } finally {
-            claimService.releaseClaim(bookId, CLAIM_LANE);
-        }
+        return resolveBook(bookId, candidates);
     }
 
     BookIndividualResolutionResult resolveBook(UUID bookId, List<BookReductionCandidate> candidates) {

@@ -3,8 +3,6 @@ package com.lorevault.api.ingestion.resolution.object;
 import com.lorevault.api.content.association.BookObject;
 import com.lorevault.api.content.association.ChapterObject;
 import com.lorevault.api.content.association.ChapterObjectGraphRepository;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
 import com.lorevault.api.library.book.BookGraphRepository;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -21,22 +19,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class BookObjectReductionService {
 
-    private static final String CLAIM_LANE = "BOOK_OBJECT_REDUCTION";
-
     private final BookGraphRepository bookGraphRepository;
     private final ChapterObjectGraphRepository chapterObjectRepository;
-    private final BookReductionClaimService claimService;
     private final BookObjectPersistenceService bookObjectPersistenceService;
 
     public BookObjectReductionService(
             BookGraphRepository bookGraphRepository,
             ChapterObjectGraphRepository chapterObjectRepository,
-            BookReductionClaimService claimService,
             BookObjectPersistenceService bookObjectPersistenceService
     ) {
         this.bookGraphRepository = bookGraphRepository;
         this.chapterObjectRepository = chapterObjectRepository;
-        this.claimService = claimService;
         this.bookObjectPersistenceService = bookObjectPersistenceService;
     }
 
@@ -55,28 +48,21 @@ public class BookObjectReductionService {
             return new BookObjectResolutionResult(null, false, 0, 0, "Book ID is required");
         }
 
-        if (!claimService.tryAcquireClaimWithRetry(bookId, CLAIM_LANE, 6, 500)) {
-            throw new BookReductionClaimUnavailableException(CLAIM_LANE, bookId);
-        }
-        try {
-            List<ChapterObject> chapterObjects = chapterObjectRepository.findByBookId(bookId).stream()
-                    .filter(this::isResolvable)
-                    .sorted(Comparator
-                            .comparing(ChapterObject::normalizedName, Comparator.nullsLast(String::compareTo))
-                            .thenComparing(ChapterObject::displayName, Comparator.nullsLast(String::compareTo))
-                            .thenComparing(ChapterObject::chapterId, Comparator.nullsLast(UUID::compareTo))
-                            .thenComparing(ChapterObject::id, Comparator.nullsLast(UUID::compareTo)))
-                    .toList();
+        List<ChapterObject> chapterObjects = chapterObjectRepository.findByBookId(bookId).stream()
+                .filter(this::isResolvable)
+                .sorted(Comparator
+                        .comparing(ChapterObject::normalizedName, Comparator.nullsLast(String::compareTo))
+                        .thenComparing(ChapterObject::displayName, Comparator.nullsLast(String::compareTo))
+                        .thenComparing(ChapterObject::chapterId, Comparator.nullsLast(UUID::compareTo))
+                        .thenComparing(ChapterObject::id, Comparator.nullsLast(UUID::compareTo)))
+                .toList();
 
-            if (chapterObjects.isEmpty()) {
-                bookObjectPersistenceService.replaceBookObjects(bookId, List.of(), List.of());
-                return new BookObjectResolutionResult(bookId, true, 0, 0, "No chapter objects found for book");
-            }
-
-            return resolveBook(bookId, chapterObjects);
-        } finally {
-            claimService.releaseClaim(bookId, CLAIM_LANE);
+        if (chapterObjects.isEmpty()) {
+            bookObjectPersistenceService.replaceBookObjects(bookId, List.of(), List.of());
+            return new BookObjectResolutionResult(bookId, true, 0, 0, "No chapter objects found for book");
         }
+
+        return resolveBook(bookId, chapterObjects);
     }
 
     BookObjectResolutionResult resolveBook(UUID bookId, List<ChapterObject> chapterObjects) {

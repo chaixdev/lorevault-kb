@@ -3,8 +3,6 @@ package com.lorevault.api.ingestion.resolution.collective;
 import com.lorevault.api.content.association.BookCollective;
 import com.lorevault.api.content.association.ChapterCollective;
 import com.lorevault.api.content.association.ChapterCollectiveGraphRepository;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
 import com.lorevault.api.library.book.BookGraphRepository;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -21,22 +19,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class BookCollectiveReductionService {
 
-    private static final String CLAIM_LANE = "BOOK_COLLECTIVE_REDUCTION";
-
     private final BookGraphRepository bookGraphRepository;
     private final ChapterCollectiveGraphRepository chapterCollectiveRepository;
-    private final BookReductionClaimService claimService;
     private final BookCollectivePersistenceService bookCollectivePersistenceService;
 
     public BookCollectiveReductionService(
             BookGraphRepository bookGraphRepository,
             ChapterCollectiveGraphRepository chapterCollectiveRepository,
-            BookReductionClaimService claimService,
             BookCollectivePersistenceService bookCollectivePersistenceService
     ) {
         this.bookGraphRepository = bookGraphRepository;
         this.chapterCollectiveRepository = chapterCollectiveRepository;
-        this.claimService = claimService;
         this.bookCollectivePersistenceService = bookCollectivePersistenceService;
     }
 
@@ -55,28 +48,21 @@ public class BookCollectiveReductionService {
             return new BookCollectiveResolutionResult(null, false, 0, 0, "Book ID is required");
         }
 
-        if (!claimService.tryAcquireClaimWithRetry(bookId, CLAIM_LANE, 6, 500)) {
-            throw new BookReductionClaimUnavailableException(CLAIM_LANE, bookId);
-        }
-        try {
-            List<ChapterCollective> chapterCollectives = chapterCollectiveRepository.findByBookId(bookId).stream()
-                    .filter(this::isResolvable)
-                    .sorted(Comparator
-                            .comparing(ChapterCollective::normalizedName, Comparator.nullsLast(String::compareTo))
-                            .thenComparing(ChapterCollective::displayName, Comparator.nullsLast(String::compareTo))
-                            .thenComparing(ChapterCollective::chapterId, Comparator.nullsLast(UUID::compareTo))
-                            .thenComparing(ChapterCollective::id, Comparator.nullsLast(UUID::compareTo)))
-                    .toList();
+        List<ChapterCollective> chapterCollectives = chapterCollectiveRepository.findByBookId(bookId).stream()
+                .filter(this::isResolvable)
+                .sorted(Comparator
+                        .comparing(ChapterCollective::normalizedName, Comparator.nullsLast(String::compareTo))
+                        .thenComparing(ChapterCollective::displayName, Comparator.nullsLast(String::compareTo))
+                        .thenComparing(ChapterCollective::chapterId, Comparator.nullsLast(UUID::compareTo))
+                        .thenComparing(ChapterCollective::id, Comparator.nullsLast(UUID::compareTo)))
+                .toList();
 
-            if (chapterCollectives.isEmpty()) {
-                bookCollectivePersistenceService.replaceBookCollectives(bookId, List.of(), List.of());
-                return new BookCollectiveResolutionResult(bookId, true, 0, 0, "No chapter collectives found for book");
-            }
-
-            return resolveBook(bookId, chapterCollectives);
-        } finally {
-            claimService.releaseClaim(bookId, CLAIM_LANE);
+        if (chapterCollectives.isEmpty()) {
+            bookCollectivePersistenceService.replaceBookCollectives(bookId, List.of(), List.of());
+            return new BookCollectiveResolutionResult(bookId, true, 0, 0, "No chapter collectives found for book");
         }
+
+        return resolveBook(bookId, chapterCollectives);
     }
 
     BookCollectiveResolutionResult resolveBook(UUID bookId, List<ChapterCollective> chapterCollectives) {

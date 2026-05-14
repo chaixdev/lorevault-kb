@@ -5,7 +5,6 @@ import com.lorevault.api.content.association.BookLocationGraphRepository;
 import com.lorevault.api.library.book.BookGraphRepository;
 import com.lorevault.api.content.association.ChapterLocation;
 import com.lorevault.api.content.association.ChapterLocationGraphRepository;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -25,25 +24,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class BookLocationReductionService {
 
-    private static final String CLAIM_LANE = "BOOK_LOCATION_REDUCTION";
-
     private final BookLocationGraphRepository bookLocationRepository;
     private final BookGraphRepository bookGraphRepository;
     private final ChapterLocationGraphRepository chapterLocationRepository;
-    private final BookReductionClaimService claimService;
     private final BookLocationPersistenceService bookLocationPersistenceService;
 
     public BookLocationReductionService(
             BookLocationGraphRepository bookLocationRepository,
             BookGraphRepository bookGraphRepository,
             ChapterLocationGraphRepository chapterLocationRepository,
-            BookReductionClaimService claimService,
             BookLocationPersistenceService bookLocationPersistenceService
     ) {
         this.bookLocationRepository = bookLocationRepository;
         this.bookGraphRepository = bookGraphRepository;
         this.chapterLocationRepository = chapterLocationRepository;
-        this.claimService = claimService;
         this.bookLocationPersistenceService = bookLocationPersistenceService;
     }
 
@@ -62,25 +56,18 @@ public class BookLocationReductionService {
             return new BookLocationResolutionResult(null, false, 0, 0, "Book ID is required");
         }
 
-        if (!claimService.tryAcquireClaimWithRetry(bookId, CLAIM_LANE, 6, 500)) {
-            throw new BookReductionClaimUnavailableException(CLAIM_LANE, bookId);
-        }
-        try {
-            List<ChapterLocation> chapterLocations = chapterLocationRepository.findByBookId(bookId).stream()
-                    .filter(this::isResolvable)
-                    .sorted(Comparator
-                            .comparing(ChapterLocation::normalizedName, Comparator.nullsLast(String::compareTo))
-                            .thenComparing(ChapterLocation::displayName, Comparator.nullsLast(String::compareTo)))
-                    .toList();
+        List<ChapterLocation> chapterLocations = chapterLocationRepository.findByBookId(bookId).stream()
+                .filter(this::isResolvable)
+                .sorted(Comparator
+                        .comparing(ChapterLocation::normalizedName, Comparator.nullsLast(String::compareTo))
+                        .thenComparing(ChapterLocation::displayName, Comparator.nullsLast(String::compareTo)))
+                .toList();
 
-            if (chapterLocations.isEmpty()) {
-                bookLocationPersistenceService.replaceBookLocations(bookId, List.of(), List.of());
-                return new BookLocationResolutionResult(bookId, true, 0, 0, "No chapter locations found for book");
-            }
-            return resolveBook(bookId, chapterLocations);
-        } finally {
-            claimService.releaseClaim(bookId, CLAIM_LANE);
+        if (chapterLocations.isEmpty()) {
+            bookLocationPersistenceService.replaceBookLocations(bookId, List.of(), List.of());
+            return new BookLocationResolutionResult(bookId, true, 0, 0, "No chapter locations found for book");
         }
+        return resolveBook(bookId, chapterLocations);
     }
 
     BookLocationResolutionResult resolveBook(UUID bookId, List<ChapterLocation> chapterLocations) {
