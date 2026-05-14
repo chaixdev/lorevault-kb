@@ -1,8 +1,8 @@
 # LoreVault Project Status
 
 **Last Updated:** May 14, 2026  
-**Status:** Active — Catalog module design reviewed and planning doc updated. Ready to begin M0 implementation.  
-**Functional Goals:** Implement `lorevault-catalog` Maven submodule through M3 (embedding-assisted clustering): two-tier matching → PostgreSQL backend → idempotency hardening → pgvector semantic similarity. Then: entity browser UI, annotated reader.  
+**Status:** Active — Catalog module M0+M1 shipped. Dual-database architecture in place (PostgreSQL for catalog, Neo4j for graph). Ready for M2 hardening or next feature.  
+**Functional Goals:** Complete catalog M2 (metrics, health indicator) and M3 (pgvector embedding matching). Then: entity browser UI, annotated reader.  
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
 ## What LoreVault Is
@@ -15,8 +15,9 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Stack: Java 21, Spring Boot 3.5.4, Spring AI 1.1.4, Neo4j 5.26
 - All domain content entities annotated `@Node` directly (no mirror Node classes)
 - Internal indirection layers removed — services inject concrete beans/repositories directly
-- Maven structure: `lorevault-core` contains the feature-oriented core packages, and `lorevault-web` contains the HTTP/UI edge
-- Core package structure: 7 top-level feature-oriented packages under `com.lorevault.api` in `lorevault-core` (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`). The empty `catalog/` package has been removed — the catalog module will use `com.lorevault.catalog` (no `api` segment) as a new Maven submodule.
+- Maven structure: `lorevault-core` contains the feature-oriented core packages, `lorevault-web` contains the HTTP/UI edge, and `lorevault-catalog` is a standalone closed module with its own PostgreSQL database
+- Core package structure: 7 top-level feature-oriented packages under `com.lorevault.api` in `lorevault-core` (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`)
+- Catalog package structure: `com.lorevault.catalog` (no `api` segment) with public API surface and `internal` package enforced by `@ApplicationModule(CLOSED)` and ArchUnit rules
 - Edge package structure: `com.lorevault.api.web/**` lives in `lorevault-web`, with `web.command/`, `web.query/`, and `web.ui/` as the canonical edge shape
 - `lorevault-core` now uses capability-oriented internal packages instead of the old per-context `application/domain/infrastructure` split: `content/{association,chapter,chunk,mention,scene,timeline}`, `ingestion/{completion,content,events,job,pipeline,resolution,scene,submission,triad}`, `library/{book,series,service,universe}`, `search/{extraction,model,rag,semantic}`, and `ai/{chunking,embedding,llm}` plus shared local support packages where they remain semantically justified
 - Scene detection now enforces context-budget checks and deterministic segmented fallback for oversized chapters
@@ -56,42 +57,31 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Stages 5–6 event path shipped** — LLM semantic merge verification (Stage 5) evaluates each ANN candidate pair and decides MERGE / KEEP_SEPARATE / UNRESOLVED; BookEvent write path (Stage 6) clusters MERGE decisions and writes thin `BookEvent` nodes plus `ChapterEvent -[:REFERS_TO]-> BookEvent` edges; the event entity resolution pipeline is now end-to-end from EventMention through BookEvent
 - **Post-split architecture and ingestion hardening continued** — recent follow-up commits enforced architecture boundaries across `ai`, `content`, and `ingestion`; aligned async ingestion handlers with transaction rules; tightened LLM-call/status persistence and book-reduction claim handling; stabilized semantic-search test wiring; refreshed individual-resolution coverage to match the current triad-analysis flow; and codified retry-safe handler ownership guidance
 - **Step execution API surface shipped** — controllers, DTOs, event mapper, query endpoint, StepKey/StepDefinition/StepCatalog, *Operation interfaces, curl-driven skill, and supporting docs/rules; enables agentic step-by-step pipeline execution for iterative development
+- **Relation catalog M0+M1 shipped** — `lorevault-catalog` Maven submodule with closed module boundary (`@ApplicationModule(CLOSED)`, ArchUnit rules); public API types (`RelationCatalogService`, `RelationCatalogDefinition`, `RelationCatalogId`, `RelationQuery`, `RelationKindSignature`, `EmbeddingFunction`); PostgreSQL backend with Flyway V1 schema, `ON CONFLICT DO NOTHING` idempotency, and HikariCP connection pooling; dual-database transaction boundary (catalog: PostgreSQL `REQUIRES_NEW`, core: Neo4j); `RelationClaim` updated with `catalogId` + `definitionKey` (replacing `provisionalRelTypeId` + `resolutionStatus`); degradation mode when catalog is disabled; Testcontainers PostgreSQL integration tests; `NoOpRelationCatalogService` for catalog-disabled state
 
 ## What Is Next
 
 Near-term execution slices:
-1. **Relation catalog: M0 Contract & Interface**
-    - Create `lorevault-catalog` Maven submodule with own `pom.xml` (only `spring-boot-starter`, `lombok`)
-    - Public API types: `RelationCatalogService`, `RelationCatalogDefinition`, `RelationCatalogId`, `RelationQuery`, `RelationKindSignature` in `com.lorevault.catalog` package
-    - `InMemoryRelationCatalogStore` with exact-match-only logic (no PostgreSQL yet)
-    - `RelationClaim` gains `catalogId` (UUID, nullable) and `definitionKey` (String, nullable); removes `provisionalRelTypeId` and `resolutionStatus`
-    - `@ApplicationModule(type=CLOSED)` on `package-info.java`
-    - ArchUnit boundary rules verify catalog doesn't depend on `ingestion`/`web`/`search`
-    - `lorevault.catalog.enabled` toggle with `CatalogDisabledConfiguration`
-2. **Relation catalog: M1 PostgreSQL + Exact Match**
-    - `PostgresRelationCatalogStore`, Flyway V1 schema, Testcontainers PostgreSQL
-    - `docker-compose.yml` postgres service, DataSource exclusion fix, Flyway `locations` scoping
-    - `CatalogController` REST endpoints
-    - `resolve()` uses `REQUIRES_NEW` transaction — catalog owns its PostgreSQL boundary
-3. **Relation catalog: M2 Idempotency & Hardening**
-    - Concurrency-safe `findOrCreate` (`ON CONFLICT DO NOTHING`), backfill detection, metrics, health indicator
-4. **Relation catalog: M3 Embedding Matching**
+1. **Relation catalog: M2 Hardening**
+    - Metrics and health indicator for catalog PostgreSQL connectivity
+    - Backfill detection for orphaned claims (deferred — greenfield, no orphaned claims yet)
+2. **Relation catalog: M3 Embedding Matching**
     - pgvector extension, embedding generation for `description`, similarity threshold
     - Replace exact-only matching with semantic similarity (with configurable threshold)
     - `pgvector/pgvector:pg16` Docker image
     - This milestone completes the catalog's core purpose — clustering semantically similar relation kinds
-5. **Entity browser UI**
+3. **Entity browser UI**
     - Wikia-style entity browser: browse entities by type, see relations, follow graph edges
     - Depends on catalog providing typed `REL` edges with `definitionKey` labels
-5. **Annotated reader**
+4. **Annotated reader**
     - Display chapter text with browsable annotations derived from graph: entity mentions, relation claims, event markers
     - Depends on entity browser for entity detail pages and catalog for relation labels
-6. **Q&A and retrieval quality validation**
+5. **Q&A and retrieval quality validation**
     - Run representative lore questions against baseline, graph-aware, and hybrid retrieval
     - Classify failures as missing graph data, missing typed edges, missing retrieval paths, answer assembly gaps, or spoiler-gating issues
-7. **Event extraction and resolution tuning — evidence-triggered follow-up**
+6. **Event extraction and resolution tuning — evidence-triggered follow-up**
     - Return to prompt/coref/reduction tuning when validation shows event questions fail
-8. **Concept entity lane**
+7. **Concept entity lane**
     - Implement the remaining regular entity ladder for Concept when validation shows species/category/technology questions are blocked
 
 Broader planned directions remain intact after these slices:
@@ -102,7 +92,7 @@ Broader planned directions remain intact after these slices:
 
 ## Active Architectural Direction
 
-- Keep Neo4j for graph + vectors
+- Keep Neo4j for graph + vectors; PostgreSQL for catalog definitions
 - Keep Spring AI current
 - Prefer direct services and repositories over internal indirection layers
 - Keep feature-oriented top-level packages and capability-oriented internal packages
@@ -110,7 +100,7 @@ Broader planned directions remain intact after these slices:
 
 ## Open Decisions
 
-All 4 decisions from the original modulith plan are resolved. No architectural decision is currently blocking feature work; the main open question is next-feature sequencing.
+All 4 decisions from the original modulith plan are resolved. The dual-database transaction boundary decision is documented in [ADR-012](adr/012-dual-database-transaction-boundary.md). No architectural decision is currently blocking feature work; the main open question is next-feature sequencing.
 
 ## Canonical Entry Points
 
@@ -120,6 +110,7 @@ All 4 decisions from the original modulith plan are resolved. No architectural d
 - [Patterns](patterns/README.md)
 - [Entity Resolution Ladder](patterns/ingestion/entity-resolution-ladder.md)
 - [Architecture Decisions](adr/README.md)
+- [ADR-012: Dual-database transaction boundary](adr/012-dual-database-transaction-boundary.md)
 - [Concepts](concepts/README.md)
 - [Rules](rules/README.md)
 - [Brainstorm](brainstorm/README.md)

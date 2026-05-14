@@ -9,12 +9,26 @@ For generic package boundary rules, see [coding-standards.md](coding-standards.m
 
 ## Module Dependency Direction
 
-`lorevault-web` → `lorevault-core` is the only legal cross-module dependency.
+The legal dependency direction is:
 
-`lorevault-core` must not import from `lorevault-web`. Any dependency in that direction
-is a build cycle and a defect. This includes: Spring MVC annotations in core,
-`@RestController` in core, or any import of a `lorevault-web` class from within
-`lorevault-core`.
+```
+lorevault-web → lorevault-core → lorevault-catalog
+```
+
+`lorevault-core` must not import from `lorevault-web`. `lorevault-catalog` must not import
+from `lorevault-core` or `lorevault-web`. Any dependency in the reverse direction is a
+build cycle and a defect. This includes: Spring MVC annotations in core,
+`@RestController` in core, or any import of a `lorevault-web` or `lorevault-core` class
+from within `lorevault-catalog`.
+
+The catalog module (`lorevault-catalog`) is a **closed module** — its `internal` package
+is not exported. The only legal integration point is the public API surface in
+`com.lorevault.catalog`: `RelationCatalogService`, `RelationCatalogDefinition`,
+`RelationCatalogId`, `RelationQuery`, `RelationKindSignature`, and `EmbeddingFunction`.
+
+New modules should use the `com.lorevault.{domain}` package convention (no `api` segment).
+The existing `com.lorevault.api.*` packages are a legacy convention — a future task will
+rename them to drop the `api` segment.
 
 ---
 

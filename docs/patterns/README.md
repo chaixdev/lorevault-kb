@@ -49,6 +49,10 @@ If a pattern currently depends on proposal history or future-work context, extra
 - [Scene Detection Budgeted Segmentation](ingestion/scene-detection-budgeted-segmentation.md) — chapter-segmentation context budget guard with deterministic split fallback and split-risk labels
 - [Text Chunking Specification](ingestion/text-chunking-specification.md) — narrative-aware chunk sizing and sliding-window subdivision for embedding and retrieval
 
+### Catalog
+
+- [Relation Catalog](catalog/relation-catalog.md) — definition-key matching, dual-database transaction boundary, degradation mode, and module isolation
+
 ### Content
 
 - [Graph Shape Specification](content/graph-shape-specification.md) — canonical present-state graph shape and direction-reading semantics for structural, temporal, and evidence relations
