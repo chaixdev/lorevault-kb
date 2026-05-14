@@ -12,7 +12,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag("architecture")
-@AnalyzeClasses(packages = "com.lorevault.api", importOptions = ImportOption.DoNotIncludeTests.class)
+@AnalyzeClasses(packages = {"com.lorevault.api", "com.lorevault.catalog"}, importOptions = ImportOption.DoNotIncludeTests.class)
 class ModulithBoundaryArchitectureTest {
 
     @ArchTest
@@ -20,7 +20,6 @@ class ModulithBoundaryArchitectureTest {
             .that().resideInAPackage("com.lorevault.api..")
             .and().resideOutsideOfPackages(
                     "com.lorevault.api.ai..",
-                    "com.lorevault.api.catalog..",
                     "com.lorevault.api.config..",
                     "com.lorevault.api.content..",
                     "com.lorevault.api.health..",
@@ -47,11 +46,17 @@ class ModulithBoundaryArchitectureTest {
 
     @ArchTest
     static final ArchRule catalog_must_not_depend_on_ingestion_or_web = noClasses()
-            .that().resideInAnyPackage("com.lorevault.api.catalog..")
+            .that().resideInAnyPackage("com.lorevault.catalog..")
             .should().dependOnClassesThat().resideInAnyPackage(
                     "com.lorevault.api.ingestion..",
                     "com.lorevault.api.web..",
                     "com.lorevault.api.search..")
+            .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule catalog_internal_must_not_be_accessed_from_outside = noClasses()
+            .that().resideOutsideOfPackage("com.lorevault.catalog..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.lorevault.catalog.internal..")
             .allowEmptyShould(true);
 
     @ArchTest
