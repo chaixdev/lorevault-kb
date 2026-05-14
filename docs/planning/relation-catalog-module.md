@@ -82,7 +82,6 @@ lorevault-kb/
 │       └── ingestion/.../RelationClaimPersistenceService.java  (calls resolve())
 └── lorevault-web/                        (gets catalog transitively via core)
     └── src/.../
-        ├── web/CatalogController.java             (REST endpoints)
         └── architecture/ModulithVerificationTest.java
 ```
 
@@ -155,6 +154,76 @@ Using `REQUIRES_NEW` ensures the catalog's transaction commits or rolls back ind
 ### Idempotency
 
 `resolve()` must be idempotent on the miss path. If two concurrent ingestion calls both miss on "is allied with," both will try to INSERT. Exactly one should win — `ON CONFLICT DO NOTHING` on the unique `(definition_key)` constraint handles this. Phantom definitions from partial failures (catalog INSERT succeeded, Neo4j write failed) are harmless: they're unreferenced rows that a future cleanup job can sweep.
+
+## Embedding Integration (M3)
+
+The catalog needs embedding calls for semantic matching (M3), but must not depend on `lorevault-core` or Spring AI. The solution is a **function interface owned by the catalog, implemented by core**:
+
+```java
+// In lorevault-catalog — catalog owns the contract
+package com.lorevault.catalog;
+
+@FunctionalInterface
+public interface EmbeddingFunction {
+    float[] embed(String text);
+}
+```
+
+```java
+// In lorevault-core — core provides the implementation
+@Configuration
+public class CatalogEmbeddingConfig {
+
+    @Bean
+    @ConditionalOnProperty(name = "lorevault.catalog.enabled", havingValue = "true")
+    public EmbeddingFunction embeddingFunction(
+            @Qualifier("embeddingModel") EmbeddingModel embeddingModel) {
+        return embeddingModel::embed;
+    }
+}
+```
+
+```java
+// In catalog's internal store — zero Spring AI knowledge
+public class PostgresRelationCatalogStore {
+    private final EmbeddingFunction embeddingFunction;  // injected
+
+    public Optional<RelationCatalogDefinition> findBestMatch(String description) {
+        float[] queryVector = embeddingFunction.embed(description);
+        // pgvector similarity search...
+    }
+}
+```
+
+### Why not a shared `lorevault-ai` module?
+
+A shared module pulling AI infrastructure out of `lorevault-core` was considered and rejected for MVP:
+
+1. **The catalog's AI need is narrow.** M3 needs exactly one operation: `embed(String) → float[]`. ~90% of the current AI infrastructure (ChatClients, prompt templates, retry policies, health checks) is irrelevant to the catalog.
+2. **The function interface is a stronger boundary.** The catalog has zero knowledge of Spring AI — it can't accidentally import `EmbeddingModel` or any Spring AI types. A shared module would expose the full Spring AI surface to the catalog.
+3. **`SpringAiConfig` can't be cleanly split.** The 4 beans share private helpers (`restClientBuilderWithTimeout`, `buildApi`) and properties that span a single YAML prefix (`lorevault.ai.models.*`). Splitting would create configuration drift or duplicate sources of truth.
+4. **No dumping ground risk.** A shared module inevitably attracts "AI-adjacent" code that doesn't belong together. The function interface prevents this — the catalog can't shove random things into an interface it owns.
+5. **Zero operational weight.** No new POM, no reactor order dependency, no CI surface. The interface is 3 lines of Java.
+
+**When would extraction make sense?** If a third module (`lorevault-agent`, `lorevault-eval`) genuinely needs the full AI stack (ChatClient + EmbeddingModel + retry + prompts), then extract `lorevault-ai`. At that point there are two real consumers and the boundary is informed by actual usage. The function interface doesn't preclude this — the catalog just changes its field type from `EmbeddingFunction` to `EmbeddingModel`.
+
+### Batch embedding
+
+If the catalog eventually needs batch embedding for efficiency, the interface extends with a default method:
+
+```java
+@FunctionalInterface
+public interface EmbeddingFunction {
+    float[] embed(String text);
+
+    // Default: naive loop; core provides optimized override
+    default List<float[]> embedBatch(List<String> texts) {
+        return texts.stream().map(this::embed).toList();
+    }
+}
+```
+
+Core's `CatalogEmbeddingConfig` overrides `embedBatch` using `EmbeddingModel.call(EmbeddingRequest)` for batch efficiency. The catalog never imports Spring AI types.
 
 ## Public Contract
 
@@ -326,7 +395,9 @@ The two Neo4j indexes on `(chapterId, provisionalRelTypeId)` and `(bookId, provi
 
 The normalization function produces `R:` + lowercase + underscores from the raw name: `"is a member of"` → `"R:is_a_member_of"`.
 
-### REST API
+### REST API (Optional)
+
+Not required for MVP. The catalog's primary consumer is the ingestion pipeline calling `catalogService.resolve()` internally. A REST API for browsing definitions can be added later if useful for debugging or admin tooling.
 
 ```
 GET /api/catalog/definitions/{id}                  → findByKey
@@ -338,9 +409,9 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 | Milestone | Capability | Effort | Status |
 |-----------|-----------|--------|--------|
 | **M0: Contract & Interface** | `lorevault-catalog` Maven submodule, public API types, `InMemoryRelationCatalogStore` (exact-match only, no PostgreSQL), `catalogId` + `definitionKey` on `RelationClaim`, `@ApplicationModule(CLOSED)`, ArchUnit rules | S (2-3 days) | 🔲 |
-| **M1: PostgreSQL + Exact Match** | `PostgresRelationCatalogStore`, Flyway V1 schema, Testcontainers PostgreSQL, `docker-compose.yml` postgres service, DataSource exclusion fix, Flyway `locations` scoping, `CatalogController` REST endpoints | M (1-2 weeks) | 🔲 |
+| **M1: PostgreSQL + Exact Match** | `PostgresRelationCatalogStore`, Flyway V1 schema, Testcontainers PostgreSQL, `docker-compose.yml` postgres service, DataSource exclusion fix, Flyway `locations` scoping | M (1-2 weeks) | 🔲 |
 | **M2: Idempotency & Hardening** | Concurrency-safe `findOrCreate` (`ON CONFLICT DO NOTHING`), backfill detection for orphaned claims, metrics, health indicator, `CatalogDisabledConfiguration` | M (1-2 weeks) | 🔲 |
-| **M3: Embedding Matching** | pgvector extension, embedding generation for `description`, similarity threshold, replace exact-only with semantic matching, `pgvector/pgvector:pg16` Docker image | L (2-4 weeks) | 🔲 Planned |
+| **M3: Embedding Matching** | `EmbeddingFunction` interface (catalog owns contract, core provides impl), pgvector extension, embedding generation for `description`, similarity threshold, replace exact-only with semantic matching, `pgvector/pgvector:pg16` Docker image | L (2-4 weeks) | 🔲 Planned |
 | **M4: Graph Edge Projection** | `REL` edges in Neo4j from resolved `catalogId`, graph-aware retrieval, Q&A validation | L (3-5 weeks) | 🔲 Planned |
 
 ## Implementation Risks
@@ -358,13 +429,15 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 
 ## Out of Scope
 
-- Embedding generation and vector similarity matching (step 6).
-- LLM calls inside the catalog module.
+- Embedding generation and vector similarity matching (step 6) — planned for M3 via the `EmbeddingFunction` interface pattern (see [Embedding Integration](#embedding-integration-m3)).
+- LLM calls inside the catalog module. The catalog is a matching engine, not an LLM orchestrator. It receives pre-extracted data from the ingestion pipeline.
+- Shared `lorevault-ai` Maven module. The catalog's embedding need is served by the `EmbeddingFunction` interface pattern — catalog owns the contract, core provides the implementation. A shared module would be premature (see [Embedding Integration](#embedding-integration-m3)).
 - Human review, promotion, or lifecycle status management.
 - Stable graph-edge projection.
 - Inverse relation modeling.
 - Generic catalog abstractions for ascriptions, properties, or actions.
 - Entity kind catalog (e.g., `E:soldier`, `E:headquarters`). Entity kinds have multi-dimensional clustering (gender, profession, social status) that doesn't fit the flat normalize→match pattern. Disambiguation of entity kind properties is a catalog concern, but the data model is fundamentally different and requires separate design.
+- REST API (Optional). Not required for MVP. The catalog's primary consumer is the ingestion pipeline calling `catalogService.resolve()` internally. A REST API for browsing definitions can be added later if useful for debugging or admin tooling.
 
 ## Resolved Questions
 
@@ -375,6 +448,8 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 3. **When signature matching produces multiple results, which definition wins?** Signature match is **skipped in MVP**. The `(subjectKind, objectKind)` signature is too coarse — it would conflate semantically unrelated relations. Exact-match-only until embedding similarity is available. See [Matching Strategy](#matching-strategy).
 
 4. **Should `RelationClaim` store `definitionKey` on the node?** Yes. Both `catalogId` (UUID) and `definitionKey` (string) are stored on `RelationClaim`. The UUID is for programmatic reference; the `definitionKey` provides human-readable context during graph traversal without a catalog round-trip.
+
+5. **Should AI infrastructure be extracted into a shared `lorevault-ai` module?** No. The catalog's embedding need is served by the `EmbeddingFunction` interface pattern — the catalog defines the contract (`float[] embed(String text)`), core provides the implementation (wrapping Spring AI's `EmbeddingModel`). This is a stronger boundary (catalog has zero Spring AI knowledge), has no operational weight (no new POM), and avoids the shared-module dumping-ground risk. Extraction into `lorevault-ai` is justified only when a third module genuinely needs the full AI stack.
 
 ## Success Criteria
 
@@ -387,7 +462,7 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 - [ ] `RelationClaim` stores `catalogId` (UUID, nullable) and `definitionKey` (String, nullable). Removes `provisionalRelTypeId` and `resolutionStatus`.
 - [ ] `definitionKey` uses `R:` namespace prefix (e.g., `R:is_a_member_of`).
 - [ ] `RelationClaimPersistenceService` calls `catalogService.resolve()` before Neo4j persistence, stores `catalogId` + `definitionKey` on the claim.
-- [ ] `CatalogController` exposes `GET /api/catalog/definitions/{id}` and `GET /api/catalog/definitions?definitionKey={key}`.
+- [ ] `EmbeddingFunction` interface defined in `com.lorevault.catalog` — catalog owns the contract, core provides the implementation. No shared `lorevault-ai` module.
 - [ ] Integration tests with Testcontainers PostgreSQL verify idempotency and matching logic.
 - [ ] Spring Modulith verification passes.
 - [ ] ArchUnit boundary rules pass.
