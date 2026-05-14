@@ -6,14 +6,16 @@ import com.lorevault.catalog.RelationKindSignature;
 import com.lorevault.catalog.RelationQuery;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -38,9 +40,9 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
                     rs.getString("description"),
                     List.of(),  // enriched separately
                     List.of(),  // enriched separately
-                    rs.getTimestamp("created").toInstant(),
-                    rs.getTimestamp("updated").toInstant(),
-                    rs.getTimestamp("last_seen").toInstant()
+                    rs.getObject("created", OffsetDateTime.class).toInstant(),
+                    rs.getObject("updated", OffsetDateTime.class).toInstant(),
+                    rs.getObject("last_seen", OffsetDateTime.class).toInstant()
             );
 
     private static final RowMapper<RelationKindSignature> SIGNATURE_ROW_MAPPER = (rs, rowNum) ->
@@ -62,7 +64,7 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
                     FROM catalog_definition
                     WHERE definition_key = :definitionKey
                     """,
-                    Map.of("definitionKey", definitionKey),
+                    new MapSqlParameterSource("definitionKey", definitionKey),
                     DEFINITION_ROW_MAPPER
             );
             return Optional.ofNullable(def).map(this::enrichWithRelations);
@@ -80,7 +82,7 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
                     FROM catalog_definition
                     WHERE id = :id
                     """,
-                    Map.of("id", id.value()),
+                    new MapSqlParameterSource().addValue("id", id.value()),
                     DEFINITION_ROW_MAPPER
             );
             return Optional.ofNullable(def).map(this::enrichWithRelations);
@@ -97,19 +99,21 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
 
         // Idempotent insert: ON CONFLICT DO NOTHING on the unique definition_key.
         // If the insert is a no-op (concurrent caller won the race), re-read the existing row.
+        OffsetDateTime nowOdt = OffsetDateTime.ofInstant(now, ZoneOffset.UTC);
+        var params = new MapSqlParameterSource()
+                .addValue("id", id)
+                .addValue("definitionKey", query.definitionKey())
+                .addValue("displayName", displayName)
+                .addValue("description", query.description())
+                .addValue("now", nowOdt);
+
         int inserted = jdbcTemplate.update(
                 """
                 INSERT INTO catalog_definition (id, definition_key, display_name, description, created, updated, last_seen)
                 VALUES (:id, :definitionKey, :displayName, :description, :now, :now, :now)
                 ON CONFLICT (definition_key) DO NOTHING
                 """,
-                Map.of(
-                        "id", id,
-                        "definitionKey", query.definitionKey(),
-                        "displayName", displayName,
-                        "description", query.description(),
-                        "now", now
-                )
+                params
         );
 
         if (inserted == 0) {
@@ -127,11 +131,10 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
                     VALUES (:definitionId, :subjectKind, :objectKind)
                     ON CONFLICT (definition_id, subject_kind, object_kind) DO NOTHING
                     """,
-                    Map.of(
-                            "definitionId", id,
-                            "subjectKind", query.subjectKind(),
-                            "objectKind", query.objectKind()
-                    )
+                    new MapSqlParameterSource()
+                            .addValue("definitionId", id)
+                            .addValue("subjectKind", query.subjectKind())
+                            .addValue("objectKind", query.objectKind())
             );
         }
 
@@ -142,10 +145,9 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
                     VALUES (:definitionId, :rawName)
                     ON CONFLICT (definition_id, raw_name) DO NOTHING
                     """,
-                    Map.of(
-                            "definitionId", id,
-                            "rawName", query.rawName()
-                    )
+                    new MapSqlParameterSource()
+                            .addValue("definitionId", id)
+                            .addValue("rawName", query.rawName())
             );
         }
 
@@ -169,13 +171,15 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
      * Enrich a definition with its signature and variant rows.
      */
     private RelationCatalogDefinition enrichWithRelations(RelationCatalogDefinition def) {
+        var idParam = new MapSqlParameterSource().addValue("id", def.id().value());
+
         List<RelationKindSignature> signatures = jdbcTemplate.query(
                 """
                 SELECT subject_kind, object_kind
                 FROM catalog_definition_signature
                 WHERE definition_id = :id
                 """,
-                Map.of("id", def.id().value()),
+                idParam,
                 SIGNATURE_ROW_MAPPER
         );
 
@@ -185,7 +189,7 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
                 FROM catalog_definition_variant
                 WHERE definition_id = :id
                 """,
-                Map.of("id", def.id().value()),
+                idParam,
                 String.class
         );
 

@@ -25,7 +25,7 @@ public class Neo4jTransactionManagerPrimaryConfiguration {
 
     @Bean
     @Primary
-    public PlatformTransactionManager neo4jTransactionManager(
+    public PlatformTransactionManager transactionManager(
             Driver driver,
             DatabaseSelectionProvider databaseSelectionProvider) {
         return new Neo4jTransactionManager(driver, databaseSelectionProvider);
