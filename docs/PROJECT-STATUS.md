@@ -1,8 +1,8 @@
 # LoreVault Project Status
 
-**Last Updated:** May 14, 2026  
-**Status:** Active — Catalog module M0+M1 shipped. Dual-database architecture in place (PostgreSQL for catalog, Neo4j for graph). Ready for M2 hardening or next feature.  
-**Functional Goals:** Complete catalog M2 (metrics, health indicator) and M3 (pgvector embedding matching). Then: entity browser UI, annotated reader.  
+**Last Updated:** May 20, 2026
+**Status:** Active — Ingestion pipeline hardening in progress. Catalog M0+M1 shipped. Dual-database architecture in place. n8n + AWS cloud-native strategy defined in companion brainstorm docs. Terminology alignment task identified.
+**Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state, terminology alignment (resolution → reduction). Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
 ## What LoreVault Is
@@ -61,34 +61,70 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 
 ## What Is Next
 
-Near-term execution slices:
-1. **Relation catalog: M2 Hardening**
-    - Metrics and health indicator for catalog PostgreSQL connectivity
-    - Backfill detection for orphaned claims (deferred — greenfield, no orphaned claims yet)
-2. **Relation catalog: M3 Embedding Matching**
-    - pgvector extension, embedding generation for `description`, similarity threshold
-    - Replace exact-only matching with semantic similarity (with configurable threshold)
-    - `pgvector/pgvector:pg16` Docker image
-    - This milestone completes the catalog's core purpose — clustering semantically similar relation kinds
-3. **Entity browser UI**
-    - Wikia-style entity browser: browse entities by type, see relations, follow graph edges
-    - Depends on catalog providing typed `REL` edges with `definitionKey` labels
-4. **Annotated reader**
-    - Display chapter text with browsable annotations derived from graph: entity mentions, relation claims, event markers
-    - Depends on entity browser for entity detail pages and catalog for relation labels
-5. **Q&A and retrieval quality validation**
-    - Run representative lore questions against baseline, graph-aware, and hybrid retrieval
-    - Classify failures as missing graph data, missing typed edges, missing retrieval paths, answer assembly gaps, or spoiler-gating issues
-6. **Event extraction and resolution tuning — evidence-triggered follow-up**
-    - Return to prompt/coref/reduction tuning when validation shows event questions fail
-7. **Concept entity lane**
-    - Implement the remaining regular entity ladder for Concept when validation shows species/category/technology questions are blocked
+### Phase A: Complete ingestion pipeline hardening
+
+Near-term execution slices before pivoting to AWS/n8n:
+
+1. **Concept entity lane**
+   - Implement the 6th regular entity ladder for Concept using the established `Mention → ChapterEntity → BookEntity` pattern
+   - Covers species, technologies, artifact classes, doctrines, roles, and other narrative-significant categories
+   - See: `docs/planning/2026-04-30T1237_concept-resolution-lane.md`
+   - This is mostly mechanical application of patterns already established by the Individual, Location, Object, Collective, and Event lanes
+
+2. **Relation evidence harvesting to shippable state**
+   - Phase 0 is complete: `RelationClaim` nodes extracted and persisted, prompt engineering tuned, idempotency guards in place
+   - Complete the catalog module's core purpose — Phase 1 candidate matching (exact + lemma + embedding), Phase 2 stable `REL` edge projection
+   - Get the catalog into a state where promoted relation types produce queryable typed edges
+   - See: `docs/planning/2026-05-07T1917_relation-evidence-harvesting.md`, `docs/planning/2026-05-13T2027_relation-catalog-module.md`
+
+3. **Terminology alignment: resolution/reduction → consolidation**
+   - The pipeline uses three terms (resolution, reduction, aggregate) for the same class of operation
+   - Rename chapter-level `*Resolution*` and book-level `*Reduction*` handlers, services, results, events → `*Consolidation*`
+   - See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md` — **decided: consolidation**
+   - Apply before Concept lane implementation so the new lane uses canonical terminology
+
+4. **Relation catalog M2 Hardening** (optional — if time permits before pivot)
+   - Metrics and health indicator for catalog PostgreSQL connectivity
+   - M3 pgvector embedding matching can be deferred until relation volume warrants it
+
+### Phase B: AWS cloud-native foundation
+
+5. **ECS Fargate deployment**
+   - Containerize `lorevault-web`, deploy to ECS Fargate with ALB, VPC, security groups
+   - IAM roles with least-privilege for ECS tasks — this may be the actual first AWS task before containers
+   - Secrets Manager for API keys, CloudWatch structured logging
+   - See: `docs/brainstorm/aws-cloud-native/2026-05-11T2027_aws-cloud-native-learning-path.md`
+
+### Phase C: n8n sprint — retrieval and interaction
+
+6. **HITL review gates**
+   - `PENDING_REVIEW` job status, `ReviewController`, n8n human-in-the-loop workflow
+   - Multi-channel notifications (Slack) via n8n's 400+ connectors
+
+7. **Agentic retrieval MVP**
+   - Cypher-as-tool endpoint (`POST /api/query/generate-cypher`) — Spring generates + executes validated Cypher
+   - n8n LangChain Agent with tools pointing to Spring endpoints
+   - See: `docs/brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md`
+
+### Phase D: AWS native pipeline
+
+8. **SQS pipeline stages** — replace in-process Spring events with distributed message queues
+9. **DynamoDB job state** — replace in-memory `ConcurrentHashMap` with conditional writes and TTL
+10. **Step Functions orchestration** — replace `IngestionCompletionCoordinator` fan-in with state machine
+
+### Deferred
 
 Broader planned directions remain intact after these slices:
-- Broader entity extraction (Concept and later claims)
-- Broader event modeling beyond the current Scene-as-Event carrier
+- Entity browser UI (Wikia-style entity browsing)
+- Annotated reader (chapter text with graph-derived annotations)
+- Q&A retrieval quality validation (run representative lore questions against retrieval modes)
+- Event extraction and resolution tuning (evidence-triggered follow-up)
+- Broader entity modeling (Concept and later claims)
 - Production hardening (observability, rate limiting, error budgets)
-- Improved candidate generation and scoring for identity resolution after the current deterministic ladder
+
+### Sequencing rationale
+
+The pipeline hardening items (A1–A3) close the remaining open lanes in the ingestion pipeline, leaving a coherent state before the AWS pivot. The AWS → n8n → AWS sequence (Phases B–D) reflects the insight from the [n8n strategy doc](brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md): n8n teaches operational patterns (retry, HITL, agent loops) in hours to days; AWS teaches platform skills (IAM, VPC, SQS semantics, DynamoDB conditional writes) that n8n can't teach. The interleaved sequence uses n8n's speed for pattern learning, then returns to AWS for platform depth.
 
 ## Active Architectural Direction
 
@@ -97,10 +133,16 @@ Broader planned directions remain intact after these slices:
 - Prefer direct services and repositories over internal indirection layers
 - Keep feature-oriented top-level packages and capability-oriented internal packages
 - Keep event-driven ingestion where it adds real value
+- **New:** Ingestion pipeline (deterministic DAG) stays in Spring Modulith. Retrieval + interaction (agentic tool-calling, HITL, notifications) will be n8n-hosted with Spring providing tools via REST endpoints. Pipeline infrastructure (SQS, DynamoDB, Step Functions) will migrate to AWS in a dedicated clone. See companion docs for the strategy:
+    - [n8n Ingestion-Retrieval Boundary Strategy](brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md)
+    - [AWS Cloud-Native Learning Path](brainstorm/aws-cloud-native/2026-05-11T2027_aws-cloud-native-learning-path.md)
 
 ## Open Decisions
 
-All 4 decisions from the original modulith plan are resolved. The dual-database transaction boundary decision is documented in [ADR-012](adr/012-dual-database-transaction-boundary.md). No architectural decision is currently blocking feature work; the main open question is next-feature sequencing.
+- **Terminology alignment:** The pipeline will use **consolidation** as the canonical term for both chapter-level and book-level entity pipeline steps. Rename `*Resolution*` → `*Consolidation*` and `*Reduction*` → `*Consolidation*`. Decision made; implementation deferred. See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md`
+- **n8n deployment model:** Self-hosted Docker alongside LoreVault, or n8n Cloud? Decision deferred to n8n sprint phase.
+- **AWS clone strategy:** How much of `lorevault-kb` domain logic should be shared as a library vs. rewritten for `lorevault-aws`? Decision deferred to AWS foundation phase.
+- **Cypher Template Catalog:** Should this become a fourth Maven module following the Relation Catalog pattern? Deferred — depends on agentic retrieval usage patterns.
 
 ## Canonical Entry Points
 
@@ -114,6 +156,9 @@ All 4 decisions from the original modulith plan are resolved. The dual-database 
 - [Concepts](concepts/README.md)
 - [Rules](rules/README.md)
 - [Brainstorm](brainstorm/README.md)
+- [n8n Ingestion-Retrieval Boundary Strategy](brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md) — strategic n8n enhancement plan
+- [AWS Cloud-Native Learning Path](brainstorm/aws-cloud-native/2026-05-11T2027_aws-cloud-native-learning-path.md) — AWS deployment strategy
+- [Entity Pipeline Terminology Alignment](planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md) — resolution → reduction terminology proposal
 
 ## Historical / Transitional Notes
 
