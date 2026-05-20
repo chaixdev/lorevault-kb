@@ -33,6 +33,7 @@ It does not treat brainstorm material as truth or promote speculative future des
    - Read [docs/README.md](../../../docs/README.md) and [docs/brainstorm/README.md](../../../docs/brainstorm/README.md) first.
    - Treat folder meaning as a hard routing constraint.
    - The governing principle is truthful docs over completeness.
+   - **Naming convention:** All new files in `docs/brainstorm/` and `docs/planning/` must use an ISO datetime prefix (`YYYY-MM-DDTHHMM_topic-slug.md`), not a month/year suffix. Generate the timestamp with `date +%Y-%m-%dT%H%M`.
 
 2. Establish the documentation basis before promoting anything.
    - Identify the active brainstorm proposal.

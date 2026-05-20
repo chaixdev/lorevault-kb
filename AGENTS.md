@@ -79,3 +79,5 @@ When working directly on code (not delegating), load the skill via the `skill` t
 | Bounded future work / parked items | `docs/planning/` |
 | Historical / superseded | `docs/archive/` |
 | Throwaway scratch | Outside the repo (system temp) |
+
+**Naming convention for brainstorm and planning files:** Use an ISO datetime prefix (`YYYY-MM-DDTHHMM_topic-slug.md`), not a month/year suffix. Example: `2026-05-11T0930_orchestration-domain-separation.md`, not `orchestration-domain-separation-may-2026.md`.
