@@ -13,7 +13,7 @@ services:
       - neo4j_logs:/logs
 
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     container_name: lorevault-postgres
     environment:
       POSTGRES_USER: lorevault

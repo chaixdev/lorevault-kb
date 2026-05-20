@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
 **Last Updated:** May 20, 2026
-**Status:** Active — Ingestion pipeline hardening in progress. Catalog M0+M1 shipped. Dual-database architecture in place. n8n + AWS cloud-native strategy defined in companion brainstorm docs. Terminology alignment task identified.
+**Status:** Active — Ingestion pipeline hardening in progress. Catalog M0+M1+M2 shipped. Dual-database architecture in place. n8n + AWS cloud-native strategy defined in companion brainstorm docs. Terminology alignment task identified.
 **Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state, terminology alignment (resolution → reduction). Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
@@ -57,7 +57,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Stages 5–6 event path shipped** — LLM semantic merge verification (Stage 5) evaluates each ANN candidate pair and decides MERGE / KEEP_SEPARATE / UNRESOLVED; BookEvent write path (Stage 6) clusters MERGE decisions and writes thin `BookEvent` nodes plus `ChapterEvent -[:REFERS_TO]-> BookEvent` edges; the event entity resolution pipeline is now end-to-end from EventMention through BookEvent
 - **Post-split architecture and ingestion hardening continued** — recent follow-up commits enforced architecture boundaries across `ai`, `content`, and `ingestion`; aligned async ingestion handlers with transaction rules; tightened LLM-call/status persistence and book-reduction claim handling; stabilized semantic-search test wiring; refreshed individual-resolution coverage to match the current triad-analysis flow; and codified retry-safe handler ownership guidance
 - **Step execution API surface shipped** — controllers, DTOs, event mapper, query endpoint, StepKey/StepDefinition/StepCatalog, *Operation interfaces, curl-driven skill, and supporting docs/rules; enables agentic step-by-step pipeline execution for iterative development
-- **Relation catalog M0+M1 shipped** — `lorevault-catalog` Maven submodule with closed module boundary (`@ApplicationModule(CLOSED)`, ArchUnit rules); public API types (`RelationCatalogService`, `RelationCatalogDefinition`, `RelationCatalogId`, `RelationQuery`, `RelationKindSignature`, `EmbeddingFunction`); PostgreSQL backend with Flyway V1 schema, `ON CONFLICT DO NOTHING` idempotency, and HikariCP connection pooling; dual-database transaction boundary (catalog: PostgreSQL `REQUIRES_NEW`, core: Neo4j); `RelationClaim` updated with `catalogId` + `definitionKey` (replacing `provisionalRelTypeId` + `resolutionStatus`); degradation mode when catalog is disabled; Testcontainers PostgreSQL integration tests; `NoOpRelationCatalogService` for catalog-disabled state
+- **Relation catalog M0+M1+M2 shipped** — `lorevault-catalog` Maven submodule with closed module boundary (`@ApplicationModule(CLOSED)`, ArchUnit rules); public API types (`RelationCatalogService`, `RelationCatalogDefinition`, `RelationCatalogId`, `RelationQuery`, `RelationKindSignature`, `EmbeddingFunction`); PostgreSQL backend with Flyway V1 schema, `ON CONFLICT DO NOTHING` idempotency, and HikariCP connection pooling; dual-database transaction boundary (catalog: PostgreSQL `REQUIRES_NEW`, core: Neo4j); `RelationClaim` updated with `catalogId` + `definitionKey`; degradation mode when catalog is disabled; Testcontainers PostgreSQL integration tests; `NoOpRelationCatalogService` for catalog-disabled state; `CatalogHealthIndicator` bean (surfaces at `/actuator/health`); V2 Flyway migration for pgvector extension; `pgvector/pgvector:pg16` Docker image
 
 ## What Is Next
 
@@ -83,9 +83,11 @@ Near-term execution slices before pivoting to AWS/n8n:
    - See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md` — **decided: consolidation**
    - Apply before Concept lane implementation so the new lane uses canonical terminology
 
-4. **Relation catalog M2 Hardening** (optional — if time permits before pivot)
-   - Metrics and health indicator for catalog PostgreSQL connectivity
-   - M3 pgvector embedding matching can be deferred until relation volume warrants it
+4. **Relation catalog M3 Embedding Matching** (deferred — implement when relation volume warrants it)
+    - Wire `EmbeddingFunction` in `lorevault-core` (wraps Spring AI `EmbeddingModel`)
+    - Add `embedding vector(1536)` column to `catalog_definition` (V3 migration)
+    - Implement semantic similarity matching in `resolve()` using pgvector cosine distance
+    - Replace exact-match-only with embedding-based disambiguation
 
 ### Phase B: AWS cloud-native foundation
 

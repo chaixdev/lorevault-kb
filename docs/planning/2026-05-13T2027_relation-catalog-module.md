@@ -411,8 +411,8 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 |-----------|-----------|--------|--------|
 | **M0: Contract & Interface** | `lorevault-catalog` Maven submodule, public API types, `InMemoryRelationCatalogStore` (exact-match only, no PostgreSQL), `catalogId` + `definitionKey` on `RelationClaim`, `@ApplicationModule(CLOSED)`, ArchUnit rules | S (2-3 days) | ✅ |
 | **M1: PostgreSQL + Exact Match** | `PostgresRelationCatalogStore`, Flyway V1 schema, Testcontainers PostgreSQL, `docker-compose.yml` postgres service, DataSource exclusion fix, Flyway `locations` scoping, idempotent `findOrCreate` (`ON CONFLICT DO NOTHING`) | M (1-2 weeks) | ✅ |
-| **M2: Hardening** | Metrics, health indicator. ~~Backfill detection~~ (deferred — greenfield, no orphaned claims yet). `CatalogDisabledConfiguration` moved to M0/M1. | M (1-2 weeks) | 🔲 |
-| **M3: Embedding Matching** | `EmbeddingFunction` interface (catalog owns contract, core provides impl), pgvector extension, embedding generation for `description`, similarity threshold, replace exact-only with semantic matching, `pgvector/pgvector:pg16` Docker image | L (2-4 weeks) | 🔲 Planned |
+| **M2: Health + pgvector Prep** | `CatalogHealthIndicator` bean (surfaces at `/actuator/health`), V2 Flyway migration (`CREATE EXTENSION IF NOT EXISTS vector`), `pgvector/pgvector:pg16` Docker image. Metrics deferred to separate planning. | S (1 day) | ✅ |
+| **M3: Embedding Matching** | `EmbeddingFunction` interface (catalog owns contract, core provides impl), `embedding` column on `catalog_definition`, embedding generation for `description`, similarity threshold, replace exact-only with semantic matching | L (2-4 weeks) | 🔲 Planned |
 | **M4: Graph Edge Projection** | `REL` edges in Neo4j from resolved `catalogId`, graph-aware retrieval, Q&A validation | L (3-5 weeks) | 🔲 Planned |
 
 ## Implementation Risks
@@ -528,3 +528,15 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 13. **Narrowed degradation catch (L7).** Changed `catch (Exception e)` to `catch (UnsupportedOperationException | DataAccessException e)` in `RelationClaimPersistenceService` to avoid swallowing programming errors.
 
 14. **Removed baselineOnMigrate (M1).** Flyway config no longer includes `.baselineOnMigrate(true)` — the V1 migration uses `CREATE TABLE IF NOT EXISTS` for idempotency.
+
+### M2 Implementation Notes (Health + pgvector Prep)
+
+1. **Narrowed M2 scope.** Metrics were deferred to separate planning — they're a deeper cross-cutting concern that deserves its own design pass. M2 now delivers only the health indicator and pgvector preparation work that M3 needs.
+
+2. **`CatalogHealthIndicator`.** A standard Spring Boot `HealthIndicator` bean, conditional on `lorevault.catalog.enabled=true`. Runs `SELECT 1` via `NamedParameterJdbcTemplate` and returns `Health.up()` or `Health.down()`. Auto-surfaced at `/actuator/health` as the `catalog` component. No changes to `SystemHealthService` needed — the catalog health is a separate concern surfaced through the standard Actuator endpoint.
+
+3. **`spring-boot-starter-actuator` added to catalog POM.** Required for `HealthIndicator` and `Health` types. The catalog module now depends on Actuator — a small but justified dependency for operational visibility.
+
+4. **V2 Flyway migration.** `CREATE EXTENSION IF NOT EXISTS vector` — idempotent, safe to run even if V1 already ran. Prepares the database for the `embedding` column that M3 will add.
+
+5. **Docker image switched.** `postgres:16` → `pgvector/pgvector:pg16` in `docker-compose.yml`. The pgvector image is a superset — zero risk. Required for the V2 migration's `CREATE EXTENSION vector`.
