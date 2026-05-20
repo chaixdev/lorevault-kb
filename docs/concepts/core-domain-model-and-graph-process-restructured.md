@@ -322,7 +322,7 @@ All claims carry: `sourceId`, `subjectId`, `certainty (0..1)`, `polarity (assert
 
 ### Relation type taxonomy
 
-See `../brainstorm/query/2026-05-05_claims-model-extensions-parked.md` for the parked relation type taxonomy (three bins: SPATIAL, PARTICIPANT, INFLUENCE), meta-layer relation types for the claims hypergraph, and provisional relation clustering notes.
+See `../brainstorm/query/2026-05-05T1911_claims-model-extensions-parked.md` for the parked relation type taxonomy (three bins: SPATIAL, PARTICIPANT, INFLUENCE), meta-layer relation types for the claims hypergraph, and provisional relation clustering notes.
 
 ### Publication coordinates
 
@@ -362,7 +362,7 @@ Purpose: standardize properties, relation types, and actions; enable semantic re
 - reltypes(id, label, description, subjectTypes, objectTypes, inverseId?, synonyms[], status, embedding)
 - actions(id, label, description, synonyms[], status, embedding)
 
-For the revised relation discovery and graph-aware routing sequence, see `../brainstorm/query/2026-04-12_graph-aware-qa-design-april-2026.md` and `../planning/relation-catalog-module.md`.
+For the revised relation discovery and graph-aware routing sequence, see `../brainstorm/query/2026-04-12T1816_graph-aware-qa-design.md` and `../planning/2026-05-13T2027_relation-catalog-module.md`.
 
 ## Confidence aggregation
 

@@ -3,9 +3,9 @@
 **Status:** Conceptual  
 **Scope:** Durable ownership boundaries for LoreVault graph knowledge, not a full implementation walkthrough  
 **Primary sources:**
-- [../brainstorm/query/2026-04-15_robust-qa-strategy-report.md](../brainstorm/query/2026-04-15_robust-qa-strategy-report.md) — explicit evidence/interpretation/runtime split and ownership test
-- [../brainstorm/scene-detection/scene-detection-naming-analysis-april-2026.md](../brainstorm/scene-detection/scene-detection-naming-analysis-april-2026.md) — layered naming alignment
-- [../brainstorm/devx/2026-04-16_operator-dashboard-and-admin-api-brainstorm.md](../brainstorm/devx/2026-04-16_operator-dashboard-and-admin-api-brainstorm.md) — evidence floor vs disposable derived layers framing
+- [../brainstorm/query/2026-04-15T1816_robust-qa-strategy-report.md](../brainstorm/query/2026-04-15T1816_robust-qa-strategy-report.md) — explicit evidence/interpretation/runtime split and ownership test
+- [../brainstorm/scene-detection/2026-04-15T1816_scene-detection-naming-analysis.md](../brainstorm/scene-detection/2026-04-15T1816_scene-detection-naming-analysis.md) — layered naming alignment
+- [../brainstorm/devx/2026-04-16T0855_operator-dashboard-and-admin-api-brainstorm.md](../brainstorm/devx/2026-04-16T0855_operator-dashboard-and-admin-api-brainstorm.md) — evidence floor vs disposable derived layers framing
 - [entity-claim-model.md](entity-claim-model.md) — claim/provenance-first conceptual direction
 - [../patterns/ingestion/entity-resolution-ladder.md](../patterns/ingestion/entity-resolution-ladder.md) — evidence persisted before consolidation (Individual, Location, Object, and Collective lanes)
 

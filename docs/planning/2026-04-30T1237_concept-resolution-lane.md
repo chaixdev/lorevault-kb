@@ -94,5 +94,5 @@ Expected implementation surfaces:
 - `docs/patterns/ingestion/entity-resolution-ladder.md`
 - `docs/patterns/ingestion/handler-retry-safety.md`
 - `docs/rules/handler-design-contract.md`
-- `docs/planning/relation-catalog-module.md`
-- `docs/planning/qa-retrieval-quality-validation.md`
+- `docs/planning/2026-05-13T2027_relation-catalog-module.md`
+- `docs/planning/2026-04-30T1237_qa-retrieval-quality-validation.md`

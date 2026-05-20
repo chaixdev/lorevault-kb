@@ -36,10 +36,10 @@ The correct starting point is evidence harvesting: let the LLM describe relation
 ### Conceptual model references
 
 - `docs/concepts/core-domain-model-and-graph-process-restructured.md` — catalog module design, claim model, three-bin structure
-- `docs/brainstorm/query/2026-04-12_graph-aware-qa-design-april-2026.md` — revised first slice, catalog module shape, downstream retrieval implications
-- `docs/brainstorm/query/2026-05-05_claims-model-extensions-parked.md` — parked extensions including three-bin taxonomy, hearsay chains, ClaimedEvent
-- `docs/brainstorm/query/2026-05-05_event-sourcing-claims-proposed.md` — append-only claim history, per-boundary replay, derived projections
-- `docs/planning/relation-catalog-module.md` — catalog module scope, success criteria, open questions
+- `docs/brainstorm/query/2026-04-12T1816_graph-aware-qa-design.md` — revised first slice, catalog module shape, downstream retrieval implications
+- `docs/brainstorm/query/2026-05-05T1911_claims-model-extensions-parked.md` — parked extensions including three-bin taxonomy, hearsay chains, ClaimedEvent
+- `docs/brainstorm/query/2026-05-05T1911_event-sourcing-claims-proposed.md` — append-only claim history, per-boundary replay, derived projections
+- `docs/planning/2026-05-13T2027_relation-catalog-module.md` — catalog module scope, success criteria, open questions
 
 ### Catalog module boundary
 
@@ -209,7 +209,7 @@ It should **not** own: scene analysis, claim persistence, entity resolution, edg
    - Merged candidate set feeds into vector similarity filtering
    - Spoiler gating on `pubCoords` filters edges at the reader's boundary
 
-4. **Q&A validation against enriched graph** — run the question set from `qa-retrieval-quality-validation.md` against the graph with `REL` edges present. Classify improvements and remaining gaps.
+4. **Q&A validation against enriched graph** — run the question set from `2026-04-30T1237_qa-retrieval-quality-validation.md` against the graph with `REL` edges present. Classify improvements and remaining gaps.
 
 **Decision point after Phase 2:**
 
@@ -226,7 +226,7 @@ It should **not** own: scene analysis, claim persistence, entity resolution, edg
 
 ### Phase 3 — Event-Sourcing Claims (Future)
 
-This phase is documented in `docs/brainstorm/query/2026-05-05_event-sourcing-claims-proposed.md`. It depends on Phase 2 producing stable `REL` edges and is not in scope for the current implementation cycle.
+This phase is documented in `docs/brainstorm/query/2026-05-05T1911_event-sourcing-claims-proposed.md`. It depends on Phase 2 producing stable `REL` edges and is not in scope for the current implementation cycle.
 
 Key ideas carried forward:
 
@@ -278,11 +278,11 @@ Key ideas carried forward:
 
 ## Links
 
-- `docs/planning/relation-catalog-module.md` — catalog module scope, success criteria, open questions
-- `docs/planning/qa-retrieval-quality-validation.md` — Q&A validation planning
-- `docs/brainstorm/query/2026-04-12_graph-aware-qa-design-april-2026.md` — revised first slice, catalog module shape, retrieval implications
-- `docs/brainstorm/query/2026-05-05_claims-model-extensions-parked.md` — parked extensions (ClaimedEvent, hearsay, three-bin taxonomy)
-- `docs/brainstorm/query/2026-05-05_event-sourcing-claims-proposed.md` — event-sourcing claims (Phase 3)
+- `docs/planning/2026-05-13T2027_relation-catalog-module.md` — catalog module scope, success criteria, open questions
+- `docs/planning/2026-04-30T1237_qa-retrieval-quality-validation.md` — Q&A validation planning
+- `docs/brainstorm/query/2026-04-12T1816_graph-aware-qa-design.md` — revised first slice, catalog module shape, retrieval implications
+- `docs/brainstorm/query/2026-05-05T1911_claims-model-extensions-parked.md` — parked extensions (ClaimedEvent, hearsay, three-bin taxonomy)
+- `docs/brainstorm/query/2026-05-05T1911_event-sourcing-claims-proposed.md` — event-sourcing claims (Phase 3)
 - `docs/concepts/core-domain-model-and-graph-process-restructured.md` — core domain model, claim bins, catalog module
 - `docs/patterns/ingestion/entity-resolution-ladder.md` — entity resolution pattern
 - `docs/patterns/ingestion/triad-analysis.md` — triad normalization pipeline
@@ -605,7 +605,7 @@ The oracle review identified that `RelationClaim implements Mention` was acciden
 
 4. **`RelationClaimPersistenceServiceTest.java`** — Removed 6 `pubCoords` null assertions.
 
-5. **`docs/brainstorm/query/2026-05-11_provenance-publication-coordinates-strategy.md`** — Added working conclusions: CONTAINS edge is provenance (keep, renamed from MENTIONS); `Mention` Java interface is entity-mention-specific; `chunkId` is not a default durable anchor; ADRs are written after implementation, not before.
+5. **`docs/brainstorm/query/2026-05-11T2027_provenance-publication-coordinates-strategy.md`** — Added working conclusions: CONTAINS edge is provenance (keep, renamed from MENTIONS); `Mention` Java interface is entity-mention-specific; `chunkId` is not a default durable anchor; ADRs are written after implementation, not before.
 
 **Rationale:**
 

@@ -10,7 +10,7 @@ For the architectural decision behind the dual-database approach, see
 
 For the full milestone progression and future plans (M2 hardening, M3 embedding matching,
 M4 graph edge projection), see the
-[planning doc](../../planning/relation-catalog-module.md).
+[planning doc](../../planning/2026-05-13T2027_relation-catalog-module.md).
 
 ---
 

@@ -443,8 +443,8 @@ That makes this less a pure scene-linking problem and more a future **event mode
 - `../../concepts/Narrative event DAG.md`
 - `../../concepts/event-model.md`
 - `../../concepts/Entity-Event-Claim-model.md`
-- `./2026-04-17_scene-temporal-linking-brainstorm.md`
-- `./scene-temporal-linking-solution-design-proposal-april-2026.md`
+- `./2026-04-17T1113_scene-temporal-linking-brainstorm.md`
+- `./2026-04-18T1113_scene-temporal-linking-solution-design-proposal.md`
 
 ---
 

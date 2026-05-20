@@ -1088,11 +1088,11 @@ The more ambitious semantic layers — especially claims as a Q&A-serving eviden
 
 ## Related Materials
 
-- `../query/graph-aware-qa-design-april-2026.md`
-- `../query/multi-entity-retrieval-external-research-april-2026.md`
+- `../query/2026-04-12T1816_graph-aware-qa-design.md`
+- `../query/2026-04-12T1816_multi-entity-retrieval-external-research.md`
 - `../../concepts/event-dag.md`
 - `../../concepts/Entity-Event-Claim-model.md`
 - `../../concepts/entity-claim-model.md`
-- `../entity-modeling/concept-model-critique-april-2026.md`
+- `../entity-modeling/2026-04-11T1210_concept-model-critique.md`
 - `../../patterns/search/rag-retrieval-chain.md`
 - `../../patterns/ingestion/triad-analysis.md`

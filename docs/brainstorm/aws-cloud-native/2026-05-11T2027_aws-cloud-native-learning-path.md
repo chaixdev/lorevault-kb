@@ -32,6 +32,8 @@ For context, here is the current architecture that any cloud transformation woul
 - **Secrets:** `.env` file for API keys and database credentials
 - **CI/CD:** None for deployment; Maven for build
 
+A companion exploration ([n8n integration](../n8n/2026-05-19T2154_strategic-n8n-enhancement.md)) proposes introducing n8n as the retrieval and interaction layer: agentic Q&A, human-in-the-loop review gates, multi-channel notifications, and webhook trigger surface. n8n handles operational/interaction concerns that this AWS doc does not duplicate. The two documents are complementary: n8n owns retrieval and interaction patterns; AWS owns pipeline infrastructure and platform skills.
+
 ---
 
 ## 3. CV Gap Analysis
@@ -46,6 +48,8 @@ For context, here is the current architecture that any cloud transformation woul
 | IaC | Ansible (configuration management) | Terraform, CDK, or CloudFormation |
 | Observability | Application logging only | Structured logging, CloudWatch, X-Ray, distributed tracing |
 | Container deployment on cloud | Docker, Kubernetes, Rancher (on-prem) | ECS Fargate, ECR, ALB |
+| Workflow automation + agentic AI | None | n8n, HITL approval state machines, LangChain agent tool-calling loops, multi-channel notification routing |
+| n8n as product | None | Self-hosted workflow automation platform configuration, Git-based workflow source control, LangChain node orchestration, cross-platform API contract design |
 
 ---
 
@@ -112,7 +116,9 @@ Note the distinction between two different "catalogs" in this system:
 
 ## 5. Phased Learning Path
 
-Each phase builds on the previous one. Phases 1–4 form a coherent v1 deployment. Phases 5–7 are where distributed systems learning accelerates. Phases 8–10 round out the picture.
+Each phase builds on the previous one. Phases 1–4 form a coherent v1 deployment of the AWS foundation. A parallel n8n sprint (see the [n8n integration doc](../n8n/2026-05-19T2154_strategic-n8n-enhancement.md#7-implementation-sequencing)) ships agentic retrieval, HITL gates, and notifications during weeks 4–5, building pattern intuition that accelerates Phases 5–7. Phases 8–10 round out the picture.
+
+The key insight: **n8n teaches patterns, AWS teaches platform skills.** Retry, escalation, HITL, and agentic tool-calling are patterns you can learn in n8n in hours to days. IAM, VPC, SQS semantics, DynamoDB conditional writes, and Step Functions ASL are platform skills only AWS can teach. The interleaved sequence uses n8n's speed for pattern learning, then returns to AWS for platform depth once you know *what* you're building.
 
 ### Phase 1 — Compute foundation
 
@@ -189,6 +195,20 @@ Each phase builds on the previous one. Phases 1–4 form a coherent v1 deploymen
 - MDC (Mapped Diagnostic Context) propagation across async boundaries is how distributed tracing starts
 - CloudWatch Logs Insights is surprisingly powerful for ad hoc operational queries
 
+### Interlude: n8n Sprint (Weeks 4–5) — Patterns and Demos
+
+**Goal:** Ship working agentic retrieval, HITL review gates, and multi-channel notifications using n8n. Build pattern intuition that will accelerate the AWS-native pipeline work in Phases 5–7.
+
+This sprint is fully detailed in the [n8n integration doc](../n8n/2026-05-19T2154_strategic-n8n-enhancement.md#7-implementation-sequencing). In summary:
+
+- **HITL review gate** (3-5 days): n8n workflow with human-in-the-loop node. Spring adds `PENDING_REVIEW` status and review endpoints. Zero custom UI — n8n's built-in review interface.
+- **Notifications** (2-3 days): Slack/email alerts on job failures via n8n's 400+ connectors. Spring's ingestion pipeline remains unaware of n8n.
+- **Agentic retrieval MVP** (1 week): n8n LangChain Agent with tools pointing to Spring endpoints — including `POST /api/query/generate-cypher` (Spring generates + executes validated Cypher from free-text). Working AI product demo in under 2 weeks.
+
+**Why this interlude:** By the time you reach Phases 5–7, you'll have hands-on experience with retry patterns, HITL state machines, and agentic tool-calling loops from n8n. You'll know *what* these patterns look like in practice. That means Phases 5–7 are platform learning (SQS semantics, DynamoDB conditional writes, Step Functions ASL) rather than inventing patterns from scratch at the same time you're learning AWS verbs.
+
+**CV signal:** n8n platform proficiency, LangChain agent design, HITL workflow state machines, multi-channel notification routing, Cypher-as-tool API contract design
+
 ### Phase 5 — SQS for pipeline stage transitions
 
 **Goal:** Replace in-process Spring events with distributed message queues.
@@ -220,7 +240,7 @@ This is the single highest-value learning investment in the entire path.
 |---|---|
 | DynamoDB table for `IngestionJob` | Job status, step progress, retry counts, timestamps |
 | DynamoDB table for `StepExecution` | Per-step state: pending, running, completed, failed |
-| DynamoDB table for `RelationCatalog` | Managed relation vocabulary: `{name, usageHint, subjectKind, objectKind}` → candidate IDs, correlations, provisional keys. Lookup-heavy, not traversal-heavy — DynamoDB with GSIs on `(name, subjectKind, objectKind)` is the natural graduation from the in-process v1 specified in the [Catalog Module](../../planning/relation-catalog-module.md) |
+| DynamoDB table for `RelationCatalog` | Managed relation vocabulary: `{name, usageHint, subjectKind, objectKind}` → candidate IDs, correlations, provisional keys. Lookup-heavy, not traversal-heavy — DynamoDB with GSIs on `(name, subjectKind, objectKind)` is the natural graduation from the in-process v1 specified in the [Catalog Module](../../planning/2026-05-13T2027_relation-catalog-module.md) |
 | Conditional writes | Safe concurrent updates — "set status to RUNNING if status is PENDING" |
 | TTL on completed jobs | Automatic cleanup of old job records |
 | GSI for queries | "Find all failed jobs in the last hour"; "find all provisional relation types pending review" |
@@ -339,14 +359,15 @@ LoreVault's domain makes certain AWS patterns unusually natural to learn:
 - **Neo4j on AWS**: Run as a self-managed container on ECS, use Neo4j AuraDB (managed), or use Amazon EC2? AuraDB is the simplest but most expensive; ECS is the most educational; EC2 is the middle ground. This decision depends on budget and learning priorities.
 - **CDK vs Terraform**: Both are excellent choices. CDK with TypeScript leverages your existing programming skills and produces highly composable infrastructure. Terraform with HCL is the broader market skill and has better community support for AWS specifically. Consider doing Phase 1 in both to feel the difference.
 - **Clone strategy**: The intent is to clone `lorevault-kb` into a dedicated `lorevault-aws` repo. How much of the domain logic should be shared (as a library) vs. rewritten? The simplest approach is a full clone with divergent evolution — the domain stays the same, but the infrastructure adapters change.
-- **Learning budget**: Phases 1–4 are achievable in 2–4 weeks of focused work. Phases 5–7 each require significant design investment (idempotency, conditional writes, state machine modeling). How much time to budget per phase?
+- **Learning budget**: The [n8n integration doc](../n8n/2026-05-19T2154_strategic-n8n-enhancement.md#7-implementation-sequencing) provides a concrete timeline: Phase 1 (AWS foundation, 3 weeks) → n8n sprint (patterns + demos, 2 weeks) → Phase 3 (AWS native pipeline, 3 weeks) → decision gate at Week 8. Phases 5–7 map to the n8n doc's Phase 3, with the benefit that SQS/DynamoDB/Step Functions concepts will be pattern-familiar from the n8n sprint.
 - **Relation catalog on AWS**: The planning doc specifies an in-process v1. Should the `lorevault-aws` clone start with DynamoDB immediately, or respect the same in-process-first graduation strategy? Starting directly in DynamoDB would be a steeper learning curve but more directly CV-relevant.
 
 ---
 
 ## 9. Relationship to Other Docs
 
-- [Catalog Module (planning)](../../planning/relation-catalog-module.md) — the catalog is a notable border case for the AWS mapping. The planning doc specifies an in-process module for v1, with open questions about whether canonical entries should live in Neo4j, YAML seed files, or both. For the AWS deployment, the catalog's read pattern (semantic matching by `{name, usageHint, subjectKind, objectKind}`) is more lookup-heavy than traversal-heavy, making DynamoDB with GSIs a strong graduation candidate once the catalog grows beyond in-process memory. The AWS path should track this planning item as it firms up
-- [Event-driven architecture plan](../architecture/event-driven-architecture-plan.md) — the original proposal for splitting ingestion into independent pipelines. The AWS path is one concrete realization of this vision
-- [StageRun DAG observability and recovery](../architecture/stage-run-dag-observability-and-recovery-brainstorm-april-2026.md) — the current proposal for durable stage-run tracking. DynamoDB-based job state (Phase 6) is a cloud-native alternative to the in-Neo4j StatusRecord approach
-- [Async ingestion logging philosophy](../architecture/2026-04-17_async-ingestion-logging-philosophy-brainstorm.md) — the structured logging and MDC proposals. Phase 4 (CloudWatch + structured JSON) is the cloud-native home for this direction
+- [Strategic n8n Enhancement](../n8n/2026-05-19T2154_strategic-n8n-enhancement.md) — complementary document covering the retrieval and interaction layer: agentic Q&A, HITL review gates, notifications, and the interleaved AWS+n8n sequencing. n8n owns operational patterns; AWS owns platform infrastructure. The two documents reference each other's phasing.
+- [Catalog Module (planning)](../../planning/2026-05-13T2027_relation-catalog-module.md) — the catalog is a notable border case for the AWS mapping. The planning doc specifies an in-process module for v1, with open questions about whether canonical entries should live in Neo4j, YAML seed files, or both. For the AWS deployment, the catalog's read pattern (semantic matching by `{name, usageHint, subjectKind, objectKind}`) is more lookup-heavy than traversal-heavy, making DynamoDB with GSIs a strong graduation candidate once the catalog grows beyond in-process memory. The AWS path should track this planning item as it firms up
+- [Event-driven architecture plan](../architecture/2026-04-11T1210_event-driven-architecture-plan.md) — the original proposal for splitting ingestion into independent pipelines. The AWS path is one concrete realization of this vision
+- [StageRun DAG observability and recovery](../architecture/2026-04-30T1010_stage-run-dag-observability-and-recovery-brainstorm.md) — the current proposal for durable stage-run tracking. DynamoDB-based job state (Phase 6) is a cloud-native alternative to the in-Neo4j StatusRecord approach
+- [Async ingestion logging philosophy](../architecture/2026-04-17T0855_async-ingestion-logging-philosophy-brainstorm.md) — the structured logging and MDC proposals. Phase 4 (CloudWatch + structured JSON) is the cloud-native home for this direction

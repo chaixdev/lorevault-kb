@@ -171,7 +171,7 @@ Swappable seams define *what crosses the boundary* (the interface contracts). Mo
 
 Closing a Modulith module without a seam means the boundary is enforced but the implementation is cemented. Adding seams without Modulith means the contract is defined but bypassable. You need both.
 
-For the catalog module specifically, the planning doc (`relation-catalog-module.md`) owns the detailed design: API/internal package structure, seam contracts, and why catalog is the right first closed module. The general strategy (incremental closure, seams-first) lives here.
+For the catalog module specifically, the planning doc (`2026-05-13T2027_relation-catalog-module.md`) owns the detailed design: API/internal package structure, seam contracts, and why catalog is the right first closed module. The general strategy (incremental closure, seams-first) lives here.
 
 ### 5.3 Why not a third Maven module (Option D)
 

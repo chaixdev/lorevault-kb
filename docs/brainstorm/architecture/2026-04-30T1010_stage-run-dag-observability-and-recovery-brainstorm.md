@@ -2,7 +2,7 @@
 
 **Status:** Brainstorm — not yet accepted  
 **Related current pattern:** `../../patterns/ingestion/ingestion-job-observability.md`  
-**Related proposal:** `../entity-pipelines/provenance-generation-model-brainstorm-april-2026.md`
+**Related proposal:** `../entity-pipelines/2026-04-30T1010_provenance-generation-model-brainstorm.md`
 
 ## Summary
 

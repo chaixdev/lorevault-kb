@@ -12,8 +12,8 @@
 This document consolidates advice from multiple analysis sessions into one actionable reference. It is organized by decision area, not by source. Each section states what was found, what is recommended, and why.
 
 **Companion documents:**
-- [Conceptual model critique](concept-model-critique-april-2026.md) — the structured 8-dimension critique
-- [Oracle raw analysis](oracle_raw.md) — Oracle's unedited reasoning
+- [Conceptual model critique](2026-04-11T1210_concept-model-critique.md) — the structured 8-dimension critique
+- [Oracle raw analysis](2026-04-11T1210_oracle-raw.md) — Oracle's unedited reasoning
 - [Conceptual Concepts](../../concepts/) — the original concept docs under review
 
 ---
@@ -262,7 +262,7 @@ These emerged from the review but were not resolved:
 
 ## Related Documents
 
-- [Conceptual model critique](concept-model-critique-april-2026.md) — structured 8-dimension analysis
-- [Oracle raw analysis](oracle_raw.md) — unedited Oracle reasoning
+- [Conceptual model critique](2026-04-11T1210_concept-model-critique.md) — structured 8-dimension analysis
+- [Oracle raw analysis](2026-04-11T1210_oracle-raw.md) — unedited Oracle reasoning
 - [Concepts](../../concepts/) — original concept docs under review
 - [Project Status](../../PROJECT-STATUS.md) — current implementation state

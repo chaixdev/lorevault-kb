@@ -158,7 +158,7 @@ The full catalog design includes:
 
 **Path A — Relation evidence harvesting (during ingestion)**: The scene analysis LLM emits open-ended relation claims with a short name, usage hint, endpoints, evidence, certainty, and `pubCoords`. The catalog module then attempts candidate matching. If a strong match exists, the claim can carry that candidate `relTypeId`; otherwise it remains a provisional observation such as `R:provisional.turned_against`.
 
-**Path B — Graph-aware query routing (at query time)**: Once relation clusters are promoted to canonical IDs, retrieval can traverse stable `REL` edges and choose which relation types to expand along. Before promotion, provisional relations are best treated as diagnostic or experimental signals rather than durable query semantics. See `2026-04-12_graph-aware-qa-design-april-2026.md`.
+**Path B — Graph-aware query routing (at query time)**: Once relation clusters are promoted to canonical IDs, retrieval can traverse stable `REL` edges and choose which relation types to expand along. Before promotion, provisional relations are best treated as diagnostic or experimental signals rather than durable query semantics. See `2026-04-12T1816_graph-aware-qa-design.md`.
 
 ### Entity pair constraints
 

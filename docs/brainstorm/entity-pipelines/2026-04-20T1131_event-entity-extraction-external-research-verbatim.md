@@ -11,7 +11,7 @@
 - This document is intentionally a preservation note, not a cleaned-up proposal.
 - The goal is to keep strong external reports intact before they are distilled into a proposal, concept, ADR, or pattern.
 - Content below should remain clearly attributable to the originating research task.
-- The active working synthesis for these reports lives in `event-entity-extraction-proposal-april-2026.md` in the same folder.
+- The active working synthesis for these reports lives in `2026-04-20T1131_event-entity-extraction-proposal.md` in the same folder.
 
 ---
 

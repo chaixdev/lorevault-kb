@@ -39,7 +39,7 @@ Existing precedent:
 
 - [ADR 009 — Structured Logging Philosophy](../adr/009-structured-logging-philosophy.md) establishes mandatory log fields including `jobId` and `correlationId`
 - [Logging Philosophy](../rules/logging-philosophy.md) defines structured logging rules
-- [Async Ingestion Logging Philosophy Brainstorm](../brainstorm/architecture/2026-04-17_async-ingestion-logging-philosophy-brainstorm.md) explores broader correlation strategy (focused on ingestion handlers)
+- [Async Ingestion Logging Philosophy Brainstorm](../brainstorm/architecture/2026-04-17T0855_async-ingestion-logging-philosophy-brainstorm.md) explores broader correlation strategy (focused on ingestion handlers)
 - `MDCTaskDecorator` — existing mechanism for async/executor MDC propagation
 
 ## Scope
@@ -101,6 +101,6 @@ This item does **not** include:
 
 - [ADR 009 — Structured Logging Philosophy](../adr/009-structured-logging-philosophy.md)
 - [Logging Philosophy](../rules/logging-philosophy.md)
-- [Async Ingestion Logging Philosophy Brainstorm](../brainstorm/architecture/2026-04-17_async-ingestion-logging-philosophy-brainstorm.md)
+- [Async Ingestion Logging Philosophy Brainstorm](../brainstorm/architecture/2026-04-17T0855_async-ingestion-logging-philosophy-brainstorm.md)
 - Related component: `MDCTaskDecorator` in lorevault-core
 - Related controller files: `lorevault-web/src/main/java/com/example/lorevault/web/controller/`

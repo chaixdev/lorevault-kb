@@ -12,8 +12,8 @@ This document replaces the earlier narrower staged proposal with the current str
 
 It sharpens and stages the converged direction from:
 
-- `event-entity-extraction-proposal-april-2026.md`
-- `event-entity-extraction-external-research-verbatim-april-2026.md`
+- `2026-04-20T1131_event-entity-extraction-proposal.md`
+- `2026-04-20T1131_event-entity-extraction-external-research-verbatim.md`
 - current Individual / Location ladder implementations
 - current triad-analysis implementation and later architecture review
 

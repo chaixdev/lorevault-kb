@@ -302,4 +302,4 @@ For now:
 
 - `../../patterns/ingestion/text-chunking-specification.md`
 - `../../patterns/search/rag-retrieval-chain.md`
-- `2026-04-12_graph-aware-qa-design-april-2026.md`
+- `2026-04-12T1816_graph-aware-qa-design.md`

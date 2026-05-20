@@ -5,7 +5,7 @@
 **Status:** Brainstorm — research synthesis, not yet an accepted decision  
 **Purpose:** Compare external approaches for answering multi-entity, relationship-heavy natural-language questions of the shape *"what was the argument between X and Y about while they were at Z?"* — and pressure-test the LoreVault proposal of `entity extract → shortestPath() → pull chunks → weighted rerank` against peer-reviewed evidence.
 
-**Companion document:** [`graph-aware-qa-design-april-2026.md`](graph-aware-qa-design-april-2026.md) — LoreVault-specific design that should be read alongside this.
+**Companion document:** [`2026-04-12T1816_graph-aware-qa-design.md`](2026-04-12T1816_graph-aware-qa-design.md) — LoreVault-specific design that should be read alongside this.
 
 ---
 
@@ -205,7 +205,7 @@ The reasoning bottleneck paper (arXiv:2603.14045v2, Mar 2026) adds an important 
 
 This means even if subgraph retrieval surfaces the right evidence, the LLM may fail to extract the answer from a large, unstructured subgraph. **Context size management is critical** — smaller, better-targeted subgraphs outperform large sprawling ones.
 
-**LoreVault implication:** Subgraph retrieval is more powerful than shortest-path, but it needs bounded expansion (not unbounded `[*]` Cypher traversal). The vector-seeded expansion described in `graph-aware-qa-design-april-2026.md` (Pattern 2) is a controlled subgraph — it is the right primitive.
+**LoreVault implication:** Subgraph retrieval is more powerful than shortest-path, but it needs bounded expansion (not unbounded `[*]` Cypher traversal). The vector-seeded expansion described in `2026-04-12T1816_graph-aware-qa-design.md` (Pattern 2) is a controlled subgraph — it is the right primitive.
 
 ### 3.4 Community / Summary Retrieval
 

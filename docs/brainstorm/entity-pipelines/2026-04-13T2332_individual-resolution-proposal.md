@@ -10,7 +10,7 @@
 
 This document consolidates the converged decisions from:
 
-- `mention-to-individual-linking-brainstorm-april-2026.md`
+- `2026-04-13T2332_mention-to-individual-linking-brainstorm.md`
 
 That earlier document remains useful as option-space history. This document is the cleaner proposal for the shape we would actually build if we proceed.
 

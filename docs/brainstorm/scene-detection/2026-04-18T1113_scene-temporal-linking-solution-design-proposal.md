@@ -10,7 +10,7 @@
 
 This document consolidates and sharpens the converged decisions from the wider temporal-linking brainstorm and the earlier planning investigation that tracked the original gap before the implementation landed.
 
-- `2026-04-17_scene-temporal-linking-brainstorm.md`
+- `2026-04-17T1113_scene-temporal-linking-brainstorm.md`
 
 Those earlier documents remain useful as diagnosis and option-space history.
 This document is preserved as pre-shipment design context. Current shipped status lives in `../../PROJECT-STATUS.md` and any canonical present-state mechanism should be described in the pattern library rather than inferred from this proposal.

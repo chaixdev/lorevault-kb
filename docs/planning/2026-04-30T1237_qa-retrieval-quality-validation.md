@@ -34,9 +34,9 @@ Relevant components and surfaces:
 
 The question space taxonomy is documented in:
 
-- `docs/brainstorm/query/2026-04-15_robust-qa-strategy-report.md` — full target question space and strategic analysis
-- `docs/brainstorm/query/2026-04-12_graph-aware-qa-design-april-2026.md`
-- `docs/brainstorm/query/2026-04-12_multi-entity-retrieval-external-research.md`
+- `docs/brainstorm/query/2026-04-15T1816_robust-qa-strategy-report.md` — full target question space and strategic analysis
+- `docs/brainstorm/query/2026-04-12T1816_graph-aware-qa-design.md`
+- `docs/brainstorm/query/2026-04-12T1816_multi-entity-retrieval-external-research.md`
 
 ## Scope
 
@@ -104,9 +104,9 @@ The question space taxonomy is documented in:
 
 ## Links
 
-- `docs/brainstorm/query/2026-04-15_robust-qa-strategy-report.md`
-- `docs/brainstorm/query/2026-04-12_graph-aware-qa-design-april-2026.md`
-- `docs/brainstorm/query/2026-04-12_multi-entity-retrieval-external-research.md`
+- `docs/brainstorm/query/2026-04-15T1816_robust-qa-strategy-report.md`
+- `docs/brainstorm/query/2026-04-12T1816_graph-aware-qa-design.md`
+- `docs/brainstorm/query/2026-04-12T1816_multi-entity-retrieval-external-research.md`
 - `docs/concepts/entity-claim-model.md`
 - `docs/concepts/core-domain-model-and-graph-process-restructured.md`
 - `docs/patterns/ingestion/entity-resolution-ladder.md`

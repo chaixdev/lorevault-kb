@@ -473,13 +473,13 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 
 ## Links
 
-- `docs/planning/relation-evidence-harvesting.md` — relation evidence harvesting design and extraction context
-- `docs/planning/qa-retrieval-quality-validation.md` — relation questions that should guide catalog usefulness
-- `docs/planning/concept-resolution-lane.md` — Concept entity lane, needed for Concept-targeting relation signatures
+- `docs/planning/2026-05-07T1917_relation-evidence-harvesting.md` — relation evidence harvesting design and extraction context
+- `docs/planning/2026-04-30T1237_qa-retrieval-quality-validation.md` — relation questions that should guide catalog usefulness
+- `docs/planning/2026-04-30T1237_concept-resolution-lane.md` — Concept entity lane, needed for Concept-targeting relation signatures
 - `docs/concepts/Entity-Event-Claim-model.md` — current entity/event/claim model
 - `docs/concepts/core-domain-model-and-graph-process-restructured.md` — broader graph process context
 - `docs/patterns/ingestion/triad-analysis.md` — triad normalization pipeline that will consume catalog outputs
-- `docs/brainstorm/architecture/2026-05-11_orchestration-domain-separation.md` — catalog as first closed internal module
+- `docs/brainstorm/architecture/2026-05-11T2027_orchestration-domain-separation.md` — catalog as first closed internal module
 
 ## Implementation Notes (M0 + M1)
 

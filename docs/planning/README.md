@@ -19,6 +19,22 @@ Implemented and accepted truth belongs in the top-level canonical docs such as:
 - `../rules/`
 - `../concepts/`
 
+## Naming Convention
+
+All planning filenames **must** use an ISO datetime prefix, not a month/year suffix.
+
+**Format:** `YYYY-MM-DDTHHMM_topic-slug.md`
+
+**Correct:**
+- `2026-04-12T1100_relation-evidence-harvesting.md`
+- `2026-05-08T1530_concept-resolution-lane.md`
+
+**Wrong (do not use):**
+- `relation-evidence-harvesting-april-2026.md`
+- `concept-resolution-lane-may-2026.md`
+
+The datetime prefix makes files sort chronologically by default, avoids ambiguous month names, and includes time-of-day precision so same-day iterations are distinguishable. Generate the timestamp with `date +%Y-%m-%dT%H%M`.
+
 ## Use This Folder For
 
 - bounded future work
@@ -90,10 +106,12 @@ At minimum, each planning item should include:
 
 ## Current Planning Items
 
-- [HTTP Request ID MDC Propagation](http-request-id-mdc-propagation.md)
-- [Revisit domain modeling with modern Java contracts and value objects](modern-java-domain-modeling-follow-up.md)
-- [Tighten web transport boundaries and internal type visibility](tighten-web-transport-boundaries-and-type-visibility.md)
-- [Q&A Retrieval Quality Validation](qa-retrieval-quality-validation.md)
-- [Concept Entity Resolution Lane](concept-resolution-lane.md)
-- [Catalog Module](relation-catalog-module.md)
-- [Relation Evidence Harvesting and Catalog Discovery — Phased Solution Design](relation-evidence-harvesting.md)
+- [HTTP Request ID MDC Propagation](2026-04-23T1630_http-request-id-mdc-propagation.md)
+- [Revisit domain modeling with modern Java contracts and value objects](2026-04-22T1621_modern-java-domain-modeling-follow-up.md)
+- [Tighten web transport boundaries and internal type visibility](2026-04-24T1611_tighten-web-transport-boundaries-and-type-visibility.md)
+- [Q&A Retrieval Quality Validation](2026-04-30T1237_qa-retrieval-quality-validation.md)
+- [Concept Entity Resolution Lane](2026-04-30T1237_concept-resolution-lane.md)
+- [Event extraction and resolution tuning](2026-04-27T0951_event-extraction-and-resolution-tuning.md)
+- [Relation Evidence Harvesting and Catalog Discovery — Phased Solution Design](2026-05-07T1917_relation-evidence-harvesting.md)
+- [Catalog Module](2026-05-13T2027_relation-catalog-module.md)
+- [Entity Pipeline Terminology Alignment](2026-05-20T1536_entity-pipeline-terminology-alignment.md)
