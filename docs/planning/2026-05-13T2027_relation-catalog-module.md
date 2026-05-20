@@ -225,6 +225,40 @@ public interface EmbeddingFunction {
 
 Core's `CatalogEmbeddingConfig` overrides `embedBatch` using `EmbeddingModel.call(EmbeddingRequest)` for batch efficiency. The catalog never imports Spring AI types.
 
+### M3 Implementation Plan
+
+**Matching strategy (revised for M3):**
+
+```
+resolve(query):
+  1. Normalize rawName → definitionKey
+  2. Exact match on definitionKey → found? return it
+  3. Miss: embed query text for semantic search
+     format: description + ": " + rawName + " [" + subjectKind + " → " + objectKind + "]"
+  4. pgvector cosine distance against catalog_definition.embedding
+  5. Best match > similarity threshold? → return it (semantic disambiguation)
+  6. Below threshold: embed + INSERT new definition, return it
+```
+
+**Embedding strategy:**
+- **What gets embedded:** `description` + `rawName` + kind pair — all available context in one text. Format: `"{description}: {rawName} [{subjectKind} → {objectKind}]"`.
+- **When:** Sequentially at `resolve()` time. Embedding latency is proportional to text length and model selection — acceptable for catalog's current throughput. Move to async batching later if latency becomes a bottleneck.
+- **Threshold:** Start at 0.75 cosine similarity. Tune iteratively by observing catalog behavior — where does it naturally separate known-distinct definitions while clustering known-similar raw names?
+
+**Deliverables:**
+
+| Item | Location | Details |
+|------|----------|---------|
+| `CatalogEmbeddingConfig` | `lorevault-core` | `@Configuration` wrapping Spring AI `EmbeddingModel` as `EmbeddingFunction`. Conditional on `lorevault.catalog.enabled=true`. Follows the pattern documented in [ADR-012](../../adr/012-dual-database-transaction-boundary.md). |
+| V3 Flyway migration | `lorevault-catalog` | `ALTER TABLE catalog_definition ADD COLUMN embedding vector(1536)` + `CREATE INDEX ... USING ivfflat (embedding vector_cosine_ops)`. pgvector extension already enabled via V2. |
+| `resolve()` rewrite | `PostgresRelationCatalogStore` | Inject `EmbeddingFunction` via constructor. Replace exact-match-only with two-tier matching: exact match → semantic similarity via pgvector → create new. |
+| `EmbeddingFunction` injection | `PostgresRelationCatalogStore` | Store keeps zero Spring AI knowledge — only depends on `com.lorevault.catalog.EmbeddingFunction`. |
+
+**What's deferred:**
+- `REINDEX` maintenance for ivfflat index staleness — deferred until 10K+ definitions. A `@Scheduled` weekly `REINDEX INDEX CONCURRENTLY` is sufficient at that point.
+- Async batch embedding — defer until sequential embedding latency is a measurable bottleneck.
+- Tuning by embedding `rawNameVariants` separately — start with the raw query text. Variant embeddings can be added later if disambiguation quality needs more signal.
+
 ## Public Contract
 
 ```java
@@ -233,9 +267,8 @@ public interface RelationCatalogService {
     /**
      * Resolve a relation query to a catalog definition.
      *
-     * Two-tier matching: exact match on definitionKey → create new definition
-     * if nothing matches. Signature-based disambiguation is deferred to a
-     * future milestone (embedding similarity via pgvector).
+     * Two-tier matching: exact match on definitionKey → semantic similarity
+     * via pgvector cosine distance → create new definition if nothing matches.
      *
      * @param query the relation to resolve
      * @return the matched (or newly created) catalog definition
@@ -412,7 +445,7 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 | **M0: Contract & Interface** | `lorevault-catalog` Maven submodule, public API types, `InMemoryRelationCatalogStore` (exact-match only, no PostgreSQL), `catalogId` + `definitionKey` on `RelationClaim`, `@ApplicationModule(CLOSED)`, ArchUnit rules | S (2-3 days) | ✅ |
 | **M1: PostgreSQL + Exact Match** | `PostgresRelationCatalogStore`, Flyway V1 schema, Testcontainers PostgreSQL, `docker-compose.yml` postgres service, DataSource exclusion fix, Flyway `locations` scoping, idempotent `findOrCreate` (`ON CONFLICT DO NOTHING`) | M (1-2 weeks) | ✅ |
 | **M2: Health + pgvector Prep** | `CatalogHealthIndicator` bean (surfaces at `/actuator/health`), V2 Flyway migration (`CREATE EXTENSION IF NOT EXISTS vector`), `pgvector/pgvector:pg16` Docker image. Metrics deferred to separate planning. | S (1 day) | ✅ |
-| **M3: Embedding Matching** | `EmbeddingFunction` interface (catalog owns contract, core provides impl), `embedding` column on `catalog_definition`, embedding generation for `description`, similarity threshold, replace exact-only with semantic matching | L (2-4 weeks) | 🔲 Planned |
+| **M3: Embedding Matching** | `CatalogEmbeddingConfig` bean (core wraps `EmbeddingModel` as `EmbeddingFunction`), V3 Flyway migration (`embedding vector(1536)` column + ivfflat index), pgvector cosine similarity in `resolve()`, two-tier matching (exact match → semantic similarity → create new). Similarity threshold starts at 0.75, tuned iteratively. Sequential embedding at resolve time; batch deferred. | L (2-4 weeks) | 🔲 Planned |
 | **M4: Graph Edge Projection** | `REL` edges in Neo4j from resolved `catalogId`, graph-aware retrieval, Q&A validation | L (3-5 weeks) | 🔲 Planned |
 
 ## Implementation Risks
