@@ -65,32 +65,38 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 
 Near-term execution slices before pivoting to AWS/n8n:
 
-1. **Concept entity lane**
+1. **Ingestion state-machine replayability repair**
+   - Replace or redesign the in-memory fan-in/terminal-failure behavior that blocks manual stage replay from converging
+   - Durable job/stage state must be owned by persistence, not JVM-local coordinator maps
+   - Manual reruns must carry enough run context to satisfy completion semantics without DB meddling
+
+2. **Concept entity lane**
    - Implement the 6th regular entity ladder for Concept using the established `Mention → ChapterEntity → BookEntity` pattern
    - Covers species, technologies, artifact classes, doctrines, roles, and other narrative-significant categories
    - See: `docs/planning/2026-04-30T1237_concept-resolution-lane.md`
    - This is mostly mechanical application of patterns already established by the Individual, Location, Object, Collective, and Event lanes
 
-2. **Relation evidence harvesting to shippable state**
+3. **Relation evidence harvesting to shippable state**
    - Phase 0 is complete: `RelationClaim` nodes extracted and persisted, prompt engineering tuned, idempotency guards in place
-   - Complete the catalog module's core purpose — Phase 1 candidate matching (exact + lemma + embedding), Phase 2 stable `REL` edge projection
-   - Get the catalog into a state where promoted relation types produce queryable typed edges
+   - Catalog M0–M3 is complete: exact + semantic matching resolves relation claims to stable catalog definitions
+   - Remaining catalog-adjacent work is Phase 2 stable `REL` edge projection
+   - Get promoted relation types into queryable typed edges while preserving `RelationClaim` as evidence/provenance
    - See: `docs/planning/2026-05-07T1917_relation-evidence-harvesting.md`, `docs/planning/2026-05-13T2027_relation-catalog-module.md`
 
-3. **Terminology alignment: resolution/reduction → consolidation**
+4. **Terminology alignment: resolution/reduction → consolidation**
    - The pipeline uses three terms (resolution, reduction, aggregate) for the same class of operation
    - Rename chapter-level `*Resolution*` and book-level `*Reduction*` handlers, services, results, events → `*Consolidation*`
    - See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md` — **decided: consolidation**
    - Apply before Concept lane implementation so the new lane uses canonical terminology
 
-4. **Relation edge projection**
+5. **Relation edge projection**
     - Use promoted catalog definitions to project queryable typed relation edges from persisted `RelationClaim` evidence
     - Keep `RelationClaim` as evidence/provenance; typed edges are the query acceleration layer
     - See: `docs/planning/2026-05-07T1917_relation-evidence-harvesting.md`, `docs/planning/2026-05-13T2027_relation-catalog-module.md`
 
 ### Phase B: AWS cloud-native foundation
 
-5. **ECS Fargate deployment**
+6. **ECS Fargate deployment**
    - Containerize `lorevault-web`, deploy to ECS Fargate with ALB, VPC, security groups
    - IAM roles with least-privilege for ECS tasks — this may be the actual first AWS task before containers
    - Secrets Manager for API keys, CloudWatch structured logging

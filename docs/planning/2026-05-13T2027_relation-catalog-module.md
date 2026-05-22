@@ -1,7 +1,7 @@
 # Catalog Module
 
-**Status:** M0 + M1 Implemented — M0 (contract & interface) and M1 (PostgreSQL + exact match) complete
-**Last Updated:** May 14, 2026 (implemented M0 + M1, updated deviations and implementation notes)
+**Status:** M0–M3 Implemented — contract, PostgreSQL storage, health/pgvector prep, and semantic embedding matching complete
+**Last Updated:** May 22, 2026 (implemented semantic matching, collapsed wipe-state migration, updated progress and next focus)
 **Depends on:** Phase 0 relation claim extraction, `RelationClaim` model
 
 ## Summary
@@ -22,7 +22,7 @@ Questions like "Who is a member of this crew?" or "Which organizations operate a
 
 ## Matching Strategy
 
-Two-tier matching for MVP, applied in order by `resolve()`:
+Current matching is exact first, semantic second, create last, applied in order by `resolve()`:
 
 ```
 Consumer provides: { rawName, subjectKind, objectKind, description, certainty, evidence }
@@ -37,14 +37,21 @@ Consumer provides: { rawName, subjectKind, objectKind, description, certainty, e
     └── Not found → continue
     │
     ▼
-3. CREATE NEW: INSERT definition + signature + variant, return new definition
+3. SEMANTIC MATCH: embed relation text and search pgvector cosine distance
+    ├── Good candidate below threshold → update last_seen, return definition
+    └── No acceptable candidate → continue
+    │
+    ▼
+4. CREATE NEW: INSERT definition + signature + variant + embedding, return new definition
 ```
 
 **Why no signature match in MVP.** The `(subjectKind, objectKind)` signature is too coarse for disambiguation. An `Individual→Individual` signature would match "leads", "betrayed", "is married to", "trained under" — semantically unrelated relations. Assigning them the same `catalogId` creates false equivalence that downstream consumers (graph projection, Q&A retrieval) will trust. This is worse than having no disambiguation at all.
 
-The safer strategy is **create many, merge later**: let each distinct `definitionKey` produce its own definition, then use embedding-based semantic similarity (pgvector, planned for a future milestone) to cluster genuinely related terms. This is reversible — you can merge definitions that shouldn't be separate. False merges are much harder to detect and undo.
+The safer strategy is **create many, merge later**: let each distinct `definitionKey` produce its own definition unless semantic evidence is strong enough to reuse an existing one. This is reversible — you can merge definitions that shouldn't be separate. False merges are much harder to detect and undo.
 
-Tier 3 (create new) admits the catalog genuinely doesn't know this relation kind yet. A new definition is created with the LLM's description as its canonical description, ready for future matching.
+The semantic threshold is intentionally conservative. The initial broad-collapse bug proved that permissive vector matching can erase useful relation distinctions; the current threshold treats pgvector `<=>` as cosine distance and only accepts candidates below `0.25` distance. Near-match ambiguity is logged for inspection.
+
+The create-new tier admits the catalog genuinely doesn't know this relation kind yet. A new definition is created with the LLM's description as its canonical description and a 1536-dimensional embedding for future matching.
 
 ## Expected Structure
 
@@ -225,37 +232,40 @@ public interface EmbeddingFunction {
 
 Core's `CatalogEmbeddingConfig` overrides `embedBatch` using `EmbeddingModel.call(EmbeddingRequest)` for batch efficiency. The catalog never imports Spring AI types.
 
-### M3 Implementation Plan
+### M3 Implementation Notes
 
-**Matching strategy (revised for M3):**
+**Matching strategy:**
 
 ```
 resolve(query):
   1. Normalize rawName → definitionKey
   2. Exact match on definitionKey → found? return it
   3. Miss: embed query text for semantic search
-     format: description + ": " + rawName + " [" + subjectKind + " → " + objectKind + "]"
+     format: description + ": " + rawName
   4. pgvector cosine distance against catalog_definition.embedding
-  5. Best match > similarity threshold? → return it (semantic disambiguation)
+  5. Best match below distance threshold? → return it (semantic disambiguation)
   6. Below threshold: embed + INSERT new definition, return it
 ```
 
 **Embedding strategy:**
-- **What gets embedded:** `description` + `rawName` + kind pair — all available context in one text. Format: `"{description}: {rawName} [{subjectKind} → {objectKind}]"`.
+- **What gets embedded:** description plus raw name only. The kind signature was deliberately removed from embedding text after it polluted similarity and helped collapse unrelated relations that shared a broad kind pair.
 - **When:** Sequentially at `resolve()` time. Embedding latency is proportional to text length and model selection — acceptable for catalog's current throughput. Move to async batching later if latency becomes a bottleneck.
-- **Threshold:** Start at 0.75 cosine similarity. Tune iteratively by observing catalog behavior — where does it naturally separate known-distinct definitions while clustering known-similar raw names?
+- **Model/dimension:** Perplexity `perplexity/pplx-embed-v1-4b`, requested at `1536` dimensions through `OpenAiEmbeddingOptions.dimensions(...)` in `SpringAiConfig`.
+- **Threshold:** `MAX_COSINE_DISTANCE = 0.25f`. pgvector `<=>` is cosine distance, not similarity. Lower is better. This threshold is intentionally conservative after the initial relation-collapse bug.
+- **Index:** HNSW cosine index on `catalog_definition.embedding` because the vectors are below pgvector's normal `vector` ANN limit.
 
 **Deliverables:**
 
 | Item | Location | Details |
 |------|----------|---------|
-| `CatalogEmbeddingConfig` | `lorevault-core` | `@Configuration` wrapping Spring AI `EmbeddingModel` as `EmbeddingFunction`. Conditional on `lorevault.catalog.enabled=true`. Follows the pattern documented in [ADR-012](../../adr/012-dual-database-transaction-boundary.md). |
-| V3 Flyway migration | `lorevault-catalog` | `ALTER TABLE catalog_definition ADD COLUMN embedding vector(1536)` + `CREATE INDEX ... USING ivfflat (embedding vector_cosine_ops)`. pgvector extension already enabled via V2. |
-| `resolve()` rewrite | `PostgresRelationCatalogStore` | Inject `EmbeddingFunction` via constructor. Replace exact-match-only with two-tier matching: exact match → semantic similarity via pgvector → create new. |
-| `EmbeddingFunction` injection | `PostgresRelationCatalogStore` | Store keeps zero Spring AI knowledge — only depends on `com.lorevault.catalog.EmbeddingFunction`. |
+| `CatalogEmbeddingConfig` | `lorevault-core` | ✅ `@Configuration` wrapping Spring AI `EmbeddingModel` as `EmbeddingFunction`. Conditional on `lorevault.catalog.enabled=true`. Follows the pattern documented in [ADR-012](../../adr/012-dual-database-transaction-boundary.md). |
+| Evolving Flyway V1 migration | `lorevault-catalog` | ✅ Wipe-state schema is collapsed into one evolving `V1__catalog_definition.sql`: pgvector extension, `embedding vector(1536)`, signature lookup index, and HNSW cosine index. Deleted the temporary V2 migration. |
+| `resolve()` rewrite | `PostgresRelationCatalogStore` | ✅ Exact match → semantic pgvector cosine search → create new. Exact/semantic matches refresh `last_seen`; new definitions store embedding. |
+| `EmbeddingFunction` injection | `PostgresRelationCatalogStore` | ✅ Store keeps zero Spring AI knowledge — only depends on `com.lorevault.catalog.EmbeddingFunction`. |
+| Relation claim catalog identity | `RelationClaimPersistenceService`, `RelationClaim` | ✅ `RelationClaim.catalogId` and `RelationClaim.definitionKey` store the resolved catalog identity/key. Content-based dedup uses `(sceneId, subjectName, relationName, objectName)` so reruns avoid duplicate claims while allowing re-cataloging. |
 
 **What's deferred:**
-- `REINDEX` maintenance for ivfflat index staleness — deferred until 10K+ definitions. A `@Scheduled` weekly `REINDEX INDEX CONCURRENTLY` is sufficient at that point.
+- HNSW index maintenance/retuning — defer until catalog size and query profile justify it.
 - Async batch embedding — defer until sequential embedding latency is a measurable bottleneck.
 - Tuning by embedding `rawNameVariants` separately — start with the raw query text. Variant embeddings can be added later if disambiguation quality needs more signal.
 
@@ -296,11 +306,7 @@ public record RelationQuery(
     String subjectKind,
     String objectKind,
     String description,               // from LLM — what this relation means
-    String certainty,                 // "Explicit" | "StronglyImplied" | "WeaklyImplied"
-    String evidenceReference,         // reference to the source claim
-    UUID chapterId,
-    UUID sceneId,
-    Optional<String> cappedEvidenceSnippet
+    String certainty                  // "Explicit" | "StronglyImplied" | "WeaklyImplied"
 ) {}
 ```
 
@@ -342,7 +348,7 @@ public record RelationCatalogId(UUID value) {
 
 ## Schema
 
-Single Flyway migration. Three tables:
+Single evolving Flyway migration while LoreVault remains in wipe-state development. Three tables:
 
 ```sql
 CREATE TABLE IF NOT EXISTS catalog_definition (
@@ -350,6 +356,7 @@ CREATE TABLE IF NOT EXISTS catalog_definition (
     definition_key  TEXT NOT NULL UNIQUE,
     display_name    TEXT NOT NULL,
     description     TEXT,
+    embedding       vector(1536),
     created         TIMESTAMPTZ NOT NULL,
     updated         TIMESTAMPTZ NOT NULL,
     last_seen       TIMESTAMPTZ NOT NULL
@@ -368,18 +375,17 @@ CREATE TABLE IF NOT EXISTS catalog_definition_signature (
     PRIMARY KEY (definition_id, subject_kind, object_kind)
 );
 
--- Index deferred to M3: signature matching is not used until embedding similarity is available.
--- CREATE INDEX IF NOT EXISTS idx_signature_kinds
---     ON catalog_definition_signature(subject_kind, object_kind);
+CREATE INDEX IF NOT EXISTS idx_signature_kinds
+    ON catalog_definition_signature(subject_kind, object_kind);
+
+CREATE INDEX IF NOT EXISTS idx_catalog_definition_embedding_hnsw
+    ON catalog_definition
+    USING hnsw (embedding vector_cosine_ops);
 ```
 
-**pgvector deferred.** The `CREATE EXTENSION IF NOT EXISTS vector` and embedding column are not in V1. The standard `postgres:16` Docker image does not include pgvector — it requires `pgvector/pgvector:pg16`. Deferring the extension avoids a deployment dependency that isn't needed until embedding matching (a future milestone). When embedding matching is implemented, a V2 migration will add:
+`V1__catalog_definition.sql` also enables pgvector with `CREATE EXTENSION IF NOT EXISTS vector`. The project uses `pgvector/pgvector:pg16` locally because standard `postgres:16` does not ship the extension.
 
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-ALTER TABLE catalog_definition ADD COLUMN embedding vector(1536);
-CREATE INDEX ON catalog_definition USING ivfflat (embedding vector_cosine_ops);
-```
+Per [Development Workflow](../rules/development-workflow.md#flyway-migrations-during-wipe-state-development), the catalog schema is currently allowed to evolve in place. Use `scripts/reset-dev-db.sh --catalog-schema` after changing `V1` so Flyway can replay the rewritten schema.
 
 ## Integration Points
 
@@ -444,8 +450,8 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 |-----------|-----------|--------|--------|
 | **M0: Contract & Interface** | `lorevault-catalog` Maven submodule, public API types, `InMemoryRelationCatalogStore` (exact-match only, no PostgreSQL), `catalogId` + `definitionKey` on `RelationClaim`, `@ApplicationModule(CLOSED)`, ArchUnit rules | S (2-3 days) | ✅ |
 | **M1: PostgreSQL + Exact Match** | `PostgresRelationCatalogStore`, Flyway V1 schema, Testcontainers PostgreSQL, `docker-compose.yml` postgres service, DataSource exclusion fix, Flyway `locations` scoping, idempotent `findOrCreate` (`ON CONFLICT DO NOTHING`) | M (1-2 weeks) | ✅ |
-| **M2: Health + pgvector Prep** | `CatalogHealthIndicator` bean (surfaces at `/actuator/health`), V2 Flyway migration (`CREATE EXTENSION IF NOT EXISTS vector`), `pgvector/pgvector:pg16` Docker image. Metrics deferred to separate planning. | S (1 day) | ✅ |
-| **M3: Embedding Matching** | `CatalogEmbeddingConfig` bean (core wraps `EmbeddingModel` as `EmbeddingFunction`), V3 Flyway migration (`embedding vector(1536)` column + ivfflat index), pgvector cosine similarity in `resolve()`, two-tier matching (exact match → semantic similarity → create new). Similarity threshold starts at 0.75, tuned iteratively. Sequential embedding at resolve time; batch deferred. | L (2-4 weeks) | 🔲 Planned |
+| **M2: Health + pgvector Prep** | `CatalogHealthIndicator` bean (surfaces at `/actuator/health`), pgvector extension folded into evolving V1, `pgvector/pgvector:pg16` Docker image. Metrics deferred to separate planning. | S (1 day) | ✅ |
+| **M3: Embedding Matching** | `CatalogEmbeddingConfig` bean (core wraps `EmbeddingModel` as `EmbeddingFunction`), `embedding vector(1536)` in evolving V1, HNSW cosine index, pgvector cosine-distance matching in `resolve()`, exact → semantic → create flow, conservative `0.25` max cosine distance, `last_seen` refresh on matches, ambiguity debug logging, short-lived in-store embedding cache. | L (2-4 weeks) | ✅ |
 | **M4: Graph Edge Projection** | `REL` edges in Neo4j from resolved `catalogId`, graph-aware retrieval, Q&A validation | L (3-5 weeks) | 🔲 Planned |
 
 ## Implementation Risks
@@ -456,14 +462,13 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 | Flyway `locations` not scoped | **Medium** | Once DataSource auto-config is re-enabled, Flyway will scan the entire classpath for migrations. Must set `spring.flyway.locations=classpath:db/migration/catalog` explicitly to avoid picking up phantom migration directories. |
 | Dual-database transaction inconsistency | **Medium** | Catalog writes to PostgreSQL, core writes to Neo4j — separate transactions. If one succeeds and the other fails, data is inconsistent. Mitigated by: (1) catalog `resolve()` uses `REQUIRES_NEW` so it commits independently, (2) `ON CONFLICT DO NOTHING` makes catalog writes idempotent, (3) `catalogId=null` degradation mode means the pipeline never blocks on catalog failure. |
 | Claims ingested during catalog downtime are permanently orphaned | **Medium** | `catalogId=null` claims have no backfill mechanism. Document as known limitation; plan a backfill job that re-processes unresolved claims. |
-| PostgreSQL not in `docker-compose.yml` or CI | **Medium** | Must add `postgres` service to `docker-compose.yml` and Testcontainers PostgreSQL to CI. Use standard `postgres:16` for MVP (no pgvector needed until M3). |
-| pgvector extension not in standard `postgres:16` image | **Low** | Deferred to M3. When needed, switch to `pgvector/pgvector:pg16` Docker image. |
+| PostgreSQL not in `docker-compose.yml` or CI | **Resolved** | `docker-compose.yml` uses `pgvector/pgvector:pg16`; catalog integration coverage uses Testcontainers PostgreSQL/pgvector. |
+| pgvector extension not in standard `postgres:16` image | **Resolved** | Local catalog DB uses `pgvector/pgvector:pg16`; `V1__catalog_definition.sql` enables the extension. |
 | Empty `com.lorevault.api.catalog` package in `lorevault-core` | **Low** | Currently exists as a placeholder. Must be deleted to avoid confusion about which module owns the catalog package. ArchUnit won't catch this since it already allows `catalog`. |
 | `RelationClaim` record has 17 fields, adding 2 more (catalogId, definitionKey) while removing 2 (provisionalRelTypeId, resolutionStatus) | **Low** | Net zero change in field count. Consider a builder pattern for `RelationClaim` to make future field additions cheaper. |
 
 ## Out of Scope
 
-- Embedding generation and vector similarity matching (step 6) — planned for M3 via the `EmbeddingFunction` interface pattern (see [Embedding Integration](#embedding-integration-m3)).
 - LLM calls inside the catalog module. The catalog is a matching engine, not an LLM orchestrator. It receives pre-extracted data from the ingestion pipeline.
 - Shared `lorevault-ai` Maven module. The catalog's embedding need is served by the `EmbeddingFunction` interface pattern — catalog owns the contract, core provides the implementation. A shared module would be premature (see [Embedding Integration](#embedding-integration-m3)).
 - Human review, promotion, or lifecycle status management.
@@ -490,14 +495,15 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 - [x] `lorevault-catalog` Maven submodule created with own `pom.xml`, no dependency on `lorevault-core` or `lorevault-web`.
 - [x] `com.lorevault.catalog` package with public API types: `RelationCatalogService`, `RelationCatalogDefinition`, `RelationCatalogId`, `RelationQuery`, `RelationKindSignature`. (New modules use `com.lorevault.{domain}` — no `api` segment.)
 - [x] `@ApplicationModule(type = CLOSED)` on `package-info.java`.
-- [x] `resolve()` implements two-tier matching: exact match → create new. No signature match in MVP.
+- [x] `resolve()` implements exact → semantic → create matching. No direct signature-only match.
 - [x] `resolve()` runs in `REQUIRES_NEW` transaction — catalog owns its PostgreSQL transaction boundary, never nested inside Neo4j transactions.
-- [x] Database schema: `catalog_definition` + `catalog_definition_variant` + `catalog_definition_signature`. No observation table. No observation counts. No status columns. No pgvector in V1.
+- [x] Database schema: `catalog_definition` + `catalog_definition_variant` + `catalog_definition_signature`. No observation table. No observation counts. No status columns. Evolving wipe-state V1 includes pgvector extension, `embedding vector(1536)`, signature index, and HNSW cosine index.
 - [x] `RelationClaim` stores `catalogId` (UUID, nullable) and `definitionKey` (String, nullable). Removes `provisionalRelTypeId` and `resolutionStatus`.
 - [x] `definitionKey` uses `R:` namespace prefix (e.g., `R:is_a_member_of`).
 - [x] `RelationClaimPersistenceService` calls `catalogService.resolve()` before Neo4j persistence, stores `catalogId` + `definitionKey` on the claim. Degrades gracefully on catalog failure (catalogId=null, definitionKey keeps extracted value).
 - [x] `EmbeddingFunction` interface defined in `com.lorevault.catalog` — catalog owns the contract, core provides the implementation. No shared `lorevault-ai` module.
-- [x] Integration tests with Testcontainers PostgreSQL verify idempotency and matching logic.
+- [x] Perplexity `pplx-embed-v1-4b` configured at 1536 dimensions for catalog embeddings via Spring AI OpenAI-compatible embedding options.
+- [x] Integration tests with Testcontainers PostgreSQL verify idempotency, exact matching, semantic matching, and schema/index behavior.
 - [ ] Spring Modulith verification passes. (ModulithVerificationTest does not exist yet — `@ApplicationModule(CLOSED)` is in place, but no runtime verification test.)
 - [x] ArchUnit boundary rules pass. (Updated to scan `com.lorevault.catalog` + `com.lorevault.api`; added `catalog_internal_must_not_be_accessed_from_outside` rule.)
 - [x] `LoreVaultApiApplication` DataSource auto-config exclusion addressed — kept `DataSourceAutoConfiguration` exclusion (catalog manages its own DataSource via `CatalogConfig`).
@@ -514,7 +520,7 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 - `docs/patterns/ingestion/triad-analysis.md` — triad normalization pipeline that will consume catalog outputs
 - `docs/brainstorm/architecture/2026-05-11T2027_orchestration-domain-separation.md` — catalog as first closed internal module
 
-## Implementation Notes (M0 + M1)
+## Implementation Notes (M0–M3)
 
 ### Deviations from Plan
 
@@ -546,7 +552,7 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 
 6. **ArchUnit rules updated.** `ModulithBoundaryArchitectureTest` now scans both `com.lorevault.api` and `com.lorevault.catalog`. The `catalog_must_not_depend_on_ingestion_or_web` rule references the actual `com.lorevault.catalog..` package. A new `catalog_internal_must_not_be_accessed_from_outside` rule enforces that no class outside `com.lorevault.catalog` may depend on `com.lorevault.catalog.internal..`.
 
-7. **Testcontainers PostgreSQL IT.** `PostgresRelationCatalogStoreIT` uses manual DataSource/Flyway/JdbcClient setup (no Spring context) for fast, focused integration tests. 8 test methods covering create, findById, findByDefinitionKey, idempotent creation, enrichment, and empty results.
+7. **Testcontainers PostgreSQL IT.** `PostgresRelationCatalogStoreIT` uses manual DataSource/Flyway/JdbcClient setup (no Spring context) for fast, focused integration tests. Coverage includes create, findById, findByDefinitionKey, idempotent creation, enrichment, semantic match behavior, schema/index assertions, and empty results.
 
 8. **Component scanning fix (C1).** `@SpringBootApplication` on `com.lorevault.api` doesn't scan `com.lorevault.catalog`. Added `@ComponentScan(basePackages = "com.lorevault")` to `LoreVaultApiApplication` so catalog beans are discovered.
 
@@ -570,6 +576,28 @@ GET /api/catalog/definitions?definitionKey={key}    → findByDefinitionKey
 
 3. **`spring-boot-starter-actuator` added to catalog POM.** Required for `HealthIndicator` and `Health` types. The catalog module now depends on Actuator — a small but justified dependency for operational visibility.
 
-4. **V2 Flyway migration.** `CREATE EXTENSION IF NOT EXISTS vector` — idempotent, safe to run even if V1 already ran. Prepares the database for the `embedding` column that M3 will add.
+4. **pgvector folded into evolving V1.** The temporary V2 migration was deleted after the wipe-state migration rule was codified. `V1__catalog_definition.sql` now includes `CREATE EXTENSION IF NOT EXISTS vector` and all current catalog schema objects.
 
-5. **Docker image switched.** `postgres:16` → `pgvector/pgvector:pg16` in `docker-compose.yml`. The pgvector image is a superset — zero risk. Required for the V2 migration's `CREATE EXTENSION vector`.
+5. **Docker image switched.** `postgres:16` → `pgvector/pgvector:pg16` in `docker-compose.yml`. The pgvector image is a superset — zero risk. Required for the evolving V1 migration's `CREATE EXTENSION vector`.
+
+### M3 Implementation Notes (Semantic Matching)
+
+1. **Exact → semantic → create flow shipped.** `RelationCatalogServiceImpl` keeps exact key lookup first, then delegates to `PostgresRelationCatalogStore.findBestMatch()` for semantic matching, and creates a new definition only when no acceptable semantic candidate exists.
+
+2. **Cosine distance semantics corrected.** pgvector `<=>` returns cosine distance, not similarity. The semantic threshold is `MAX_COSINE_DISTANCE = 0.25f`; lower is better. This fixed the broad collapse where unrelated relations were remapped into a single definition such as `R:is_allied_with`.
+
+3. **Embedding text narrowed.** Relation embedding text no longer includes subject/object kind signature. Kind text polluted the embedding space and helped conflate semantically unrelated relations that shared broad signatures. The catalog still stores signatures separately for lookup/display and future disambiguation.
+
+4. **1536-dimensional Perplexity embeddings.** Core config requests 1536 dimensions for `perplexity/pplx-embed-v1-4b`, balancing narrative semantic richness against pgvector's normal `vector` ANN index constraints.
+
+5. **HNSW cosine index.** The catalog schema creates `idx_catalog_definition_embedding_hnsw` over `catalog_definition.embedding` using `vector_cosine_ops`.
+
+6. **Resolved keys on claims.** `RelationClaim.definitionKey` stores the resolved catalog definition key, not just the originally extracted key. `catalogId` stores the resolved catalog UUID. This makes Neo4j claims reflect the catalog's actual identity decision.
+
+7. **Content-based claim dedup.** Relation claim persistence deduplicates by `(sceneId, subjectName, relationName, objectName)` so pipeline reruns avoid duplicate evidence nodes while still allowing the catalog resolution output to be stable.
+
+8. **Operational reset support.** `scripts/reset-dev-db.sh` truncates catalog data by default and supports `--catalog-schema` to drop catalog tables plus Flyway history after changing evolving V1.
+
+9. **Smoke validation.** After the 1536-dimension semantic matching changes, a five-chapter Deathworlders smoke run produced 29 `RelationClaim` nodes and 15 catalog definitions, with no collapse. Chapter 1 alone produced 6 scenes, 57 chunks, 8 relation claims, and 7 definitions.
+
+10. **Validation commands passed.** Root-level Maven validation passed (`mvn clean install`, `mvn test`) plus focused `PostgresRelationCatalogStoreIT`; `git diff --check` was clean before commit `fe15f95 feat(catalog): enable semantic relation matching`.
