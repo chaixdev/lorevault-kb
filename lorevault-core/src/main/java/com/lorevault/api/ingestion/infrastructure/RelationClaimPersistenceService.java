@@ -9,7 +9,6 @@ import com.lorevault.catalog.RelationCatalogService;
 import com.lorevault.catalog.RelationQuery;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -57,13 +56,13 @@ public class RelationClaimPersistenceService {
             for (int extractionIndex = 0; extractionIndex < sceneExtraction.relationClaims().size(); extractionIndex++) {
                 TriadAnalysisModels.RelationClaimExtraction extracted = sceneExtraction.relationClaims().get(extractionIndex);
 
-                // Idempotency guard: skip if a claim with the same deduplication key already exists
-                long existing = relationClaimRepository.countBySceneIdAndExtractionIndexAndRelationName(
-                        sceneId, extractionIndex, extracted.relationName());
+                // Idempotency guard: skip if a claim with the same content identity already exists
+                long existing = relationClaimRepository.countBySceneIdAndContentIdentity(
+                        sceneId, extracted.subjectName(), extracted.relationName(), extracted.objectName());
                 if (existing > 0) {
                     totalSkipped++;
-                    log.debug("[RELATION_CLAIM_PERSIST] Skipping duplicate: sceneId={}, extractionIndex={}, relationName={}",
-                            sceneId, extractionIndex, extracted.relationName());
+                    log.debug("[RELATION_CLAIM_PERSIST] Skipping duplicate: sceneId={}, subjectName={}, relationName={}, objectName={}",
+                            sceneId, extracted.subjectName(), extracted.relationName(), extracted.objectName());
                     continue;
                 }
 
@@ -77,11 +76,7 @@ public class RelationClaimPersistenceService {
                             extracted.subjectKind(),
                             extracted.objectKind(),
                             extracted.relationDescription(),
-                            extracted.certainty(),
-                            null,  // evidenceReference — not available at extraction time
-                            chapterId,
-                            sceneId,
-                            Optional.ofNullable(extracted.evidence()).map(e -> e.length() > 500 ? e.substring(0, 500) : e)
+                            extracted.certainty()
                     );
                     RelationCatalogDefinition definition = catalogService.resolve(query);
                     catalogId = definition.id().value();

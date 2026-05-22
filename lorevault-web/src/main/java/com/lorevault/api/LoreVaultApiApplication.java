@@ -10,16 +10,14 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication(exclude = {
+@SpringBootApplication(scanBasePackages = {"com.lorevault.api", "com.lorevault.catalog"}, exclude = {
         DataSourceAutoConfiguration.class,
         HibernateJpaAutoConfiguration.class,
         FlywayAutoConfiguration.class
 })
 @ConfigurationPropertiesScan
-@ComponentScan(basePackages = "com.lorevault")
 @EnableScheduling
 @OpenAPIDefinition(
     info = @Info(

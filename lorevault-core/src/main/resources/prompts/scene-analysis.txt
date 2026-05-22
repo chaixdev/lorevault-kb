@@ -102,7 +102,10 @@ Important:
 Relation fields:
 - subject: the entity initiating or experiencing the relation (format: "Kind: Name", e.g. "Individual: Frodo")
 - relationName: a short verb phrase describing the enduring relation (e.g. "is a member of", "leads", "was abducted by", "opposes", "is loyal to", "is headquartered in")
-- relationDescription: one sentence of context explaining the enduring nature of the connection
+- relationDescription: a short, abstract, reusable definition of what this relation KIND means. Use your own words — do not copy examples. Format: \"category: definition\". Define the relation type, not this specific instance. Never mention individual characters by name.
+  Good: \"employment: one entity works for or serves under another\"
+  Good: \"hostility: standing adversarial opposition between entities\"
+  Bad: \"Gabriel works as a detective for the San Diego Police Department\"
 - object: the other entity in the relation (format: "Kind: Name")
 - certainty: Choose one of: Explicit | StronglyImplied | WeaklyImplied
 - evidence: ≤180 chars, verbatim or tight paraphrase grounding the relation
@@ -189,7 +192,7 @@ Relation fields:
     <relation>
       <subject>Individual: Frodo</subject>
       <relationName>trusts</relationName>
-      <relationDescription>Frodo relies on Samwise as his most trusted companion on the journey.</relationDescription>
+      <relationDescription>trust-based companionship and loyalty between individuals</relationDescription>
       <object>Individual: Samwise</object>
       <certainty>Explicit</certainty>
       <evidence>Frodo turned to Sam and said, "I trust you more than anyone."</evidence>
@@ -197,7 +200,7 @@ Relation fields:
     <relation>
       <subject>Individual: Aragorn</subject>
       <relationName>opposes</relationName>
-      <relationDescription>Aragorn is a standing adversary of the Ringwraiths, dedicated to resisting them.</relationDescription>
+      <relationDescription>standing adversarial opposition between an individual and a group</relationDescription>
       <object>Collective: Ringwraiths</object>
       <certainty>StronglyImplied</certainty>
       <evidence>Aragorn barred the path, sword drawn, facing the nine riders.</evidence>

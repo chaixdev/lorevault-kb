@@ -1,20 +1,14 @@
 package com.lorevault.api.ingestion;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.lorevault.api.content.association.BookObject;
 import com.lorevault.api.content.association.ChapterObject;
 import com.lorevault.api.content.association.ChapterObjectGraphRepository;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
 import com.lorevault.api.ingestion.resolution.object.BookObjectPersistenceService;
 import com.lorevault.api.ingestion.resolution.object.BookObjectReductionService;
 import com.lorevault.api.ingestion.resolution.object.BookObjectResolutionResult;
@@ -36,16 +30,11 @@ import org.springframework.retry.annotation.Retryable;
 @DisplayName("BookObjectReductionService")
 class BookObjectReductionServiceTest {
 
-    private static final String CLAIM_LANE = "BOOK_OBJECT_REDUCTION";
-
     @Mock
     private BookGraphRepository bookGraphRepository;
 
     @Mock
     private ChapterObjectGraphRepository chapterObjectRepository;
-
-    @Mock
-    private BookReductionClaimService claimService;
 
     @Mock
     private BookObjectPersistenceService bookObjectPersistenceService;
@@ -67,7 +56,6 @@ class BookObjectReductionServiceTest {
         ChapterObject swordB = chapterObject(swordBId, chapterBId, "Moonblade", "silver sword", List.of("Silver Sword"), null, null, "ritual", "Alias mention", 1);
         ChapterObject door = chapterObject(doorId, chapterAId, "Stone Door", "stone door", List.of("gate"), "door", "stone", "barrier", "Blocks the hall", 1);
 
-        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(chapterObjectRepository.findByBookId(bookId)).thenReturn(List.of(door, swordB, swordA));
         when(bookObjectPersistenceService.replaceBookObjects(any(), any(), any()))
                 .thenAnswer(invocation -> invocation.getArgument(1));
@@ -116,7 +104,6 @@ class BookObjectReductionServiceTest {
     @DisplayName("Returns successful zero-count result when no chapter objects exist for the book")
     void returnsSuccessfulNoOpWhenNoChapterObjectsExist() {
         UUID bookId = UUID.randomUUID();
-        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(chapterObjectRepository.findByBookId(bookId)).thenReturn(List.of());
 
         BookObjectResolutionResult response = service.resolveBook(bookId);
@@ -126,22 +113,6 @@ class BookObjectReductionServiceTest {
         assertThat(response.bookObjectsCreated()).isZero();
 
         verify(bookObjectPersistenceService).replaceBookObjects(eq(bookId), eq(List.of()), eq(List.of()));
-    }
-
-    @Test
-    @DisplayName("Throws typed claim exception when book reduction claim cannot be acquired")
-    void throwsTypedClaimExceptionWhenClaimCannotBeAcquired() {
-        UUID bookId = UUID.randomUUID();
-        when(claimService.tryAcquireClaimWithRetry(bookId, CLAIM_LANE, 6, 500)).thenReturn(false);
-
-        assertThatThrownBy(() -> service.resolveBook(bookId))
-                .isInstanceOf(BookReductionClaimUnavailableException.class)
-                .hasMessageContaining("BOOK_OBJECT_REDUCTION")
-                .hasMessageContaining(bookId.toString());
-
-        verify(chapterObjectRepository, never()).findByBookId(any());
-        verify(bookObjectPersistenceService, never()).replaceBookObjects(any(), any(), any());
-        verify(claimService, never()).releaseClaim(any(), eq(CLAIM_LANE));
     }
 
     @Test
@@ -167,7 +138,6 @@ class BookObjectReductionServiceTest {
         ChapterObject sword = chapterObject(swordId, chapterAId, "Silver Sword", "silver sword", List.of("Moonblade"), "weapon", "silver", "duel", "A named blade", 1);
         ChapterObject dagger = chapterObject(daggerId, chapterBId, "Ceremonial Dagger", "ceremonial dagger", List.of("Moonblade"), "weapon", "silver", "duel", "Shares an alias", 1);
 
-        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(chapterObjectRepository.findByBookId(bookId)).thenReturn(List.of(dagger, sword));
         when(bookObjectPersistenceService.replaceBookObjects(any(), any(), any()))
                 .thenAnswer(invocation -> invocation.getArgument(1));

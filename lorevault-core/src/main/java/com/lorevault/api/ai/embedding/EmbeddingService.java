@@ -31,8 +31,8 @@ public class EmbeddingService {
     private final EmbeddingTransactionSupport txSupport;
     private final EmbeddingModel embeddingModel;
 
-    @Value("${lorevault.embedding.model.dimensions:2560}")
-    private int embeddingDim = 2560; // default for non-Spring unit tests
+    @Value("${lorevault.embedding.model.dimensions:1536}")
+    private int embeddingDim = 1536; // default for non-Spring unit tests
 
     @Value("${lorevault.embedding.model.batch-size:32}")
     private int batchSize = 32; // default for non-Spring unit tests
@@ -112,7 +112,7 @@ public class EmbeddingService {
 
     private void normalizeConfiguration() {
         if (batchSize <= 0) batchSize = 32;
-        if (embeddingDim <= 0) embeddingDim = 2560;
+        if (embeddingDim <= 0) embeddingDim = 1536;
     }
 
     private List<Chunk> loadChunks(EmbeddingContext context) {

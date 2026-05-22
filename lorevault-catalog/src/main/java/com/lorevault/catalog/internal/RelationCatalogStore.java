@@ -9,5 +9,6 @@ import java.util.Optional;
 interface RelationCatalogStore {
     Optional<RelationCatalogDefinition> findByDefinitionKey(String definitionKey);
     Optional<RelationCatalogDefinition> findById(RelationCatalogId id);
+    Optional<RelationCatalogDefinition> findBestMatch(RelationQuery query);
     RelationCatalogDefinition create(RelationQuery query);
 }

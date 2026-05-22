@@ -143,7 +143,7 @@ Three `RetryTemplate` beans: `llmRetryTemplate` (3 attempts, 2s initial, 30s max
 
 | Model Slot | Typical Provider | Purpose |
 |-----------|-----------------|---------|
-| `embedding` | OpenRouter (Perplexity) | Vector embeddings (2560 dim) |
+| `embedding` | OpenRouter (Perplexity) | Vector embeddings (1536 dim) |
 | `nlp-small` | Groq | Scene analysis, event coreference |
 | `nlp-big` | Groq | Chapter segmentation, RAG generation |
 

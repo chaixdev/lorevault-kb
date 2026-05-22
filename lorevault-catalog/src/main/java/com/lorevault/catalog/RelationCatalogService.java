@@ -7,9 +7,10 @@ public interface RelationCatalogService {
     /**
      * Resolve a relation query to a catalog definition.
      *
-     * Two-tier matching: exact match on definitionKey → create new definition
-     * if nothing matches. Signature-based disambiguation is deferred to a
-     * future milestone (embedding similarity via pgvector).
+     * Three-tier matching: exact match on definitionKey → semantic pgvector
+     * match → create new definition if nothing matches. Definition metadata is
+     * intentionally first-write-wins; later observations refresh last-seen
+     * metadata but do not rewrite the original display name or description.
      *
      * @param query the relation to resolve
      * @return the matched (or newly created) catalog definition

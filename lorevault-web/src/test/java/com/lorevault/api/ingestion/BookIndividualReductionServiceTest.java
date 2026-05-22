@@ -2,10 +2,8 @@ package com.lorevault.api.ingestion;
 
 import com.lorevault.api.content.association.BookIndividual;
 import com.lorevault.api.content.association.BookIndividualGraphRepository;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
 import com.lorevault.api.ingestion.resolution.individual.BookIndividualPersistenceService;
 import com.lorevault.api.ingestion.resolution.individual.BookIndividualReductionService;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
 import com.lorevault.api.ingestion.resolution.individual.BookIndividualResolutionResult;
 import java.util.List;
 import java.util.Map;
@@ -23,18 +21,13 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.data.neo4j.core.Neo4jClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("BookIndividualReductionService")
 class BookIndividualReductionServiceTest {
-
-    private static final String CLAIM_LANE = "BOOK_INDIVIDUAL_REDUCTION";
 
     @Mock
     private BookIndividualGraphRepository bookIndividualRepository;
@@ -55,9 +48,6 @@ class BookIndividualReductionServiceTest {
     private Neo4jClient.RecordFetchSpec<Map<String, Object>> recordFetchSpec;
 
     @Mock
-    private BookReductionClaimService claimService;
-
-    @Mock
     private BookIndividualPersistenceService bookIndividualPersistenceService;
 
     @InjectMocks
@@ -70,7 +60,6 @@ class BookIndividualReductionServiceTest {
         UUID nyxChapterIndividualId = UUID.randomUUID();
         UUID orionChapterIndividualId = UUID.randomUUID();
 
-        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(neo4jClient.query(anyString())).thenReturn(unboundRunnableSpec);
         when(unboundRunnableSpec.bind(bookId.toString())).thenReturn(ongoingBindSpec);
         when(ongoingBindSpec.to("bookId")).thenReturn(runnableSpec);
@@ -109,7 +98,6 @@ class BookIndividualReductionServiceTest {
     @DisplayName("Returns no-op response when no chapter individuals exist for book")
     void noOpWhenNoCandidates() {
         UUID bookId = UUID.randomUUID();
-        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(neo4jClient.query(anyString())).thenReturn(unboundRunnableSpec);
         when(unboundRunnableSpec.bind(bookId.toString())).thenReturn(ongoingBindSpec);
         when(ongoingBindSpec.to("bookId")).thenReturn(runnableSpec);
@@ -122,22 +110,6 @@ class BookIndividualReductionServiceTest {
         assertThat(response.chapterIndividualsProcessed()).isZero();
         assertThat(response.bookIndividualsCreated()).isZero();
         verify(bookIndividualPersistenceService).replaceBookIndividuals(eq(bookId), eq(List.of()));
-    }
-
-    @Test
-    @DisplayName("Throws typed claim exception when book reduction claim cannot be acquired")
-    void throwsTypedClaimExceptionWhenClaimCannotBeAcquired() {
-        UUID bookId = UUID.randomUUID();
-        when(claimService.tryAcquireClaimWithRetry(bookId, CLAIM_LANE, 6, 500)).thenReturn(false);
-
-        assertThatThrownBy(() -> service.resolveBook(bookId))
-                .isInstanceOf(BookReductionClaimUnavailableException.class)
-                .hasMessageContaining("BOOK_INDIVIDUAL_REDUCTION")
-                .hasMessageContaining(bookId.toString());
-
-        verify(neo4jClient, never()).query(anyString());
-        verify(bookIndividualPersistenceService, never()).replaceBookIndividuals(any(), any());
-        verify(claimService, never()).releaseClaim(any(), eq(CLAIM_LANE));
     }
 
     @Test

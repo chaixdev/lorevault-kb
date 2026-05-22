@@ -1,5 +1,6 @@
 package com.lorevault.catalog.internal;
 
+import com.lorevault.catalog.EmbeddingFunction;
 import com.lorevault.catalog.RelationCatalogDefinition;
 import com.lorevault.catalog.RelationCatalogId;
 import com.lorevault.catalog.RelationKindSignature;
@@ -18,7 +19,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import javax.sql.DataSource;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,7 +28,7 @@ class PostgresRelationCatalogStoreIT {
 
     @Container
     @SuppressWarnings("resource")
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16")
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg16")
             .withDatabaseName("lorevault_catalog")
             .withUsername("lorevault")
             .withPassword("lorevault_secret");
@@ -51,7 +51,19 @@ class PostgresRelationCatalogStoreIT {
     @BeforeEach
     void setUp() {
         var jdbcTemplate = new NamedParameterJdbcTemplate(new JdbcTemplate(dataSource));
-        store = new PostgresRelationCatalogStore(jdbcTemplate);
+        EmbeddingFunction embeddingFunction = text -> {
+            float[] vec = new float[1536];
+            if (text.contains("cooperative")) {
+                vec[0] = 1.0f;  // unit vector pointing to dimension 0
+            } else if (text.contains("work together")) {
+                vec[0] = 0.9f;      // similar but not identical to cooperative
+                vec[1] = 0.436f;    // makes unit length: sqrt(0.81 + 0.19) ≈ 1.0
+            } else if (text.contains("physically attacks")) {
+                vec[1] = 1.0f;      // orthogonal to cooperative vector
+            }
+            return vec;
+        };
+        store = new PostgresRelationCatalogStore(jdbcTemplate, embeddingFunction);
     }
 
     private static DataSource createDataSource() {
@@ -67,8 +79,7 @@ class PostgresRelationCatalogStoreIT {
     void create_insertsNewDefinitionAndReturnsIt() {
         var query = new RelationQuery(
                 "R:allies_with", "allies with", "Person", "Person",
-                "Two characters who are allies", "certain", "ref1",
-                java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), Optional.empty());
+                "Two characters who are allies", "certain");
 
         var def = store.create(query);
 
@@ -88,8 +99,7 @@ class PostgresRelationCatalogStoreIT {
     void findByDefinitionKey_returnsCreatedDefinition() {
         var query = new RelationQuery(
                 "R:allies_with", "allies with", "Person", "Person",
-                "Two characters who are allies", "certain", "ref1",
-                java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), Optional.empty());
+                "Two characters who are allies", "certain");
 
         var created = store.create(query);
 
@@ -108,8 +118,7 @@ class PostgresRelationCatalogStoreIT {
     void findById_returnsCreatedDefinition() {
         var query = new RelationQuery(
                 "R:enemies_with", "enemies with", "Person", "Person",
-                "Two characters who are enemies", "certain", "ref2",
-                java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), Optional.empty());
+                "Two characters who are enemies", "certain");
 
         var created = store.create(query);
 
@@ -127,15 +136,13 @@ class PostgresRelationCatalogStoreIT {
     void create_isIdempotentForSameDefinitionKey() {
         var query1 = new RelationQuery(
                 "R:married_to", "married to", "Person", "Person",
-                "Spouses", "certain", "ref3",
-                java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), Optional.empty());
+                "Spouses", "certain");
 
         var first = store.create(query1);
 
         var query2 = new RelationQuery(
                 "R:married_to", "married to", "Person", "Person",
-                "Different description that should be ignored", "certain", "ref4",
-                java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), Optional.empty());
+                "Different description that should be ignored", "certain");
 
         var second = store.create(query2);
 
@@ -149,8 +156,7 @@ class PostgresRelationCatalogStoreIT {
     void create_enrichesWithSignatureAndVariant() {
         var query = new RelationQuery(
                 "R:mentors", "mentored by", "Mentor", "Student",
-                "A mentoring relationship", "likely", "ref5",
-                java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), Optional.empty());
+                "A mentoring relationship", "likely");
 
         var def = store.create(query);
 
@@ -162,8 +168,7 @@ class PostgresRelationCatalogStoreIT {
     void create_withoutKindOrRawName_doesNotEnrich() {
         var query = new RelationQuery(
                 "R:generic", null, null, null,
-                "A generic relation with no kinds", null, null,
-                null, null, Optional.empty());
+                "A generic relation with no kinds", null);
 
         var def = store.create(query);
 
@@ -184,5 +189,43 @@ class PostgresRelationCatalogStoreIT {
         var result = store.findById(RelationCatalogId.random());
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void findBestMatch_returnsClosestWhenWithinThreshold() {
+        // Create a definition whose text produces a "cooperative" embedding vector
+        var createdQuery = new RelationQuery(
+                "R:find_best_match_hit", "allies with", "Person", "Person",
+                "cooperative partnership between individuals", "certain");
+        var created = store.create(createdQuery);
+
+        // Search with a similar description that produces a nearby vector (cosine distance ≈ 0.10 < 0.25)
+        var searchQuery = new RelationQuery(
+                "R:find_best_match_hit", "allies with", "Person", "Person",
+                "two entities that work together cooperatively", "certain");
+        var found = store.findBestMatch(searchQuery);
+
+        assertThat(found).isPresent();
+        assertThat(found.get().id()).isEqualTo(created.id());
+        assertThat(found.get().definitionKey()).isEqualTo("R:find_best_match_hit");
+        assertThat(found.get().displayName()).isEqualTo("allies with");
+        assertThat(found.get().description()).isEqualTo("cooperative partnership between individuals");
+    }
+
+    @Test
+    void findBestMatch_returnsEmptyWhenNothingMatches() {
+        // Create a definition whose text produces a "cooperative" embedding vector
+        var createdQuery = new RelationQuery(
+                "R:find_best_match_miss", "allies with", "Person", "Person",
+                "cooperative partnership between individuals", "certain");
+        store.create(createdQuery);
+
+        // Search with a semantically distant description that produces an orthogonal vector (cosine distance = 1.0)
+        var searchQuery = new RelationQuery(
+                "R:attack_distant", "physically attack", "Person", "Person",
+                "one entity physically attacks another", "certain");
+        var found = store.findBestMatch(searchQuery);
+
+        assertThat(found).isEmpty();
     }
 }

@@ -511,8 +511,9 @@ public class SceneRelationshipAnalysisService {
             return null;
         }
         String id = relationName.toLowerCase()
-                .replace(' ', '_')
-                .replaceAll("[^a-z0-9_]", "");
+                .replaceAll("[^a-z0-9\\s]", " ")  // strip non-alpha chars first, preserve spaces
+                .trim()
+                .replaceAll("\\s+", "_");           // then normalize whitespace to underscores
         if (id.isEmpty()) {
             LOG.debug("[RELATION_CLAIM] Definition key empty after normalization for relationName='{}', using 'unparseable'", relationName);
             return "R:unparseable";

@@ -24,10 +24,19 @@ public class RelationCatalogServiceImpl implements RelationCatalogService {
         this.store = store;
     }
 
+    /**
+     * Catalog resolution commits in an independent catalog transaction.
+     *
+     * <p>This is intentional: relation definitions are durable observations of relation-kind
+     * semantics and may survive a downstream Neo4j claim-persistence rollback. Definition
+     * content is first-write-wins: if a key already exists, later descriptions/display names
+     * are ignored and only {@code last_seen} is refreshed by the store.</p>
+     */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW, transactionManager = TX_MANAGER)
     public RelationCatalogDefinition resolve(RelationQuery query) {
         return store.findByDefinitionKey(query.definitionKey())
+            .or(() -> store.findBestMatch(query))
             .orElseGet(() -> store.create(query));
     }
 

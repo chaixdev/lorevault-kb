@@ -154,13 +154,17 @@ ON CONFLICT (definition_key) DO NOTHING
 
 ## Database Schema
 
-Three tables in PostgreSQL, managed by Flyway:
+Three tables in PostgreSQL, created by the catalog's single evolving development Flyway migration:
 
-- `catalog_definition` — stable identity, `definition_key` (unique), `display_name`, `description`, timestamps
+- `catalog_definition` — stable identity, `definition_key` (unique), `display_name`, `description`, timestamps, `embedding vector(1536)`
 - `catalog_definition_variant` — raw name variants per definition (composite PK: `definition_id, raw_name`)
 - `catalog_definition_signature` — `(subjectKind, objectKind)` pairs per definition (composite PK: `definition_id, subject_kind, object_kind`)
 
-Signature index deferred to M3 — not needed until embedding similarity is available.
+`V1__catalog_definition.sql` also enables pgvector and creates the signature-kind lookup index.
+
+The embedding dimension is intentionally configured to `1536` for the Perplexity `pplx-embed-v1-4b` model so the catalog can use pgvector's normal `vector` HNSW index limit while preserving richer narrative semantics than smaller reduced dimensions. The catalog creates an HNSW cosine index on `catalog_definition.embedding`.
+
+While LoreVault remains in wipe-state development, catalog schema changes are folded back into the evolving `V1` migration. See [Development Workflow](../../rules/development-workflow.md#flyway-migrations-during-wipe-state-development).
 
 ---
 

@@ -35,6 +35,12 @@ public record RelationClaim(
         String relationName,
         String relationDescription,
         UUID catalogId,
+        /**
+         * Catalog-resolved definition key.
+         *
+         * <p>This may differ from the extraction-time key derived from {@code relationName}
+         * when semantic catalog matching maps the claim to an existing relation kind.</p>
+         */
         String definitionKey,
         String subjectKind,
         String subjectName,

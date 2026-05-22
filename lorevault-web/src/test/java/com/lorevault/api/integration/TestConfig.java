@@ -17,20 +17,20 @@ import static org.mockito.Mockito.mock;
 @TestConfiguration
 public class TestConfig {
     
-    @Bean
+    @Bean("testNlpSmallChatClient")
     @Qualifier("nlpSmall")
     public ChatClient nlpSmallChatClient() {
         return mock(ChatClient.class);
     }
 
-    @Bean
+    @Bean("testNlpBigChatClient")
     @Qualifier("nlpBig")
     @Primary
     public ChatClient nlpBig() {
         return mock(ChatClient.class);
     }
 
-    @Bean
+    @Bean("testEmbeddingModel")
     @Qualifier("embeddingModel")
     public EmbeddingModel embeddingModel() {
         return mock(EmbeddingModel.class);

@@ -18,28 +18,28 @@ curl -s localhost:18080/actuator/health | jq .
 ### Create Universe
 
 ```bash
-curl -s -X POST localhost:18080/api/command/library/universe \
+curl -s -X POST localhost:18080/api/command/library/create-universe \
   -H 'Content-Type: application/json' \
   -d '{"name":"My Universe"}'
-# → {"id":"...","name":"My Universe","created":true}
+# → {"universeId":"...","name":"...","slug":"...","created":true,...}
 ```
 
 ### Create Series
 
 ```bash
-curl -s -X POST localhost:18080/api/command/library/series \
+curl -s -X POST localhost:18080/api/command/library/create-series \
   -H 'Content-Type: application/json' \
   -d '{"universeId":"UNIVERSE_ID","name":"My Series"}'
-# → {"id":"...","name":"My Series","created":true}
+# → {"seriesId":"...","universeId":"...","name":"...","created":true,...}
 ```
 
 ### Create Book
 
 ```bash
-curl -s -X POST localhost:18080/api/command/library/book \
+curl -s -X POST localhost:18080/api/command/library/create-book \
   -H 'Content-Type: application/json' \
   -d '{"universeId":"UNIVERSE_ID","seriesId":"SERIES_ID","title":"My Book","bookNumber":1}'
-# → {"id":"...","title":"My Book","created":true}
+# → {"bookId":"...","universeId":"...","title":"...","bookNumber":1,"created":true,...}
 ```
 
 ## Ingestion: Full Pipeline

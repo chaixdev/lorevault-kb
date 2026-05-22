@@ -57,7 +57,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Stages 5–6 event path shipped** — LLM semantic merge verification (Stage 5) evaluates each ANN candidate pair and decides MERGE / KEEP_SEPARATE / UNRESOLVED; BookEvent write path (Stage 6) clusters MERGE decisions and writes thin `BookEvent` nodes plus `ChapterEvent -[:REFERS_TO]-> BookEvent` edges; the event entity resolution pipeline is now end-to-end from EventMention through BookEvent
 - **Post-split architecture and ingestion hardening continued** — recent follow-up commits enforced architecture boundaries across `ai`, `content`, and `ingestion`; aligned async ingestion handlers with transaction rules; tightened LLM-call/status persistence and book-reduction claim handling; stabilized semantic-search test wiring; refreshed individual-resolution coverage to match the current triad-analysis flow; and codified retry-safe handler ownership guidance
 - **Step execution API surface shipped** — controllers, DTOs, event mapper, query endpoint, StepKey/StepDefinition/StepCatalog, *Operation interfaces, curl-driven skill, and supporting docs/rules; enables agentic step-by-step pipeline execution for iterative development
-- **Relation catalog M0+M1+M2 shipped** — `lorevault-catalog` Maven submodule with closed module boundary (`@ApplicationModule(CLOSED)`, ArchUnit rules); public API types (`RelationCatalogService`, `RelationCatalogDefinition`, `RelationCatalogId`, `RelationQuery`, `RelationKindSignature`, `EmbeddingFunction`); PostgreSQL backend with Flyway V1 schema, `ON CONFLICT DO NOTHING` idempotency, and HikariCP connection pooling; dual-database transaction boundary (catalog: PostgreSQL `REQUIRES_NEW`, core: Neo4j); `RelationClaim` updated with `catalogId` + `definitionKey`; degradation mode when catalog is disabled; Testcontainers PostgreSQL integration tests; `NoOpRelationCatalogService` for catalog-disabled state; `CatalogHealthIndicator` bean (surfaces at `/actuator/health`); V2 Flyway migration for pgvector extension; `pgvector/pgvector:pg16` Docker image
+- **Relation catalog M0–M3 shipped** — `lorevault-catalog` Maven submodule with closed module boundary (`@ApplicationModule(CLOSED)`, ArchUnit rules); public API types (`RelationCatalogService`, `RelationCatalogDefinition`, `RelationCatalogId`, `RelationQuery`, `RelationKindSignature`, `EmbeddingFunction`); PostgreSQL backend with one evolving wipe-state Flyway V1 schema, `ON CONFLICT DO NOTHING` idempotency, HikariCP connection pooling, pgvector extension, `embedding vector(1536)`, and HNSW cosine index; dual-database transaction boundary (catalog: PostgreSQL `REQUIRES_NEW`, core: Neo4j); `RelationClaim` updated with `catalogId` + resolved `definitionKey`; degradation mode when catalog is disabled; Testcontainers PostgreSQL integration tests; `NoOpRelationCatalogService` for catalog-disabled state; `CatalogHealthIndicator` bean (surfaces at `/actuator/health`); `pgvector/pgvector:pg16` Docker image
 
 ## What Is Next
 
@@ -83,11 +83,10 @@ Near-term execution slices before pivoting to AWS/n8n:
    - See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md` — **decided: consolidation**
    - Apply before Concept lane implementation so the new lane uses canonical terminology
 
-4. **Relation catalog M3 Embedding Matching** (deferred — implement when relation volume warrants it)
-    - Wire `EmbeddingFunction` in `lorevault-core` (wraps Spring AI `EmbeddingModel`)
-    - Add `embedding vector(1536)` column to `catalog_definition` (V3 migration)
-    - Implement semantic similarity matching in `resolve()` using pgvector cosine distance
-    - Replace exact-match-only with embedding-based disambiguation
+4. **Relation edge projection**
+    - Use promoted catalog definitions to project queryable typed relation edges from persisted `RelationClaim` evidence
+    - Keep `RelationClaim` as evidence/provenance; typed edges are the query acceleration layer
+    - See: `docs/planning/2026-05-07T1917_relation-evidence-harvesting.md`, `docs/planning/2026-05-13T2027_relation-catalog-module.md`
 
 ### Phase B: AWS cloud-native foundation
 

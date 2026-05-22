@@ -54,7 +54,7 @@ When evaluating implementation approaches, always consider multiple options and 
 - Consider which path your feature affects and design accordingly
 
 ### Database Considerations
-- **Schema Changes**: Always use Flyway migrations
+- **Schema Changes**: Use Flyway to create schemas consistently. While LoreVault remains in wipe-state development with no durable shipped schema, keep each schema area collapsed into one evolving `V1__...sql`; use Git history as development-stage versioning and reset local database/schema history after checksum changes. Add incremental `V2+` migrations only after a durable schema boundary is explicitly declared.
 - **Transaction Boundaries**: Consider carefully, especially with async processing
 - **pgvector Integration**: Leverage semantic search capabilities appropriately
 

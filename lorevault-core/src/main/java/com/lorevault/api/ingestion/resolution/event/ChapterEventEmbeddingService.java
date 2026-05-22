@@ -40,8 +40,8 @@ public class ChapterEventEmbeddingService {
     private final ChapterEventEmbeddingTransactionSupport txSupport;
     private final EmbeddingModel embeddingModel;
 
-    @Value("${lorevault.embedding.model.dimensions:2560}")
-    private int embeddingDim = 2560;
+    @Value("${lorevault.embedding.model.dimensions:1536}")
+    private int embeddingDim = 1536;
 
     @Value("${lorevault.embedding.model.batch-size:32}")
     private int batchSize = 32;
@@ -96,7 +96,7 @@ public class ChapterEventEmbeddingService {
 
     private void normalizeConfig() {
         if (batchSize <= 0) batchSize = 32;
-        if (embeddingDim <= 0) embeddingDim = 2560;
+        if (embeddingDim <= 0) embeddingDim = 1536;
     }
 
     private List<ChapterEvent> selectTargets(List<ChapterEvent> events, String modelId) {

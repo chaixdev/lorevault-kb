@@ -1,12 +1,8 @@
 package com.lorevault.api.ingestion;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,8 +12,6 @@ import com.lorevault.api.content.association.ChapterCollectiveGraphRepository;
 import com.lorevault.api.ingestion.resolution.collective.BookCollectivePersistenceService;
 import com.lorevault.api.ingestion.resolution.collective.BookCollectiveReductionService;
 import com.lorevault.api.ingestion.resolution.collective.BookCollectiveResolutionResult;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
 import com.lorevault.api.library.book.Book;
 import com.lorevault.api.library.book.BookGraphRepository;
 import java.util.List;
@@ -38,16 +32,11 @@ import org.springframework.retry.annotation.Retryable;
 @DisplayName("BookCollectiveReductionService")
 class BookCollectiveReductionServiceTest {
 
-    private static final String CLAIM_LANE = "BOOK_COLLECTIVE_REDUCTION";
-
     @Mock
     private BookGraphRepository bookGraphRepository;
 
     @Mock
     private ChapterCollectiveGraphRepository chapterCollectiveRepository;
-
-    @Mock
-    private BookReductionClaimService claimService;
 
     @Mock
     private BookCollectivePersistenceService bookCollectivePersistenceService;
@@ -111,7 +100,6 @@ class BookCollectiveReductionServiceTest {
                 1
         );
 
-        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(chapterCollectiveRepository.findByBookId(bookId)).thenReturn(List.of(council, bridgeB, bridgeA));
         when(bookCollectivePersistenceService.replaceBookCollectives(any(), any(), any()))
                 .thenAnswer(invocation -> invocation.getArgument(1));
@@ -163,7 +151,6 @@ class BookCollectiveReductionServiceTest {
     @DisplayName("Returns successful zero-count result when no chapter collectives exist for the book")
     void returnsSuccessfulNoOpWhenNoChapterCollectivesExist() {
         UUID bookId = UUID.randomUUID();
-        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(chapterCollectiveRepository.findByBookId(bookId)).thenReturn(List.of());
 
         BookCollectiveResolutionResult response = service.resolveBook(bookId);
@@ -173,22 +160,6 @@ class BookCollectiveReductionServiceTest {
         assertThat(response.bookCollectivesCreated()).isZero();
 
         verify(bookCollectivePersistenceService).replaceBookCollectives(eq(bookId), eq(List.of()), eq(List.of()));
-    }
-
-    @Test
-    @DisplayName("Throws when book reduction claim cannot be acquired")
-    void throwsWhenBookReductionClaimCannotBeAcquired() {
-        UUID bookId = UUID.randomUUID();
-        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(false);
-
-        assertThatThrownBy(() -> service.resolveBook(bookId))
-                .isInstanceOf(BookReductionClaimUnavailableException.class)
-                .hasMessageContaining("BOOK_COLLECTIVE_REDUCTION")
-                .hasMessageContaining(bookId.toString());
-
-        verify(chapterCollectiveRepository, never()).findByBookId(any());
-        verify(bookCollectivePersistenceService, never()).replaceBookCollectives(any(), any(), any());
-        verify(claimService, never()).releaseClaim(any(), eq(CLAIM_LANE));
     }
 
     @Test

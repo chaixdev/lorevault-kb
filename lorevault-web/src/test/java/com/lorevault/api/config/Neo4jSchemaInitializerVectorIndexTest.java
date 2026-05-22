@@ -55,9 +55,9 @@ class Neo4jSchemaInitializerVectorIndexTest {
         
         // Then: Vector index should be created with correct dimensions
         assertThat(vectorIndexExists("chunk_embedding_idx")).isTrue();
-        assertThat(vectorIndexDimensions("chunk_embedding_idx")).isEqualTo(2560);
+        assertThat(vectorIndexDimensions("chunk_embedding_idx")).isEqualTo(1536);
         assertThat(vectorIndexExists("chapter_event_embedding_idx")).isTrue();
-        assertThat(vectorIndexDimensions("chapter_event_embedding_idx")).isEqualTo(2560);
+        assertThat(vectorIndexDimensions("chapter_event_embedding_idx")).isEqualTo(1536);
         
         // When: Running again (idempotent)
         assertDoesNotThrow(() -> schemaInitializer.ensureMinimalSchema());
@@ -79,7 +79,7 @@ class Neo4jSchemaInitializerVectorIndexTest {
         assertDoesNotThrow(() -> schemaInitializer.ensureMinimalSchema());
 
         assertThat(vectorIndexExists("chunk_embedding_idx")).isTrue();
-        assertThat(vectorIndexDimensions("chunk_embedding_idx")).isEqualTo(2560);
+        assertThat(vectorIndexDimensions("chunk_embedding_idx")).isEqualTo(1536);
     }
 
     @Test
@@ -94,7 +94,7 @@ class Neo4jSchemaInitializerVectorIndexTest {
         assertDoesNotThrow(() -> schemaInitializer.ensureMinimalSchema());
 
         assertThat(vectorIndexExists("chapter_event_embedding_idx")).isTrue();
-        assertThat(vectorIndexDimensions("chapter_event_embedding_idx")).isEqualTo(2560);
+        assertThat(vectorIndexDimensions("chapter_event_embedding_idx")).isEqualTo(1536);
     }
 
     @Test

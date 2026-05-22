@@ -227,8 +227,8 @@ class RelationClaimPersistenceServiceTest {
         TriadAnalysisModels.SceneRelationClaimExtraction extraction =
                 new TriadAnalysisModels.SceneRelationClaimExtraction(0, List.of(claim));
 
-        when(relationClaimRepository.countBySceneIdAndExtractionIndexAndRelationName(
-                sceneId, 0, "leads")).thenReturn(1L);
+        when(relationClaimRepository.countBySceneIdAndContentIdentity(
+                sceneId, "Kaladin", "leads", "Bridge Four")).thenReturn(1L);
 
         service.persistExtractedRelationClaims(List.of(persistedScene), List.of(extraction));
 

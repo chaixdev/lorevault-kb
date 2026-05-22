@@ -5,8 +5,6 @@ import com.lorevault.api.content.association.ChapterLocation;
 import com.lorevault.api.content.association.ChapterLocationGraphRepository;
 import com.lorevault.api.ingestion.resolution.location.BookLocationPersistenceService;
 import com.lorevault.api.ingestion.resolution.location.BookLocationReductionService;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
 import com.lorevault.api.ingestion.resolution.location.BookLocationResolutionResult;
 import java.util.List;
 import java.util.UUID;
@@ -22,12 +20,8 @@ import org.springframework.dao.TransientDataAccessException;
 import org.springframework.retry.annotation.Retryable;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,13 +29,8 @@ import static org.mockito.Mockito.when;
 @DisplayName("BookLocationReductionService")
 class BookLocationReductionServiceTest {
 
-    private static final String CLAIM_LANE = "BOOK_LOCATION_REDUCTION";
-
     @Mock
     private ChapterLocationGraphRepository chapterLocationRepository;
-
-    @Mock
-    private BookReductionClaimService claimService;
 
     @Mock
     private BookLocationPersistenceService bookLocationPersistenceService;
@@ -66,7 +55,6 @@ class BookLocationReductionServiceTest {
         ChapterLocation imladris = chapterLocation(imladrisId, chapterCId, "Imladris", "imladris", List.of(), 1);
         ChapterLocation shire = chapterLocation(shireId, chapterAId, "The Shire", "the shire", List.of(), 1);
 
-        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(chapterLocationRepository.findByBookId(bookId)).thenReturn(List.of(lastHomelyHouse, shire, imladris, rivendell));
         when(bookLocationPersistenceService.replaceBookLocations(any(), any(), any()))
                 .thenAnswer(invocation -> invocation.getArgument(1));
@@ -131,7 +119,6 @@ class BookLocationReductionServiceTest {
                 null
         );
 
-        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(chapterLocationRepository.findByBookId(bookId)).thenReturn(List.of(blank));
 
         BookLocationResolutionResult response = service.resolveBook(bookId);
@@ -147,7 +134,6 @@ class BookLocationReductionServiceTest {
     @DisplayName("Returns no-op response when no chapter locations exist for the book")
     void returnsNoOpWhenNoChapterLocationsExist() {
         UUID bookId = UUID.randomUUID();
-        when(claimService.tryAcquireClaimWithRetry(any(), eq(CLAIM_LANE), anyInt(), anyLong())).thenReturn(true);
         when(chapterLocationRepository.findByBookId(bookId)).thenReturn(List.of());
 
         BookLocationResolutionResult response = service.resolveBook(bookId);
@@ -157,22 +143,6 @@ class BookLocationReductionServiceTest {
         assertThat(response.bookLocationsCreated()).isZero();
 
         verify(bookLocationPersistenceService).replaceBookLocations(eq(bookId), eq(List.of()), eq(List.of()));
-    }
-
-    @Test
-    @DisplayName("Throws typed claim exception when book reduction claim cannot be acquired")
-    void throwsTypedClaimExceptionWhenClaimCannotBeAcquired() {
-        UUID bookId = UUID.randomUUID();
-        when(claimService.tryAcquireClaimWithRetry(bookId, CLAIM_LANE, 6, 500)).thenReturn(false);
-
-        assertThatThrownBy(() -> service.resolveBook(bookId))
-                .isInstanceOf(BookReductionClaimUnavailableException.class)
-                .hasMessageContaining("BOOK_LOCATION_REDUCTION")
-                .hasMessageContaining(bookId.toString());
-
-        verify(chapterLocationRepository, never()).findByBookId(any());
-        verify(bookLocationPersistenceService, never()).replaceBookLocations(any(), any(), any());
-        verify(claimService, never()).releaseClaim(any(), eq(CLAIM_LANE));
     }
 
     @Test

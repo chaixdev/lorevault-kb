@@ -43,7 +43,7 @@ public record LoreVaultEmbeddingProperties(
                 model = "text-embedding-3-small";
             }
             if (dimensions == null) {
-                dimensions = 2560;
+                dimensions = 1536;
             }
             if (batchSize == null) {
                 batchSize = 32; // Match existing default

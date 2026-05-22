@@ -40,12 +40,13 @@ public interface RelationClaimGraphRepository extends Neo4jRepository<RelationCl
     void linkObjectMention(UUID claimId, UUID objectMentionId);
 
     /**
-     * Idempotency guard: counts existing claims with the same scene, extraction index, and relation name.
-     * Used to prevent duplicate RelationClaim nodes on pipeline retry.
+     * Idempotency guard: counts existing claims with the same scene and content identity.
+     * Uses (sceneId, subjectName, relationName, objectName) as the dedup key
+     * instead of positional extraction index, which can shift on retry.
      */
     @Query("""
-            MATCH (rc:RelationClaim {sceneId: $sceneId, extractionIndex: $extractionIndex, relationName: $relationName})
+            MATCH (rc:RelationClaim {sceneId: $sceneId, subjectName: $subjectName, relationName: $relationName, objectName: $objectName})
             RETURN count(rc)
             """)
-    long countBySceneIdAndExtractionIndexAndRelationName(UUID sceneId, int extractionIndex, String relationName);
+    long countBySceneIdAndContentIdentity(UUID sceneId, String subjectName, String relationName, String objectName);
 }

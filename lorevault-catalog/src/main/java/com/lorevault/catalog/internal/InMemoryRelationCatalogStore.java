@@ -28,6 +28,11 @@ class InMemoryRelationCatalogStore implements RelationCatalogStore {
     }
 
     @Override
+    public Optional<RelationCatalogDefinition> findBestMatch(RelationQuery query) {
+        return Optional.empty();
+    }
+
+    @Override
     public RelationCatalogDefinition create(RelationQuery query) {
         RelationCatalogId id = RelationCatalogId.random();
         Instant now = Instant.now();

@@ -4,9 +4,6 @@ import com.lorevault.catalog.RelationCatalogId;
 import com.lorevault.catalog.RelationQuery;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class NoOpRelationCatalogServiceTest {
@@ -17,8 +14,7 @@ class NoOpRelationCatalogServiceTest {
     void resolve_throwsUnsupportedOperationException() {
         var query = new RelationQuery(
                 "R:allies_with", "allies with", "Person", "Person",
-                "Two characters who are allies", "certain", "ref1",
-                UUID.randomUUID(), UUID.randomUUID(), Optional.empty());
+                "Two characters who are allies", "certain");
 
         assertThatThrownBy(() -> disabled.resolve(query))
                 .isInstanceOf(UnsupportedOperationException.class)
