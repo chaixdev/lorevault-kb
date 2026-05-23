@@ -1,19 +1,20 @@
 package com.lorevault.api.ingestion.resolution.collective;
 
-import com.lorevault.api.ingestion.events.ChapterCollectivesResolvedEvent;
-import com.lorevault.api.ingestion.events.IngestionFailedEvent;
-import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
+import com.lorevault.api.ingestion.events.StageCompletedEvent;
+import com.lorevault.api.ingestion.events.StageTriggeredEvent;
 import com.lorevault.api.ingestion.job.IngestionJobService;
 import com.lorevault.api.ingestion.job.IngestionStatus;
+import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
+import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.context.event.EventListener;
 
 @Component
 @Slf4j
@@ -24,57 +25,54 @@ public class ChapterCollectiveResolutionHandler implements ChapterCollectiveReso
     private final ChapterCollectiveResolutionService chapterCollectiveResolutionService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
+    private final StageGraphRepository stageRepo;
+    private final StageOutputGraphRepository stageOutputRepo;
 
     public ChapterCollectiveResolutionHandler(
             ChapterCollectiveResolutionService chapterCollectiveResolutionService,
             IngestionJobService ingestionJobService,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            StageGraphRepository stageRepo,
+            StageOutputGraphRepository stageOutputRepo
     ) {
         this.chapterCollectiveResolutionService = chapterCollectiveResolutionService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
+        this.stageRepo = stageRepo;
+        this.stageOutputRepo = stageOutputRepo;
     }
 
     @Async("ingestionLaneTaskExecutor")
     @EventListener
-    public void handleScenesDetected(ScenesDetectedEvent event) {
-        UUID chapterId = event.getChapterId();
+    public void onTrigger(StageTriggeredEvent event) {
+        // 1. Guard: only one thread executes at a time
+        if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
+            return;
+        }
+
         UUID jobId = event.getJobId();
-        UUID correlationId = event.getCorrelationId();
-        UUID bookId = event.getBookId();
+        UUID chapterId = event.getChapterId();
 
-        log.info(
-                "[LANE:COLLECTIVE] [CHAPTER_COLLECTIVE_RESOLUTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}",
-                jobId,
-                correlationId,
-                chapterId,
-                bookId
-        );
+        // 2. Idempotency: does StageOutput already exist?
+        if (stageOutputRepo.existsByChapterIdAndStep(chapterId, event.getStage())) {
+            stageRepo.setSkipped(jobId, event.getStage());
+            eventPublisher.publishEvent(new StageCompletedEvent(
+                    this, jobId, chapterId, event.getStage(),
+                    StepResult.success(event.getStage().name(),
+                            "Skipped \u2014 already completed", 0L)));
+            log.info("[SKIPPED] Stage {} already completed for chapter {}", event.getStage(), chapterId);
+            return;
+        }
 
+        log.info("[LANE:COLLECTIVE] [CHAPTER_COLLECTIVE_RESOLUTION] Started: jobId={}, chapterId={}",
+                jobId, chapterId);
+
+        // 3. Do the work
         StepResult result = execute(jobId, chapterId);
 
-        if (result.success()) {
-            eventPublisher.publishEvent(new ChapterCollectivesResolvedEvent(
-                    this,
-                    jobId,
-                    correlationId,
-                    chapterId,
-                    bookId,
-                    true,
-                    result.counts().getOrDefault("rawCollectivesProcessed", 0),
-                    result.counts().getOrDefault("chapterCollectivesCreated", 0)
-            ));
-        } else {
-            log.error(
-                    "[LANE:COLLECTIVE] [CHAPTER_COLLECTIVE_RESOLUTION] Failed: jobId={}, correlationId={}, chapterId={}, bookId={}",
-                    jobId, correlationId, chapterId, bookId
-            );
-            eventPublisher.publishEvent(new IngestionFailedEvent(
-                    this, jobId, correlationId, chapterId,
-                    STAGE_CHAPTER_COLLECTIVE_RESOLUTION, result.summary(), result.retryable()));
-            stageSupport.updateJobStatus(jobId, IngestionStatus.FAILED,
-                    STAGE_CHAPTER_COLLECTIVE_RESOLUTION + " failed: " + result.summary());
-        }
+        // 4. Emit completion — coordinator handles downstream
+        eventPublisher.publishEvent(new StageCompletedEvent(
+                this, jobId, chapterId, event.getStage(), result));
     }
 
     @Override

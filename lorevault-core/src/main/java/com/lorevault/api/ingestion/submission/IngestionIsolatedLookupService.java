@@ -2,9 +2,9 @@ package com.lorevault.api.ingestion.submission;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.ingestion.job.ChapterIngestionJob;
+import com.lorevault.api.ingestion.job.ChapterIngestionJobGraphRepository;
 import com.lorevault.api.ingestion.job.IngestionFailure;
-import com.lorevault.api.ingestion.job.IngestionJob;
-import com.lorevault.api.ingestion.job.IngestionJobGraphRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,7 @@ import java.util.UUID;
 public class IngestionIsolatedLookupService {
 
     private final ChapterGraphRepository chapterRepo;
-    private final IngestionJobGraphRepository jobRepo;
+    private final ChapterIngestionJobGraphRepository jobRepo;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public Optional<Chapter> findChapterByContentHash(String contentHash) {
@@ -74,7 +74,7 @@ public class IngestionIsolatedLookupService {
     public Optional<UUID> findMostRecentJobId(UUID chapterId) {
         try {
             return jobRepo.findFirstByChapterIdOrderByCreatedAtDesc(chapterId)
-                    .map(IngestionJob::getId);
+                    .map(ChapterIngestionJob::getId);
         } catch (Exception e) {
             log.warn("Required lookup failed (findMostRecentJobForChapter chapterId={}): {}", chapterId, e.getMessage());
             log.debug("Required lookup failure details (findMostRecentJobForChapter):", e);

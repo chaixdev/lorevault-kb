@@ -2,13 +2,13 @@ package com.lorevault.api.ingestion.infrastructure;
 
 import com.lorevault.api.ai.llm.LlmCallLogger;
 import com.lorevault.api.config.LoreVaultLlmLoggingProperties;
-import com.lorevault.api.ingestion.job.IngestionJob;
-import com.lorevault.api.ingestion.job.IngestionJobGraphRepository;
-import com.lorevault.api.ingestion.job.StatusRecordGraphRepository;
+import com.lorevault.api.ingestion.job.ChapterIngestionJob;
+import com.lorevault.api.ingestion.job.ChapterIngestionJobGraphRepository;
+import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
 import com.lorevault.api.ingestion.resolution.event.LlmCallRecord;
 import com.lorevault.api.ingestion.resolution.event.LlmCallRequest;
 import com.lorevault.api.ingestion.resolution.event.LlmCallResponse;
-import com.lorevault.api.ingestion.job.StatusRecord;
+import com.lorevault.api.ingestion.orchestration.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,18 +26,23 @@ public class LlmCallLoggingService implements LlmCallLogger {
 
     private static final Logger log = LoggerFactory.getLogger(LlmCallLoggingService.class);
 
+    private static final Map<String, com.lorevault.api.ingestion.pipeline.StageKey> LLM_STEP_TO_STAGE = Map.of(
+            "chapter-segmentation", com.lorevault.api.ingestion.pipeline.StageKey.SCENE_SEGMENTATION,
+            "scene-analysis", com.lorevault.api.ingestion.pipeline.StageKey.SCENE_SEGMENTATION
+    );
+
     private final LoreVaultLlmLoggingProperties props;
-    private final IngestionJobGraphRepository jobRepo;
-    private final StatusRecordGraphRepository statusRepo;
+    private final ChapterIngestionJobGraphRepository jobRepo;
+    private final StageGraphRepository stageRepo;
     private final LlmCallRecordGraphRepository llmCallRepo;
 
     public LlmCallLoggingService(LoreVaultLlmLoggingProperties props,
-                                 IngestionJobGraphRepository jobRepo,
-                                 StatusRecordGraphRepository statusRepo,
+                                 ChapterIngestionJobGraphRepository jobRepo,
+                                 StageGraphRepository stageRepo,
                                  LlmCallRecordGraphRepository llmCallRepo) {
         this.props = props;
         this.jobRepo = jobRepo;
-        this.statusRepo = statusRepo;
+        this.stageRepo = stageRepo;
         this.llmCallRepo = llmCallRepo;
     }
 
@@ -65,12 +71,12 @@ public class LlmCallLoggingService implements LlmCallLogger {
             return;
         }
 
-        Optional<IngestionJob> jobOpt = jobRepo.findById(jobId);
+        java.util.Optional<ChapterIngestionJob> jobOpt = jobRepo.findById(jobId);
         if (jobOpt.isEmpty()) {
             log.debug("[LLM-LOG] Job {} not found; skipping persistence for step={}", jobId, step);
             return;
         }
-        IngestionJob job = jobOpt.orElseThrow();
+        ChapterIngestionJob job = jobOpt.orElseThrow();
 
         LlmCallRecord rec = new LlmCallRecord();
         rec.setId(UUID.randomUUID());
@@ -109,26 +115,32 @@ public class LlmCallLoggingService implements LlmCallLogger {
 
         rec.setCreatedAt(LocalDateTime.now());
 
-        // Attach to current StatusRecord if available
+        // Attach to current Stage if available — look up by job+step
         try {
             rec.setJob(job);
-            StatusRecord cur = job.getCurrentStatus();
-            if (cur != null) {
-                rec.setStatusRecordId(cur.getId());
-                rec.setStatus(cur);
-                log.debug("[LLM-LOG] Linking LLM call step={} to current status {}", step, cur.getId());
+            var stageKey = LLM_STEP_TO_STAGE.getOrDefault(step,
+                    com.lorevault.api.ingestion.pipeline.StageKey.valueOf(
+                            step.replace("-", "_").toUpperCase()));
+            var stageOpt = stageRepo.findByJobIdAndStep(jobId, stageKey);
+            if (stageOpt.isPresent()) {
+                Stage cur = stageOpt.get();
+                rec.setStageId(cur.getId());
+                rec.setStage(cur);
+                log.debug("[LLM-LOG] Linking LLM call step={} to stage {}", step, cur.getId());
             } else {
-                // Fallback: use most recent status from history if current is not populated
-                var history = statusRepo.findStatusHistoryForJob(jobId);
-                if (history != null && !history.isEmpty()) {
-                    StatusRecord last = history.get(history.size() - 1);
-                    rec.setStatusRecordId(last.getId());
-                    rec.setStatus(last);
-                    log.debug("[LLM-LOG] Linking LLM call step={} to last status {} (fallback)", step, last.getId());
-                }
+                // Fallback: find any RUNNING stage for this job
+                var stages = stageRepo.findByJobId(jobId);
+                stages.stream()
+                        .filter(s -> s.getStatus() == com.lorevault.api.ingestion.pipeline.StageStatus.RUNNING)
+                        .findFirst()
+                        .ifPresent(s -> {
+                            rec.setStageId(s.getId());
+                            rec.setStage(s);
+                            log.debug("[LLM-LOG] Linking LLM call step={} to running stage {} (fallback)", step, s.getId());
+                        });
             }
         } catch (Exception e) {
-            log.debug("[LLM-LOG] Unable to resolve current status for job {}: {}", jobId, e.getMessage());
+            log.debug("[LLM-LOG] Unable to resolve current stage for job {}: {}", jobId, e.getMessage());
         }
 
         llmCallRepo.save(rec);

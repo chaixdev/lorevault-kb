@@ -1,19 +1,20 @@
 package com.lorevault.api.ingestion.resolution.object;
 
-import com.lorevault.api.ingestion.events.ChapterObjectsResolvedEvent;
-import com.lorevault.api.ingestion.events.IngestionFailedEvent;
-import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
+import com.lorevault.api.ingestion.events.StageCompletedEvent;
+import com.lorevault.api.ingestion.events.StageTriggeredEvent;
 import com.lorevault.api.ingestion.job.IngestionJobService;
 import com.lorevault.api.ingestion.job.IngestionStatus;
+import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
+import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.context.event.EventListener;
 
 @Component
 @Slf4j
@@ -24,51 +25,54 @@ public class ChapterObjectResolutionHandler implements ChapterObjectResolutionOp
     private final ChapterObjectResolutionService chapterObjectResolutionService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
+    private final StageGraphRepository stageRepo;
+    private final StageOutputGraphRepository stageOutputRepo;
 
     public ChapterObjectResolutionHandler(
             ChapterObjectResolutionService chapterObjectResolutionService,
             IngestionJobService ingestionJobService,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            StageGraphRepository stageRepo,
+            StageOutputGraphRepository stageOutputRepo
     ) {
         this.chapterObjectResolutionService = chapterObjectResolutionService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
+        this.stageRepo = stageRepo;
+        this.stageOutputRepo = stageOutputRepo;
     }
 
     @Async("ingestionLaneTaskExecutor")
     @EventListener
-    public void handleScenesDetected(ScenesDetectedEvent event) {
-        UUID chapterId = event.getChapterId();
+    public void onTrigger(StageTriggeredEvent event) {
+        // 1. Guard: only one thread executes at a time
+        if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
+            return;
+        }
+
         UUID jobId = event.getJobId();
-        UUID correlationId = event.getCorrelationId();
-        UUID bookId = event.getBookId();
+        UUID chapterId = event.getChapterId();
 
-        log.info("[LANE:OBJECT] [CHAPTER_OBJECT_RESOLUTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}", jobId, correlationId, chapterId, bookId);
+        // 2. Idempotency: does StageOutput already exist?
+        if (stageOutputRepo.existsByChapterIdAndStep(chapterId, event.getStage())) {
+            stageRepo.setSkipped(jobId, event.getStage());
+            eventPublisher.publishEvent(new StageCompletedEvent(
+                    this, jobId, chapterId, event.getStage(),
+                    StepResult.success(event.getStage().name(),
+                            "Skipped \u2014 already completed", 0L)));
+            log.info("[SKIPPED] Stage {} already completed for chapter {}", event.getStage(), chapterId);
+            return;
+        }
 
+        log.info("[LANE:OBJECT] [CHAPTER_OBJECT_RESOLUTION] Started: jobId={}, chapterId={}",
+                jobId, chapterId);
+
+        // 3. Do the work
         StepResult result = execute(jobId, chapterId);
 
-        if (result.success()) {
-            eventPublisher.publishEvent(new ChapterObjectsResolvedEvent(
-                    this,
-                    jobId,
-                    correlationId,
-                    chapterId,
-                    bookId,
-                    true,
-                    result.counts().getOrDefault("rawObjectsProcessed", 0),
-                    result.counts().getOrDefault("chapterObjectsCreated", 0)
-            ));
-        } else {
-            log.error(
-                    "[LANE:OBJECT] [CHAPTER_OBJECT_RESOLUTION] Failed: jobId={}, correlationId={}, chapterId={}, bookId={}",
-                    jobId, correlationId, chapterId, bookId
-            );
-            eventPublisher.publishEvent(new IngestionFailedEvent(
-                    this, jobId, correlationId, chapterId,
-                    STAGE_CHAPTER_OBJECT_RESOLUTION, result.summary(), result.retryable()));
-            stageSupport.updateJobStatus(jobId, IngestionStatus.FAILED,
-                    STAGE_CHAPTER_OBJECT_RESOLUTION + " failed: " + result.summary());
-        }
+        // 4. Emit completion — coordinator handles downstream
+        eventPublisher.publishEvent(new StageCompletedEvent(
+                this, jobId, chapterId, event.getStage(), result));
     }
 
     @Override

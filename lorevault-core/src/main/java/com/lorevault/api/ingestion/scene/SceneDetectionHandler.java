@@ -10,9 +10,10 @@ import com.lorevault.api.content.scene.Scene;
 import com.lorevault.api.content.timeline.domain.CrossChapterBoundaryProjection;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.scene.SceneGraphRepository;
-import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
-import com.lorevault.api.ingestion.events.IngestionFailedEvent;
-import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
+import com.lorevault.api.ingestion.events.StageCompletedEvent;
+import com.lorevault.api.ingestion.events.StageTriggeredEvent;
+import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
+import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
 import com.lorevault.api.ingestion.triad.TriadTemporalEdgeRequestFactory;
 import com.lorevault.api.ingestion.infrastructure.IndividualPersistenceService;
@@ -30,8 +31,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.context.event.EventListener;
 
 import java.util.List;
 import java.util.Map;
@@ -42,8 +42,8 @@ import java.util.stream.Collectors;
 /**
  * Handler for scene detection stage of the ingestion pipeline.
  *
- * Listens to: ChapterIngestionEvent (legacy event from IngestionService)
- * Emits: ScenesDetectedEvent (on success) or IngestionFailedEvent (on failure)
+ * Listens to: StageTriggeredEvent (SCENE_SEGMENTATION)
+ * Emits: StageCompletedEvent (on success, skip, or failure)
  *
  * Implements {@link SceneDetectionOperation} so the CLI module can invoke
  * scene detection directly without going through Spring event dispatch.
@@ -69,6 +69,8 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
     private final SceneRelationshipAnalysisService sceneRelationshipAnalysisService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
+    private final StageGraphRepository stageRepo;
+    private final StageOutputGraphRepository stageOutputRepo;
 
     public SceneDetectionHandler(
             ChapterGraphRepository chapterRepo,
@@ -86,6 +88,8 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService,
             TriadTemporalEdgeRequestFactory triadTemporalEdgeRequestFactory,
             SceneRelationshipAnalysisService sceneRelationshipAnalysisService,
+            StageGraphRepository stageRepo,
+            StageOutputGraphRepository stageOutputRepo,
             ApplicationEventPublisher eventPublisher
     ) {
         this.chapterRepo = chapterRepo;
@@ -104,41 +108,43 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
         this.sceneRelationshipAnalysisService = sceneRelationshipAnalysisService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
+        this.stageRepo = stageRepo;
+        this.stageOutputRepo = stageOutputRepo;
     }
 
     /**
      * Event-driven entry point for the async pipeline.
      * Delegates to {@link #execute(UUID, UUID)} for the actual work,
-     * then publishes completion or failure events.
-     *
-     * <p>Event emission is intentionally kept in this listener method rather than
-     * inside {@code execute()} so that the REST step-execution endpoint can call
-     * {@code execute()} directly without triggering downstream cascade — and
-     * optionally publish events via {@code fireEvents=true}.
+     * then emits {@link StageCompletedEvent} so the coordinator handles DAG transitions.
      */
     @Async("sceneDetectionTaskExecutor")
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handleChapterIngestion(ChapterIngestionEvent event) {
+    @EventListener
+    public void onTrigger(StageTriggeredEvent event) {
+        // 1. Guard: only one thread executes at a time
+        if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
+            return; // already RUNNING or no longer TRIGGERED
+        }
+
         UUID jobId = event.getJobId();
         UUID chapterId = event.getChapterId();
 
-        log.info("[SCENE_DETECTION] Starting pipeline for job={}, chapter={}", jobId, chapterId);
+        // 2. Idempotency: does StageOutput already exist?
+        if (stageOutputRepo.existsByChapterIdAndStep(chapterId, event.getStage())) {
+            stageRepo.setSkipped(jobId, event.getStage());
+            eventPublisher.publishEvent(new StageCompletedEvent(
+                    this, jobId, chapterId, event.getStage(),
+                    StepResult.success(event.getStage().name(),
+                            "Skipped — already completed", 0L)));
+            log.info("[SCENE_DETECTION] Skipped — StageOutput already exists for chapter {}", chapterId);
+            return;
+        }
 
+        // 3. Do the work (existing execute method)
         StepResult result = execute(jobId, chapterId);
 
-        if (result.success()) {
-            // Emit ScenesDetectedEvent so downstream handlers (chunking, etc.) proceed
-            Chapter chapter = chapterRepo.findById(chapterId).orElse(null);
-            if (chapter != null) {
-                List<Scene> scenes = sceneRepo.findByChapterId(chapterId);
-                emitScenesDetected(jobId, chapterId, chapter.getBookId(), scenes);
-            }
-        } else {
-            eventPublisher.publishEvent(new IngestionFailedEvent(
-                    this, jobId, chapterId, "SCENE_DETECTION", result.summary(), result.retryable()));
-            stageSupport.updateJobStatus(jobId, IngestionStatus.FAILED,
-                    "SCENE_DETECTION failed: " + result.summary());
-        }
+        // 4. Emit completion — coordinator handles DAG transitions
+        eventPublisher.publishEvent(new StageCompletedEvent(
+                this, jobId, chapterId, event.getStage(), result));
     }
 
     /**
@@ -312,16 +318,6 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
 
         // Persist detected scenes
         return sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords);
-    }
-
-    private void emitScenesDetected(UUID jobId, UUID chapterId, UUID bookId, List<Scene> scenes) {
-        List<Scene> safeScenes = scenes != null ? scenes : List.of();
-        List<UUID> sceneIds = safeScenes.stream().map(Scene::getEventId).toList();
-
-        log.info("[SCENE_DETECTION] Emitting ScenesDetectedEvent: job={}, chapter={}, sceneCount={}",
-                jobId, chapterId, safeScenes.size());
-
-        eventPublisher.publishEvent(new ScenesDetectedEvent(this, jobId, chapterId, bookId, sceneIds));
     }
 
     private void replayBoundaryTemporalProjection(UUID jobId, List<CrossChapterBoundaryProjection> boundaries) {

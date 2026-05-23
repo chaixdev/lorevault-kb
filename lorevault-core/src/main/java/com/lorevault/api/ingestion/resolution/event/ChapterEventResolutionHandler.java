@@ -5,9 +5,10 @@ import com.lorevault.api.ingestion.job.IngestionJobService;
 import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.ingestion.job.IngestionStatus;
-import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
-import com.lorevault.api.ingestion.events.IngestionFailedEvent;
-import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
+import com.lorevault.api.ingestion.events.StageCompletedEvent;
+import com.lorevault.api.ingestion.events.StageTriggeredEvent;
+import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
+import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
@@ -20,23 +21,19 @@ import java.util.UUID;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.context.event.EventListener;
 
 /**
  * Async handler that orchestrates Stage 2 (LLM co-reference) and Stage 3 (ChapterEvent aggregation)
- * in response to a {@link ScenesDetectedEvent}.
+ * in response to a {@link StageTriggeredEvent}.
  *
  * <p>Implements {@link ChapterEventResolutionOperation} so the CLI module or step-execution
  * endpoints can invoke event resolution directly without Spring event dispatch.
  *
- * <p>Uses {@link PipelineStageSupport} for durable failure emission — any exception from either
- * stage emits {@code IngestionFailedEvent} and marks the job FAILED, rather than silently swallowing
- * or rethrowing to the executor.</p>
- *
- * <p>On success, publishes {@link ChapterEventsResolvedEvent} so the
- * {@code IngestionCompletionCoordinator} fan-in can unblock.</p>
+ * <p>Uses stage orchestration graph for conditional execution, idempotency, and
+ * completion signalling via {@link StageCompletedEvent}.
  */
 @Component
 @Slf4j
@@ -52,6 +49,8 @@ public class ChapterEventResolutionHandler implements ChapterEventResolutionOper
     private final ChapterGraphRepository chapterRepo;
     private final PipelineStageSupport pipelineStageSupport;
     private final ApplicationEventPublisher eventPublisher;
+    private final StageGraphRepository stageRepo;
+    private final StageOutputGraphRepository stageOutputRepo;
 
     public ChapterEventResolutionHandler(
             EventCoreferenceService eventCoreferenceService,
@@ -59,7 +58,9 @@ public class ChapterEventResolutionHandler implements ChapterEventResolutionOper
             SceneGraphRepository sceneRepo,
             ChapterGraphRepository chapterRepo,
             IngestionJobService ingestionJobService,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            StageGraphRepository stageRepo,
+            StageOutputGraphRepository stageOutputRepo
     ) {
         this.eventCoreferenceService = eventCoreferenceService;
         this.chapterEventResolutionService = chapterEventResolutionService;
@@ -67,62 +68,41 @@ public class ChapterEventResolutionHandler implements ChapterEventResolutionOper
         this.chapterRepo = chapterRepo;
         this.pipelineStageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         this.eventPublisher = eventPublisher;
+        this.stageRepo = stageRepo;
+        this.stageOutputRepo = stageOutputRepo;
     }
 
     @Async("ingestionLaneTaskExecutor")
     @EventListener
-    public void handleScenesDetected(ScenesDetectedEvent event) {
-        UUID chapterId = event.getChapterId();
+    public void onTrigger(StageTriggeredEvent event) {
+        // 1. Guard: only one thread executes at a time
+        if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
+            return;
+        }
+
         UUID jobId = event.getJobId();
-        UUID correlationId = event.getCorrelationId();
-        UUID bookId = event.getBookId();
+        UUID chapterId = event.getChapterId();
 
-        log.info("[LANE:EVENT] [CHAPTER_EVENT_RESOLUTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}",
-                jobId, correlationId, chapterId, bookId);
+        // 2. Idempotency: does StageOutput already exist?
+        if (stageOutputRepo.existsByChapterIdAndStep(chapterId, event.getStage())) {
+            stageRepo.setSkipped(jobId, event.getStage());
+            eventPublisher.publishEvent(new StageCompletedEvent(
+                    this, jobId, chapterId, event.getStage(),
+                    StepResult.success(event.getStage().name(),
+                            "Skipped \u2014 already completed", 0L)));
+            log.info("[SKIPPED] Stage {} already completed for chapter {}", event.getStage(), chapterId);
+            return;
+        }
 
+        log.info("[LANE:EVENT] [CHAPTER_EVENT_RESOLUTION] Started: jobId={}, chapterId={}",
+                jobId, chapterId);
+
+        // 3. Do the work
         StepResult result = execute(jobId, chapterId);
 
-        if (result.success()) {
-            try {
-                Chapter chapter = chapterRepo.findById(chapterId).orElse(null);
-                UUID resolvedBookId = chapter != null ? chapter.getBookId() : null;
-
-                log.info(
-                        "[LANE:EVENT] [CHAPTER_EVENT_RESOLUTION] Completed: jobId={}, chapterId={}, bookId={}, mentionCount={}, chapterEventCount={}, failedCorefWindowCount={}",
-                        jobId, chapterId, resolvedBookId,
-                        result.counts().getOrDefault("rawMentionsProcessed", 0),
-                        result.counts().getOrDefault("chapterEventsCreated", 0),
-                        result.counts().getOrDefault("failedCorefWindowCount", 0)
-                );
-
-                eventPublisher.publishEvent(new ChapterEventsResolvedEvent(
-                        this,
-                        jobId,
-                        correlationId,
-                        chapterId,
-                        resolvedBookId,
-                        result.counts().getOrDefault("rawMentionsProcessed", 0) > 0,
-                        result.counts().getOrDefault("rawMentionsProcessed", 0),
-                        result.counts().getOrDefault("chapterEventsCreated", 0),
-                        result.counts().getOrDefault("failedCorefWindowCount", 0)
-                ));
-            } catch (Exception e) {
-                log.error("[CHAPTER_EVENT_RESOLUTION] Failed to publish success event for job={}, chapter={}: {}",
-                        jobId, chapterId, e.getMessage(), e);
-                pipelineStageSupport.updateJobStatus(jobId, IngestionStatus.FAILED,
-                        "CHAPTER_EVENT_RESOLUTION failed to publish: " + e.getMessage());
-            }
-        } else {
-            log.warn(
-                    "[LANE:EVENT] [CHAPTER_EVENT_RESOLUTION] Failed: jobId={}, correlationId={}, chapterId={}, reason={}",
-                    jobId, correlationId, chapterId, result.summary()
-            );
-            eventPublisher.publishEvent(new IngestionFailedEvent(
-                    this, jobId, correlationId, chapterId, "CHAPTER_EVENT_RESOLUTION",
-                    result.summary(), result.retryable()));
-            pipelineStageSupport.updateJobStatus(jobId, IngestionStatus.FAILED,
-                    "CHAPTER_EVENT_RESOLUTION failed: " + result.summary());
-        }
+        // 4. Emit completion — coordinator handles downstream
+        eventPublisher.publishEvent(new StageCompletedEvent(
+                this, jobId, chapterId, event.getStage(), result));
     }
 
     @Override

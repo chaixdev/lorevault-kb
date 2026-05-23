@@ -1,10 +1,9 @@
 package com.lorevault.api.ingestion.infrastructure;
 
-import com.lorevault.api.ingestion.job.IngestionJobGraphRepository;
-import com.lorevault.api.ingestion.job.StatusRecordGraphRepository;
-import com.lorevault.api.ingestion.resolution.event.LlmCallRecord;
-import com.lorevault.api.ingestion.job.StatusRecord;
 import com.lorevault.api.ingestion.triad.TriadAnalysisArtifactLookup;
+import com.lorevault.api.ingestion.resolution.event.LlmCallRecord;
+import com.lorevault.api.ingestion.job.ChapterIngestionJobGraphRepository;
+
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -12,16 +11,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class GraphTriadAnalysisArtifactLookup implements TriadAnalysisArtifactLookup {
 
-    private final IngestionJobGraphRepository ingestionJobGraphRepository;
-    private final StatusRecordGraphRepository statusRecordGraphRepository;
-    private final LlmCallRecordGraphRepository llmCallRecordGraphRepository;
+    private final ChapterIngestionJobGraphRepository jobRepo;
+    private final LlmCallRecordGraphRepository llmCallRepo;
 
-    public GraphTriadAnalysisArtifactLookup(IngestionJobGraphRepository ingestionJobGraphRepository,
-                                            StatusRecordGraphRepository statusRecordGraphRepository,
-                                            LlmCallRecordGraphRepository llmCallRecordGraphRepository) {
-        this.ingestionJobGraphRepository = ingestionJobGraphRepository;
-        this.statusRecordGraphRepository = statusRecordGraphRepository;
-        this.llmCallRecordGraphRepository = llmCallRecordGraphRepository;
+    public GraphTriadAnalysisArtifactLookup(
+            ChapterIngestionJobGraphRepository jobRepo,
+            LlmCallRecordGraphRepository llmCallRepo) {
+        this.jobRepo = jobRepo;
+        this.llmCallRepo = llmCallRepo;
     }
 
     @Override
@@ -29,22 +26,26 @@ public class GraphTriadAnalysisArtifactLookup implements TriadAnalysisArtifactLo
         if (chapterId == null) {
             return Optional.empty();
         }
-        return ingestionJobGraphRepository.findLatestJobIdByChapterId(chapterId);
+        return jobRepo.findLatestJobIdByChapterId(chapterId);
+    }
+
+    /**
+     * Triad stage correlation now uses Stage nodes instead of StatusRecord.
+     * Returns null for now — triad temporal edges will be rebuilt during
+     * the full triad refactoring pass.
+     */
+    @Override
+    public Optional<UUID> findLatestTriadStageIdByCurrentSceneId(UUID jobId, UUID currentSceneId) {
+        // StatusRecord-based lookup is deprecated with the new Stage model.
+        // Triad analysis status correlation will need a dedicated refactoring pass.
+        return Optional.empty();
     }
 
     @Override
-    public Optional<StatusRecord> findLatestTriadStatusByCurrentSceneId(UUID jobId, UUID currentSceneId) {
-        if (jobId == null || currentSceneId == null) {
+    public Optional<LlmCallRecord> findLatestTriadCallRecord(UUID jobId, UUID stageId) {
+        if (jobId == null || stageId == null) {
             return Optional.empty();
         }
-        return statusRecordGraphRepository.findLatestTriadStatusByCurrentSceneId(jobId, currentSceneId.toString());
-    }
-
-    @Override
-    public Optional<LlmCallRecord> findLatestTriadCallRecord(UUID jobId, UUID statusRecordId) {
-        if (jobId == null || statusRecordId == null) {
-            return Optional.empty();
-        }
-        return llmCallRecordGraphRepository.findLatestByJobStepAndStatusRecord(jobId, "scene-analysis", statusRecordId);
+        return llmCallRepo.findLatestByJobStepAndStage(jobId, "scene-analysis", stageId);
     }
 }

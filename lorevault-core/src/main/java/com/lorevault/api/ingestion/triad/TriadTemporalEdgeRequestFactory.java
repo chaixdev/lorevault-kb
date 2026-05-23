@@ -4,7 +4,6 @@ import com.lorevault.api.ingestion.resolution.event.TemporalEdgeProvenance;
 import com.lorevault.api.ingestion.resolution.event.TemporalEdgeWriteRequest;
 import com.lorevault.api.ingestion.job.IngestionFailure;
 import com.lorevault.api.ingestion.resolution.event.LlmCallRecord;
-import com.lorevault.api.ingestion.job.StatusRecord;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -119,29 +118,28 @@ public class TriadTemporalEdgeRequestFactory {
     }
 
     private TemporalEdgeProvenance resolveRequiredProvenance(UUID jobId,
-                                                             UUID chapterId,
-                                                             UUID currentSceneId,
-                                                             Integer currentSceneIndex) {
-        StatusRecord statusRecord = findRequiredTriadStatus(jobId, currentSceneId, currentSceneIndex);
-        UUID statusRecordId = statusRecord.getId();
-        LlmCallRecord callRecord = findRequiredTriadCall(jobId, statusRecordId);
+                                                              UUID chapterId,
+                                                              UUID currentSceneId,
+                                                              Integer currentSceneIndex) {
+        UUID stageId = findRequiredTriadStageId(jobId, currentSceneId, currentSceneIndex);
+        LlmCallRecord callRecord = findRequiredTriadCall(jobId, stageId);
 
         if (callRecord.getResponse() == null || callRecord.getResponse().getBody() == null) {
             throw triadArtifactFailure(
                     "TRIAD_ARTIFACT_UNRECOVERABLE",
                     "Triad structured output is missing for scene index " + currentSceneIndex,
                     currentSceneIndex,
-                    statusRecord,
+                    stageId,
                     callRecord
             );
         }
 
-        return new TemporalEdgeProvenance(jobId, chapterId, statusRecordId, callRecord.getId());
+        return new TemporalEdgeProvenance(jobId, chapterId, stageId, callRecord.getId());
     }
 
-    private StatusRecord findRequiredTriadStatus(UUID jobId,
-                                                 UUID currentSceneId,
-                                                 Integer currentSceneIndex) {
+    private UUID findRequiredTriadStageId(UUID jobId,
+                                           UUID currentSceneId,
+                                           Integer currentSceneIndex) {
         if (jobId == null || currentSceneId == null) {
             throw triadArtifactFailure(
                     "TRIAD_STATUS_MISSING",
@@ -152,7 +150,7 @@ public class TriadTemporalEdgeRequestFactory {
             );
         }
 
-        return triadAnalysisArtifactLookup.findLatestTriadStatusByCurrentSceneId(jobId, currentSceneId)
+        return triadAnalysisArtifactLookup.findLatestTriadStageIdByCurrentSceneId(jobId, currentSceneId)
                 .orElseThrow(() -> triadArtifactFailure(
                         "TRIAD_STATUS_MISSING",
                         "Missing SCENE_TRIAD_ANALYSIS status for current scene id " + currentSceneId,
@@ -162,8 +160,8 @@ public class TriadTemporalEdgeRequestFactory {
                 ));
     }
 
-    private LlmCallRecord findRequiredTriadCall(UUID jobId, UUID statusRecordId) {
-        if (jobId == null || statusRecordId == null) {
+    private LlmCallRecord findRequiredTriadCall(UUID jobId, UUID stageId) {
+        if (jobId == null || stageId == null) {
             throw triadArtifactFailure(
                     "TRIAD_ARTIFACT_MISSING",
                     "Missing triad call linkage metadata",
@@ -173,10 +171,10 @@ public class TriadTemporalEdgeRequestFactory {
             );
         }
 
-        return triadAnalysisArtifactLookup.findLatestTriadCallRecord(jobId, statusRecordId)
+        return triadAnalysisArtifactLookup.findLatestTriadCallRecord(jobId, stageId)
                 .orElseThrow(() -> triadArtifactFailure(
                         "TRIAD_ARTIFACT_MISSING",
-                        "Missing scene-analysis LlmCallRecord for status " + statusRecordId,
+                        "Missing scene-analysis LlmCallRecord for stage " + stageId,
                         null,
                         null,
                         null
@@ -184,16 +182,16 @@ public class TriadTemporalEdgeRequestFactory {
     }
 
     private TriadAnalysisException triadArtifactFailure(String code,
-                                                        String message,
-                                                        Integer currentSceneIndex,
-                                                        StatusRecord statusRecord,
-                                                        LlmCallRecord callRecord) {
+                                                         String message,
+                                                         Integer currentSceneIndex,
+                                                         UUID stageId,
+                                                         LlmCallRecord callRecord) {
         IngestionFailure.Builder builder = IngestionFailure.builder(code, message)
                 .exceptionType(TriadAnalysisException.class.getSimpleName())
                 .stage("SCENE_TRIAD_ANALYSIS")
                 .detail("currentSceneIndex", currentSceneIndex)
-                .detail("statusRecordId", statusRecord != null ? statusRecord.getId() : null)
-                .detail("llmCallRecordId", callRecord != null ? callRecord.getId() : null);
+                .detail("stageId", stageId != null ? stageId.toString() : null)
+                .detail("llmCallRecordId", callRecord != null ? callRecord.getId().toString() : null);
         return new TriadAnalysisException(builder.build());
     }
 }

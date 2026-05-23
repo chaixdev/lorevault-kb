@@ -1,7 +1,7 @@
 package com.lorevault.api.ingestion.resolution.event;
 
-import com.lorevault.api.ingestion.job.IngestionJob;
-import com.lorevault.api.ingestion.job.StatusRecord;
+import com.lorevault.api.ingestion.job.ChapterIngestionJob;
+import com.lorevault.api.ingestion.orchestration.Stage;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,7 +27,7 @@ public class LlmCallRecord {
 
     // Linkage
     private UUID jobId;
-    private UUID statusRecordId; // optional: current status at call time
+    private UUID stageId; // optional: current stage at call time
 
     // Classification
     private String step; // e.g., chapter-segmentation | scene-analysis
@@ -60,8 +60,8 @@ public class LlmCallRecord {
 
     // Optional convenience relationships (not required for queries but useful visually)
     @Relationship(type = "OF_JOB", direction = Relationship.Direction.OUTGOING)
-    private IngestionJob job;
+    private ChapterIngestionJob job;
 
-    @Relationship(type = "OF_STATUS", direction = Relationship.Direction.OUTGOING)
-    private StatusRecord status;
+    @Relationship(type = "OF_STAGE", direction = Relationship.Direction.OUTGOING)
+    private Stage stage;
 }

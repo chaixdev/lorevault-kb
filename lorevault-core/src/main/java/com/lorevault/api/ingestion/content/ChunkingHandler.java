@@ -8,18 +8,19 @@ import com.lorevault.api.ingestion.job.IngestionStatus;
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.chunk.Chunk;
 import com.lorevault.api.content.scene.Scene;
-import com.lorevault.api.ingestion.events.ChunksCreatedEvent;
-import com.lorevault.api.ingestion.events.IngestionFailedEvent;
-import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.chunk.ChunkGraphRepository;
 import com.lorevault.api.content.scene.SceneGraphRepository;
 import com.lorevault.api.ai.chunking.TextChunkingService;
+import com.lorevault.api.ingestion.events.StageCompletedEvent;
+import com.lorevault.api.ingestion.events.StageTriggeredEvent;
+import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
+import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.context.event.EventListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,13 +31,13 @@ import static com.lorevault.api.ingestion.infrastructure.HashUtils.generateSha25
 
 /**
  * Handler for text chunking stage of the ingestion pipeline.
- * 
- * Listens to: ScenesDetectedEvent
- * Emits: ChunksCreatedEvent (on success) or IngestionFailedEvent (on failure)
- * 
+ *
+ * Listens to: StageTriggeredEvent (CHUNKING)
+ * Emits: StageCompletedEvent (on success, skip, or failure)
+ *
  * Implements {@link ChunkingOperation} so the CLI module or step-execution
  * endpoints can invoke chunking directly without Spring event dispatch.
- * 
+ *
  * Responsibilities:
  * - Break down scene text into embeddable chunks
  * - Apply overlap strategy for context preservation
@@ -52,6 +53,8 @@ public class ChunkingHandler implements ChunkingOperation {
     private final TextChunkingService textChunkingService;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
+    private final StageGraphRepository stageRepo;
+    private final StageOutputGraphRepository stageOutputRepo;
 
     public ChunkingHandler(
             ChapterGraphRepository chapterRepo,
@@ -59,6 +62,8 @@ public class ChunkingHandler implements ChunkingOperation {
             SceneGraphRepository sceneRepo,
             TextChunkingService textChunkingService,
             IngestionJobService ingestionJobService,
+            StageGraphRepository stageRepo,
+            StageOutputGraphRepository stageOutputRepo,
             ApplicationEventPublisher eventPublisher
     ) {
         this.chapterRepo = chapterRepo;
@@ -67,30 +72,40 @@ public class ChunkingHandler implements ChunkingOperation {
         this.textChunkingService = textChunkingService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
+        this.stageRepo = stageRepo;
+        this.stageOutputRepo = stageOutputRepo;
     }
 
     @Async("ingestionLaneTaskExecutor")
     @EventListener
-    public void handleScenesDetected(ScenesDetectedEvent event) {
+    public void onTrigger(StageTriggeredEvent event) {
+        // 1. Guard: only one thread executes at a time
+        if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
+            return; // already RUNNING or no longer TRIGGERED
+        }
+
         UUID jobId = event.getJobId();
         UUID chapterId = event.getChapterId();
 
-        log.info("[LANE:CONTENT] [CHUNKING] Starting for job={}, chapter={}, sceneCount={}",
-                jobId, chapterId, event.getSceneCount());
+        // 2. Idempotency: does StageOutput already exist?
+        if (stageOutputRepo.existsByChapterIdAndStep(chapterId, event.getStage())) {
+            stageRepo.setSkipped(jobId, event.getStage());
+            eventPublisher.publishEvent(new StageCompletedEvent(
+                    this, jobId, chapterId, event.getStage(),
+                    StepResult.success(event.getStage().name(),
+                            "Skipped — already completed", 0L)));
+            log.info("[CHUNKING] Skipped — StageOutput already exists for chapter {}", chapterId);
+            return;
+        }
 
+        log.info("[LANE:CONTENT] [CHUNKING] Starting for job={}, chapter={}", jobId, chapterId);
+
+        // 3. Do the work (existing execute method)
         StepResult result = execute(jobId, chapterId);
 
-        if (result.success()) {
-            Chapter chapter = chapterRepo.findById(chapterId).orElse(null);
-            UUID bookId = chapter != null ? chapter.getBookId() : null;
-            int chunkCount = result.counts().getOrDefault("chunksCreated", 0);
-            emitChunksCreated(jobId, chapterId, bookId, chunkCount);
-        } else {
-            eventPublisher.publishEvent(new IngestionFailedEvent(
-                    this, jobId, chapterId, "CHUNKING", result.summary(), result.retryable()));
-            stageSupport.updateJobStatus(jobId, IngestionStatus.FAILED,
-                    "CHUNKING failed: " + result.summary());
-        }
+        // 4. Emit completion — coordinator handles DAG transitions
+        eventPublisher.publishEvent(new StageCompletedEvent(
+                this, jobId, chapterId, event.getStage(), result));
     }
 
     @Override
@@ -213,10 +228,4 @@ public class ChunkingHandler implements ChunkingOperation {
         return chunks;
     }
 
-    private void emitChunksCreated(UUID jobId, UUID chapterId, UUID bookId, int chunkCount) {
-        log.info("[LANE:CONTENT] [CHUNKING] Emitting ChunksCreatedEvent: job={}, chapter={}, chunkCount={}",
-                jobId, chapterId, chunkCount);
-
-        eventPublisher.publishEvent(new ChunksCreatedEvent(this, jobId, chapterId, bookId, chunkCount));
-    }
 }

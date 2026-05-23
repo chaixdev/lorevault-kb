@@ -6,98 +6,93 @@ import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.ingestion.job.IngestionJobService;
 import com.lorevault.api.ingestion.job.IngestionStatus;
 
-import com.lorevault.api.content.chapter.Chapter;
-import com.lorevault.api.ingestion.events.ChunksCreatedEvent;
-import com.lorevault.api.ingestion.events.EmbeddingsCompletedEvent;
-import com.lorevault.api.ingestion.events.IngestionFailedEvent;
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.chunk.ChunkGraphRepository;
-import com.lorevault.api.ingestion.job.IngestionJobGraphRepository;
-import com.lorevault.api.content.scene.SceneGraphRepository;
 import com.lorevault.api.ai.embedding.EmbeddingService;
+import com.lorevault.api.ingestion.events.StageCompletedEvent;
+import com.lorevault.api.ingestion.events.StageTriggeredEvent;
+import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
+import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.context.event.EventListener;
 
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * Handler for embedding generation and completion stage of the ingestion pipeline.
- * 
- * Listens to: ChunksCreatedEvent
- * Emits: EmbeddingsCompletedEvent (on success) or IngestionFailedEvent (on failure)
- * 
+ * Handler for embedding generation stage of the ingestion pipeline.
+ *
+ * Listens to: StageTriggeredEvent (EMBEDDING)
+ * Emits: StageCompletedEvent (on success, skip, or failure)
+ *
  * Implements {@link EmbeddingOperation} so the CLI module or step-execution
  * endpoints can invoke embedding generation directly without Spring event dispatch.
- * 
+ *
  * Responsibilities:
  * - Generate vector embeddings for all chunks in the chapter
  * - Store embeddings in the database for semantic search
- * - Gather final statistics and mark job complete
  */
 @Component
 @Slf4j
 public class EmbeddingHandler implements EmbeddingOperation {
 
-    private final ChapterGraphRepository chapterRepo;
     private final ChunkGraphRepository chunkRepo;
-    private final SceneGraphRepository sceneRepo;
     private final EmbeddingService embeddingService;
     private final IngestionJobService ingestionJobService;
-    private final IngestionJobGraphRepository jobRepo;
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
+    private final StageGraphRepository stageRepo;
+    private final StageOutputGraphRepository stageOutputRepo;
 
     public EmbeddingHandler(
-            ChapterGraphRepository chapterRepo,
             ChunkGraphRepository chunkRepo,
-            SceneGraphRepository sceneRepo,
             EmbeddingService embeddingService,
             IngestionJobService ingestionJobService,
-            IngestionJobGraphRepository jobRepo,
+            StageGraphRepository stageRepo,
+            StageOutputGraphRepository stageOutputRepo,
             ApplicationEventPublisher eventPublisher
     ) {
-        this.chapterRepo = chapterRepo;
         this.chunkRepo = chunkRepo;
-        this.sceneRepo = sceneRepo;
         this.embeddingService = embeddingService;
         this.ingestionJobService = ingestionJobService;
-        this.jobRepo = jobRepo;
+        this.stageRepo = stageRepo;
+        this.stageOutputRepo = stageOutputRepo;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
 
     @Async("ingestionLaneTaskExecutor")
     @EventListener
-    public void handleChunksCreated(ChunksCreatedEvent event) {
+    public void onTrigger(StageTriggeredEvent event) {
+        // 1. Guard: only one thread executes at a time
+        if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
+            return; // already RUNNING or no longer TRIGGERED
+        }
+
         UUID jobId = event.getJobId();
         UUID chapterId = event.getChapterId();
 
-        log.info("[LANE:CONTENT] [EMBEDDING] Starting for job={}, chapter={}, chunkCount={}",
-                jobId, chapterId, event.getChunkCount());
+        // 2. Idempotency: does StageOutput already exist?
+        if (stageOutputRepo.existsByChapterIdAndStep(chapterId, event.getStage())) {
+            stageRepo.setSkipped(jobId, event.getStage());
+            eventPublisher.publishEvent(new StageCompletedEvent(
+                    this, jobId, chapterId, event.getStage(),
+                    StepResult.success(event.getStage().name(),
+                            "Skipped — already completed", 0L)));
+            log.info("[EMBEDDING] Skipped — StageOutput already exists for chapter {}", chapterId);
+            return;
+        }
 
+        log.info("[LANE:CONTENT] [EMBEDDING] Starting for job={}, chapter={}", jobId, chapterId);
+
+        // 3. Do the work (existing execute method)
         StepResult result = execute(jobId, chapterId);
 
-        if (result.success()) {
-            try {
-                int embeddedCount = result.counts().getOrDefault("embeddingsGenerated", 0);
-                completeIngestion(jobId, chapterId, embeddedCount);
-            } catch (Exception e) {
-                log.error("[EMBEDDING] Completion tracking failed for job={} chapter={}: {}", jobId, chapterId, e.getMessage(), e);
-                eventPublisher.publishEvent(new IngestionFailedEvent(
-                        this, jobId, chapterId, "EMBEDDING", e.getMessage(), false));
-                stageSupport.updateJobStatus(jobId, IngestionStatus.FAILED,
-                        "EMBEDDING failed: " + e.getMessage());
-            }
-        } else {
-            eventPublisher.publishEvent(new IngestionFailedEvent(
-                    this, jobId, chapterId, "EMBEDDING", result.summary(), result.retryable()));
-            stageSupport.updateJobStatus(jobId, IngestionStatus.FAILED,
-                    "EMBEDDING failed: " + result.summary());
-        }
+        // 4. Emit completion — coordinator handles DAG transitions
+        eventPublisher.publishEvent(new StageCompletedEvent(
+                this, jobId, chapterId, event.getStage(), result));
     }
 
     @Override
@@ -143,34 +138,6 @@ public class EmbeddingHandler implements EmbeddingOperation {
                     : StepResult.failure("EMBEDDING",
                             PipelineStageSupport.sanitizeExceptionMessage(e), elapsed);
         }
-    }
-
-    private void completeIngestion(UUID jobId, UUID chapterId, int embeddedCount) {
-        log.info("[LANE:CONTENT] [EMBEDDING_COMPLETION_BRANCH] Processing for job={}, chapter={}", jobId, chapterId);
-
-        // Gather statistics
-        int sceneCount = sceneRepo.findByChapterId(chapterId).size();
-        int via = chunkRepo.countByChapterIdViaScenes(chapterId);
-        int chunkCount = via > 0 ? via : chunkRepo.countByChapterId(chapterId);
-
-        // Get chapter length for job completion
-        Chapter chapter = chapterRepo.findById(chapterId)
-                .orElseThrow(() -> new IllegalArgumentException("Chapter not found: " + chapterId));
-        String rawText = chapter.getRawText();
-        int chapterLength = rawText != null ? rawText.length() : 0;
-
-        log.info("[LANE:CONTENT] [EMBEDDING_COMPLETION_BRANCH] Embedding branch finished for job {}: {} scenes, {} chunks, {} embeddings",
-                jobId, sceneCount, chunkCount, embeddedCount);
-
-        eventPublisher.publishEvent(new EmbeddingsCompletedEvent(
-                this,
-                jobId,
-                chapterId,
-                sceneCount,
-                chunkCount,
-                embeddedCount,
-                chapterLength
-        ));
     }
 
     private boolean isRetryableError(Exception e) {

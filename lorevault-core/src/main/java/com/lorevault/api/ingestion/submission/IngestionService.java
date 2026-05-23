@@ -3,7 +3,7 @@ package com.lorevault.api.ingestion.submission;
 import com.lorevault.api.ingestion.job.JobStatusDetails;
 import com.lorevault.api.ingestion.job.PaginatedJobSummaries;
 import com.lorevault.api.ingestion.job.IngestionFailure;
-import com.lorevault.api.ingestion.job.IngestionJob;
+import com.lorevault.api.ingestion.job.ChapterIngestionJob;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.ingestion.job.IngestionJobService;
@@ -11,7 +11,6 @@ import com.lorevault.api.library.book.Book;
 import com.lorevault.api.library.book.PublicationCoordinates;
 import com.lorevault.api.library.book.BookGraphRepository;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
-import com.lorevault.api.ingestion.events.ChapterIngestionEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -110,14 +109,12 @@ public class IngestionService {
             }
 
             // Create new job for existing chapter
-            IngestionJob job = ingestionJobService.createIngestionJob(chapterId);
-            eventPublisher.publishEvent(new ChapterIngestionEvent(this, job.getId(), chapterId));
+            ChapterIngestionJob job = ingestionJobService.createIngestionJob(chapterId);
             return new IngestionSubmissionResult(job.getId(), chapterId);
         }
 
         // Create job for new chapter
-        IngestionJob job = ingestionJobService.createIngestionJob(chapterId);
-        eventPublisher.publishEvent(new ChapterIngestionEvent(this, job.getId(), chapterId));
+        ChapterIngestionJob job = ingestionJobService.createIngestionJob(chapterId);
         return new IngestionSubmissionResult(job.getId(), chapterId);
     }
 
@@ -138,8 +135,8 @@ public class IngestionService {
         ChapterValidationResult validationResult = validateAndProcessChapter(bookId, chapterNumber, chapterTitle, chapterText);
         UUID chapterId = validationResult.getChapterId();
 
-        // Create job but do NOT publish ChapterIngestionEvent — CLI will drive steps manually
-        IngestionJob job = ingestionJobService.createIngestionJob(chapterId);
+        // Create job but do NOT bootstrap stages — CLI will drive steps manually
+        ChapterIngestionJob job = ingestionJobService.createIngestionJob(chapterId);
         log.info("Prepared chapter {} for step-by-step processing, jobId={}", chapterId, job.getId());
 
         return new IngestionSubmissionResult(job.getId(), chapterId);

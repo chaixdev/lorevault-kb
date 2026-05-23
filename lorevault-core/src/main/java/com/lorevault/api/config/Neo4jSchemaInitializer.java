@@ -35,10 +35,16 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE CONSTRAINT scene_id_unique IF NOT EXISTS FOR (s:Scene) REQUIRE s.id IS UNIQUE";
     private static final String CHUNK_ID_UNIQUE =
             "CREATE CONSTRAINT chunk_id_unique IF NOT EXISTS FOR (ch:Chunk) REQUIRE ch.id IS UNIQUE";
-    private static final String INGESTION_JOB_ID_UNIQUE =
-            "CREATE CONSTRAINT ingestion_job_id_unique IF NOT EXISTS FOR (j:IngestionJob) REQUIRE j.id IS UNIQUE";
-    private static final String STATUS_RECORD_ID_UNIQUE =
-            "CREATE CONSTRAINT status_record_id_unique IF NOT EXISTS FOR (sr:StatusRecord) REQUIRE sr.id IS UNIQUE";
+
+    // ── Durable orchestration constraints (new model) ──────────────────
+    private static final String CHAPTER_INGESTION_JOB_ID_UNIQUE =
+            "CREATE CONSTRAINT chapter_ingestion_job_id_unique IF NOT EXISTS FOR (j:ChapterIngestionJob) REQUIRE j.id IS UNIQUE";
+    private static final String STAGE_ID_UNIQUE =
+            "CREATE CONSTRAINT stage_id_unique IF NOT EXISTS FOR (s:Stage) REQUIRE s.id IS UNIQUE";
+    private static final String STAGE_JOB_STEP_UNIQUE =
+            "CREATE CONSTRAINT stage_job_step_unique IF NOT EXISTS FOR (s:Stage) REQUIRE (s.jobId, s.step) IS UNIQUE";
+    private static final String STAGE_OUTPUT_ID_UNIQUE =
+            "CREATE CONSTRAINT stage_output_id_unique IF NOT EXISTS FOR (o:StageOutput) REQUIRE o.id IS UNIQUE";
     private static final String LLM_CALL_RECORD_ID_UNIQUE =
             "CREATE CONSTRAINT llm_call_record_id_unique IF NOT EXISTS FOR (r:LlmCallRecord) REQUIRE r.id IS UNIQUE";
     private static final String CHAPTER_INDIVIDUAL_ID_UNIQUE =
@@ -142,6 +148,14 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     private static final String LLM_CALL_RECORD_JOB_STEP_STATUS_INDEX =
             "CREATE INDEX llm_call_record_job_step_status IF NOT EXISTS FOR (r:LlmCallRecord) ON (r.jobId, r.step, r.statusRecordId)";
 
+    // ── Durable orchestration indexes ─────────────────────────────────
+    private static final String STAGE_OUTPUT_CHAPTER_STEP_INDEX =
+            "CREATE INDEX stage_output_chapter_step IF NOT EXISTS FOR (o:StageOutput) ON (o.chapterId, o.step)";
+    private static final String STAGE_OUTPUT_BOOK_STEP_INDEX =
+            "CREATE INDEX stage_output_book_step IF NOT EXISTS FOR (o:StageOutput) ON (o.bookId, o.step)";
+    private static final String LLM_CALL_RECORD_JOB_STEP_STAGE_INDEX =
+            "CREATE INDEX llm_call_record_job_step_stage IF NOT EXISTS FOR (r:LlmCallRecord) ON (r.jobId, r.step, r.stageId)";
+
     // RelationClaim query indexes
     private static final String RELATION_CLAIM_CHAPTER_DEFKEY_INDEX =
             "CREATE INDEX relation_claim_chapter_defkey IF NOT EXISTS FOR (rc:RelationClaim) ON (rc.chapterId, rc.definitionKey)";
@@ -178,8 +192,6 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(CHAPTER_ID_UNIQUE, "Chapter.id unique"));
         results.add(executeConstraint(SCENE_ID_UNIQUE, "Scene.id unique"));
         results.add(executeConstraint(CHUNK_ID_UNIQUE, "Chunk.id unique"));
-        results.add(executeConstraint(INGESTION_JOB_ID_UNIQUE, "IngestionJob.id unique"));
-        results.add(executeConstraint(STATUS_RECORD_ID_UNIQUE, "StatusRecord.id unique"));
         results.add(executeConstraint(LLM_CALL_RECORD_ID_UNIQUE, "LlmCallRecord.id unique"));
         results.add(executeConstraint(CHAPTER_INDIVIDUAL_ID_UNIQUE, "ChapterIndividual.id unique"));
         results.add(executeConstraint(CHAPTER_INDIVIDUAL_SCOPE_UNIQUE, "ChapterIndividual(chapterId, normalizedName) unique"));
@@ -205,6 +217,12 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(DELETE_LEGACY_BOOK_REDUCTION_CLAIMS, "Legacy BookReductionClaim rows deleted"));
         results.add(executeConstraint(BOOK_REDUCTION_CLAIM_ID_UNIQUE, "BookReductionClaim.id unique"));
         results.add(executeConstraint(RELATION_CLAIM_ID_UNIQUE, "RelationClaim.id unique"));
+
+        // Durable orchestration constraints
+        results.add(executeConstraint(CHAPTER_INGESTION_JOB_ID_UNIQUE, "ChapterIngestionJob.id unique"));
+        results.add(executeConstraint(STAGE_ID_UNIQUE, "Stage.id unique"));
+        results.add(executeConstraint(STAGE_JOB_STEP_UNIQUE, "Stage(jobId, step) unique"));
+        results.add(executeConstraint(STAGE_OUTPUT_ID_UNIQUE, "StageOutput.id unique"));
         
         // Event identity constraint
         results.add(executeConstraint(EVENT_ID_UNIQUE, "Event.id unique"));
@@ -229,6 +247,11 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(LLM_CALL_RECORD_JOB_ID_INDEX, "LlmCallRecord(jobId)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_INDEX, "LlmCallRecord(jobId, step)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_STATUS_INDEX, "LlmCallRecord(jobId, step, statusRecordId)"));
+        
+        // Durable orchestration indexes
+        results.add(executeIndex(STAGE_OUTPUT_CHAPTER_STEP_INDEX, "StageOutput(chapterId, step)"));
+        results.add(executeIndex(STAGE_OUTPUT_BOOK_STEP_INDEX, "StageOutput(bookId, step)"));
+        results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_STAGE_INDEX, "LlmCallRecord(jobId, step, stageId)"));
         
         // RelationClaim indexes
         results.add(executeIndex(RELATION_CLAIM_CHAPTER_DEFKEY_INDEX, "RelationClaim(chapterId, definitionKey)"));

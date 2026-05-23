@@ -11,8 +11,8 @@ public interface LlmCallRecordGraphRepository extends Neo4jRepository<LlmCallRec
     MATCH (r:LlmCallRecord {jobId: $jobId})
     OPTIONAL MATCH (r)-[reqRel:WITH_REQUEST]->(req:LlmCallRequest)
     OPTIONAL MATCH (r)-[respRel:WITH_RESPONSE]->(resp:LlmCallResponse)
-    OPTIONAL MATCH (r)-[jobRel:OF_JOB]->(j:IngestionJob)
-    OPTIONAL MATCH (r)-[statusRel:OF_STATUS]->(s:StatusRecord)
+    OPTIONAL MATCH (r)-[jobRel:OF_JOB]->(j)
+    OPTIONAL MATCH (r)-[statusRel:OF_STAGE]->(s:Stage)
     RETURN r,
       collect(DISTINCT reqRel), collect(DISTINCT req),
       collect(DISTINCT respRel), collect(DISTINCT resp),
@@ -26,8 +26,8 @@ public interface LlmCallRecordGraphRepository extends Neo4jRepository<LlmCallRec
     MATCH (r:LlmCallRecord {jobId: $jobId, step: $step})
     OPTIONAL MATCH (r)-[reqRel:WITH_REQUEST]->(req:LlmCallRequest)
     OPTIONAL MATCH (r)-[respRel:WITH_RESPONSE]->(resp:LlmCallResponse)
-    OPTIONAL MATCH (r)-[jobRel:OF_JOB]->(j:IngestionJob)
-    OPTIONAL MATCH (r)-[statusRel:OF_STATUS]->(s:StatusRecord)
+    OPTIONAL MATCH (r)-[jobRel:OF_JOB]->(j)
+    OPTIONAL MATCH (r)-[statusRel:OF_STAGE]->(s:Stage)
     RETURN r,
       collect(DISTINCT reqRel), collect(DISTINCT req),
       collect(DISTINCT respRel), collect(DISTINCT resp),
@@ -38,19 +38,19 @@ public interface LlmCallRecordGraphRepository extends Neo4jRepository<LlmCallRec
     List<LlmCallRecord> findByJobIdAndStep(UUID jobId, String step);
 
     @Query("""
-    MATCH (r:LlmCallRecord {jobId: $jobId, step: $step, statusRecordId: $statusRecordId})
+    MATCH (r:LlmCallRecord {jobId: $jobId, step: $step, stageId: $stageId})
     WITH r ORDER BY r.createdAt DESC LIMIT 1
     OPTIONAL MATCH (r)-[reqRel:WITH_REQUEST]->(req:LlmCallRequest)
     OPTIONAL MATCH (r)-[respRel:WITH_RESPONSE]->(resp:LlmCallResponse)
-    OPTIONAL MATCH (r)-[jobRel:OF_JOB]->(j:IngestionJob)
-    OPTIONAL MATCH (r)-[statusRel:OF_STATUS]->(s:StatusRecord)
+    OPTIONAL MATCH (r)-[jobRel:OF_JOB]->(j)
+    OPTIONAL MATCH (r)-[statusRel:OF_STAGE]->(s:Stage)
     RETURN r,
       collect(DISTINCT reqRel), collect(DISTINCT req),
       collect(DISTINCT respRel), collect(DISTINCT resp),
       collect(DISTINCT jobRel), collect(DISTINCT j),
       collect(DISTINCT statusRel), collect(DISTINCT s)
     """)
-    java.util.Optional<LlmCallRecord> findLatestByJobStepAndStatusRecord(UUID jobId, String step, UUID statusRecordId);
+    java.util.Optional<LlmCallRecord> findLatestByJobStepAndStage(UUID jobId, String step, UUID stageId);
 
     /**
      * Existence checks via Cypher are more reliable than relying on SDN relationship hydration,
@@ -59,14 +59,14 @@ public interface LlmCallRecordGraphRepository extends Neo4jRepository<LlmCallRec
      */
 
     @Query("""
-        MATCH (r:LlmCallRecord {id: $recordId})-[:OF_JOB]->(j:IngestionJob {id: $jobId})
+        MATCH (r:LlmCallRecord {id: $recordId})-[:OF_JOB]->(j {id: $jobId})
         RETURN COUNT(*) > 0
     """)
     boolean hasOfJobRelation(UUID recordId, UUID jobId);
 
     @Query("""
-        MATCH (r:LlmCallRecord {id: $recordId})-[:OF_STATUS]->(s:StatusRecord {id: $statusId})
+        MATCH (r:LlmCallRecord {id: $recordId})-[:OF_STAGE]->(s:Stage {id: $stageId})
         RETURN COUNT(*) > 0
     """)
-    boolean hasOfStatusRelation(UUID recordId, UUID statusId);
+    boolean hasOfStageRelation(UUID recordId, UUID stageId);
 }

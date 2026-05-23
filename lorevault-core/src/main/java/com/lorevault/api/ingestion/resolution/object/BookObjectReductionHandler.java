@@ -1,19 +1,21 @@
 package com.lorevault.api.ingestion.resolution.object;
 
-import com.lorevault.api.ingestion.events.BookObjectsReducedEvent;
-import com.lorevault.api.ingestion.events.ChapterObjectsResolvedEvent;
-import com.lorevault.api.ingestion.events.IngestionFailedEvent;
+import com.lorevault.api.ingestion.events.StageCompletedEvent;
+import com.lorevault.api.ingestion.events.StageTriggeredEvent;
 import com.lorevault.api.ingestion.job.IngestionJobService;
 import com.lorevault.api.ingestion.job.IngestionStatus;
+import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
+import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
 import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.context.event.EventListener;
 
 import java.util.Map;
 import java.util.UUID;
@@ -29,49 +31,50 @@ public class BookObjectReductionHandler implements BookObjectReductionOperation 
     private final ApplicationEventPublisher eventPublisher;
     private final PipelineStageSupport stageSupport;
     private final BookReductionClaimService bookReductionClaimService;
+    private final StageGraphRepository stageRepo;
+    private final StageOutputGraphRepository stageOutputRepo;
 
     public BookObjectReductionHandler(
             BookObjectReductionService bookObjectReductionService,
             IngestionJobService ingestionJobService,
             ApplicationEventPublisher eventPublisher,
-            BookReductionClaimService bookReductionClaimService
+            BookReductionClaimService bookReductionClaimService,
+            StageGraphRepository stageRepo,
+            StageOutputGraphRepository stageOutputRepo
     ) {
         this.bookObjectReductionService = bookObjectReductionService;
         this.eventPublisher = eventPublisher;
         this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         this.bookReductionClaimService = bookReductionClaimService;
+        this.stageRepo = stageRepo;
+        this.stageOutputRepo = stageOutputRepo;
     }
 
     @Async("ingestionLaneTaskExecutor")
     @EventListener
-    public void handleChapterObjectsResolved(ChapterObjectsResolvedEvent event) {
+    public void onTrigger(StageTriggeredEvent event) {
+        if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
+            return;
+        }
+
         UUID jobId = event.getJobId();
-        UUID correlationId = event.getCorrelationId();
         UUID chapterId = event.getChapterId();
         UUID bookId = event.getBookId();
 
-        log.info("[LANE:OBJECT] [BOOK_OBJECT_REDUCTION] Started: jobId={}, correlationId={}, chapterId={}, bookId={}", jobId, correlationId, chapterId, bookId);
+        if (bookId != null && stageOutputRepo.existsByBookIdAndStep(bookId, event.getStage())) {
+            stageRepo.setSkipped(jobId, event.getStage());
+            eventPublisher.publishEvent(new StageCompletedEvent(
+                    this, jobId, chapterId, bookId, event.getStage(),
+                    StepResult.success(event.getStage().name(),
+                            "Skipped — already completed", 0L)));
+            log.info("[SKIPPED] Book stage {} already completed for book {}", event.getStage(), bookId);
+            return;
+        }
 
         StepResult result = execute(jobId, bookId);
 
-        if (result.success()) {
-            eventPublisher.publishEvent(new BookObjectsReducedEvent(
-                    this,
-                    jobId,
-                    correlationId,
-                    chapterId,
-                    bookId,
-                    true,
-                    result.counts().getOrDefault("chapterObjectsProcessed", 0),
-                    result.counts().getOrDefault("bookObjectsCreated", 0)
-            ));
-        } else {
-            eventPublisher.publishEvent(new IngestionFailedEvent(
-                    this, jobId, correlationId, chapterId,
-                    STAGE_BOOK_OBJECT_REDUCTION, result.summary(), result.retryable()));
-            stageSupport.updateJobStatus(jobId, IngestionStatus.FAILED,
-                    STAGE_BOOK_OBJECT_REDUCTION + " failed: " + result.summary());
-        }
+        eventPublisher.publishEvent(new StageCompletedEvent(
+                this, jobId, chapterId, bookId, event.getStage(), result));
     }
 
     @Override
