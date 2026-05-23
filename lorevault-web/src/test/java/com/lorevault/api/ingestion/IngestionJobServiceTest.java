@@ -8,7 +8,6 @@ import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.chunk.ChunkGraphRepository;
 import com.lorevault.api.ingestion.job.IngestionJobGraphRepository;
 import com.lorevault.api.content.scene.SceneGraphRepository;
-import com.lorevault.api.ingestion.job.StatusRecordGraphRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,13 +38,9 @@ class IngestionJobServiceTest {
     @Mock private SceneGraphRepository sceneRepo;
     @Mock private ChapterGraphRepository chapterRepo;
     @Mock private IngestionJobGraphRepository jobRepo;
-    @Mock private StatusRecordGraphRepository statusRepo;
 
     @Captor
     private ArgumentCaptor<IngestionJob> jobCaptor;
-
-    @Captor
-    private ArgumentCaptor<StatusRecord> statusRecordCaptor;
 
     private IngestionJobService ingestionJobService;
 
@@ -55,7 +50,7 @@ class IngestionJobServiceTest {
 
     @BeforeEach
     void setUp() {
-        ingestionJobService = new IngestionJobService(chunkRepo, sceneRepo, chapterRepo, jobRepo, statusRepo);
+        ingestionJobService = new IngestionJobService(chunkRepo, sceneRepo, chapterRepo, jobRepo);
     }
 
     @Nested
@@ -63,8 +58,8 @@ class IngestionJobServiceTest {
     class LifecycleOperations {
 
         @Test
-        @DisplayName("Should create ingestion job with initial status record")
-        void shouldCreateIngestionJobWithInitialStatus() {
+        @DisplayName("Should create ingestion job")
+        void shouldCreateIngestionJob() {
             IngestionJob mockPersistedJob = new IngestionJob();
             mockPersistedJob.setId(testJobId);
             mockPersistedJob.setChapterId(testChapterId);
@@ -77,67 +72,40 @@ class IngestionJobServiceTest {
             assertThat(result).isNotNull();
             assertThat(result.getId()).isEqualTo(testJobId);
             assertThat(result.getChapterId()).isEqualTo(testChapterId);
-            assertThat(result.getCurrentStatus()).isNotNull();
-            assertThat(result.getCurrentStatus().getStatus()).isEqualTo(IngestionStatus.QUEUED);
 
             verify(jobRepo).save(jobCaptor.capture());
             IngestionJob capturedJob = jobCaptor.getValue();
             assertThat(capturedJob.getId()).isNotNull();
             assertThat(capturedJob.getChapterId()).isEqualTo(testChapterId);
-
-            verify(statusRepo).save(statusRecordCaptor.capture());
-            StatusRecord capturedStatus = statusRecordCaptor.getValue();
-            assertThat(capturedStatus.getJobId()).isEqualTo(testJobId);
-            assertThat(capturedStatus.getStatus()).isEqualTo(IngestionStatus.QUEUED);
-            verify(jobRepo).swapCurrentStatus(testJobId, capturedStatus.getId());
         }
 
         @Test
-        @DisplayName("Should complete job with success status and metadata")
-        void shouldCompleteJobWithSuccessStatus() {
+        @DisplayName("Should log job completion")
+        void shouldLogJobComplete() {
             IngestionJob job = createTestJob();
             int chapterLength = 5000;
             int chunkCount = 25;
 
             when(chunkRepo.countByChapterIdViaScenes(testChapterId)).thenReturn(chunkCount);
-            when(jobRepo.findById(testJobId)).thenReturn(Optional.of(job));
-            when(jobRepo.save(any(IngestionJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            ingestionJobService.completeJob(job, testChapterId, chapterLength);
+            ingestionJobService.logJobComplete(null, testChapterId, chapterLength);
 
-            assertThat(job.getCurrentStatus().getStatus()).isEqualTo(IngestionStatus.COMPLETE);
-            assertThat(job.getCurrentStatus().getProgressPercent()).isEqualTo(100);
-            assertThat(job.getCompletedAt()).isNotNull();
-
-            verify(statusRepo).save(statusRecordCaptor.capture());
-            StatusRecord completionStatus = statusRecordCaptor.getValue();
-            assertThat(completionStatus.getStatus()).isEqualTo(IngestionStatus.COMPLETE);
-            assertThat(completionStatus.getProperties()).containsEntry("chunkCount", String.valueOf(chunkCount));
-            assertThat(completionStatus.getProperties()).containsEntry("chapterLength", String.valueOf(chapterLength));
-            verify(jobRepo).swapCurrentStatus(testJobId, completionStatus.getId());
+            verify(chunkRepo).countByChapterIdViaScenes(testChapterId);
         }
 
         @Test
-        @DisplayName("Should fail job with error message")
-        void shouldFailJobWithErrorMessage() {
+        @DisplayName("Should log job failure")
+        void shouldLogJobFailed() {
             IngestionJob job = createTestJob();
             String errorMessage = "Processing failed due to invalid content format";
-            when(jobRepo.findById(testJobId)).thenReturn(Optional.of(job));
-            when(jobRepo.save(any(IngestionJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            ingestionJobService.failJob(job, errorMessage);
-
-            assertThat(job.getCurrentStatus().getStatus()).isEqualTo(IngestionStatus.FAILED);
-            assertThat(job.getCurrentStatus().getStepDescription()).isEqualTo(errorMessage);
-            assertThat(job.getCurrentStatus().getProgressPercent()).isEqualTo(0);
-            assertThat(job.getCompletedAt()).isNotNull();
-
-            verify(statusRepo).save(any(StatusRecord.class));
+            ingestionJobService.logJobFailed(job, errorMessage);
+            // No-op — only logs; no state changes to assert
         }
 
         @Test
-        @DisplayName("Should fail job with cleanup and remove partial data")
-        void shouldFailJobWithCleanup() {
+        @DisplayName("Should log job failure with cleanup and remove partial data")
+        void shouldLogJobFailedWithCleanup() {
             IngestionJob job = createTestJob();
             String errorMessage = "Critical processing error";
             int deletedChunks = 5;
@@ -150,14 +118,8 @@ class IngestionJobServiceTest {
                     new Scene()
             ));
             doNothing().when(sceneRepo).deleteByChapterId(testChapterId);
-            when(jobRepo.findById(testJobId)).thenReturn(Optional.of(job));
-            when(jobRepo.save(any(IngestionJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            ingestionJobService.failJobWithCleanup(job, errorMessage);
-
-            assertThat(job.getCurrentStatus().getStatus()).isEqualTo(IngestionStatus.FAILED);
-            assertThat(job.getCurrentStatus().getStepDescription()).contains(errorMessage);
-            assertThat(job.getCurrentStatus().getStepDescription()).contains("data cleaned up for retry");
+            ingestionJobService.logJobFailedWithCleanup(job, errorMessage);
 
             verify(chunkRepo).deleteByChapterIdViaScenes(testChapterId);
             verify(sceneRepo).deleteByChapterId(testChapterId);
@@ -173,14 +135,7 @@ class IngestionJobServiceTest {
 
             ingestionJobService.updateJobStatus(testJobId, IngestionStatus.SCENE_SEGMENTATION, 
                     "Scene segmentation in progress", properties);
-
-            verify(statusRepo).save(statusRecordCaptor.capture());
-            StatusRecord statusRecord = statusRecordCaptor.getValue();
-            assertThat(statusRecord.getStatus()).isEqualTo(IngestionStatus.SCENE_SEGMENTATION);
-            assertThat(statusRecord.getStepDescription()).isEqualTo("Scene segmentation in progress");
-            assertThat(statusRecord.getProperties()).containsEntry("step", "scene_detection");
-            assertThat(statusRecord.getProperties()).containsEntry("progress", "75");
-            verify(jobRepo).swapCurrentStatus(testJobId, statusRecord.getId());
+            // No-op — only logs; no state changes to assert
         }
     }
 
@@ -189,13 +144,11 @@ class IngestionJobServiceTest {
     class QueryOperations {
 
         @Test
-        @DisplayName("Should retrieve job status with recent updates")
-        void shouldRetrieveJobStatusWithRecentUpdates() {
-            IngestionJob job = createTestJobWithStatus();
-            List<StatusRecord> statusHistory = createStatusHistory();
+        @DisplayName("Should retrieve job status")
+        void shouldRetrieveJobStatus() {
+            IngestionJob job = createTestJob();
 
             when(jobRepo.findById(testJobId)).thenReturn(Optional.of(job));
-            when(statusRepo.findStatusHistoryForJob(testJobId)).thenReturn(statusHistory);
 
             Optional<JobStatusDetails> response = ingestionJobService.getJobStatus(testJobId);
 
@@ -203,9 +156,6 @@ class IngestionJobServiceTest {
             JobStatusDetails jobStatus = response.get();
             assertThat(jobStatus.jobId()).isEqualTo(testJobId);
             assertThat(jobStatus.chapterId()).isEqualTo(testChapterId);
-            assertThat(jobStatus.currentStatus()).isEqualTo(IngestionStatus.SCENE_SEGMENTATION);
-            assertThat(jobStatus.progressPercent()).isEqualTo(75);
-            assertThat(jobStatus.recentUpdates()).hasSize(2);
         }
 
         @Test
@@ -292,18 +242,7 @@ class IngestionJobServiceTest {
     }
 
     private IngestionJob createTestJobWithStatus() {
-        IngestionJob job = createTestJob();
-        StatusRecord currentStatus = new StatusRecord(
-                UUID.randomUUID(),
-                testJobId,
-                testTimestamp,
-                IngestionStatus.SCENE_SEGMENTATION,
-                "Processing chapter content",
-                75,
-                Map.of("step", "scene_detection")
-        );
-        job.setCurrentStatus(currentStatus);
-        return job;
+        return createTestJob();
     }
 
     private IngestionJob createCompletedJob() {
@@ -312,17 +251,6 @@ class IngestionJobServiceTest {
         job.setChapterId(UUID.randomUUID());
         job.setCreatedAt(testTimestamp);
         job.setCompletedAt(testTimestamp.plusMinutes(30));
-        
-        StatusRecord completedStatus = new StatusRecord(
-                UUID.randomUUID(),
-                job.getId(),
-                testTimestamp.plusMinutes(30),
-                IngestionStatus.COMPLETE,
-                "Chapter processing completed",
-                100,
-            Map.of("chunkCount", "20")
-        );
-        job.setCurrentStatus(completedStatus);
         return job;
     }
 
@@ -332,27 +260,7 @@ class IngestionJobServiceTest {
         job.setChapterId(UUID.randomUUID());
         job.setCreatedAt(testTimestamp);
         job.setCompletedAt(testTimestamp.plusMinutes(10));
-        
-        StatusRecord failedStatus = new StatusRecord(
-                UUID.randomUUID(),
-                job.getId(),
-                testTimestamp.plusMinutes(10),
-                IngestionStatus.FAILED,
-                "Processing failed",
-                0,
-                Map.of("error", "format_error")
-        );
-        job.setCurrentStatus(failedStatus);
         return job;
-    }
-
-    private List<StatusRecord> createStatusHistory() {
-        StatusRecord queuedRecord = new StatusRecord(UUID.randomUUID(), testJobId, testTimestamp,
-                IngestionStatus.QUEUED, "Job queued", 0, Map.of());
-        StatusRecord detectingRecord = new StatusRecord(UUID.randomUUID(), testJobId, testTimestamp.plusMinutes(5),
-                IngestionStatus.SCENE_SEGMENTATION, "Processing started", 25, Map.of());
-        
-        return List.of(queuedRecord, detectingRecord);
     }
 
     private Chapter createTestChapter() {

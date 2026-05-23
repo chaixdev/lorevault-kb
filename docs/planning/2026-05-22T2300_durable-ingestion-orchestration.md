@@ -1,7 +1,8 @@
 # Durable Ingestion Orchestration
 
-**Status:** Design — not yet implemented
-**Last Updated:** May 23, 2026
+**Status:** Implemented — critical fixes applied, ready for integration testing
+**Implementation Date:** May 23, 2026
+**Fix Date:** May 23, 2026
 **Depends on:** Current ingestion pipeline, `StatusRecord`, `IngestionCompletionCoordinator`
 
 ## Problem
@@ -537,3 +538,77 @@ Handlers should use `@TransactionalEventListener(phase = AFTER_COMMIT)` rather t
 - [ ] Handlers use `setRunningConditionally` (atomic CAS) to prevent concurrent re-execution.
 - [ ] `maxAttempts` exhaustion transitions stage to permanent FAILED.
 - [ ] StageDag connectivity validated — all StageKey values reachable from roots.
+
+## Implementation Notes
+
+### Files Created (13)
+
+| File | Package | Purpose |
+|------|---------|---------|
+| `StageKey.java` | `pipeline` | 15 DAG vertex constants |
+| `StageStatus.java` | `pipeline` | Lifecycle: PENDING→TRIGGERED→RUNNING→COMPLETED/SKIPPED/FAILED |
+| `StageDag.java` | `orchestration` | Pipeline topology, `transitiveDownstream()`, `topologicalDepthDescending()`, `validateConnectivity()` |
+| `ChapterIngestionJob.java` | `job` | New job entity, no mutable orchestration state |
+| `Stage.java` | `orchestration` | Mutable stage node per `(jobId, step)` |
+| `StageOutput.java` | `orchestration` | Immutable proof-of-work audit |
+| `StageGraphRepository.java` | `orchestration` | All conditional Cypher: `tryTrigger`, `setRunningConditionally`, cascade deletion, stale recovery |
+| `StageOutputGraphRepository.java` | `orchestration` | Idempotency checks + cascade deletion |
+| `IngestionPipelineCoordinator.java` | `orchestration` | Event-driven coordinator + `@Scheduled` stale recovery + `rerunStage()` |
+| `StageTriggeredEvent.java` | `events` | Dispatches to handlers, no `correlationId` |
+| `StageCompletedEvent.java` | `events` | Signals completion to coordinator |
+| `ChapterIngestionJobGraphRepository.java` | `job` | SDN repository: `findByChapterIdIn`, `findLatestJobIdByChapterId`, `existsActiveForChapter` |
+
+### Files Modified (21)
+
+- **13 handlers** refactored: `@EventListener`→`@TransactionalEventListener(AFTER_COMMIT)`, added `setRunningConditionally` guard + `StageOutput` idempotency check
+- **`LlmCallRecord.java`** — `statusRecordId`→`stageId`, `OF_STATUS`→`OF_STAGE`, `IngestionJob`→`ChapterIngestionJob` on `job` field
+- **`LlmCallRecordGraphRepository.java`** — Cypher queries updated, method renamed `findLatestByJobStepAndStatusRecord`→`findLatestByJobStepAndStage`, `hasOfStatusRelation`→`hasOfStageRelation`
+- **`LlmCallLoggingService.java`** — links to Stage nodes via `StageGraphRepository.findByJobIdAndStep()`
+- **`IngestionJobService.java`** — full rewrite: `ChapterIngestionJob` + Stage subgraph for status derivation, `createIngestionJob()` calls `coordinator.bootstrapJob()`
+- **`IngestionService.java`** — `IngestionJob`→`ChapterIngestionJob`
+- **`StepEventMapper.java`** — publishes `StageCompletedEvent` instead of 12 old domain events, removed all private emit helpers
+- **`Neo4jSchemaInitializer.java`** — 4 new constraints (`ChapterIngestionJob`, `Stage`, `Stage.jobId+step`, `StageOutput`) + 3 new indexes (`StageOutput.chapterId+step`, `StageOutput.bookId+step`, `LlmCallRecord.jobId+step+stageId`)
+- **`TriadAnalysisArtifactLookup.java`** — `StatusRecord`→`UUID`, renamed method to `findLatestTriadStageIdByCurrentSceneId`
+- **`GraphTriadAnalysisArtifactLookup.java`** — updated implementation, uses `ChapterIngestionJobGraphRepository` + `LlmCallRecordGraphRepository`
+- **`TriadTemporalEdgeRequestFactory.java`** — `StatusRecord`→`UUID` in method signatures and `triadArtifactFailure`
+- **`IngestionJob.java`** — removed `currentStatus` field (StatusRecord dependency), kept legacy class for `IngestionIsolatedLookupService`
+
+### Files Deleted (3)
+
+- `IngestionCompletionCoordinator.java`
+- `StatusRecord.java`
+- `StatusRecordGraphRepository.java`
+
+### Deviations from Design
+
+1. **`prepareChapter()` bootstraps pipeline.** The `IngestionJobService.createIngestionJob()` now calls `coordinator.bootstrapJob()` which publishes `StageTriggeredEvent` for root stages. The `prepareChapter()` method (step-by-step CLI flow) also calls `createIngestionJob()`, meaning it inadvertently triggers the pipeline. The handler's `setRunningConditionally` guard prevents concurrent execution with the CLI, but true isolation requires a separate `createJobWithoutBootstrap()` variant. Not urgent for wipe-state dev.
+
+2. **`IngestionJob.java` kept as legacy class.** The old entity still exists (with `currentStatus` removed) because `IngestionIsolatedLookupService` references it for chapter submission duplicate detection. The node label in Neo4j remains `IngestionJob` for existing data. Full migration to `ChapterIngestionJob` node label deferred.
+
+3. **`TriadAnalysisArtifactLookup.findLatestTriadStageIdByCurrentSceneId` returns `Optional.empty()`.** StatusRecord-based triad scene correlation queries are deprecated. The `StatusRecordGraphRepository.findLatestTriadStatusByCurrentSceneId()` Cypher relied on `prop.currentSceneId` composite properties on StatusRecord nodes, which no longer exist. Triad temporal edge provenance will need a dedicated refactoring pass to use Stage-based correlation.
+
+4. **`IngestionJobGraphRepository` still referenced by `IngestionIsolatedLookupService`.** The old repository (for `IngestionJob` nodes) is still used by the isolated lookup service for chapter submission duplicate detection. Not yet migrated to `ChapterIngestionJobGraphRepository` — low risk since both node types coexist during transition.
+
+5. **Handler `execute()` methods retain `PipelineStageSupport.updateJobStatus()` calls.** These intermediate `IngestionStatus` updates are now ignorable (the service logs only) since Stage nodes carry the canonical status. Full removal of these calls would clarify the handler contract but is cosmetic in effect.
+
+### Verification
+
+- `mvn -pl lorevault-core,lorevault-web compile -DskipTests` passes clean
+- Neo4j schema constraints/indexes added (not yet verified against running DB)
+- No integration or unit tests updated/written yet (Phase 11)
+
+### Critical Fixes (May 23, 2026)
+
+Review in `docs/reviews/2026-05-23T1200_durable-ingestion-orchestration-implementation-review.md` identified three critical issues. All fixed.
+
+**C1: `@TransactionalEventListener(AFTER_COMMIT)` silently dropped events**
+- Problem: Handler `onTrigger()` publishes `StageCompletedEvent` without an active transaction. Coordinator `onStageCompleted()` required `AFTER_COMMIT` → event dropped → DAG never progressed beyond first stage. Affected BOTH CLI and event-driven paths.
+- Fix: Changed `@TransactionalEventListener(AFTER_COMMIT)` → `@EventListener` on coordinator `onStageCompleted()` and all 13 handler `onTrigger()` methods. `@Async` preserved — Spring supports `@Async` + `@EventListener` (async dispatch). Files: 14.
+
+**C2: `findChapterId()` hardcoded to return `null`**
+- Problem: Stale recovery published `StageTriggeredEvent` with `chapterId=null` → handlers failed with NPE.
+- Fix: Implemented Neo4jClient query `MATCH (j:ChapterIngestionJob {id: $jobId}) RETURN j.chapterId`. Also injected `Neo4jClient` into `IngestionPipelineCoordinator`. File: 1.
+
+**C3: Book-level StageOutputs survived cascade invalidation**
+- Problem: `deleteByJobAndSteps()` only deleted `{chapterId, step}` StageOutputs. Book-level StageOutputs (`{bookId, step}`) survived → false SKIP on book-level reruns.
+- Fix: Added `bookId` parameter to `deleteByJobAndSteps()`. Detects book-level stages (`BOOK_*_REDUCTION`), resolves `bookId` from `Chapter→[:IN_BOOK]→Book` traversal when null, and deletes `{bookId, step}` StageOutputs. Files: 2.
