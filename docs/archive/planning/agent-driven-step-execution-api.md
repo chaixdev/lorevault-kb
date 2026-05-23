@@ -825,7 +825,7 @@ E2E validation (requires running services):
 
 ## Links
 
-- [Relation Evidence Harvesting](2026-05-07T1917_relation-evidence-harvesting.md) — Phase 0 validated with step-wise execution; Phase 1 needs this API
+- [Relation Evidence Harvesting](relation-evidence-harvesting.md) — Phase 0 validated with step-wise execution; Phase 1 needs this API
 - [Ingestion pipeline pattern](../patterns/ingestion/ingestion-pipeline.md) — established pipeline step documentation
 - [Handler design contract](../rules/handler-design-contract.md) — handler ownership and retry safety rules
 - [Ingestion concurrency model](../patterns/ingestion/ingestion-concurrency-model.md) — threading and ordering guarantees
