@@ -114,7 +114,7 @@ public class BookIndividualReductionService {
                        normalizedName AS normalizedName
                 ORDER BY normalizedName
                 """)
-                .bind(bookId.toString()).to("bookId")
+                .bind(bookId != null ? bookId.toString() : null).to("bookId")
                 .fetch()
                 .all()
                 .stream()

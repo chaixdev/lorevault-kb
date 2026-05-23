@@ -114,7 +114,7 @@ public class BookReductionClaimService {
             String acquiredToken = UUID.randomUUID().toString();
             boolean acquired = claimRepository.tryAcquireClaim(
                     claimId(bookId, lane),
-                    bookId.toString(),
+                    bookId != null ? bookId.toString() : null,
                     lane,
                     LocalDateTime.now(),
                     workerId,
