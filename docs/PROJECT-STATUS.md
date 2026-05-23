@@ -62,6 +62,10 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 
 ## What Is Next
 
+### Immediate: Code walkthrough (in progress)
+
+Walk the durable orchestration implementation end-to-end to identify simplification, cleanup, and consistency improvements. Current progress: `submitChapter` → `bootstrapJob` → `SceneDetectionHandler`. Remaining: chunking, embedding, resolution lanes, book reductions. Findings are being logged in `docs/planning/2026-05-23T1530_submission-flow-cleanup.md` (10 items parked) and `docs/planning/2026-05-23T1600_scene-detection-handler-decomposition.md`.
+
 ### Phase A: Complete ingestion pipeline hardening
 
 Near-term execution slices before pivoting to AWS/n8n:
@@ -77,11 +81,10 @@ Near-term execution slices before pivoting to AWS/n8n:
    - See: `docs/planning/2026-04-30T1237_concept-resolution-lane.md`
    - This is mostly mechanical application of patterns already established by the Individual, Location, Object, Collective, and Event lanes
 
-3. **Relation evidence harvesting to shippable state**
-   - Phase 0 is complete: `RelationClaim` nodes extracted and persisted, prompt engineering tuned, idempotency guards in place
-   - Catalog M0–M3 is complete: exact + semantic matching resolves relation claims to stable catalog definitions
-   - Remaining catalog-adjacent work is Phase 2 stable `REL` edge projection
-   - Get promoted relation types into queryable typed edges while preserving `RelationClaim` as evidence/provenance
+3. **Relation edge materialization**
+   - `RelationClaim` nodes are extracted and persisted, but edges between entities (e.g., `(Individual)-[:KNOWS]->(Individual)`) are not yet materialized in the graph
+   - Use promoted catalog definitions to project queryable typed relation edges from `RelationClaim` evidence
+   - Keep `RelationClaim` as evidence/provenance; typed edges are the query acceleration layer
    - See: `docs/planning/2026-05-07T1917_relation-evidence-harvesting.md`, `docs/planning/2026-05-13T2027_relation-catalog-module.md`
 
 4. **Terminology alignment: resolution/reduction → consolidation**
@@ -90,10 +93,7 @@ Near-term execution slices before pivoting to AWS/n8n:
    - See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md` — **decided: consolidation**
    - Apply before Concept lane implementation so the new lane uses canonical terminology
 
-5. **Relation edge projection**
-    - Use promoted catalog definitions to project queryable typed relation edges from persisted `RelationClaim` evidence
-    - Keep `RelationClaim` as evidence/provenance; typed edges are the query acceleration layer
-    - See: `docs/planning/2026-05-07T1917_relation-evidence-harvesting.md`, `docs/planning/2026-05-13T2027_relation-catalog-module.md`
+5. **Relation edge projection** — now covered by item #3 above
 
 ### Phase B: AWS cloud-native foundation
 
@@ -132,7 +132,7 @@ Broader planned directions remain intact after these slices:
 
 ### Sequencing rationale
 
-The pipeline hardening items (A1 cleanup + A2 concept lane + A3 relation harvesting) close the remaining open work in the ingestion pipeline, leaving a coherent state before the AWS pivot. The AWS → n8n → AWS sequence (Phases B–D) reflects the insight from the [n8n strategy doc](brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md): n8n teaches operational patterns (retry, HITL, agent loops) in hours to days; AWS teaches platform skills (IAM, VPC, SQS semantics, DynamoDB conditional writes) that n8n can't teach. The interleaved sequence uses n8n's speed for pattern learning, then returns to AWS for platform depth.
+The code walkthrough continues until the full pipeline is reviewed. Pipeline hardening items (A1–A3) close the remaining open lanes in the ingestion pipeline, leaving a coherent state before the AWS pivot. The AWS → n8n → AWS sequence (Phases B–D) reflects the insight from the [n8n strategy doc](brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md): n8n teaches operational patterns (retry, HITL, agent loops) in hours to days; AWS teaches platform skills (IAM, VPC, SQS semantics, DynamoDB conditional writes) that n8n can't teach. The interleaved sequence uses n8n's speed for pattern learning, then returns to AWS for platform depth.
 
 ## Active Architectural Direction
 
