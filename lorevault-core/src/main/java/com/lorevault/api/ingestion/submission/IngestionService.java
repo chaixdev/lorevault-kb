@@ -11,6 +11,7 @@ import com.lorevault.api.library.book.Book;
 import com.lorevault.api.library.book.PublicationCoordinates;
 import com.lorevault.api.library.book.BookGraphRepository;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,15 +25,15 @@ import static com.lorevault.api.ingestion.infrastructure.HashUtils.generateSha25
 
 /**
  * Service for chapter submission and job management.
- *
+ * <p>
  * Responsibilities:
  * - Chapter validation and duplicate detection
  * - Ingestion job creation and query
  * - Publishing events to trigger async processing pipeline
- *
+ * <p>
  * Processing is handled by event-driven handlers:
  * SceneDetectionHandler → ChunkingHandler → EmbeddingHandler
- *
+ * <p>
  * Best-effort lookups (content-hash, active-job, recent-job) are delegated to
  * {@link IngestionIsolatedLookupService}, which runs each query in its own
  * REQUIRES_NEW read-only transaction.  This prevents a Neo4j session failure
@@ -53,9 +54,9 @@ public class IngestionService {
      * Context object for chapter validation results
      */
     public static class ChapterValidationResult {
-        private final boolean isExistingChapter;
-        private final UUID chapterId;
-        private final String contentHash;
+        @Getter private final boolean isExistingChapter;
+        @Getter private final UUID chapterId;
+        @Getter private final String contentHash;
         private final boolean hasActiveJob;
 
         private ChapterValidationResult(boolean isExistingChapter, UUID chapterId, String contentHash, boolean hasActiveJob) {
@@ -73,9 +74,6 @@ public class IngestionService {
             return new ChapterValidationResult(false, chapterId, contentHash, false);
         }
 
-        public boolean isExistingChapter() { return isExistingChapter; }
-        public UUID getChapterId() { return chapterId; }
-        public String getContentHash() { return contentHash; }
         public boolean hasActiveJob() { return hasActiveJob; }
     }
 

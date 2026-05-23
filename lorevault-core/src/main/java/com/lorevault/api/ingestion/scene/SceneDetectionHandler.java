@@ -41,10 +41,10 @@ import java.util.stream.Collectors;
 
 /**
  * Handler for scene detection stage of the ingestion pipeline.
- *
+ * <p>
  * Listens to: StageTriggeredEvent (SCENE_SEGMENTATION)
  * Emits: StageCompletedEvent (on success, skip, or failure)
- *
+ * <p>
  * Implements {@link SceneDetectionOperation} so the CLI module can invoke
  * scene detection directly without going through Spring event dispatch.
  * The CLI provides the transaction context; this handler provides the logic.
@@ -121,7 +121,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
     @EventListener
     public void onTrigger(StageTriggeredEvent event) {
         // 1. Guard: only one thread executes at a time
-        if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
+        if (! stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
             return; // already RUNNING or no longer TRIGGERED
         }
 
@@ -159,7 +159,6 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
      * <p>When called from the event listener, the {@code @Async} + {@code AFTER_COMMIT}
      * wrapper handles the scheduling boundary. When called from the CLI,
      * the orchestrator does not need to provide a transaction context.
-     *
      * @param jobId     the ingestion job ID
      * @param chapterId the chapter to process
      * @return result summarising scene detection outcome
@@ -180,7 +179,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
 
             // Check for existing scenes (idempotency)
             List<Scene> existingScenes = sceneRepo.findByChapterId(chapterId);
-            if (!existingScenes.isEmpty()) {
+            if (! existingScenes.isEmpty()) {
                 log.info("[SCENE_DETECTION] Found {} existing scenes for chapter {}, skipping detection",
                         existingScenes.size(), chapterId);
                 // Note: ScenesDetectedEvent is emitted by the caller (handleChapterIngestion
@@ -207,8 +206,8 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             Map<Integer, UUID> sceneIndexToId = scenes.stream()
                     .filter(scene -> scene.getSceneIndex() != null && scene.getEventId() != null)
                     .collect(Collectors.toMap(
-                            Scene::getSceneIndex,
-                            Scene::getEventId,
+                            Scene :: getSceneIndex,
+                            Scene :: getEventId,
                             (left, right) -> left
                     ));
 
@@ -219,7 +218,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                     List.of(),
                     List.of()
             );
-            if (!scenes.isEmpty()) {
+            if (! scenes.isEmpty()) {
                 Chapter triadChapter = chapterRepo.findById(chapterId)
                         .orElseThrow(() -> new IllegalArgumentException("Chapter not found for triad analysis: " + chapterId));
                 triadChapter.setScenes(List.copyOf(scenes));
@@ -245,33 +244,14 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
 
             replayBoundaryTemporalProjection(jobId, temporalDefaults.newlyCreatedCrossChapterBoundaries());
 
-            if (!scenes.isEmpty()) {
-                individualPersistenceService.persistExtractedIndividuals(
-                        scenes,
-                        sceneRelationshipOutcome.sceneIndividualExtractions()
-                );
-                collectivePersistenceService.persistExtractedCollectives(
-                        scenes,
-                        sceneRelationshipOutcome.sceneCollectiveExtractions()
-                );
-                objectPersistenceService.persistExtractedObjects(
-                        scenes,
-                        sceneRelationshipOutcome.sceneObjectExtractions()
-                );
-                locationPersistenceService.persistExtractedLocations(
-                        scenes,
-                        sceneRelationshipOutcome.sceneLocationExtractions()
-                );
-                eventPersistenceService.persistExtractedEvents(
-                        scenes,
-                        sceneRelationshipOutcome.sceneEventExtractions()
-                );
-                relationClaimPersistenceService.persistExtractedRelationClaims(
-                        scenes,
-                        sceneRelationshipOutcome.sceneRelationClaimExtractions()
-                );
+            if (! scenes.isEmpty()) {
+                individualPersistenceService.persistExtractedIndividuals(scenes, sceneRelationshipOutcome.sceneIndividualExtractions());
+                collectivePersistenceService.persistExtractedCollectives(scenes, sceneRelationshipOutcome.sceneCollectiveExtractions());
+                objectPersistenceService.persistExtractedObjects(scenes, sceneRelationshipOutcome.sceneObjectExtractions());
+                locationPersistenceService.persistExtractedLocations(scenes, sceneRelationshipOutcome.sceneLocationExtractions());
+                eventPersistenceService.persistExtractedEvents(scenes, sceneRelationshipOutcome.sceneEventExtractions());
+                relationClaimPersistenceService.persistExtractedRelationClaims(scenes, sceneRelationshipOutcome.sceneRelationClaimExtractions());
             }
-
             stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
                     String.format("Detected %d semantic scenes from chapter text", scenes.size()));
 
@@ -290,10 +270,10 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             log.error("[SCENE_DETECTION] Failed for job={} chapter={}: {}", jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure("SCENE_DETECTION",
-                            PipelineStageSupport.sanitizeExceptionMessage(e), elapsed)
+                    ?StepResult.retryableFailure("SCENE_DETECTION",
+                    PipelineStageSupport.sanitizeExceptionMessage(e), elapsed)
                     : StepResult.failure("SCENE_DETECTION",
-                            PipelineStageSupport.sanitizeExceptionMessage(e), elapsed);
+                    PipelineStageSupport.sanitizeExceptionMessage(e), elapsed);
         }
     }
 
@@ -355,7 +335,8 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             var replayOutcome = sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
                     jobId,
                     laterChapter,
-                    statusProps -> { }
+                    statusProps -> {
+                    }
             );
 
             List<TemporalEdgeWriteRequest> replayRequests = replayOutcome.triadAnalyses().stream()
