@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
-**Last Updated:** May 20, 2026
-**Status:** Active — Ingestion pipeline hardening in progress. Catalog M0+M1+M2 shipped. Dual-database architecture in place. n8n + AWS cloud-native strategy defined in companion brainstorm docs. Terminology alignment task identified.
+**Last Updated:** May 23, 2026
+**Status:** Active — Durable ingestion orchestration shipped. Catalog M0+M1+M2 shipped. Dual-database architecture in place. n8n + AWS cloud-native strategy defined in companion brainstorm docs. Terminology alignment task identified. Code walkthrough cleanup plan parked.
 **Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state, terminology alignment (resolution → reduction). Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
@@ -57,6 +57,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Stages 5–6 event path shipped** — LLM semantic merge verification (Stage 5) evaluates each ANN candidate pair and decides MERGE / KEEP_SEPARATE / UNRESOLVED; BookEvent write path (Stage 6) clusters MERGE decisions and writes thin `BookEvent` nodes plus `ChapterEvent -[:REFERS_TO]-> BookEvent` edges; the event entity resolution pipeline is now end-to-end from EventMention through BookEvent
 - **Post-split architecture and ingestion hardening continued** — recent follow-up commits enforced architecture boundaries across `ai`, `content`, and `ingestion`; aligned async ingestion handlers with transaction rules; tightened LLM-call/status persistence and book-reduction claim handling; stabilized semantic-search test wiring; refreshed individual-resolution coverage to match the current triad-analysis flow; and codified retry-safe handler ownership guidance
 - **Step execution API surface shipped** — controllers, DTOs, event mapper, query endpoint, StepKey/StepDefinition/StepCatalog, *Operation interfaces, curl-driven skill, and supporting docs/rules; enables agentic step-by-step pipeline execution for iterative development
+- **Durable ingestion orchestration shipped** — replaced in-memory `IngestionCompletionCoordinator` and `StatusRecord` with Neo4j-backed `Stage`/`StageOutput`/`StageDag` orchestrator. 15-stage pipeline DAG with fan-in barrier evaluation via conditional Cypher, stale trigger/RUNNING recovery (`@Scheduled`), cascade invalidation for rerun, idempotency via `StageOutput` nodes, `StageTriggeredEvent`/`StageCompletedEvent` universal lifecycle events. Deleted `IngestionJob`/`StatusRecord`/`IngestionCompletionCoordinator`. 13 handlers unified on `onTrigger` → guard → idempotency → execute → emit pattern. 4 commits on `feature/durable-ingestion-orchestration`, smoke-tested end-to-end. See: `docs/planning/2026-05-22T2300_durable-ingestion-orchestration.md`, `docs/reviews/2026-05-23T1200_durable-ingestion-orchestration-implementation-review.md`
 - **Relation catalog M0–M3 shipped** — `lorevault-catalog` Maven submodule with closed module boundary (`@ApplicationModule(CLOSED)`, ArchUnit rules); public API types (`RelationCatalogService`, `RelationCatalogDefinition`, `RelationCatalogId`, `RelationQuery`, `RelationKindSignature`, `EmbeddingFunction`); PostgreSQL backend with one evolving wipe-state Flyway V1 schema, `ON CONFLICT DO NOTHING` idempotency, HikariCP connection pooling, pgvector extension, `embedding vector(1536)`, and HNSW cosine index; dual-database transaction boundary (catalog: PostgreSQL `REQUIRES_NEW`, core: Neo4j); `RelationClaim` updated with `catalogId` + resolved `definitionKey`; degradation mode when catalog is disabled; Testcontainers PostgreSQL integration tests; `NoOpRelationCatalogService` for catalog-disabled state; `CatalogHealthIndicator` bean (surfaces at `/actuator/health`); `pgvector/pgvector:pg16` Docker image
 
 ## What Is Next
@@ -65,10 +66,10 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 
 Near-term execution slices before pivoting to AWS/n8n:
 
-1. **Ingestion state-machine replayability repair**
-   - Replace or redesign the in-memory fan-in/terminal-failure behavior that blocks manual stage replay from converging
-   - Durable job/stage state must be owned by persistence, not JVM-local coordinator maps
-   - Manual reruns must carry enough run context to satisfy completion semantics without DB meddling
+1. **Cleanup from durable orchestration walkthrough** (parked)
+   - 10 cleanup items identified in `docs/planning/2026-05-23T1530_submission-flow-cleanup.md`
+   - Key items: `StageDispatcher` to remove 52 duplicated injection points, collapse `submitChapter`/`prepareChapter`, migrate legacy domain events to `StageCompletedEvent`, ban `var`, container-class guidance
+   - `SceneDetectionHandler` decomposition parked in `docs/planning/2026-05-23T1600_scene-detection-handler-decomposition.md`
 
 2. **Concept entity lane**
    - Implement the 6th regular entity ladder for Concept using the established `Mention → ChapterEntity → BookEntity` pattern
@@ -131,7 +132,7 @@ Broader planned directions remain intact after these slices:
 
 ### Sequencing rationale
 
-The pipeline hardening items (A1–A3) close the remaining open lanes in the ingestion pipeline, leaving a coherent state before the AWS pivot. The AWS → n8n → AWS sequence (Phases B–D) reflects the insight from the [n8n strategy doc](brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md): n8n teaches operational patterns (retry, HITL, agent loops) in hours to days; AWS teaches platform skills (IAM, VPC, SQS semantics, DynamoDB conditional writes) that n8n can't teach. The interleaved sequence uses n8n's speed for pattern learning, then returns to AWS for platform depth.
+The pipeline hardening items (A1 cleanup + A2 concept lane + A3 relation harvesting) close the remaining open work in the ingestion pipeline, leaving a coherent state before the AWS pivot. The AWS → n8n → AWS sequence (Phases B–D) reflects the insight from the [n8n strategy doc](brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md): n8n teaches operational patterns (retry, HITL, agent loops) in hours to days; AWS teaches platform skills (IAM, VPC, SQS semantics, DynamoDB conditional writes) that n8n can't teach. The interleaved sequence uses n8n's speed for pattern learning, then returns to AWS for platform depth.
 
 ## Active Architectural Direction
 
@@ -146,6 +147,8 @@ The pipeline hardening items (A1–A3) close the remaining open lanes in the ing
 
 ## Open Decisions
 
+- **Legacy domain events:** 14 domain-specific events (`ScenesDetectedEvent`, `ChunksCreatedEvent`, etc.) still exist but handlers now publish `StageCompletedEvent` instead. `JobStatusBroadcaster` still listens to old events but never receives them. Migration planned — see `docs/planning/2026-05-23T1530_submission-flow-cleanup.md` issue #10.
+
 - **Terminology alignment:** The pipeline will use **consolidation** as the canonical term for both chapter-level and book-level entity pipeline steps. Rename `*Resolution*` → `*Consolidation*` and `*Reduction*` → `*Consolidation*`. Decision made; implementation deferred. See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md`
 - **n8n deployment model:** Self-hosted Docker alongside LoreVault, or n8n Cloud? Decision deferred to n8n sprint phase.
 - **AWS clone strategy:** How much of `lorevault-kb` domain logic should be shared as a library vs. rewritten for `lorevault-aws`? Decision deferred to AWS foundation phase.
@@ -155,6 +158,8 @@ The pipeline hardening items (A1–A3) close the remaining open lanes in the ing
 
 - [Architecture](architecture/README.md)
 - [Planning](planning/README.md)
+- [Durable Ingestion Orchestration Plan](planning/2026-05-22T2300_durable-ingestion-orchestration.md)
+- [Durable Orchestration Implementation Review](reviews/2026-05-23T1200_durable-ingestion-orchestration-implementation-review.md)
 - [Development Workflow](rules/development-workflow.md)
 - [Patterns](patterns/README.md)
 - [Entity Resolution Ladder](patterns/ingestion/entity-resolution-ladder.md)
