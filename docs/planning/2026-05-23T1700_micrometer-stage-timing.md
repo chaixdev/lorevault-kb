@@ -1,7 +1,7 @@
 # Adopt Micrometer `Timer.Sample` for Pipeline Stage Timing
 
 **Date:** May 23, 2026
-**Status:** Parked — learning goal, independent maturity milestone
+**Status:** Parked — take up after ingestion flow walkthrough review is complete
 **Category:** Observability / Dev Maturity
 **Prerequisite:** `StageDispatcher` (submission-flow-cleanup issue #7) — timing moves to one place
 

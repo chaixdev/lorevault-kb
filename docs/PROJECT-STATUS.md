@@ -64,7 +64,9 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 
 ### Immediate: Code walkthrough (in progress)
 
-Walk the durable orchestration implementation end-to-end to identify simplification, cleanup, and consistency improvements. Current progress: `submitChapter` → `bootstrapJob` → `SceneDetectionHandler`. Remaining: chunking, embedding, resolution lanes, book reductions. Findings are being logged in `docs/planning/2026-05-23T1530_submission-flow-cleanup.md` (10 items parked) and `docs/planning/2026-05-23T1600_scene-detection-handler-decomposition.md`.
+Walk the durable orchestration implementation end-to-end to identify simplification, cleanup, and consistency improvements. Current progress: `submitChapter` → `bootstrapJob` → `SceneDetectionHandler`. Remaining: chunking, embedding, resolution lanes, book reductions. Findings are being logged in `docs/planning/2026-05-23T1530_submission-flow-cleanup.md` (12 items parked) and `docs/planning/2026-05-23T1600_scene-detection-handler-decomposition.md`.
+
+After the walkthrough: adopt Micrometer `Timer.Sample` for pipeline stage timing (see `docs/planning/2026-05-23T1700_micrometer-stage-timing.md`) — a self-contained learning goal that replaces 13 copies of `System.currentTimeMillis()` before the AWS observability path.
 
 ### Phase A: Complete ingestion pipeline hardening
 
