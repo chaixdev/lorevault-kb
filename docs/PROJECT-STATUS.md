@@ -171,6 +171,7 @@ The code walkthrough continues until the full pipeline is reviewed. Pipeline har
 - [n8n Ingestion-Retrieval Boundary Strategy](brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md) — strategic n8n enhancement plan
 - [AWS Cloud-Native Learning Path](brainstorm/aws-cloud-native/2026-05-11T2027_aws-cloud-native-learning-path.md) — AWS deployment strategy
 - [Entity Pipeline Terminology Alignment](planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md) — resolution → reduction terminology proposal
+- [Micrometer Stage Timing](planning/2026-05-23T1700_micrometer-stage-timing.md) — replace manual `System.currentTimeMillis()` with Micrometer `Timer.Sample` (learning goal, prerequisite for AWS observability)
 
 ## Historical / Transitional Notes
 
