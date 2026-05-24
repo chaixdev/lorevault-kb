@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
-**Last Updated:** May 23, 2026
-**Status:** Active — Durable ingestion orchestration shipped. Catalog M0+M1+M2 shipped. Dual-database architecture in place. n8n + AWS cloud-native strategy defined in companion brainstorm docs. Terminology alignment task identified. Code walkthrough cleanup plan parked.
+**Last Updated:** May 24, 2026
+**Status:** Active — SceneDetectionHandler walkthrough complete, oracle review done. Cleanup plan organized into three phases with extracted design docs. StageDispatcher and SSE migration extracted to dedicated planning docs. Phase 1 quick wins ready to execute. Full pipeline walkthrough (#18) still needed before Phase 2/3.
 **Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state, terminology alignment (resolution → reduction). Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
@@ -62,9 +62,20 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 
 ## What Is Next
 
-### Immediate: Code walkthrough (in progress)
+### Immediate: Code walkthrough (SceneDetectionHandler complete, oracle review done)
 
-Walk the durable orchestration implementation end-to-end to identify simplification, cleanup, and consistency improvements. Current progress: `submitChapter` → `bootstrapJob` → `SceneDetectionHandler`. Remaining: chunking, embedding, resolution lanes, book reductions. Findings are being logged in `docs/planning/2026-05-23T1530_submission-flow-cleanup.md` (12 items parked) and `docs/planning/2026-05-23T1600_scene-detection-handler-decomposition.md`.
+Walk the durable orchestration implementation end-to-end to identify simplification, cleanup, and consistency improvements. **Current progress:** `submitChapter` → `bootstrapJob` → `SceneDetectionHandler` — **complete.** Issues documented and oracle-reviewed. **Remaining:** chunking, embedding, resolution lanes, book reductions — **not yet walked** (#18, prerequisite for Phase 2/3).
+
+**SceneDetectionHandler walkthrough surfaced 20 cleanup issues.** Oracle review (May 24, 2026) confirmed 16 of 20 directionally correct with specific adjustments. Plan reorganized into three phases with extracted design docs:
+
+| Doc | Covers | Phase |
+|-----|--------|-------|
+| [Submission Cleanup](planning/2026-05-23T1530_submission-flow-cleanup.md) | Master plan — 20 issues, oracle findings, sequencing | — |
+| [Quick Wins](planning/2026-05-24T0000_submission-cleanup-quick-wins.md) | QW1–QW7: simplest fixes (~30 min, ~13 files) | Phase 1 — can start now |
+| [StageDispatcher Extraction](planning/2026-05-24T0000_stagedispatcher-extraction.md) | Issues #7/#20 — centralize 13 handler onTrigger boilerplate | Phase 3 — highest value, highest risk |
+| [SSE Event Migration](planning/2026-05-24T0000_sse-event-migration.md) | Issue #10a — fix broken SSE, delete 12 dead event classes | Phase 2 — live bug fix |
+
+**Before executing Phase 2/3:** Complete walkthrough of remaining 12 handlers (#18) + test impact analysis (#19).
 
 After the walkthrough: adopt Micrometer `Timer.Sample` for pipeline stage timing (see `docs/planning/2026-05-23T1700_micrometer-stage-timing.md`) — a self-contained learning goal that replaces 13 copies of `System.currentTimeMillis()` before the AWS observability path.
 
@@ -72,9 +83,14 @@ After the walkthrough: adopt Micrometer `Timer.Sample` for pipeline stage timing
 
 Near-term execution slices before pivoting to AWS/n8n:
 
-1. **Cleanup from durable orchestration walkthrough** (parked)
-   - 10 cleanup items identified in `docs/planning/2026-05-23T1530_submission-flow-cleanup.md`
-   - Key items: `StageDispatcher` to remove 52 duplicated injection points, collapse `submitChapter`/`prepareChapter`, migrate legacy domain events to `StageCompletedEvent`, ban `var`, container-class guidance
+1. **Cleanup from durable orchestration walkthrough** (planning complete, ready for execution)
+   - 20 items identified, 16 confirmed correct direction by oracle review
+   - Reorganized into three phases: Phase 1 quick wins (execute now), Phase 2 post-walkthrough cleanup, Phase 3 structural changes
+   - Extracted design docs:
+     - [Quick Wins](planning/2026-05-24T0000_submission-cleanup-quick-wins.md) — QW1–QW7: ~30 min, ~13 files
+     - [StageDispatcher Extraction](planning/2026-05-24T0000_stagedispatcher-extraction.md) — issues #7/#20: centralize 13 handler onTrigger boilerplate (highest value, highest risk)
+     - [SSE Event Migration](planning/2026-05-24T0000_sse-event-migration.md) — issue #10a: fix broken SSE + delete 12 dead event classes (live bug fix)
+   - Master plan: [Submission Flow Cleanup](planning/2026-05-23T1530_submission-flow-cleanup.md)
    - `SceneDetectionHandler` decomposition parked in `docs/planning/2026-05-23T1600_scene-detection-handler-decomposition.md`
 
 2. **Concept entity lane**
@@ -149,7 +165,7 @@ The code walkthrough continues until the full pipeline is reviewed. Pipeline har
 
 ## Open Decisions
 
-- **Legacy domain events:** 14 domain-specific events (`ScenesDetectedEvent`, `ChunksCreatedEvent`, etc.) still exist but handlers now publish `StageCompletedEvent` instead. `JobStatusBroadcaster` still listens to old events but never receives them. Migration planned — see `docs/planning/2026-05-23T1530_submission-flow-cleanup.md` issue #10.
+- **Legacy domain events:** 12 dead event classes (`ScenesDetectedEvent`, `ChunksCreatedEvent`, etc.) no longer published — handlers now publish `StageCompletedEvent`. `JobStatusBroadcaster` SSE is silently broken (listens to `IngestionEvent` but never receives it). Fix planned — see [SSE Event Migration](planning/2026-05-24T0000_sse-event-migration.md) (Phase 2, live bug fix).
 
 - **Terminology alignment:** The pipeline will use **consolidation** as the canonical term for both chapter-level and book-level entity pipeline steps. Rename `*Resolution*` → `*Consolidation*` and `*Reduction*` → `*Consolidation*`. Decision made; implementation deferred. See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md`
 - **n8n deployment model:** Self-hosted Docker alongside LoreVault, or n8n Cloud? Decision deferred to n8n sprint phase.
@@ -170,6 +186,10 @@ The code walkthrough continues until the full pipeline is reviewed. Pipeline har
 - [Concepts](concepts/README.md)
 - [Rules](rules/README.md)
 - [Brainstorm](brainstorm/README.md)
+- [Submission Flow Cleanup](planning/2026-05-23T1530_submission-flow-cleanup.md) — master cleanup plan (20 issues)
+- [Cleanup Quick Wins](planning/2026-05-24T0000_submission-cleanup-quick-wins.md) — Phase 1 (~30 min)
+- [StageDispatcher Extraction](planning/2026-05-24T0000_stagedispatcher-extraction.md) — Phase 3 structural change
+- [SSE Event Migration](planning/2026-05-24T0000_sse-event-migration.md) — Phase 2 bug fix
 - [n8n Ingestion-Retrieval Boundary Strategy](brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md) — strategic n8n enhancement plan
 - [AWS Cloud-Native Learning Path](brainstorm/aws-cloud-native/2026-05-11T2027_aws-cloud-native-learning-path.md) — AWS deployment strategy
 - [Entity Pipeline Terminology Alignment](planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md) — resolution → reduction terminology proposal

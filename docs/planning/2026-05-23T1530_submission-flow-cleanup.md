@@ -1,16 +1,39 @@
 # Submission Flow Code Quality Cleanup
 
 **Date:** May 23, 2026
-**Status:** Parked — fix later
+**Status:** Active — planning complete, ready for execution
 **Discovered:** Code walkthrough post durable-ingestion-orchestration implementation
-**Walkthrough progress:** Traced from chapter upload → `bootstrapJob` → `SceneDetectionHandler`. Remaining data flow (chunking, embedding, resolution lanes, book reductions, INGESTION_COMPLETE) to be analyzed in a future session.
+**Walkthrough progress:** Traced from chapter upload → `bootstrapJob` → `SceneDetectionHandler`. Remaining data flow (chunking, embedding, resolution lanes, book reductions, INGESTION_COMPLETE) to be analyzed in a future session (#18).
 **Design note:** Walkthrough surfaced a paradigm tension between service-oriented (LLM default) and richer domain model design. Captured in [Service-Oriented vs Rich Domain Model](../concepts/service-oriented-vs-domain-model.md).
 
-## Oracle Review (May 24, 2026)
+## Extracted Documents
 
-**Verdict:** 15 of 17 items directionally correct. #3 partially wrong (book hydration removal needs verification), #8 overreaching (ban `var` — scale back to fixing unclear cases). Three critical omissions: incomplete walkthrough scope, no test impact analysis, missing StageDispatcher transaction boundary design. Sequencing recommended: quick wins → post-walkthrough cleanup → structural changes as separate PRs.
+Three high-impact focuses have been extracted to their own design docs for readability and independent execution:
 
-**Incorporated below:** #2 collapse skipped, #3 book hydration flagged as "verify first", #8 scaled back, #10 split into 10a/10b, omissions added as #18-20.
+| Document | Covers | Why extracted |
+|----------|--------|---------------|
+| [Quick Wins](2026-05-24T0000_submission-cleanup-quick-wins.md) | Issues #4, #6, #8, #11, #12(sanitize+updateJobStatus), #17, #22 | Low risk, can execute immediately |
+| [StageDispatcher Extraction](2026-05-24T0000_stagedispatcher-extraction.md) | Issues #7 + #20 | Highest-value structural change, needs standalone PR |
+| [SSE Event Migration](2026-05-24T0000_sse-event-migration.md) | Issue #10a | Bug fix (broken SSE), not structural cleanup |
+
+## Oracle Review (May 24, 2026) — Second Pass
+
+**Verdict:** 16 of 20 active issues directionally correct. Specific adjustments:
+
+| Issue | Finding |
+|-------|---------|
+| **#3** | Both guards are dead — `Chapter.createWithReferences()` sets ID unconditionally, and `bookRepo.findById()` hydration is unnecessary (SDN 7.x uses `bookId` alone for `IN_BOOK`). Remove both. |
+| **#5** | Do NOT collapse `submitChapter`/`prepareChapter` — they serve different callers. Extract shared `doSubmitChapter()`, keep both public methods. |
+| **#6** | Do NOT change `createAllForJob` return type to void — needed by `rewireEdges` in `rerunStage`. Just remove the dead null guard in `bootstrapJob`. |
+| **#7/#20** | StageDispatcher needs explicit error boundary (catch unchecked exceptions from `handler.execute()`, emit `StageCompletedEvent` with failure). Executor routing question: single vs per-stage executors. Extracted to [dedicated doc](2026-05-24T0000_stagedispatcher-extraction.md). |
+| **#10a** | `IngestionFailedEvent` is already dead (not "after #12" — `runStage()` has zero callers). SSE is already broken. Promoted to bug fix, moved to Phase 2. Extracted to [dedicated doc](2026-05-24T0000_sse-event-migration.md). |
+| **#11** | `LlmCallLoggingService` drops from 4→3 injections (not 11→8). Plan overstated. |
+| **#12** | `IngestionJobService.updateJobStatus()` has `@Transactional(REQUIRES_NEW)` for `log.debug()` only — active transaction pollution bug, not just dead code. Remove call sites in Phase 1. |
+| **#14** | LLM call count is NOT the same — symmetric next resolution adds one extra LLM call per chapter boundary. Plan claim is incorrect; verify intent before executing. |
+
+**Critical omissions identified:** `safeMessage()` duplication across 3 classes (G1), `SceneDetectionHandler` does 2 chapter lookups when 1 would suffice (G5), `IngestionStatus` enum may have orphaned values after #12 (G6), test file cleanup scope incomplete (G7).
+
+**Incorporated into this doc and extracted docs below.**
 
 ## Issues
 
@@ -44,9 +67,9 @@ if (chapter.getBook() == null && chapter.getBookId() != null) {
 }
 ```
 
-If `Chapter.createWithReferences()` doesn't set an ID, that's a bug in the factory — the guard is a workaround. If it does, the guard is dead code. The `bookRepo.findById()` is an eager hydration call that SDN doesn't need (it can persist with `bookId` alone). These should be assertions or removed after verifying `Chapter.createWithReferences()` behavior.
+**Oracle verified:** `Chapter.createWithReferences()` sets `chapter.id = UUID.randomUUID()` unconditionally (line 310). The ID null-guard is dead code — remove it. The `bookRepo.findById()` hydration is also unnecessary: SDN 7.x creates `IN_BOOK` relationships from `bookId` alone. Nobody reads `chapter.getBook()` in this code path before `chapterRepo.save()` — the hydrated entity is discarded.
 
-**Fix:** Trace `Chapter.createWithReferences()` to confirm it sets the ID. Remove the null guard (confirmed dead code — factory sets ID unconditionally). **Do not remove the `bookRepo.findById()` yet** — `Chapter.book` is `@Relationship(type = "IN_BOOK")` and SDN relationship semantics must be verified. Test whether SDN creates the relationship correctly with only `bookId` set, or whether the hydrated `Book` entity is needed within the same unit of work. Flag for verification, then remove if SDN doesn't need it.
+**Fix:** Remove both guards. No verification needed — the oracle traced both code paths.
 
 ### 4. `prepareChapter` Javadoc references nonexistent "CLI"
 
@@ -60,18 +83,19 @@ There is no CLI. The caller is `StepExecutionCommandController` — a REST contr
 
 `submitChapter` checks for existing active jobs and returns the existing job ID rather than creating a duplicate. `prepareChapter` skips this check entirely — calling it twice creates two `ChapterIngestionJob` nodes with two full DAG bootstraps.
 
-After adding dedup to `prepareChapter`, both methods become identical:
-```
-validateAndProcessChapter → createIngestionJob → return result
-```
+**Oracle adjustment:** Do NOT collapse the two methods. They serve different callers:
+- `submitChapter` — async pipeline entry point (API-driven ingestion)
+- `prepareChapter` — step-by-step CLI/controller entry point
 
-**Fix:** Extract a single private `doSubmitChapter(bookId, chapterNumber, chapterTitle, chapterText)` that both public methods delegate to. The dedup logic lives in the shared path. The two entry points become thin semantic aliases — or, if the distinction between "submit" and "prepare" is no longer meaningful, collapse into one.
+`prepareChapter`'s Javadoc says "does not publish ChapterIngestionEvent" but `createIngestionJob` internally calls `bootstrapJob()` which emits `StageTriggeredEvent`. The distinction may be moot in the current durable model, but the entry points remain semantically different. Collapsing them creates a single method that can't distinguish between "auto-trigger" and "manual step control" callers.
+
+**Fix:** Extract a single private `doSubmitChapter(bookId, chapterNumber, chapterTitle, chapterText)` that both public methods delegate to. The dedup logic lives in the shared path. Keep both public methods as distinct semantic entry points.
 
 ### 6. `bootstrapJob` fetches `stageIds` map but only null-checks, never uses the values
 
 `createAllForJob` returns `Map<StageKey, UUID>` which `bootstrapJob` uses only to verify the root stage ID is non-null before calling `tryTrigger(jobId, root)`. But `tryTrigger` doesn't accept a stage ID — it looks up by `(jobId, step)`. Every key in the map is guaranteed to have a value (all 15 `StageKey.values()` are iterated). The map return serves `rewireEdges` (called internally by `createAllForJob`), not `bootstrapJob`.
 
-**Fix:** Either make `bootstrapJob` simpler:
+**Fix:** Simplify `bootstrapJob` — remove the dead null guard on `rootId`:
 
 ```java
 for (StageKey root : dag.roots()) {
@@ -81,58 +105,22 @@ for (StageKey root : dag.roots()) {
 }
 ```
 
-Or, if `createAllForJob` doesn't need to return the map (it's only used internally by `rewireEdges`), change return type to `void`.
+**Oracle adjustment:** Do NOT change `createAllForJob` return type to `void`. The returned map is needed by `rewireEdges` (called internally) and `rerunStage` (line 234). Keep the map return — just simplify `bootstrapJob`.
 
 ### 7. Extract `StageDispatcher` — centralize `onTrigger` across 13 handlers (consolidation point)
 
 **Problem:** 13 handlers × 4 orchestration fields (`StageGraphRepository`, `StageOutputGraphRepository`, `ApplicationEventPublisher`, `PipelineStageSupport`) = 52 injection points. Every `onTrigger` has the identical 4-line guard+idempotency+emit pattern. `@Async` + `@EventListener` duplicated 13 times. 13 different log prefix styles. 13 copies of `System.currentTimeMillis()` manual timing. MDC async propagation already wired (`AsyncConfig.mdcTaskDecorator`) but never populated with stage context.
 
-**Fix:** Introduce a `StageDispatcher` bean that centralizes `onTrigger` once:
+**Fix:** Introduce a `StageDispatcher` bean that centralizes `onTrigger` once. **Extracted to [StageDispatcher Extraction](2026-05-24T0000_stagedispatcher-extraction.md).** Key design points:
 
-```java
-@Component
-public class StageDispatcher {
-    private final Map<StageKey, StageOperation> handlers;
-    private final StageGraphRepository stageRepo;
-    private final StageOutputGraphRepository stageOutputRepo;
-    private final ApplicationEventPublisher eventPublisher;
-    private final MeterRegistry meterRegistry;
-
-    @Async
-    @EventListener
-    public void onTrigger(StageTriggeredEvent event) {
-        MDC.put("stage", event.getStage().name());
-        MDC.put("jobId", event.getJobId().toString());
-        Timer.Sample sample = Timer.start(meterRegistry);
-        try {
-            // guard → idempotency → execute → emit
-        } finally {
-            sample.stop(Timer.builder("ingestion.stage.duration")
-                .tag("stage", event.getStage().name()).register(meterRegistry));
-            MDC.clear();
-        }
-    }
-}
-```
-
-Handlers become pure domain objects — just `execute(jobId, chapterId)`. No `@Async`, no `@EventListener`, no orchestration fields.
-
-**Effect per handler:** removes `onTrigger()`, `@Async`, `@EventListener`, `StageGraphRepository`, `StageOutputGraphRepository`, `ApplicationEventPublisher`, `PipelineStageSupport`, `IngestionJobService` (only used to construct `PipelineStageSupport`), all manual `log.info("[PREFIX]")` (replaced by MDC), all manual `System.currentTimeMillis()` (replaced by `Timer.Sample`). All nested service logs automatically carry `stage` context via MDC (no manual prefixing in `LlmClient`, `SceneDetectionService`, etc.).
-
-**Result:** 52 injection points eliminated, 13 log prefix styles unified to MDC, 13 manual timers replaced by 1 Micrometer timer, `SceneDetectionHandler` drops from 18 fields to 14 (pre-refactor size). Nested service logs gain stage context they never had before.
-
-**Hint:** The 6 persistence services (`Individual/Collective/Object/Location/EventPersistenceService` + `RelationClaimPersistenceService`) are only ever called from `SceneDetectionHandler`, from a single code block with identical signatures. They contribute 6 of the remaining 14 dependencies. Consider extracting an `EntityPersistenceCoordinator` facade that groups these 6 calls into a single `persistAll(scenes, outcome)` method, reducing the handler from 14 to 9 domain dependencies. The 6 services remain as independent, testable classes — the coordinator is a thin delegation facade, same pattern as the dispatcher.
-
-## Files Affected
-
-- `lorevault-core/src/main/java/com/lorevault/api/ingestion/submission/IngestionIsolatedLookupService.java` — delete
-- `lorevault-core/src/main/java/com/lorevault/api/ingestion/submission/IngestionService.java` — fold in isolated lookups, clean up `ChapterValidationResult`, fix guards, fix Javadoc, collapse submit/prepare
-- `lorevault-core/src/main/java/com/lorevault/api/ingestion/submission/IngestionSubmissionResult.java` — optionally consolidate with `ChapterValidationResult`
-- `lorevault-core/src/main/java/com/lorevault/api/ingestion/orchestration/StageGraphRepository.java` — `createAllForJob` return type simplification (issue 6)
-- `lorevault-core/src/main/java/com/lorevault/api/ingestion/orchestration/IngestionPipelineCoordinator.java` — `bootstrapJob` simplification (issue 6)
-- `lorevault-core/src/main/java/com/lorevault/api/ingestion/orchestration/StageDispatcher.java` — new (issue 7)
-- 13 handler files — remove orchestration fields, `onTrigger`, `@Async`, `@EventListener` (issue 7)
-- `lorevault-core/src/main/java/com/lorevault/api/ingestion/pipeline/PipelineStageSupport.java` — delete (no-op after issue 7)
+1. `StageOperation` interface — single `execute(DispatchContext ctx)` method
+2. `DispatchContext` record — carries `(jobId, chapterId, bookId, stage)`
+3. Handlers self-register via `@ForStage(StageKey)` annotation
+4. Dispatcher sets MDC context (stage + jobId) for unified logging
+5. Single Micrometer `Timer.Sample` replaces 13 manual `System.currentTimeMillis()`
+6. **CRITICAL — error boundary:** Dispatcher must catch unchecked exceptions from `handler.execute()` and emit `StageCompletedEvent` with failure — otherwise stages hang RUNNING for 300s
+7. **CRITICAL — no @Transactional on onTrigger:** LLM calls take 30-120s, each handler manages its own transactions
+8. Open question: single executor vs per-stage executor routing (currently 2 executors)
 
 ### 8. Replace unclear `var` usage with explicit types
 
@@ -158,22 +146,15 @@ var scenesWithCoords = segmentationOutcome.scenes();
 >
 > Otherwise, use separate top-level records in the same package. Prefer `*Models` suffix for container classes that group LLM deserialization targets.
 
-### 10a. Delete 12 dead legacy event classes, fix `JobStatusBroadcaster` SSE
+### 10a. Delete 12 dead legacy event classes, fix `JobStatusBroadcaster` SSE ⚠️ LIVE BUG
 
-Handlers now publish `StageCompletedEvent` instead of domain-specific events. But 14 old event classes still exist and two consumers still reference them:
+**Oracle finding:** SSE is already broken — `IngestionFailedEvent` is already dead (not "after #12"), `runStage()` has zero callers. This is a bug fix, not cleanup. **Extracted to [SSE Event Migration](2026-05-24T0000_sse-event-migration.md).**
 
-| Event class | Current publisher | Status |
-|------------|-------------------|--------|
-| `ScenesDetectedEvent` | None (was SceneDetectionHandler) | Dead |
-| `ChunksCreatedEvent` | None (was ChunkingHandler) | Dead |
-| `EmbeddingsCompletedEvent` | None (was EmbeddingHandler) | Dead |
-| 8 resolution/reduction events | None (was resolution/reduction handlers) | Dead |
-| `ChapterEventsResolvedEvent` | `ChapterEventAnnRerunService` (bypasses Stage lifecycle) | Active — see #10b |
-| `IngestionFailedEvent` | `PipelineStageSupport` (deleted in issue #7) | Publishes but receiver silent |
+Handlers now publish `StageCompletedEvent` instead of domain-specific events. But `JobStatusBroadcaster` listens for `IngestionEvent` and only handles the 4 old event types — none of which are published anymore.
 
-**Confirmed bug:** `JobStatusBroadcaster` listens to `IngestionEvent` but `buildPayload()` only handles `ScenesDetectedEvent`, `ChunksCreatedEvent`, `IngestionCompletedEvent`, `IngestionFailedEvent`. None of these are published anymore — **SSE job streaming is silently broken.**
+**Fix:** Migrate `JobStatusBroadcaster` to listen for `StageCompletedEvent`. Map `StageKey` → human-readable status. Delete 12 dead event classes. Update ~15 test files.
 
-**Fix:** Delete 12 dead event classes. Migrate `JobStatusBroadcaster` to listen for `StageCompletedEvent` instead (map `StageKey` → status string, count from `StepResult`). This is a quick win — fixes broken SSE, deletes dead code. `IngestionFailedEvent` — covered by issue #12 (zero publishers after `PipelineStageSupport` deletion), delete it.
+**Files affected:** 1 broadcaster, 12 event classes deleted, ~15 test files updated.
 
 ### 10b. Migrate `ChapterEventAnnRerunService` through coordinator (separate task)
 
@@ -188,35 +169,33 @@ Handlers now publish `StageCompletedEvent` instead of domain-specific events. Bu
 
 ### 11. Simplify LLM call logging — direct call, typed, no event bus
 
-**Current:** `LlmClient` passes string `step` ("chapter-segmentation") through `LlmCallLogger.logCall()` interface → `LlmCallLoggingService` reconstructs `StageKey` via a hand-maintained lookup table (`LLM_STEP_TO_STAGE`) → queries `ChapterIngestionJob` just for `OF_JOB` link → persists `LlmCallRecord`. The type information (`StageKey`) is thrown away at the boundary and reconstructed on the other side.
+**Oracle correction:** `LlmCallLoggingService` drops from ~4→3 injections (removes `jobRepo`), not 11→8. The plan overstated.
 
-**Proposed:** `LlmClient` passes `StageKey` directly. `LlmCallLogger.logCall(jobId, StageKey stage, ...)`. `LlmCallLoggingService.persistCall()` finds the Stage via `findByJobIdAndStep` (guaranteed to exist — DAG bootstrapped at job creation), links `LlmCallRecord` via `OF_STAGE`. No event bus, no string mapping, no lookup table, no `jobRepo.findById()`.
+**Fix:** `LlmCallLogger.logCall(jobId, StageKey stage, ...)` instead of `(jobId, String step, ...)`. `LlmCallLoggingService.persistCall()` uses `stageRepo.findByJobIdAndStep()` directly — no string mapping, no lookup table, no `jobRepo.findById()`.
 
-Changes:
-- `LlmCallLogger` interface: `step: String` → `stage: StageKey`
-- `LlmClient` methods: add `StageKey` parameter, propagate to log call
-- `LlmCallLoggingService.logCall()`: remove `LLM_STEP_TO_STAGE`, remove `jobRepo.findById()`, use `stageRepo.findByJobIdAndStep()` directly
-- Delete `LLM_STEP_TO_STAGE` constant (no longer needed)
-- `LlmCallLoggingService` drops from 11 injected dependencies → ~8
+Files: `LlmCallLogger`, `LlmClient`, `LlmCallLoggingService`. Delete `LLM_STEP_TO_STAGE`.
 
 ### 12. Delete `PipelineStageSupport` — dead weight from pre-coordinator model
+
+**Oracle finding:** `IngestionJobService.updateJobStatus()` has `@Transactional(propagation = REQUIRES_NEW)` for `log.debug()` only — this is an active transaction pollution bug, not just dead code. Remove call sites in Phase 1 (part of [Quick Wins](2026-05-24T0000_submission-cleanup-quick-wins.md)), delete class in Phase 2.
 
 Three methods, only one does real work:
 
 | Method | Call sites | Status |
 |--------|-----------|--------|
-| `updateJobStatus()` | 16 call sites | **No-op** — delegates to `IngestionJobService.updateJobStatus()` which only `log.debug`'s |
+| `updateJobStatus()` | 16 call sites | **No-op** — delegates to `IngestionJobService.updateJobStatus()` which only `log.debug`'s, with unnecessary `REQUIRES_NEW` |
 | `sanitizeExceptionMessage()` | 14 call sites | **Real behavior** — sanitizes exception messages for logging |
 | `runStage()` | 0 call sites | **Dead** — zero callers |
 
-Pre-refactor, `updateJobStatus` wrote `StatusRecord` nodes for pipeline progress tracking and `runStage` wrapped handler execution with `IngestionFailedEvent` emission. Post-refactor, Stage nodes are canonical status and the coordinator handles failure via `StageCompletedEvent`. The class is vestigial.
-
 **Fix:**
-1. Extract `sanitizeExceptionMessage(Exception)` to a static utility class (e.g., `ExceptionSanitizer` or add to existing `HashUtils`)
-2. Remove all 16 `stageSupport.updateJobStatus(...)` call sites — zero behavioral change, pure dead code
-3. Delete `PipelineStageSupport.java` — 12 of 13 handlers lose one injection
-4. `IngestionFailedEvent` — covered by issue #10 (zero publishers after this deletion)
-5. `IngestionJobService.updateJobStatus()` — also becomes dead (only called via `PipelineStageSupport`), delete it too
+1. Extract `sanitizeExceptionMessage(Exception)` to `ExceptionSanitizer` utility class (Phase 1 — [Quick Wins](2026-05-24T0000_submission-cleanup-quick-wins.md))
+2. Remove all 16 `stageSupport.updateJobStatus(...)` call sites — zero behavioral change, pure dead code (Phase 1)
+3. Delete `PipelineStageSupport.java` (Phase 2)
+4. Delete `IngestionJobService.updateJobStatus()` — dead after #2 (Phase 2)
+5. Audit `IngestionStatus` enum for orphaned values after #2 (Phase 2)
+6. Delete `PipelineStageSupportTest.java`, update all handler test mocks (Phase 2)
+
+**Gap identified (G1):** `safeMessage()` is duplicated in `IngestionService`, `IngestionIsolatedLookupService`, and `PipelineStageSupport`. Consolidate into `ExceptionSanitizer` alongside `sanitizeExceptionMessage()`.
 
 ### 13. Find and eliminate handler→service guard duplication
 
@@ -244,26 +223,14 @@ Evidence the abstraction leaks:
 
 By the time triad analysis runs, all scenes are persisted. The correct unit of triad construction is a scene, not a chapter.
 
-**Fix:** Replace `buildTriadsForChapter(Chapter)` with `buildTriad(UUID sceneId)` that resolves prev/next in book order:
+**⚠️ Oracle adjustment — LLM call count is NOT the same:** The plan claims "Same number of LLM calls, same output shape." This is incorrect for the symmetric next-resolution case. When chapter N+1 has already been ingested, the last-scene triad of chapter N will now include the first scene of chapter N+1 as `next` (currently `null`). This adds one extra LLM call per chapter boundary. Verify this is intentional before executing.
 
-```
-given scene(chapterId, sceneIndex, bookId):
-  prev = if sceneIndex > 0: findPrevSceneInChapter(chapterId, sceneIndex)
-         elif chapterNumber > 1: findLastSceneOfPreviousChapter(bookId, chapterNumber)
-         else: null                     // first scene in book
-  next = if not last in chapter: findNextSceneInChapter(chapterId, sceneIndex)
-         elif next chapter exists: findFirstSceneOfNextChapter(bookId, chapterNumber)
-         else: null                     // last scene in book OR next chapter not yet ingested
-```
-
-Symmetric semantics: null means "first scene in book" (no prev), "last scene in book" (no next), or "boundary not yet ingested" (next chapter hasn't arrived — correct, triad analysis will run with null next, edge covered when next chapter's prev resolution kicks in).
-
-**Caller change:** `SceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals()` currently iterates `triads = triadBuilder.buildTriadsForChapter(chapter)`. Change to iterate chapter scenes then call `triadBuilder.buildTriad(scene.getId())` for each. Same number of LLM calls, same output shape. Chapter batching happens at the caller level (iteration loop), not the builder level.
+**Fix:** Replace `buildTriadsForChapter(Chapter)` with `buildTriad(UUID sceneId)` that resolves prev/next in book order. Caller change: iterate chapter scenes then call `buildTriad(scene.getId())` for each.
 
 **Affected files:**
-- `TriadBuilderService.java` — rename/reshape `buildTriadsForChapter` → `buildTriad(UUID sceneId)`, remove `resolveCrossChapterPreviousScene`, add symmetric next resolution, add `Scene findPrev/NextXxx` helpers
-- `SceneRelationshipAnalysisService.java` — change caller loop from chapter-batched to scene-batched via `buildTriad`
-- `TriadBuilderService` tests (if any) — update signature
+- `TriadBuilderService.java` — rename/reshape, add symmetric next resolution, add `Scene findPrev/NextXxx` helpers
+- `SceneRelationshipAnalysisService.java` — change caller loop from chapter-batched to scene-batched
+- `TriadBuilderService` tests — update signature
 
 ### 15. Scene index: chapter-scoped vs. book-scoped (follow-up decision)
 
@@ -379,80 +346,64 @@ The dispatcher's `onTrigger` runs `@Async` + `@EventListener`. The coordinator p
 
 ## Sequencing
 
-**Phase 1 — Quick wins (low risk, can do immediately):**
-- #4 (Javadoc fix) — 1 line
-- #6 (bootstrapJob map) — ~5 lines
-- #9 (container-class docs) — documentation only
-- #11 (LLM call logging) — ~10 lines, fixes latent bug
-- #17 (rename method) — pure rename, ~21 references
-- #22 (rename method) — pure rename, 1 file (2 refs + tests TBD)
+### Phase 1 — Quick Wins (extracted to [dedicated doc](2026-05-24T0000_submission-cleanup-quick-wins.md))
 
-**Phase 2 — Post-walkthrough cleanup (#18 prerequisite):**
-- #1 (delete `IngestionIsolatedLookupService`)
-- #2 (record-ify `ChapterValidationResult`)
-- #3 (ID guard removal + book hydration verification)
-- #5 (submit/prepare dedup)
-- #12 (delete `PipelineStageSupport`)
-- #13 (guard duplication scan)
-- #16 (extraction loop collapse)
-- #21 (unnecessary intermediate result records)
+Low-risk, high-certainty items. Execute immediately — no walkthrough prerequisite.
 
-**Phase 3 — Structural changes (separate PRs):**
-- #7 (StageDispatcher) — standalone PR, requires `StageOperation` interface design, #20 transaction boundary, book-level handler accommodation
-- #10a (delete events + fix SSE) — quick structural win
-- #10b (`ChapterEventAnnRerunService` migration) — design discussion needed
-- #14 (buildTriad → per-scene) — changes core triad logic, needs thorough testing
+| Issue | Item | Estimate |
+|-------|------|----------|
+| #4 | Javadoc "CLI" fix | 1 line |
+| #6 | bootstrapJob map simplification | ~5 lines |
+| #8 | Unclear var → explicit types (3 cases) | 3 lines |
+| #11 | LLM call logging — type-safe StageKey | ~10 lines |
+| #12a | Extract `sanitizeExceptionMessage` to `ExceptionSanitizer` | New utility class |
+| #12b | Remove 16 `stageSupport.updateJobStatus(...)` call sites | 16 deletions |
+| #17 | Rename `analyzeChapterTriadsWithIndividuals` → `analyzeChapterTriads` | 22 files |
+| #22 | Rename `replayBoundaryTemporalProjection` → `enrichCrossChapterTemporalEdges` | 1 file |
 
-**Skip / scale back:**
-- #8 — fix the ~3 unclear var cases, don't codify a blanket ban
-- #15 — already correctly deferred (decision point, not task)
+**Combined:** ~30 min, ~13 files modified, 1 new utility class.
 
-### 22. Rename `replayBoundaryTemporalProjection` → `enrichCrossChapterTemporalEdges`
+### Phase 2 — Post-Walkthrough Cleanup (#18 prerequisite)
 
-**Problem:** The method name `replayBoundaryTemporalProjection` has three issues:
+Walkthrough must be completed first to reveal additional `PipelineStageSupport` call sites, guard duplications, and handler patterns.
 
-1. **"replay"** — implies re-running with different inputs or a different context, but it's the same triad analysis step, just deferred until both chapters' scenes exist. The initial structural edge creation (`createAllDefaults`) is partial work; this call completes it.
+| Issue | Item | Notes |
+|-------|------|-------|
+| **#18** | Complete walkthrough | **BLOCKING** — run first |
+| **#19** | Test impact analysis | **BLOCKING** — run after walkthrough |
+| #1 | Delete `IngestionIsolatedLookupService`, fold into `IngestionService` | |
+| #2 | Record-ify `ChapterValidationResult` | |
+| #3 | Remove both dead guards (ID + book hydration) | Oracle confirmed both dead |
+| #5 | Extract shared `doSubmitChapter()`, keep both public methods | Oracle: don't collapse |
+| #10a | Fix broken SSE + delete 12 dead event classes | Extracted to [SSE doc](2026-05-24T0000_sse-event-migration.md). Promoted from Phase 3 — bug fix. |
+| #12c | Delete `PipelineStageSupport.java`, `IngestionJobService.updateJobStatus()`, `PipelineStageSupportTest.java` | Phase 1 removed call sites + extracted sanitize |
+| #13 | Scan + eliminate handler→service guard duplication | Walkthrough reveals all handlers |
+| #16 | Collapse extraction loop patterns | Option A (sealed interface) |
+| #21 | Scan + eliminate unnecessary intermediate result records | Sequence AFTER #16 |
 
-2. **"boundary"** — vague. What boundary? The name doesn't distinguish between chapter boundaries, book boundaries, or any other domain boundary.
+### Phase 3 — Structural Changes (separate PRs)
 
-3. **"projection"** — Spring Data Neo4j implementation jargon (`CrossChapterBoundaryProjection` is a Neo4j result interface). Leaking implementation terms into the handler-level method name.
+| Issue | Item | Notes |
+|-------|------|-------|
+| **#7/#20** | StageDispatcher extraction | Extracted to [StageDispatcher doc](2026-05-24T0000_stagedispatcher-extraction.md). Highest value, highest risk. Standalone PR. |
+| **#14** | `buildTriadsForChapter` → per-scene `buildTriad` | Changes core triad logic. **Verify LLM call count impact before executing.** |
+| #10b | `ChapterEventAnnRerunService` migration through coordinator | Design discussion needed. Documented known-gap. |
 
-**What it actually does:** Takes structurally-created cross-chapter `NEXT_IN_READING_ORDER` edges (bare adjacency) and enriches them with typed temporal semantics (`R:temporal.before`/`R:temporal.after`) by running triad analysis on the boundary scene pair. Skip if a typed edge already exists.
+### Parked / Skipped
 
-**Fix:** Rename to `enrichCrossChapterTemporalEdges`. Three words, all domain terms: *enrich* (semantic upgrade of structurally-created edges), *cross-chapter* (operates on chapter boundaries), *temporal edges* (the relationship type being written).
-
-**Affected files:**
-- `SceneDetectionHandler.java` — method definition (line 305) + 1 call site (line 247)
-- Any tests referencing the method by name (TBD by grep)
-
-**Blast radius:** 1 file (if no tests reference by name). Pure rename — no behavior change.
-
-### 21. Scan and eliminate unnecessary intermediate result records
-
-**Problem:** Records make type creation free, resulting in types that don't earn their existence. Two concrete anti-patterns identified so far:
-
-1. **Unused fields in a record.** `DefaultTemporalEdgeCreationResult` has 3 fields: `inChapterEdgesCreated`, `crossChapterEdgesCreated`, `newlyCreatedCrossChapterBoundaries`. The sole consumer (`SceneDetectionHandler:247`) only uses the list — the two count fields are set, logged inside the service, boxed into the record, and never read again. The record should be replaced by `List<CrossChapterBoundaryProjection>` directly.
-
-2. **Identical shapes with different type tags.** 9 resolution result records share the same fields `(UUID id, boolean success, int processed, int created, String message)` and differ only in entity-type name (`ChapterIndividualResolutionResult`, `BookObjectResolutionResult`, etc.). The type tag carries no information the caller doesn't already have (it called `individualResolutionService`, not `objectResolutionService`). These exist solely to carry counts 3 lines to a `StepResult` constructor. They should be either collapsed into a single `ResolutionResult` record or eliminated in favor of services returning `StepResult` directly.
-
-**Fix:** Audit all `*Result` and `*Outcome` records in the ingestion pipeline. For each, ask:
-- Are all fields consumed by callers? Remove unused ones — if that leaves 1 field, return it directly.
-- Does the type tag prevent bugs? If the handler already knows what it called, the tag is noise.
-- Is the record just a `StepResult` precursor? If the handler only repackages it, have the service return `StepResult` directly.
-- Is the record a genuine payload bundle (heterogeneous types, multiple consumers)? Keep it.
-
-**Known candidates (from explorer catalogue):**
-- `DefaultTemporalEdgeCreationResult` → replace with `List<CrossChapterBoundaryProjection>`
-- 9 resolution result records → collapse or eliminate
-- `SceneSegmentationOutcome` (inner record, `SceneDetectionService:26`) — evaluate
-- `BookEventReductionResult` (inner record, `BookEventReductionService:198`) — evaluate
-- `LibraryResult<T>` — probably earns its keep (heterogeneous generic)
-- Inner records in RAG/Search — probably earn their keep (payload bundles)
-
-**Affected files TBD by scan.**
+| Issue | Status |
+|-------|--------|
+| #9 | Resolved — container-class guidance in `code-organization-guidance.md` |
+| #15 | Deferred — book-scoped scene index is a decision point, not a task |
+| #8 (blanket ban) | Scaled back — fix ~3 unclear cases only, add coding standards guidance |
 
 ## Estimated Effort
 
-~275 minutes (excluding issues #10b, #15, #18). ~355 minutes total. 4 new files, 50+ files modified, 25+ deleted, 5+ docs updated. Phases: Phase 1 quick wins (~30 min), Phase 2 post-walkthrough (~150 min), Phase 3 structural changes (~90 min). Issues #10a, #10b, #7, #14 are structural. Issues 1-6, 8, 9, 11, 13, 16, 17, 21, 22 are cleanup. Issue #15 is parked. Issues #18 (walkthrough remaining), #19 (test analysis), #20 (dispatcher tx boundary) are blocking prerequisites. Issue #21 requires the explorer catalogue of intermediate result types.
+| Phase | Time | Files |
+|-------|------|-------|
+| Phase 1 — Quick wins | ~30 min | ~13 modified, 1 new |
+| Phase 2 — Post-walkthrough | ~150 min | 25+ modified, 15+ deleted |
+| Phase 3 — Structural | ~120 min | 20+ modified, 4 new, 1 deleted |
+| **Total** | **~300 min** | **50+ modified, 16+ deleted, 5 new** |
 
 
