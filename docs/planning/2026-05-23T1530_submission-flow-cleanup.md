@@ -177,6 +177,25 @@ Changes:
 - Delete `LLM_STEP_TO_STAGE` constant (no longer needed)
 - `LlmCallLoggingService` drops from 11 injected dependencies → ~8
 
+### 12. Delete `PipelineStageSupport` — dead weight from pre-coordinator model
+
+Three methods, only one does real work:
+
+| Method | Call sites | Status |
+|--------|-----------|--------|
+| `updateJobStatus()` | 16 call sites | **No-op** — delegates to `IngestionJobService.updateJobStatus()` which only `log.debug`'s |
+| `sanitizeExceptionMessage()` | 14 call sites | **Real behavior** — sanitizes exception messages for logging |
+| `runStage()` | 0 call sites | **Dead** — zero callers |
+
+Pre-refactor, `updateJobStatus` wrote `StatusRecord` nodes for pipeline progress tracking and `runStage` wrapped handler execution with `IngestionFailedEvent` emission. Post-refactor, Stage nodes are canonical status and the coordinator handles failure via `StageCompletedEvent`. The class is vestigial.
+
+**Fix:**
+1. Extract `sanitizeExceptionMessage(Exception)` to a static utility class (e.g., `ExceptionSanitizer` or add to existing `HashUtils`)
+2. Remove all 16 `stageSupport.updateJobStatus(...)` call sites — zero behavioral change, pure dead code
+3. Delete `PipelineStageSupport.java` — 12 of 13 handlers lose one injection
+4. `IngestionFailedEvent` — covered by issue #10 (zero publishers after this deletion)
+5. `IngestionJobService.updateJobStatus()` — also becomes dead (only called via `PipelineStageSupport`), delete it too
+
 ## Estimated Effort
 
 ~135 minutes (excluding issues #10, #11). ~210 minutes total. 3 new files, 30+ files modified, 15+ deleted, 1 doc updated. Issues 1-6, 8-9, 11 are pure cleanup. Issue 7 is a structural change. Issue 10 deletes 12+ legacy event classes.
