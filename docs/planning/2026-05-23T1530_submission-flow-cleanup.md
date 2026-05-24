@@ -76,9 +76,9 @@ for (StageKey root : dag.roots()) {
 
 Or, if `createAllForJob` doesn't need to return the map (it's only used internally by `rewireEdges`), change return type to `void`.
 
-### 7. 13 handlers × 4 orchestration fields = 52 duplicated injection points
+### 7. Extract `StageDispatcher` — centralize `onTrigger` across 13 handlers (consolidation point)
 
-`SceneDetectionHandler` has 18 fields. 14 are domain logic inherited from before the refactor. 4 (`StageGraphRepository`, `StageOutputGraphRepository`, `ApplicationEventPublisher`, `PipelineStageSupport`) were added by the durable orchestration refactor — and every other handler received the same 4. Every `onTrigger` method has the identical 4-line guard+idempotency+emit pattern.
+**Problem:** 13 handlers × 4 orchestration fields (`StageGraphRepository`, `StageOutputGraphRepository`, `ApplicationEventPublisher`, `PipelineStageSupport`) = 52 injection points. Every `onTrigger` has the identical 4-line guard+idempotency+emit pattern. `@Async` + `@EventListener` duplicated 13 times. 13 different log prefix styles. 13 copies of `System.currentTimeMillis()` manual timing. MDC async propagation already wired (`AsyncConfig.mdcTaskDecorator`) but never populated with stage context.
 
 **Fix:** Introduce a `StageDispatcher` bean that centralizes `onTrigger` once:
 
@@ -89,19 +89,30 @@ public class StageDispatcher {
     private final StageGraphRepository stageRepo;
     private final StageOutputGraphRepository stageOutputRepo;
     private final ApplicationEventPublisher eventPublisher;
+    private final MeterRegistry meterRegistry;
 
     @Async
     @EventListener
     public void onTrigger(StageTriggeredEvent event) {
-        // guard → idempotency → execute → emit
-        // ... one copy of the pattern ...
+        MDC.put("stage", event.getStage().name());
+        MDC.put("jobId", event.getJobId().toString());
+        Timer.Sample sample = Timer.start(meterRegistry);
+        try {
+            // guard → idempotency → execute → emit
+        } finally {
+            sample.stop(Timer.builder("ingestion.stage.duration")
+                .tag("stage", event.getStage().name()).register(meterRegistry));
+            MDC.clear();
+        }
     }
 }
 ```
 
-Handlers become pure domain objects — just `execute(jobId, chapterId)`. No `@Async`, no `@EventListener`, no orchestration fields. `PipelineStageSupport` can be deleted (already a no-op). Removes 52 injection points, 13 copies of the template, and 13 annotations.
+Handlers become pure domain objects — just `execute(jobId, chapterId)`. No `@Async`, no `@EventListener`, no orchestration fields.
 
-Result: `SceneDetectionHandler` drops from 18 fields back to 14 (pre-refactor size).
+**Effect per handler:** removes `onTrigger()`, `@Async`, `@EventListener`, `StageGraphRepository`, `StageOutputGraphRepository`, `ApplicationEventPublisher`, `PipelineStageSupport`, `IngestionJobService` (only used to construct `PipelineStageSupport`), all manual `log.info("[PREFIX]")` (replaced by MDC), all manual `System.currentTimeMillis()` (replaced by `Timer.Sample`). All nested service logs automatically carry `stage` context via MDC (no manual prefixing in `LlmClient`, `SceneDetectionService`, etc.).
+
+**Result:** 52 injection points eliminated, 13 log prefix styles unified to MDC, 13 manual timers replaced by 1 Micrometer timer, `SceneDetectionHandler` drops from 18 fields to 14 (pre-refactor size). Nested service logs gain stage context they never had before.
 
 **Hint:** The 6 persistence services (`Individual/Collective/Object/Location/EventPersistenceService` + `RelationClaimPersistenceService`) are only ever called from `SceneDetectionHandler`, from a single code block with identical signatures. They contribute 6 of the remaining 14 dependencies. Consider extracting an `EntityPersistenceCoordinator` facade that groups these 6 calls into a single `persistAll(scenes, outcome)` method, reducing the handler from 14 to 9 domain dependencies. The 6 services remain as independent, testable classes — the coordinator is a thin delegation facade, same pattern as the dispatcher.
 
