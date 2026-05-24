@@ -207,6 +207,145 @@ Pre-refactor, `updateJobStatus` wrote `StatusRecord` nodes for pipeline progress
 4. `IngestionFailedEvent` — covered by issue #10 (zero publishers after this deletion)
 5. `IngestionJobService.updateJobStatus()` — also becomes dead (only called via `PipelineStageSupport`), delete it too
 
+### 13. Find and eliminate handler→service guard duplication
+
+**Problem:** Handlers duplicate preconditions their delegates already check. Example: `SceneDetectionHandler.detectAndPersistScenes()` guards against `chapter.getRawText() == null || isEmpty()` before calling `sceneDetectionService.detectScenesInChapter()`, which has the identical guard (line 70-73). The handler returns `List.of()`, the service returns `SceneSegmentationOutcome(emptyList())` — same behavior, doubled maintenance.
+
+This is a broader pattern risk: hand-rolled handler preambles that re-implement domain constraints owned by the service. As services evolve their guards, handlers drift.
+
+**Fix:**
+1. **Scan:** Audit all handler `execute()` methods (13 handlers) and their immediate delegate calls. For each, check whether the handler checks a precondition (null, empty, etc.) that the delegate also checks. Identify all violations — not just `SceneDetectionHandler`.
+2. **Remove:** Delete the handler-side guard. Let the service handle the constraint. No behavior change — the service already returns correct empty/early-exit results.
+3. **Verify:** For any handler where removing the guard would change behavior (e.g., service throws instead of returning empty), log a note in the walkthrough findings and skip — those are legitimate handler-level decisions.
+
+**Affected files (known):**
+- `SceneDetectionHandler.java:284-288` — remove empty-text guard (duplicated in `SceneDetectionService.java:70-73`)
+- Other handlers TBD by scan
+
+### 14. Replace `buildTriadsForChapter` with `buildTriad(Scene)` — remove chapter-aware abstraction
+
+**Problem:** `TriadBuilderService.buildTriadsForChapter(Chapter)` is a chapter-scoped API for a concept that isn't chapter-scoped. Triads are sliding windows over scenes in book reading order — scene adjacency doesn't care about chapter boundaries. The chapter parameter is an input convenience (chapters are the unit of ingestion) dressed as a domain abstraction.
+
+Evidence the abstraction leaks:
+- `resolveCrossChapterPreviousScene` reaches across chapter boundaries for proper `prev` resolution
+- Last scene of every chapter has `next = null` — no symmetric `resolveCrossChapterNextScene`
+- The asymmetry means chapter-last scenes lack "next" context during entity extraction, and the N[l]→N+1[0] temporal edge is only analyzed from the N+1 side (redundant per-scene coverage, but asymmetric)
+
+By the time triad analysis runs, all scenes are persisted. The correct unit of triad construction is a scene, not a chapter.
+
+**Fix:** Replace `buildTriadsForChapter(Chapter)` with `buildTriad(UUID sceneId)` that resolves prev/next in book order:
+
+```
+given scene(chapterId, sceneIndex, bookId):
+  prev = if sceneIndex > 0: findPrevSceneInChapter(chapterId, sceneIndex)
+         elif chapterNumber > 1: findLastSceneOfPreviousChapter(bookId, chapterNumber)
+         else: null                     // first scene in book
+  next = if not last in chapter: findNextSceneInChapter(chapterId, sceneIndex)
+         elif next chapter exists: findFirstSceneOfNextChapter(bookId, chapterNumber)
+         else: null                     // last scene in book OR next chapter not yet ingested
+```
+
+Symmetric semantics: null means "first scene in book" (no prev), "last scene in book" (no next), or "boundary not yet ingested" (next chapter hasn't arrived — correct, triad analysis will run with null next, edge covered when next chapter's prev resolution kicks in).
+
+**Caller change:** `SceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals()` currently iterates `triads = triadBuilder.buildTriadsForChapter(chapter)`. Change to iterate chapter scenes then call `triadBuilder.buildTriad(scene.getId())` for each. Same number of LLM calls, same output shape. Chapter batching happens at the caller level (iteration loop), not the builder level.
+
+**Affected files:**
+- `TriadBuilderService.java` — rename/reshape `buildTriadsForChapter` → `buildTriad(UUID sceneId)`, remove `resolveCrossChapterPreviousScene`, add symmetric next resolution, add `Scene findPrev/NextXxx` helpers
+- `SceneRelationshipAnalysisService.java` — change caller loop from chapter-batched to scene-batched via `buildTriad`
+- `TriadBuilderService` tests (if any) — update signature
+
+### 15. Scene index: chapter-scoped vs. book-scoped (follow-up decision)
+
+Scenes currently have `sceneIndex` that is chapter-scoped (index within chapter, resetting per chapter). No book-level index exists. `buildTriad(Scene)` derives book order by composing `chapterNumber` + `sceneIndex`, which works but is fragile:
+
+- Two scenes across different chapters can only be compared via `(chapterNumber, sceneIndex)` → requires chapter ordering data
+- If chapters are reordered or sceneIndex semantics change, triad ordering breaks silently
+- Queries for "previous N scenes" across the book require chapter-aware traversal
+
+**Decision point (not action):** Whether to add a `bookSequenceIndex` field on Scene for book-level absolute ordering. This would make `buildTriad(Scene)` trivial (prev/next = index ± 1) and simplify cross-chapter queries. Cost: duplicate index maintenance, migration complexity.
+
+**Not part of this cleanup task** — added as a parked decision for discussion.
+
+### 16. Collapse repeated extraction loop patterns in `SceneRelationshipAnalysisService`
+
+**Problem:** `analyzeChapterTriadsWithIndividuals()` has two 6× repeated blocks (one per entity type: individuals, locations, objects, collectives, events, relationClaims):
+
+**Block 1 — collect (lines 216-257):** normalize → guard-empty → merge into `Map<Integer, List<T>>`:
+```java
+List<TriadAnalysisModels.IndividualExtraction> triadIndividuals = normalizeIndividuals(normalized);
+if (!triadIndividuals.isEmpty()) {
+    extractedIndividualsBySceneIndex
+        .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
+        .addAll(triadIndividuals);
+}
+// ... same 5 more times
+```
+
+**Block 2 — coalesce (lines 260-288):** `Map<Integer, List<T>>` → stream → wrap → sort → toList:
+```java
+List<TriadAnalysisModels.SceneIndividualExtraction> sceneIndividualExtractions =
+    extractedIndividualsBySceneIndex.entrySet().stream()
+        .map(e -> new TriadAnalysisModels.SceneIndividualExtraction(e.getKey(), List.copyOf(e.getValue())))
+        .sorted(Comparator.comparingInt(TriadAnalysisModels.SceneIndividualExtraction::sceneIndex))
+        .toList();
+// ... same 5 more times
+```
+
+**Fix:**
+1. **Merge helper** — trivial generics, no model changes:
+   ```java
+   private static <T> void mergeIfNotEmpty(Map<Integer, List<T>> bucket, int sceneIndex, List<T> items) {
+       if (!items.isEmpty()) {
+           bucket.computeIfAbsent(sceneIndex, k -> new ArrayList<>()).addAll(items);
+       }
+   }
+   ```
+   Six 6-line blocks → six 1-liners. Eliminates the `isEmpty()` guard at each call site.
+
+2. **Coalesce helper** — requires a common `sceneIndex()` accessor. Two options:
+   - **A — sealed interface** on the records: `sealed interface SceneExtraction { int sceneIndex(); }` implemented by all six `Scene*Extraction` records. Generic coalesce:
+     ```java
+     private static <T extends SceneExtraction> List<T> coalesce(
+         Map<Integer, List<?>> bucket, BiFunction<Integer, List<?>, T> constructor) {
+         return bucket.entrySet().stream()
+             .map(e -> constructor.apply(e.getKey(), List.copyOf(e.getValue())))
+             .sorted(Comparator.comparingInt(SceneExtraction::sceneIndex))
+             .toList();
+     }
+     ```
+   - **B — collector record** bundling normalize + wrap + bucket. A `record ExtractionPipe<T, S>(Function<TriadStructuredResult, List<T>> normalize, BiFunction<Integer, List<T>, S> wrap, Map<Integer, List<T>> bucket)` array of 6. Loop over the array — 1 inner loop for both collect and coalesce phases. More abstract but eliminates all type-level repetition.
+
+   Option A is simpler and makes `TriadAnalysisModels` self-documenting.
+
+**Affected files:**
+- `SceneRelationshipAnalysisService.java` — add `mergeIfNotEmpty` helper, add `coalesce` helper, collapse 12 repeated blocks
+- `TriadAnalysisModels.java` — add `sealed interface SceneExtraction` and implement on 6 records (if option A)
+
+### 17. Rename `analyzeChapterTriadsWithIndividuals` → `analyzeChapterTriads`, delete dead wrapper
+
+**Problem:** Two naming issues in `SceneRelationshipAnalysisService`:
+
+1. `analyzeChapterTriadsWithIndividuals` handles all six entity types (individuals, locations, objects, collectives, events, relationClaims) but name implies individuals-only — historical artifact from when the method only handled individuals + locations. The 2-arg overload (line 152) delegates to the 3-arg overload (line 157) with a no-op callback. Both are misleadingly named.
+
+2. `analyzeChapterTriads(UUID, Chapter)` at line 301 is a thin wrapper that calls `analyzeChapterTriadsWithIndividuals(jobId, chapter).triadAnalyses()` and discards all entity extraction results. It has **zero production callers** — only 10 test call sites in `SceneRelationshipAnalysisServiceTest`. Dead production code.
+
+**Fix:**
+1. Rename `analyzeChapterTriadsWithIndividuals` → `analyzeChapterTriads` (both overloads) — it's the canonical triad analysis method, it handles everything
+2. Delete the current `analyzeChapterTriads` wrapper — callers use `analyzeChapterTriads(...).triadAnalyses()` instead
+3. Update 2 production call sites (`SceneDetectionHandler.java:226, 335`) + 11 test call sites (8 in `SceneDetectionHandlerTest`, 2 in `IndividualResolutionIT`, 1 in `SceneRelationshipAnalysisServiceTest`) + 8 doc references
+
+**Blast radius:** 21 code references + 8 doc references. No API behavior change — pure rename.
+
+**Affected files:**
+- `SceneRelationshipAnalysisService.java` — rename 2 overloads, delete dead wrapper
+- `SceneDetectionHandler.java` — update 2 call sites
+- `SceneDetectionHandlerTest.java` — update 8 mock/verify calls
+- `IndividualResolutionIT.java` — update 2 mock calls
+- `SceneRelationshipAnalysisServiceTest.java` — update 1 direct call + 10 `analyzeChapterTriads` calls (chain `.triadAnalyses()`)
+- 5 doc files (planning, patterns, archive)
+
 ## Estimated Effort
 
-~135 minutes (excluding issues #10, #11). ~210 minutes total. 3 new files, 30+ files modified, 15+ deleted, 1 doc updated. Issues 1-6, 8-9, 11 are pure cleanup. Issue 7 is a structural change. Issue 10 deletes 12+ legacy event classes.
+~225 minutes (excluding issues #10, #11, #15). ~300 minutes total. 4 new files, 40+ files modified, 15+ deleted, 5+ docs updated. Issues 1-6, 8-9, 11 are pure cleanup. Issue 7 is a structural change. Issue 10 deletes 12+ legacy event classes. Issue 13 requires a targeted scan. Issue 14 changes the TriadBuilder API and caller loop. Issue 16 collapses extraction loop boilerplate. Issue 17 renames + deletes dead wrapper (~21 code refs + 5 doc refs).
+
+

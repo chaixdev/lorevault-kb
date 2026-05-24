@@ -242,6 +242,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                     )
             );
 
+            //TODO: resume walkthrough review
             replayBoundaryTemporalProjection(jobId, temporalDefaults.newlyCreatedCrossChapterBoundaries());
 
             if (! scenes.isEmpty()) {
