@@ -4,6 +4,13 @@
 **Status:** Parked — fix later
 **Discovered:** Code walkthrough post durable-ingestion-orchestration implementation
 **Walkthrough progress:** Traced from chapter upload → `bootstrapJob` → `SceneDetectionHandler`. Remaining data flow (chunking, embedding, resolution lanes, book reductions, INGESTION_COMPLETE) to be analyzed in a future session.
+**Design note:** Walkthrough surfaced a paradigm tension between service-oriented (LLM default) and richer domain model design. Captured in [Service-Oriented vs Rich Domain Model](../concepts/service-oriented-vs-domain-model.md).
+
+## Oracle Review (May 24, 2026)
+
+**Verdict:** 15 of 17 items directionally correct. #3 partially wrong (book hydration removal needs verification), #8 overreaching (ban `var` — scale back to fixing unclear cases). Three critical omissions: incomplete walkthrough scope, no test impact analysis, missing StageDispatcher transaction boundary design. Sequencing recommended: quick wins → post-walkthrough cleanup → structural changes as separate PRs.
+
+**Incorporated below:** #2 collapse skipped, #3 book hydration flagged as "verify first", #8 scaled back, #10 split into 10a/10b, omissions added as #18-20.
 
 ## Issues
 
@@ -24,7 +31,7 @@ private <T> T isolatedLookup(Supplier<T> query, String code, String message) {
 
 `IngestionSubmissionResult` is a clean 2-field Java record. `ChapterValidationResult` is a static inner class with manual constructor, manual getters, factory methods, and `@Getter` on some fields but not others. Both serve the same purpose (thin value objects). They should be consistent.
 
-**Fix:** Convert `ChapterValidationResult` to a record. Optionally, collapse both into a single `SubmissionResult` record since they carry overlapping data.
+**Fix:** Convert `ChapterValidationResult` to a record. **Do not** collapse with `IngestionSubmissionResult` — they carry different data for different callers.
 
 ### 3. `createNewChapter` guards mask factory defects
 
@@ -39,7 +46,7 @@ if (chapter.getBook() == null && chapter.getBookId() != null) {
 
 If `Chapter.createWithReferences()` doesn't set an ID, that's a bug in the factory — the guard is a workaround. If it does, the guard is dead code. The `bookRepo.findById()` is an eager hydration call that SDN doesn't need (it can persist with `bookId` alone). These should be assertions or removed after verifying `Chapter.createWithReferences()` behavior.
 
-**Fix:** Trace `Chapter.createWithReferences()` to confirm it sets the ID. Remove the null guard. Remove the `bookRepo.findById()` if SDN doesn't need the hydrated `book` reference.
+**Fix:** Trace `Chapter.createWithReferences()` to confirm it sets the ID. Remove the null guard (confirmed dead code — factory sets ID unconditionally). **Do not remove the `bookRepo.findById()` yet** — `Chapter.book` is `@Relationship(type = "IN_BOOK")` and SDN relationship semantics must be verified. Test whether SDN creates the relationship correctly with only `bookId` set, or whether the hydrated `Book` entity is needed within the same unit of work. Flag for verification, then remove if SDN doesn't need it.
 
 ### 4. `prepareChapter` Javadoc references nonexistent "CLI"
 
@@ -127,23 +134,16 @@ Handlers become pure domain objects — just `execute(jobId, chapterId)`. No `@A
 - 13 handler files — remove orchestration fields, `onTrigger`, `@Async`, `@EventListener` (issue 7)
 - `lorevault-core/src/main/java/com/lorevault/api/ingestion/pipeline/PipelineStageSupport.java` — delete (no-op after issue 7)
 
-### 8. Ban `var` — replace with explicit types, codify rule
+### 8. Replace unclear `var` usage with explicit types
 
-`SceneDetectionHandler.java:311` and other files use `var` which obscures return types:
+33 `var` usages across 8 files. Most are "obvious RHS constructor" cases (`var cfg = models.nlpBig()`). The real issue is the ~3-4 cases where the return type isn't obvious from the method name:
 
 ```java
 var segmentationOutcome = sceneDetectionService.detectScenesInChapter(jobId, chapter);
 var scenesWithCoords = segmentationOutcome.scenes();
 ```
 
-The type of `segmentationOutcome` is not obvious from the method name alone. Explicit types make the code self-documenting:
-
-```java
-SegmentationOutcome segmentationOutcome = sceneDetectionService.detectScenesInChapter(jobId, chapter);
-List<SceneWithCoordinates> scenesWithCoords = segmentationOutcome.scenes();
-```
-
-**Fix:** Replace all `var` usage with explicit types across the codebase. Add a rule to `docs/rules/coding-standards.md`: "Prefer explicit types over `var`. Only use `var` for obvious right-hand-side constructors where the type is immediately visible on the same line."
+**Fix:** Replace unclear `var` usages with explicit types. Don't codify a blanket ban — Java's `var` is stable since Java 10. Add guidance to coding standards: "Prefer explicit types when the RHS doesn't make the type immediately obvious."
 
 ### 9. Add container-class grouping guidance to coding standards
 
@@ -158,7 +158,7 @@ Three files use the `final class { private constructor; nested records }` patter
 >
 > Otherwise, use separate top-level records in the same package. Prefer `*Models` suffix for container classes that group LLM deserialization targets.
 
-### 10. Migrate or delete 14 legacy domain events — replace with `StageCompletedEvent`
+### 10a. Delete 12 dead legacy event classes, fix `JobStatusBroadcaster` SSE
 
 Handlers now publish `StageCompletedEvent` instead of domain-specific events. But 14 old event classes still exist and two consumers still reference them:
 
@@ -168,12 +168,23 @@ Handlers now publish `StageCompletedEvent` instead of domain-specific events. Bu
 | `ChunksCreatedEvent` | None (was ChunkingHandler) | Dead |
 | `EmbeddingsCompletedEvent` | None (was EmbeddingHandler) | Dead |
 | 8 resolution/reduction events | None (was resolution/reduction handlers) | Dead |
-| `ChapterEventsResolvedEvent` | `ChapterEventAnnRerunService` (bypasses Stage lifecycle) | Active |
+| `ChapterEventsResolvedEvent` | `ChapterEventAnnRerunService` (bypasses Stage lifecycle) | Active — see #10b |
 | `IngestionFailedEvent` | `PipelineStageSupport` (deleted in issue #7) | Publishes but receiver silent |
-| **Consumer:** | | |
-| `JobStatusBroadcaster` | Listens to `ScenesDetectedEvent`, `ChunksCreatedEvent`, `IngestionFailedEvent` | **Broken** — never receives them |
 
-**Fix:** Delete 12 dead event classes. Migrate `JobStatusBroadcaster` to listen for `StageCompletedEvent` instead (map `StageKey` → status string). Migrate `ChapterEventAnnRerunService` to publish `StageCompletedEvent` through the coordinator. If `IngestionFailedEvent` has no consumers after `PipelineStageSupport` is deleted, delete it too.
+**Confirmed bug:** `JobStatusBroadcaster` listens to `IngestionEvent` but `buildPayload()` only handles `ScenesDetectedEvent`, `ChunksCreatedEvent`, `IngestionCompletedEvent`, `IngestionFailedEvent`. None of these are published anymore — **SSE job streaming is silently broken.**
+
+**Fix:** Delete 12 dead event classes. Migrate `JobStatusBroadcaster` to listen for `StageCompletedEvent` instead (map `StageKey` → status string, count from `StepResult`). This is a quick win — fixes broken SSE, deletes dead code. `IngestionFailedEvent` — covered by issue #12 (zero publishers after `PipelineStageSupport` deletion), delete it.
+
+### 10b. Migrate `ChapterEventAnnRerunService` through coordinator (separate task)
+
+`ChapterEventAnnRerunService` publishes `ChapterEventsResolvedEvent` directly, bypassing the coordinator's `StageTriggeredEvent` → handler → `StageCompletedEvent` lifecycle. This means reruns don't get durable stage tracking, recovery, or SSE broadcasting.
+
+**Not a simple fix** because:
+- `ChapterEventAnnRerunService` generates a synthetic `jobId` and `correlationId` — it's not a real `ChapterIngestionJob`
+- To go through the coordinator, it would need a real job with stages bootstrapped
+- The rerun path is critical for the event coref/merge pipeline
+
+**Fix (separate design discussion):** Evaluate whether reruns should create real `ChapterIngestionJob` nodes with stage DAGs, or continue as a lightweight path with a dedicated SSE feed.
 
 ### 11. Simplify LLM call logging — direct call, typed, no event bus
 
@@ -344,8 +355,58 @@ List<TriadAnalysisModels.SceneIndividualExtraction> sceneIndividualExtractions =
 - `SceneRelationshipAnalysisServiceTest.java` — update 1 direct call + 10 `analyzeChapterTriads` calls (chain `.triadAnalyses()`)
 - 5 doc files (planning, patterns, archive)
 
+### 18. Complete walkthrough — remaining 12 handlers
+
+The walkthrough paused at `SceneDetectionHandler` persistence block. Issues #12 (delete `PipelineStageSupport`), #13 (guard duplication scan), and the `StageDispatcher` hint (#7) require a complete scan of the remaining pipeline stages: chunking, embedding, 6 resolution lanes, 3 book-reduction, 2 event lanes. The walkthrough may reveal additional `PipelineStageSupport` call sites, additional guard duplications, and additional handler patterns not yet captured.
+
+**Action (prerequisite):** Complete the walkthrough before executing issues #7, #12, #13, or #14.
+
+### 19. Add test impact analysis
+
+Issues #7 (StageDispatcher), #10a (delete events), #12 (delete PipelineStageSupport), #14 (buildTriad API change), and #17 (rename method) will break tests. Before execution, grep for all references to deleted/moved types and include test updates in scope.
+
+**Affected test files (known):**
+- `SceneDetectionHandlerTest.java` — references `PipelineStageSupport`, `analyzeChapterTriadsWithIndividuals`
+- `SceneRelationshipAnalysisServiceTest.java` — references `analyzeChapterTriads`, `analyzeChapterTriadsWithIndividuals`
+- `IndividualResolutionIT.java` — references `analyzeChapterTriadsWithIndividuals`
+- Other handler tests TBD by walkthrough + grep
+
+### 20. Document StageDispatcher transaction boundary
+
+The dispatcher's `onTrigger` runs `@Async` + `@EventListener`. The coordinator publishes `StageTriggeredEvent` after its own transaction commits. The handler's `execute()` calls `@Transactional` services — each handler manages its own transactions. The dispatcher's `onTrigger` must **NOT** be `@Transactional` — wrapping handler execution in a dispatcher-level transaction would cause issues with long-running LLM calls, nested transaction semantics, and error handling.
+
+**Action:** State this requirement in the dispatcher design (issue #7) and add a comment in the code: "This method must NOT be @Transactional — each handler manages its own transactions."
+
+## Sequencing
+
+**Phase 1 — Quick wins (low risk, can do immediately):**
+- #4 (Javadoc fix) — 1 line
+- #6 (bootstrapJob map) — ~5 lines
+- #9 (container-class docs) — documentation only
+- #11 (LLM call logging) — ~10 lines, fixes latent bug
+- #17 (rename method) — pure rename, ~21 references
+
+**Phase 2 — Post-walkthrough cleanup (#18 prerequisite):**
+- #1 (delete `IngestionIsolatedLookupService`)
+- #2 (record-ify `ChapterValidationResult`)
+- #3 (ID guard removal + book hydration verification)
+- #5 (submit/prepare dedup)
+- #12 (delete `PipelineStageSupport`)
+- #13 (guard duplication scan)
+- #16 (extraction loop collapse)
+
+**Phase 3 — Structural changes (separate PRs):**
+- #7 (StageDispatcher) — standalone PR, requires `StageOperation` interface design, #20 transaction boundary, book-level handler accommodation
+- #10a (delete events + fix SSE) — quick structural win
+- #10b (`ChapterEventAnnRerunService` migration) — design discussion needed
+- #14 (buildTriad → per-scene) — changes core triad logic, needs thorough testing
+
+**Skip / scale back:**
+- #8 — fix the ~3 unclear var cases, don't codify a blanket ban
+- #15 — already correctly deferred (decision point, not task)
+
 ## Estimated Effort
 
-~225 minutes (excluding issues #10, #11, #15). ~300 minutes total. 4 new files, 40+ files modified, 15+ deleted, 5+ docs updated. Issues 1-6, 8-9, 11 are pure cleanup. Issue 7 is a structural change. Issue 10 deletes 12+ legacy event classes. Issue 13 requires a targeted scan. Issue 14 changes the TriadBuilder API and caller loop. Issue 16 collapses extraction loop boilerplate. Issue 17 renames + deletes dead wrapper (~21 code refs + 5 doc refs).
+~240 minutes (excluding issues #10b, #15, #18). ~320 minutes total. 4 new files, 45+ files modified, 20+ deleted, 5+ docs updated. Phases: Phase 1 quick wins (~30 min), Phase 2 post-walkthrough (~120 min), Phase 3 structural changes (~90 min). Issues #10a, #10b, #7, #14 are structural. Issues 1-6, 8, 9, 11, 13, 16, 17 are cleanup. Issue #15 is parked. Issues #18 (walkthrough remaining), #19 (test analysis), #20 (dispatcher tx boundary) are blocking prerequisites.
 
 

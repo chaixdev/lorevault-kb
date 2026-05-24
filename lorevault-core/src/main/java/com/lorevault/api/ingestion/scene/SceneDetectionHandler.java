@@ -14,6 +14,7 @@ import com.lorevault.api.ingestion.events.StageCompletedEvent;
 import com.lorevault.api.ingestion.events.StageTriggeredEvent;
 import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
 import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
+import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeCreationResult;
 import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
 import com.lorevault.api.ingestion.triad.TriadTemporalEdgeRequestFactory;
 import com.lorevault.api.ingestion.infrastructure.IndividualPersistenceService;
@@ -201,7 +202,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
 
             // Create default temporal edges
             log.info("[SCENE_DETECTION] Creating default temporal edges for book {}", bookId);
-            var temporalDefaults = defaultTemporalEdgeService.createAllDefaults(bookId);
+            DefaultTemporalEdgeCreationResult temporalDefaults = defaultTemporalEdgeService.createAllDefaults(bookId);
 
             Map<Integer, UUID> sceneIndexToId = scenes.stream()
                     .filter(scene -> scene.getSceneIndex() != null && scene.getEventId() != null)
@@ -211,14 +212,14 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                             (left, right) -> left
                     ));
 
-            var sceneRelationshipOutcome = new TriadAnalysisModels.SceneRelationshipOutcome(
+            TriadAnalysisModels.SceneRelationshipOutcome sceneRelationshipOutcome = new TriadAnalysisModels.SceneRelationshipOutcome(
                     List.of(),
                     List.of(),
                     List.of(),
                     List.of(),
                     List.of()
             );
-            if (! scenes.isEmpty()) {
+            if ( !scenes.isEmpty()) {
                 Chapter triadChapter = chapterRepo.findById(chapterId)
                         .orElseThrow(() -> new IllegalArgumentException("Chapter not found for triad analysis: " + chapterId));
                 triadChapter.setScenes(List.copyOf(scenes));

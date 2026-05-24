@@ -23,6 +23,7 @@ Concept docs preserve important ideas that can continue guiding the system even 
 - [Entity-claim model](entity-claim-model.md) — durable claim-first knowledge model (context and interpretation)
 - [Evidence vs interpretation layer](evidence-vs-interpretation-layer.md) — durable ownership boundary between canon/provenance-bearing evidence and rebuildable serving artifacts
 - [Temporal Relation Semantics](temporal-relation-semantics.md) — Allen relation model and normalization choices that shape the temporal graph and future timeline-aware querying
+- [Service-Oriented vs Rich Domain Model](service-oriented-vs-domain-model.md) — design observation: LLM-default service-oriented style vs naturally relational domain, record proliferation, intermediate result types
 
 ## Primary Source Research
 
