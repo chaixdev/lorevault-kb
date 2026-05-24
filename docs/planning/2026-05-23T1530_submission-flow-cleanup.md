@@ -164,6 +164,19 @@ Handlers now publish `StageCompletedEvent` instead of domain-specific events. Bu
 
 **Fix:** Delete 12 dead event classes. Migrate `JobStatusBroadcaster` to listen for `StageCompletedEvent` instead (map `StageKey` → status string). Migrate `ChapterEventAnnRerunService` to publish `StageCompletedEvent` through the coordinator. If `IngestionFailedEvent` has no consumers after `PipelineStageSupport` is deleted, delete it too.
 
+### 11. Simplify LLM call logging — direct call, typed, no event bus
+
+**Current:** `LlmClient` passes string `step` ("chapter-segmentation") through `LlmCallLogger.logCall()` interface → `LlmCallLoggingService` reconstructs `StageKey` via a hand-maintained lookup table (`LLM_STEP_TO_STAGE`) → queries `ChapterIngestionJob` just for `OF_JOB` link → persists `LlmCallRecord`. The type information (`StageKey`) is thrown away at the boundary and reconstructed on the other side.
+
+**Proposed:** `LlmClient` passes `StageKey` directly. `LlmCallLogger.logCall(jobId, StageKey stage, ...)`. `LlmCallLoggingService.persistCall()` finds the Stage via `findByJobIdAndStep` (guaranteed to exist — DAG bootstrapped at job creation), links `LlmCallRecord` via `OF_STAGE`. No event bus, no string mapping, no lookup table, no `jobRepo.findById()`.
+
+Changes:
+- `LlmCallLogger` interface: `step: String` → `stage: StageKey`
+- `LlmClient` methods: add `StageKey` parameter, propagate to log call
+- `LlmCallLoggingService.logCall()`: remove `LLM_STEP_TO_STAGE`, remove `jobRepo.findById()`, use `stageRepo.findByJobIdAndStep()` directly
+- Delete `LLM_STEP_TO_STAGE` constant (no longer needed)
+- `LlmCallLoggingService` drops from 11 injected dependencies → ~8
+
 ## Estimated Effort
 
-~135 minutes (excluding issue #10). ~180 minutes total. 3 new files, 25+ files modified, 15+ deleted, 1 doc updated. Issues 1-6, 8-9 are pure cleanup. Issue 7 is a structural change. Issue 10 deletes 12+ legacy event classes.
+~135 minutes (excluding issues #10, #11). ~210 minutes total. 3 new files, 30+ files modified, 15+ deleted, 1 doc updated. Issues 1-6, 8-9, 11 are pure cleanup. Issue 7 is a structural change. Issue 10 deletes 12+ legacy event classes.
