@@ -116,3 +116,26 @@ When a handler exposes an `execute()` method for direct REST invocation (the `*O
 This ensures that direct `execute()` calls from step endpoints don't trigger downstream cascades unless explicitly requested via `fireEvents=true`.
 
 The `@EventListener` method delegates to `execute()` and handles event publication. The REST controller calls `execute()` directly and publishes events conditionally based on the `fireEvents` parameter.
+
+### 8. Handlers must not re-validate domain preconditions owned by services
+
+The service that performs an operation owns its domain constraints: null checks, empty-input guards, validation logic. Handlers must not duplicate these checks before calling the service.
+
+```java
+// Wrong — handler re-checks a precondition the service already enforces
+String chapterText = chapter.getRawText();
+if (chapterText == null || chapterText.trim().isEmpty()) {
+    return List.of();
+}
+var outcome = sceneDetectionService.detectScenesInChapter(jobId, chapter);
+
+// Correct — trust the service; check the return value if you need to know
+var outcome = sceneDetectionService.detectScenesInChapter(jobId, chapter);
+if (outcome.scenes().isEmpty()) {
+    log.info("No scenes detected for chapter {}", chapterId);
+}
+```
+
+If the service's guard behavior changes, every handler-side copy is a drift point. If a handler needs to know "did this produce anything?", check the return value — not the inputs.
+
+This applies equally to factory invariants. If `Chapter.createWithReferences()` guarantees an ID is set, the caller must not guard against a null ID — that masks a factory defect.

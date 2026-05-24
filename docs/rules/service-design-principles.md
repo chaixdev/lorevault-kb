@@ -22,6 +22,18 @@
 - if the logic only supports one larger workflow internally, keep it inside that workflow's service
 - if the boundary is Neo4j, an LLM provider, another external system, or a tightly bounded ownership seam with clear semantic value, abstraction may be justified
 
+## Abstraction Scope Must Match Domain Scope
+
+The scope of a method signature must match the domain scope of the concept it models. A book-scoped concept must not receive a chapter-scoped API just because chapters are convenient input units.
+
+**Example:** `buildTriadsForChapter(Chapter)` models triads as a per-chapter concept, but triads are sliding windows over all scenes in a book. Chapter boundaries are an ingestion convenience, not a domain property. The mismatch forces asymmetric helpers (`resolveCrossChapterPreviousScene` with no matching next resolution), nulls where the domain has data (chapter-last scenes always have `next = null`), and callers working around the API to reach across chapter boundaries.
+
+**Fix:** `buildTriad(UUID sceneId)` — the scope matches the domain. Callers iterate chapter scenes as an implementation detail, not a signature constraint.
+
+**Heuristic:** If a method needs asymmetric cross-boundary helpers to model its domain correctly, the boundary is wrong.
+
+---
+
 ## Additional Heuristics
 
 ### Good signs

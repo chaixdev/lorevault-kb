@@ -347,6 +347,30 @@ Mutable events shared across threads via the event bus are a data corruption def
 
 ---
 
+## Type Information Must Survive Interfaces
+
+**Do not degrade typed information to strings across method boundaries.**
+
+When crossing a method boundary — especially into an infrastructure adapter — do not convert enums or domain types to strings and reconstruct them on the other side. String-based lookup tables (`Map<String, Enum>`) are fragile: every new enum value requires a manual table update, and string reconstruction has silent fallback bugs.
+
+```java
+// Wrong — StageKey (enum) → String → lookup table → StageKey (fragile reconstruction)
+LlmClient.call("chapter-segmentation", ...);       // enum → string
+LlmCallLoggingService:                              // string → enum via LLM_STEP_TO_STAGE map
+    StageKey key = LLM_STEP_TO_STAGE.get(step);     // misses "event-coref", "event-merge"
+
+// Correct — pass the type directly
+LlmClient.call(StageKey.CHAPTER_SEGMENTATION, ...);
+LlmCallLoggingService:
+    stageRepo.findByJobIdAndStep(jobId, stage);     // no lookup table, no fallback
+```
+
+The lookup table (`LLM_STEP_TO_STAGE`) missed two values. The fallback "find any RUNNING stage" query linked LLM call records to the wrong stage when multiple stages ran concurrently. Neither bug is possible if the enum is passed directly.
+
+**Rule:** If the caller has a typed value, pass the typed value. If the interface is generic, widen the signature. Do not create string-based correspondence tables that must be manually maintained.
+
+---
+
 ## Package Boundary Discipline
 
 **Package-private types.**
@@ -426,6 +450,27 @@ case appears — not before.
 **Premature extraction.**
 A helper method or utility class extracted from a single callsite is premature.
 Wait until the same logic is needed in a second callsite before extracting.
+
+**Return types that no external caller consumes.**
+A public method's return type must serve at least one external (non-`this`) caller.
+If the value is only used by code inside the same class — another method on `this`, or
+an internal delegate — the return type is an implementation detail leaked through the
+public boundary.
+
+```java
+// Wrong — createAllForJob returns Map<StageKey, UUID> but bootstrapJob only
+// null-checks one entry; the map is consumed internally by rewireEdges (called
+// inside createAllForJob). Zero external callers use the map.
+public Map<StageKey, UUID> createAllForJob(UUID jobId, UUID chapterId) { ... }
+
+// Correct — return void; rewireEdges is called internally, bootstrapJob queries
+// stageRepo independently.
+public void createAllForJob(UUID jobId, UUID chapterId) { ... }
+```
+
+This is the method-level companion to the record-design rule "all fields must be
+consumed." A return type is part of the public API. If no external code reads it,
+the API is advertising implementation structure that doesn't belong on the surface.
 
 ---
 

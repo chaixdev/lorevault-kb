@@ -145,11 +145,11 @@ var scenesWithCoords = segmentationOutcome.scenes();
 
 **Fix:** Replace unclear `var` usages with explicit types. Don't codify a blanket ban — Java's `var` is stable since Java 10. Add guidance to coding standards: "Prefer explicit types when the RHS doesn't make the type immediately obvious."
 
-### 9. Add container-class grouping guidance to coding standards
+### 9. ~~Add container-class grouping guidance to coding standards~~ ✅ **RESOLVED — added to `docs/rules/code-organization-guidance.md`**
 
-Three files use the `final class { private constructor; nested records }` pattern (`TriadAnalysisModels`, `EventCorefModels`, `EventMergeModels`). But the codebase also uses separate top-level records (`content/mention/` has 6, `content/association/` has 10) and private inner records inside services. There's no rule for when to group vs separate.
+~~Three files use the `final class { private constructor; nested records }` pattern (`TriadAnalysisModels`, `EventCorefModels`, `EventMergeModels`). But the codebase also uses separate top-level records (`content/mention/` has 6, `content/association/` has 10) and private inner records inside services. There's no rule for when to group vs separate.~~
 
-**Fix:** Add to `docs/rules/code-organization-guidance.md`:
+~~**Fix:** Add to `docs/rules/code-organization-guidance.md`:~~
 
 > **Container classes for grouped types**: Use a `public final class` with private constructor as a namespace when:
 > - The types form a closed set that always travels together (e.g., LLM response models)
@@ -385,6 +385,7 @@ The dispatcher's `onTrigger` runs `@Async` + `@EventListener`. The coordinator p
 - #9 (container-class docs) — documentation only
 - #11 (LLM call logging) — ~10 lines, fixes latent bug
 - #17 (rename method) — pure rename, ~21 references
+- #22 (rename method) — pure rename, 1 file (2 refs + tests TBD)
 
 **Phase 2 — Post-walkthrough cleanup (#18 prerequisite):**
 - #1 (delete `IngestionIsolatedLookupService`)
@@ -405,6 +406,26 @@ The dispatcher's `onTrigger` runs `@Async` + `@EventListener`. The coordinator p
 **Skip / scale back:**
 - #8 — fix the ~3 unclear var cases, don't codify a blanket ban
 - #15 — already correctly deferred (decision point, not task)
+
+### 22. Rename `replayBoundaryTemporalProjection` → `enrichCrossChapterTemporalEdges`
+
+**Problem:** The method name `replayBoundaryTemporalProjection` has three issues:
+
+1. **"replay"** — implies re-running with different inputs or a different context, but it's the same triad analysis step, just deferred until both chapters' scenes exist. The initial structural edge creation (`createAllDefaults`) is partial work; this call completes it.
+
+2. **"boundary"** — vague. What boundary? The name doesn't distinguish between chapter boundaries, book boundaries, or any other domain boundary.
+
+3. **"projection"** — Spring Data Neo4j implementation jargon (`CrossChapterBoundaryProjection` is a Neo4j result interface). Leaking implementation terms into the handler-level method name.
+
+**What it actually does:** Takes structurally-created cross-chapter `NEXT_IN_READING_ORDER` edges (bare adjacency) and enriches them with typed temporal semantics (`R:temporal.before`/`R:temporal.after`) by running triad analysis on the boundary scene pair. Skip if a typed edge already exists.
+
+**Fix:** Rename to `enrichCrossChapterTemporalEdges`. Three words, all domain terms: *enrich* (semantic upgrade of structurally-created edges), *cross-chapter* (operates on chapter boundaries), *temporal edges* (the relationship type being written).
+
+**Affected files:**
+- `SceneDetectionHandler.java` — method definition (line 305) + 1 call site (line 247)
+- Any tests referencing the method by name (TBD by grep)
+
+**Blast radius:** 1 file (if no tests reference by name). Pure rename — no behavior change.
 
 ### 21. Scan and eliminate unnecessary intermediate result records
 
@@ -432,6 +453,6 @@ The dispatcher's `onTrigger` runs `@Async` + `@EventListener`. The coordinator p
 
 ## Estimated Effort
 
-~270 minutes (excluding issues #10b, #15, #18). ~350 minutes total. 4 new files, 50+ files modified, 25+ deleted, 5+ docs updated. Phases: Phase 1 quick wins (~30 min), Phase 2 post-walkthrough (~150 min), Phase 3 structural changes (~90 min). Issues #10a, #10b, #7, #14 are structural. Issues 1-6, 8, 9, 11, 13, 16, 17, 21 are cleanup. Issue #15 is parked. Issues #18 (walkthrough remaining), #19 (test analysis), #20 (dispatcher tx boundary) are blocking prerequisites. Issue #21 requires the explorer catalogue of intermediate result types.
+~275 minutes (excluding issues #10b, #15, #18). ~355 minutes total. 4 new files, 50+ files modified, 25+ deleted, 5+ docs updated. Phases: Phase 1 quick wins (~30 min), Phase 2 post-walkthrough (~150 min), Phase 3 structural changes (~90 min). Issues #10a, #10b, #7, #14 are structural. Issues 1-6, 8, 9, 11, 13, 16, 17, 21, 22 are cleanup. Issue #15 is parked. Issues #18 (walkthrough remaining), #19 (test analysis), #20 (dispatcher tx boundary) are blocking prerequisites. Issue #21 requires the explorer catalogue of intermediate result types.
 
 

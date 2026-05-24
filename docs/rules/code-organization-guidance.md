@@ -163,6 +163,32 @@ semantics are still obvious and they do not become mixed catch-all buckets.
 - Keep configuration centralized unless a feature clearly owns meaningful bean wiring.
 - Do **not** create per-feature `config` packages just to complete a template.
 
+## Container-class guidance
+
+For LLM response types and other closed sets that always travel together, use a `public final class` with a private constructor as a namespace:
+
+```java
+public final class TriadAnalysisModels {
+    private TriadAnalysisModels() {}
+    
+    public record SceneRelationshipAnalysis(...) {}
+    public record IndividualExtraction(...) {}
+    // ... rest of the closed set
+}
+```
+
+Apply this pattern when:
+
+- The types form a closed set that always travels together (e.g., LLM deserialization targets)
+- Each type is < 20 lines and too thin to justify a separate file
+- The types are only ever referenced through the container (no external direct usage)
+
+Prefer `*Models` suffix for container classes that group LLM deserialization targets (`TriadAnalysisModels`, `EventCorefModels`, `EventMergeModels`).
+
+Otherwise, use separate top-level records in the same package. Do not use container classes as default grouping just because types are small — the closed-set criterion is the gate.
+
+---
+
 ## DTO and shared-contract rules
 
 - DTOs used by only one feature belong in that feature.
