@@ -105,6 +105,6 @@ The codebase works. Ingestion IS a pipeline, and the service-oriented style maps
 
 ## Related
 
-- `docs/planning/2026-05-23T1530_submission-flow-cleanup.md` — #13 (guard duplication), #14 (triad chapter abstraction), #16 (extraction loop collapse) all touch on where behavior should live
+- `docs/planning/2026-05-23T1530_submission-flow-cleanup.md` — #13 (guard duplication), #14 (triad chapter abstraction), #16 (extraction loop collapse) all touch on where behavior should live; #21 (eliminate unnecessary intermediate result records) is a direct action on this pattern
 - `docs/patterns/cross-cutting/dependency-inversion-seam.md` — architectural seam pattern already in use
 - `docs/concepts/entity-claim-model.md` — the domain model this paradigm is expressing

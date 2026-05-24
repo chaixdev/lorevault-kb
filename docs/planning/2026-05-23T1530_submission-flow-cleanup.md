@@ -394,6 +394,7 @@ The dispatcher's `onTrigger` runs `@Async` + `@EventListener`. The coordinator p
 - #12 (delete `PipelineStageSupport`)
 - #13 (guard duplication scan)
 - #16 (extraction loop collapse)
+- #21 (unnecessary intermediate result records)
 
 **Phase 3 — Structural changes (separate PRs):**
 - #7 (StageDispatcher) — standalone PR, requires `StageOperation` interface design, #20 transaction boundary, book-level handler accommodation
@@ -405,8 +406,32 @@ The dispatcher's `onTrigger` runs `@Async` + `@EventListener`. The coordinator p
 - #8 — fix the ~3 unclear var cases, don't codify a blanket ban
 - #15 — already correctly deferred (decision point, not task)
 
+### 21. Scan and eliminate unnecessary intermediate result records
+
+**Problem:** Records make type creation free, resulting in types that don't earn their existence. Two concrete anti-patterns identified so far:
+
+1. **Unused fields in a record.** `DefaultTemporalEdgeCreationResult` has 3 fields: `inChapterEdgesCreated`, `crossChapterEdgesCreated`, `newlyCreatedCrossChapterBoundaries`. The sole consumer (`SceneDetectionHandler:247`) only uses the list — the two count fields are set, logged inside the service, boxed into the record, and never read again. The record should be replaced by `List<CrossChapterBoundaryProjection>` directly.
+
+2. **Identical shapes with different type tags.** 9 resolution result records share the same fields `(UUID id, boolean success, int processed, int created, String message)` and differ only in entity-type name (`ChapterIndividualResolutionResult`, `BookObjectResolutionResult`, etc.). The type tag carries no information the caller doesn't already have (it called `individualResolutionService`, not `objectResolutionService`). These exist solely to carry counts 3 lines to a `StepResult` constructor. They should be either collapsed into a single `ResolutionResult` record or eliminated in favor of services returning `StepResult` directly.
+
+**Fix:** Audit all `*Result` and `*Outcome` records in the ingestion pipeline. For each, ask:
+- Are all fields consumed by callers? Remove unused ones — if that leaves 1 field, return it directly.
+- Does the type tag prevent bugs? If the handler already knows what it called, the tag is noise.
+- Is the record just a `StepResult` precursor? If the handler only repackages it, have the service return `StepResult` directly.
+- Is the record a genuine payload bundle (heterogeneous types, multiple consumers)? Keep it.
+
+**Known candidates (from explorer catalogue):**
+- `DefaultTemporalEdgeCreationResult` → replace with `List<CrossChapterBoundaryProjection>`
+- 9 resolution result records → collapse or eliminate
+- `SceneSegmentationOutcome` (inner record, `SceneDetectionService:26`) — evaluate
+- `BookEventReductionResult` (inner record, `BookEventReductionService:198`) — evaluate
+- `LibraryResult<T>` — probably earns its keep (heterogeneous generic)
+- Inner records in RAG/Search — probably earn their keep (payload bundles)
+
+**Affected files TBD by scan.**
+
 ## Estimated Effort
 
-~240 minutes (excluding issues #10b, #15, #18). ~320 minutes total. 4 new files, 45+ files modified, 20+ deleted, 5+ docs updated. Phases: Phase 1 quick wins (~30 min), Phase 2 post-walkthrough (~120 min), Phase 3 structural changes (~90 min). Issues #10a, #10b, #7, #14 are structural. Issues 1-6, 8, 9, 11, 13, 16, 17 are cleanup. Issue #15 is parked. Issues #18 (walkthrough remaining), #19 (test analysis), #20 (dispatcher tx boundary) are blocking prerequisites.
+~270 minutes (excluding issues #10b, #15, #18). ~350 minutes total. 4 new files, 50+ files modified, 25+ deleted, 5+ docs updated. Phases: Phase 1 quick wins (~30 min), Phase 2 post-walkthrough (~150 min), Phase 3 structural changes (~90 min). Issues #10a, #10b, #7, #14 are structural. Issues 1-6, 8, 9, 11, 13, 16, 17, 21 are cleanup. Issue #15 is parked. Issues #18 (walkthrough remaining), #19 (test analysis), #20 (dispatcher tx boundary) are blocking prerequisites. Issue #21 requires the explorer catalogue of intermediate result types.
 
 
