@@ -33,7 +33,7 @@ public class PromptTemplateRenderingTest {
 
     @Test
     void sceneAnalysisUserTemplate_renders_with_variables() {
-        PromptTemplate t = repo.get("scene-analysis-user");
+        PromptTemplate t = repo.get(PromptName.SCENE_ANALYSIS_USER);
 
         Map<String, Object> vars = new HashMap<>();
         vars.put("prev_context_summary", "prev ctx");
@@ -62,7 +62,7 @@ public class PromptTemplateRenderingTest {
 
     @Test
     void eventCorefUserTemplate_renders_with_xml_payload_without_template_parse_errors() {
-        PromptTemplate t = repo.get("event-coref-user");
+        PromptTemplate t = repo.get(PromptName.EVENT_COREF_USER);
 
         Map<String, Object> vars = new HashMap<>();
         vars.put("chapterId", "chapter-123");
@@ -80,7 +80,7 @@ public class PromptTemplateRenderingTest {
 
     @Test
     void eventMergeUserTemplate_renders_with_pair_payload_without_template_parse_errors() {
-        PromptTemplate t = repo.get("event-merge-user");
+        PromptTemplate t = repo.get(PromptName.EVENT_MERGE_USER);
 
         Map<String, Object> vars = new HashMap<>();
         vars.put("annScore", 0.91);

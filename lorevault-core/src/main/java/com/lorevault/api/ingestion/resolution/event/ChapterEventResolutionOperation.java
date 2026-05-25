@@ -7,7 +7,7 @@ import java.util.UUID;
 /**
  * Synchronous operation interface for chapter-level event resolution.
  *
- * <p>Implemented by {@link ChapterEventResolutionHandler} so that the CLI
+ * <p>Implemented by {@link ChapterEventResolutionHandler} so that the step-by-step execution controller
  * module or step-execution endpoints can invoke event resolution directly
  * without going through Spring {@code @EventListener} dispatch.
  *

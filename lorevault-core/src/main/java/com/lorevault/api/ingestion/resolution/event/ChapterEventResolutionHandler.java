@@ -1,10 +1,10 @@
 package com.lorevault.api.ingestion.resolution.event;
 
 import com.lorevault.api.ai.llm.EventCorefModels;
-import com.lorevault.api.ingestion.job.IngestionJobService;
-import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
+import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
+
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
-import com.lorevault.api.ingestion.job.IngestionStatus;
 import com.lorevault.api.ingestion.events.StageCompletedEvent;
 import com.lorevault.api.ingestion.events.StageTriggeredEvent;
 import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
@@ -29,7 +29,7 @@ import org.springframework.context.event.EventListener;
  * Async handler that orchestrates Stage 2 (LLM co-reference) and Stage 3 (ChapterEvent aggregation)
  * in response to a {@link StageTriggeredEvent}.
  *
- * <p>Implements {@link ChapterEventResolutionOperation} so the CLI module or step-execution
+ * <p>Implements {@link ChapterEventResolutionOperation} so the step-by-step execution controller or step-execution
  * endpoints can invoke event resolution directly without Spring event dispatch.
  *
  * <p>Uses stage orchestration graph for conditional execution, idempotency, and
@@ -47,7 +47,6 @@ public class ChapterEventResolutionHandler implements ChapterEventResolutionOper
     private final ChapterEventResolutionService chapterEventResolutionService;
     private final SceneGraphRepository sceneRepo;
     private final ChapterGraphRepository chapterRepo;
-    private final PipelineStageSupport pipelineStageSupport;
     private final ApplicationEventPublisher eventPublisher;
     private final StageGraphRepository stageRepo;
     private final StageOutputGraphRepository stageOutputRepo;
@@ -57,7 +56,6 @@ public class ChapterEventResolutionHandler implements ChapterEventResolutionOper
             ChapterEventResolutionService chapterEventResolutionService,
             SceneGraphRepository sceneRepo,
             ChapterGraphRepository chapterRepo,
-            IngestionJobService ingestionJobService,
             ApplicationEventPublisher eventPublisher,
             StageGraphRepository stageRepo,
             StageOutputGraphRepository stageOutputRepo
@@ -66,7 +64,6 @@ public class ChapterEventResolutionHandler implements ChapterEventResolutionOper
         this.chapterEventResolutionService = chapterEventResolutionService;
         this.sceneRepo = sceneRepo;
         this.chapterRepo = chapterRepo;
-        this.pipelineStageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         this.eventPublisher = eventPublisher;
         this.stageRepo = stageRepo;
         this.stageOutputRepo = stageOutputRepo;
@@ -113,16 +110,6 @@ public class ChapterEventResolutionHandler implements ChapterEventResolutionOper
             List<Scene> scenes = sceneRepo.findByChapterId(chapterId);
             List<UUID> sceneIds = scenes.stream().map(Scene::getEventId).toList();
 
-            pipelineStageSupport.updateJobStatus(
-                    jobId,
-                    IngestionStatus.EVENT_COREF,
-                    "Resolving cross-scene event co-reference",
-                    Map.of(
-                            "chapterId", chapterId.toString(),
-                            "sceneCount", sceneIds.size()
-                    )
-            );
-
             // Stage 2: LLM rolling-triad co-reference pass — writes SAME_EVENT links
             EventCorefModels.CorefPassResult corefResult = eventCoreferenceService.runCorefPass(
                     sceneIds, chapterId, jobId);
@@ -130,24 +117,12 @@ public class ChapterEventResolutionHandler implements ChapterEventResolutionOper
             log.info("[CHAPTER_EVENT_RESOLUTION] Stage 2 complete: jobId={}, chapterId={}, windowsRun={}, linksCreated={}",
                     jobId, chapterId, corefResult.windowsRun(), corefResult.linksCreated());
 
-            pipelineStageSupport.updateJobStatus(
-                    jobId,
-                    IngestionStatus.CHAPTER_EVENT_AGGREGATION,
-                    "Aggregating chapter-level events from co-reference chains",
-                    Map.of(
-                            "chapterId", chapterId.toString(),
-                            "windowsRun", corefResult.windowsRun(),
-                            "linksCreated", corefResult.linksCreated(),
-                            "failedCorefWindowCount", corefResult.failedWindowCount()
-                    )
-            );
-
             // Stage 3: deterministic aggregation from SAME_EVENT chains → ChapterEvent nodes
             ChapterEventResolutionResult aggregationResult =
                     chapterEventResolutionService.resolveChapter(chapterId);
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success("CHAPTER_EVENT_RESOLUTION",
+            return StepResult.success(StageKey.CHAPTER_EVENT_RESOLUTION.name(),
                     String.format("Coref: %d windows, %d links; Aggregation: %d events from %d mentions",
                             corefResult.windowsRun(), corefResult.linksCreated(),
                             aggregationResult.chapterEventsCreated(),
@@ -167,10 +142,10 @@ public class ChapterEventResolutionHandler implements ChapterEventResolutionOper
                     jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure("CHAPTER_EVENT_RESOLUTION",
-                            PipelineStageSupport.sanitizeExceptionMessage(e), elapsed)
-                    : StepResult.failure("CHAPTER_EVENT_RESOLUTION",
-                            PipelineStageSupport.sanitizeExceptionMessage(e), elapsed);
+                    ? StepResult.retryableFailure(StageKey.CHAPTER_EVENT_RESOLUTION.name(),
+                            sanitizeMessage(e), elapsed)
+                    : StepResult.failure(StageKey.CHAPTER_EVENT_RESOLUTION.name(),
+                            sanitizeMessage(e), elapsed);
         }
     }
 

@@ -1,6 +1,7 @@
 package com.lorevault.api.health;
 
 import com.lorevault.api.config.LoreVaultModelsProperties;
+import com.lorevault.api.config.ModelSlot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -158,9 +159,9 @@ class SystemHealthServiceTest {
 
         // Then
         assertThat(results).hasSize(2);
-        assertThat(results).containsKeys("nlp-small", "nlp-big");
-        assertThat(results.get("nlp-small").isHealthy()).isTrue();
-        assertThat(results.get("nlp-big").isHealthy()).isTrue();
+        assertThat(results).containsKeys(ModelSlot.NLP_SMALL.slotName(), ModelSlot.NLP_BIG.slotName());
+        assertThat(results.get(ModelSlot.NLP_SMALL.slotName()).isHealthy()).isTrue();
+        assertThat(results.get(ModelSlot.NLP_BIG.slotName()).isHealthy()).isTrue();
     }
 
     @Test

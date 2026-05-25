@@ -2,11 +2,10 @@ package com.lorevault.api.ingestion.resolution.collective;
 
 import com.lorevault.api.ingestion.events.StageCompletedEvent;
 import com.lorevault.api.ingestion.events.StageTriggeredEvent;
-import com.lorevault.api.ingestion.job.IngestionJobService;
-import com.lorevault.api.ingestion.job.IngestionStatus;
 import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
 import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
-import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
+import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
+
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import java.util.Map;
 import java.util.UUID;
@@ -24,20 +23,17 @@ public class ChapterCollectiveResolutionHandler implements ChapterCollectiveReso
 
     private final ChapterCollectiveResolutionService chapterCollectiveResolutionService;
     private final ApplicationEventPublisher eventPublisher;
-    private final PipelineStageSupport stageSupport;
     private final StageGraphRepository stageRepo;
     private final StageOutputGraphRepository stageOutputRepo;
 
     public ChapterCollectiveResolutionHandler(
             ChapterCollectiveResolutionService chapterCollectiveResolutionService,
-            IngestionJobService ingestionJobService,
             ApplicationEventPublisher eventPublisher,
             StageGraphRepository stageRepo,
             StageOutputGraphRepository stageOutputRepo
     ) {
         this.chapterCollectiveResolutionService = chapterCollectiveResolutionService;
         this.eventPublisher = eventPublisher;
-        this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         this.stageRepo = stageRepo;
         this.stageOutputRepo = stageOutputRepo;
     }
@@ -78,8 +74,6 @@ public class ChapterCollectiveResolutionHandler implements ChapterCollectiveReso
     @Override
     public StepResult execute(UUID jobId, UUID chapterId) {
         long start = System.currentTimeMillis();
-        stageSupport.updateJobStatus(jobId, IngestionStatus.RESOLVING_COLLECTIVES, "Resolving collective entities for chapter...");
-
         try {
             log.info(
                     "[LANE:COLLECTIVE] [CHAPTER_COLLECTIVE_RESOLUTION] Processing: jobId={}, chapterId={}",
@@ -121,7 +115,7 @@ public class ChapterCollectiveResolutionHandler implements ChapterCollectiveReso
             long elapsed = System.currentTimeMillis() - start;
             log.error("[LANE:COLLECTIVE] [CHAPTER_COLLECTIVE_RESOLUTION] Failed: jobId={}, chapterId={}", jobId, chapterId, e);
             return StepResult.failure(STAGE_CHAPTER_COLLECTIVE_RESOLUTION,
-                    PipelineStageSupport.sanitizeExceptionMessage(e), elapsed);
+                    sanitizeMessage(e), elapsed);
         }
     }
 }

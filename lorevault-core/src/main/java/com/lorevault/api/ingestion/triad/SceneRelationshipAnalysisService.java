@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion.triad;
 
+import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.llm.LlmClient;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.content.chapter.Chapter;
@@ -149,12 +150,12 @@ public class SceneRelationshipAnalysisService {
     /**
      * Analyze scene triads and return normalized results.
      */
-    public TriadAnalysisModels.SceneRelationshipOutcome analyzeChapterTriadsWithIndividuals(UUID jobId, Chapter chapter) {
-        return analyzeChapterTriadsWithIndividuals(jobId, chapter, ignored -> {
+    public TriadAnalysisModels.SceneRelationshipOutcome analyzeChapterTriads(UUID jobId, Chapter chapter) {
+        return analyzeChapterTriads(jobId, chapter, ignored -> {
         });
     }
 
-    public TriadAnalysisModels.SceneRelationshipOutcome analyzeChapterTriadsWithIndividuals(UUID jobId,
+    public TriadAnalysisModels.SceneRelationshipOutcome analyzeChapterTriads(UUID jobId,
                                                                                              Chapter chapter,
                                                                                              Consumer<Map<String, Object>> onTriadStart) {
         List<TriadBuilderService.SceneTriad> triads = triadBuilder.buildTriadsForChapter(chapter);
@@ -162,7 +163,7 @@ public class SceneRelationshipAnalysisService {
             return new TriadAnalysisModels.SceneRelationshipOutcome(List.of(), List.of(), List.of());
         }
 
-        PromptTemplate systemTemplate = promptRepository.get("scene-analysis");
+        PromptTemplate systemTemplate = promptRepository.get(PromptName.SCENE_ANALYSIS);
         String systemPrompt = systemTemplate.render(Map.of());
 
         List<TriadAnalysisModels.SceneRelationshipAnalysis> analyses = new ArrayList<>();
@@ -296,10 +297,6 @@ public class SceneRelationshipAnalysisService {
                 sceneEventExtractions,
                 sceneRelationClaimExtractions
         );
-    }
-
-    public List<TriadAnalysisModels.SceneRelationshipAnalysis> analyzeChapterTriads(UUID jobId, Chapter chapter) {
-        return analyzeChapterTriadsWithIndividuals(jobId, chapter).triadAnalyses();
     }
 
     private TriadStructuredResult analyzeTriadWithSemanticRetry(UUID jobId,

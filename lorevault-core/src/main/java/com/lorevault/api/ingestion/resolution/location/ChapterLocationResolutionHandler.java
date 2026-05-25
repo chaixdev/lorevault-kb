@@ -2,11 +2,11 @@ package com.lorevault.api.ingestion.resolution.location;
 
 import com.lorevault.api.ingestion.events.StageCompletedEvent;
 import com.lorevault.api.ingestion.events.StageTriggeredEvent;
-import com.lorevault.api.ingestion.job.IngestionJobService;
-import com.lorevault.api.ingestion.job.IngestionStatus;
 import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
 import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
-import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
+import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
+
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import java.util.Map;
 import java.util.UUID;
@@ -22,20 +22,17 @@ public class ChapterLocationResolutionHandler implements ChapterLocationResoluti
 
     private final ChapterLocationResolutionService chapterLocationResolutionService;
     private final ApplicationEventPublisher eventPublisher;
-    private final PipelineStageSupport stageSupport;
     private final StageGraphRepository stageRepo;
     private final StageOutputGraphRepository stageOutputRepo;
 
     public ChapterLocationResolutionHandler(
             ChapterLocationResolutionService chapterLocationResolutionService,
-            IngestionJobService ingestionJobService,
             ApplicationEventPublisher eventPublisher,
             StageGraphRepository stageRepo,
             StageOutputGraphRepository stageOutputRepo
     ) {
         this.chapterLocationResolutionService = chapterLocationResolutionService;
         this.eventPublisher = eventPublisher;
-        this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         this.stageRepo = stageRepo;
         this.stageOutputRepo = stageOutputRepo;
     }
@@ -76,8 +73,6 @@ public class ChapterLocationResolutionHandler implements ChapterLocationResoluti
     @Override
     public StepResult execute(UUID jobId, UUID chapterId) {
         long start = System.currentTimeMillis();
-        stageSupport.updateJobStatus(jobId, IngestionStatus.RESOLVING_LOCATIONS, "Resolving location entities for chapter...");
-
         try {
             ChapterLocationResolutionResult response = chapterLocationResolutionService.resolveChapter(chapterId);
 
@@ -101,7 +96,7 @@ public class ChapterLocationResolutionHandler implements ChapterLocationResoluti
             }
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success("CHAPTER_LOCATION_RESOLUTION",
+            return StepResult.success(StageKey.CHAPTER_LOCATION_RESOLUTION.name(),
                     response.message() != null ? response.message() : "Completed",
                     Map.of(
                             "rawLocationsProcessed", response.rawLocationsProcessed(),
@@ -112,8 +107,8 @@ public class ChapterLocationResolutionHandler implements ChapterLocationResoluti
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
             log.error("[LANE:LOCATION] [CHAPTER_LOCATION_RESOLUTION] Failed: jobId={}, chapterId={}", jobId, chapterId, e);
-            return StepResult.failure("CHAPTER_LOCATION_RESOLUTION",
-                    PipelineStageSupport.sanitizeExceptionMessage(e), elapsed);
+            return StepResult.failure(StageKey.CHAPTER_LOCATION_RESOLUTION.name(),
+                    sanitizeMessage(e), elapsed);
         }
     }
 }

@@ -29,7 +29,7 @@ public class PromptSystemTemplateRenderingTest {
 
     @Test
     void sceneAnalysisSystemTemplate_renders_without_variables() {
-        PromptTemplate t = repo.get("scene-analysis");
+        PromptTemplate t = repo.get(PromptName.SCENE_ANALYSIS);
         String rendered = t.render(java.util.Map.of());
         assertThat(rendered).contains("<scene_analysis>");
         assertThat(rendered).contains("<relationships>");

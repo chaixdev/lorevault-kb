@@ -183,14 +183,11 @@ public class IngestionPipelineCoordinator {
 
         // Emit triggers for root stages
         for (StageKey root : dag.roots()) {
-            UUID rootId = stageIds.get(root);
-            if (rootId != null) {
-                boolean triggered = stageRepo.tryTrigger(jobId, root);
-                if (triggered) {
-                    log.info("[ORCHESTRATION] Root triggered: jobId={} stage={}", jobId, root);
-                    eventPublisher.publishEvent(
-                            new StageTriggeredEvent(this, jobId, chapterId, root));
-                }
+            boolean triggered = stageRepo.tryTrigger(jobId, root);
+            if (triggered) {
+                log.info("[ORCHESTRATION] Root triggered: jobId={} stage={}", jobId, root);
+                eventPublisher.publishEvent(
+                        new StageTriggeredEvent(this, jobId, chapterId, root));
             }
         }
     }

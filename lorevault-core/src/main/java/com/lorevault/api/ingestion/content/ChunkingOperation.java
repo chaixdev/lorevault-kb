@@ -7,7 +7,7 @@ import java.util.UUID;
 /**
  * Synchronous operation interface for text chunking.
  *
- * <p>Implemented by {@link ChunkingHandler} so that the CLI module or
+ * <p>Implemented by {@link ChunkingHandler} so that the step-by-step execution controller or
  * step-execution endpoints can invoke chunking directly without going
  * through Spring {@code @EventListener} dispatch.
  */

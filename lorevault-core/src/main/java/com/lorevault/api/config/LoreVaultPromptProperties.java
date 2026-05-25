@@ -1,5 +1,6 @@
 package com.lorevault.api.config;
 
+import com.lorevault.api.config.ModelSlot;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -78,7 +79,7 @@ public record LoreVaultPromptProperties(
     public String getChapterSegmentationModel() {
         return chapterSegmentation != null && chapterSegmentation.model() != null 
             ? chapterSegmentation.model() 
-            : "nlp-small";
+            : ModelSlot.NLP_SMALL.slotName();
     }
     
     /**
@@ -87,7 +88,7 @@ public record LoreVaultPromptProperties(
     public String getSceneAnalysisModel() {
         return sceneAnalysis != null && sceneAnalysis.model() != null 
             ? sceneAnalysis.model() 
-            : "nlp-small";
+            : ModelSlot.NLP_SMALL.slotName();
     }
     
     /**
@@ -105,6 +106,6 @@ public record LoreVaultPromptProperties(
     public String getRagAnswerGenerationModel() {
         return ragAnswerGeneration != null && ragAnswerGeneration.model() != null 
             ? ragAnswerGeneration.model() 
-            : "nlp-big";
+            : ModelSlot.NLP_BIG.slotName();
     }
 }

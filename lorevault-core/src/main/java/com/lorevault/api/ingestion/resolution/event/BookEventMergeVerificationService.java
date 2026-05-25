@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion.resolution.event;
 
+import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.ai.llm.LlmClient;
@@ -38,7 +39,7 @@ public class BookEventMergeVerificationService {
             return List.of();
         }
 
-        PromptTemplate userTemplate = promptRepository.get("event-merge-user");
+        PromptTemplate userTemplate = promptRepository.get(PromptName.EVENT_MERGE_USER);
         List<EventMergeModels.EventMergeVerification> verifications = new ArrayList<>();
 
         for (BookEventCandidatePair pair : candidatePairs) {

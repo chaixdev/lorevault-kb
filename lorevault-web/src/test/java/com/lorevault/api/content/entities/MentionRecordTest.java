@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.content.mention.EventMention;
 import com.lorevault.api.content.mention.CollectiveMention;
 import com.lorevault.api.content.mention.IndividualMention;
@@ -34,7 +35,7 @@ class MentionRecordTest {
                 List.of("Kal"), "UNRESOLVED");
 
         assertThat(mention.id()).isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        assertThat(mention.source()).isEqualTo("scene-analysis");
+        assertThat(mention.source()).isEqualTo(PromptName.SCENE_ANALYSIS.promptKey());
         assertThat(mention.displayName()).isEqualTo("Kaladin");
         assertThat(mention.normalizedName()).isEqualTo("kaladin");
         assertThat(mention.aliases()).containsExactly("Kal");
@@ -57,7 +58,7 @@ class MentionRecordTest {
                 List.of("Nightblood"), "UNRESOLVED");
 
         assertThat(mention.id()).isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000002"));
-        assertThat(mention.source()).isEqualTo("scene-analysis");
+        assertThat(mention.source()).isEqualTo(PromptName.SCENE_ANALYSIS.promptKey());
         assertThat(mention.displayName()).isEqualTo("Nightblood");
         assertThat(mention.normalizedName()).isEqualTo("nightblood");
         assertThat(mention.aliases()).containsExactly("Nightblood");
@@ -147,7 +148,7 @@ class MentionRecordTest {
     private static CollectiveMention collectiveMention(UUID id, List<String> aliases, String resolutionStatus) {
         return new CollectiveMention(
                 id,
-                "scene-analysis",
+                PromptName.SCENE_ANALYSIS.promptKey(),
                 "Bridge Four",
                 "bridge four",
                 aliases,
@@ -175,7 +176,7 @@ class MentionRecordTest {
     private static IndividualMention individualMention(UUID id, List<String> aliases, String resolutionStatus) {
         return new IndividualMention(
                 id,
-                "scene-analysis",
+                PromptName.SCENE_ANALYSIS.promptKey(),
                 "Kaladin",
                 "kaladin",
                 aliases,
@@ -195,7 +196,7 @@ class MentionRecordTest {
     private static LocationMention locationMention(UUID id, List<String> aliases, String resolutionStatus) {
         return new LocationMention(
                 id,
-                "scene-analysis",
+                PromptName.SCENE_ANALYSIS.promptKey(),
                 "Urithiru",
                 "urithiru",
                 aliases,
@@ -215,7 +216,7 @@ class MentionRecordTest {
     private static ObjectMention objectMention(UUID id, List<String> aliases, String resolutionStatus) {
         return new ObjectMention(
                 id,
-                "scene-analysis",
+                PromptName.SCENE_ANALYSIS.promptKey(),
                 "Nightblood",
                 "nightblood",
                 aliases,
@@ -236,7 +237,7 @@ class MentionRecordTest {
     private static EventMention eventMention(UUID id, List<String> aliases, String resolutionStatus) {
         return new EventMention(
                 id,
-                "scene-analysis",
+                PromptName.SCENE_ANALYSIS.promptKey(),
                 "The Duel",
                 "the_duel",
                 aliases,

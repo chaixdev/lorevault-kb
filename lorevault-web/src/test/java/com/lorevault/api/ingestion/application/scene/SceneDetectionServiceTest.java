@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion.application.scene;
 import com.lorevault.api.ai.llm.LlmRetryStrategy;
+import com.lorevault.api.config.ModelSlot;
 import com.lorevault.api.ingestion.scene.SceneDetectionException;
 import com.lorevault.api.ingestion.scene.SceneLocalizationException;
 import com.lorevault.api.ai.llm.LlmClient;
@@ -48,7 +49,7 @@ class SceneDetectionServiceTest {
         String chapterText = "Paragraph one sentence one.\n\nParagraph two sentence two.".repeat(40);
 
         LlmClient.SegmentationBudgetCheck admission = new LlmClient.SegmentationBudgetCheck(
-                "nlp-big", 400, 100, 20, 180, 200, false
+                ModelSlot.NLP_BIG.slotName(), 400, 100, 20, 180, 200, false
         );
 
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
@@ -76,7 +77,7 @@ class SceneDetectionServiceTest {
         String chapterText = "Short text.";
 
         LlmClient.SegmentationBudgetCheck admission = new LlmClient.SegmentationBudgetCheck(
-                "nlp-small", 128000, 89600, 10, 10, 20, true
+                ModelSlot.NLP_SMALL.slotName(), 128000, 89600, 10, 10, 20, true
         );
 
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
@@ -102,7 +103,7 @@ class SceneDetectionServiceTest {
         String chapterText = "Short text.";
 
         LlmClient.SegmentationBudgetCheck admission = new LlmClient.SegmentationBudgetCheck(
-                "nlp-small", 128000, 89600, 10, 10, 20, true
+                ModelSlot.NLP_SMALL.slotName(), 128000, 89600, 10, 10, 20, true
         );
 
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
@@ -134,7 +135,7 @@ class SceneDetectionServiceTest {
         String chapterText = "Short text.";
 
         LlmClient.SegmentationBudgetCheck admission = new LlmClient.SegmentationBudgetCheck(
-                "nlp-small", 128000, 89600, 10, 10, 20, true
+                ModelSlot.NLP_SMALL.slotName(), 128000, 89600, 10, 10, 20, true
         );
 
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
@@ -171,7 +172,7 @@ class SceneDetectionServiceTest {
         String chapterText = "Paragraph one sentence one.\n\nParagraph two sentence two.".repeat(40);
 
         LlmClient.SegmentationBudgetCheck admission = new LlmClient.SegmentationBudgetCheck(
-                "nlp-big", 400, 100, 20, 180, 200, false
+                ModelSlot.NLP_BIG.slotName(), 400, 100, 20, 180, 200, false
         );
 
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
@@ -198,7 +199,7 @@ class SceneDetectionServiceTest {
         String chapterText = "Short text.";
 
         LlmClient.SegmentationBudgetCheck admission = new LlmClient.SegmentationBudgetCheck(
-                "nlp-small", 128000, 89600, 10, 10, 20, true
+                ModelSlot.NLP_SMALL.slotName(), 128000, 89600, 10, 10, 20, true
         );
 
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);

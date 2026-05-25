@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion.resolution.event;
 
+import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.llm.EventCorefModels;
 import com.lorevault.api.ai.llm.LlmClient;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
@@ -81,7 +82,7 @@ public class EventCoreferenceService {
         }
 
         List<List<UUID>> windows = buildSceneWindows(orderedSceneIds);
-        PromptTemplate userTemplate = promptRepository.get("event-coref-user");
+        PromptTemplate userTemplate = promptRepository.get(PromptName.EVENT_COREF_USER);
 
         Map<AbstractMap.SimpleEntry<UUID, UUID>, Double> bestConfidenceByPair = new HashMap<>();
         int failureCount = 0;

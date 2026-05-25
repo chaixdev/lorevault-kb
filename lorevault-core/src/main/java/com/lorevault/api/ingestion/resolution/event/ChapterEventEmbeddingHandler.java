@@ -3,10 +3,9 @@ package com.lorevault.api.ingestion.resolution.event;
 import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.content.association.ChapterEvent;
 import com.lorevault.api.ai.embedding.EmbeddingGenerationException;
-import com.lorevault.api.ingestion.job.IngestionJobService;
-import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
+import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
+
 import com.lorevault.api.ingestion.pipeline.StepResult;
-import com.lorevault.api.ingestion.job.IngestionStatus;
 import com.lorevault.api.ingestion.events.StageCompletedEvent;
 import com.lorevault.api.ingestion.events.StageTriggeredEvent;
 import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
@@ -44,7 +43,6 @@ public class ChapterEventEmbeddingHandler {
     private final BookEventMergeVerificationService mergeVerificationService;
     private final BookEventReductionService bookEventReductionService;
     private final ApplicationEventPublisher eventPublisher;
-    private final PipelineStageSupport stageSupport;
     private final StageGraphRepository stageRepo;
     private final StageOutputGraphRepository stageOutputRepo;
 
@@ -54,7 +52,6 @@ public class ChapterEventEmbeddingHandler {
             BookEventAnnCandidateService annCandidateService,
             BookEventMergeVerificationService mergeVerificationService,
             BookEventReductionService bookEventReductionService,
-            IngestionJobService ingestionJobService,
             ApplicationEventPublisher eventPublisher,
             StageGraphRepository stageRepo,
             StageOutputGraphRepository stageOutputRepo
@@ -65,7 +62,6 @@ public class ChapterEventEmbeddingHandler {
         this.mergeVerificationService = mergeVerificationService;
         this.bookEventReductionService = bookEventReductionService;
         this.eventPublisher = eventPublisher;
-        this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         this.stageRepo = stageRepo;
         this.stageOutputRepo = stageOutputRepo;
     }
@@ -99,15 +95,6 @@ public class ChapterEventEmbeddingHandler {
         StepResult result;
         long start = System.currentTimeMillis();
         try {
-            stageSupport.updateJobStatus(
-                    jobId,
-                    IngestionStatus.EVENT_CANDIDATE_GENERATION,
-                    "Embedding chapter events and generating ANN event candidates",
-                    Map.of(
-                            "chapterId", chapterId.toString()
-                    )
-            );
-
             int embeddedCount = embeddingService.embedChapterEvents(chapterId);
             List<ChapterEvent> chapterEvents = txSupport.loadChapterEvents(chapterId);
             List<BookEventCandidatePair> candidatePairs = annCandidateService.generateCandidates(chapterEvents, chapterId);
@@ -196,9 +183,9 @@ public class ChapterEventEmbeddingHandler {
             boolean retryable = isRetryableError(e);
             result = retryable
                     ? StepResult.retryableFailure(STAGE_EVENT_EMBEDDING,
-                            PipelineStageSupport.sanitizeExceptionMessage(e), elapsed)
+                            sanitizeMessage(e), elapsed)
                     : StepResult.failure(STAGE_EVENT_EMBEDDING,
-                            PipelineStageSupport.sanitizeExceptionMessage(e), elapsed);
+                            sanitizeMessage(e), elapsed);
         }
 
         // 4. Emit completion — coordinator handles downstream

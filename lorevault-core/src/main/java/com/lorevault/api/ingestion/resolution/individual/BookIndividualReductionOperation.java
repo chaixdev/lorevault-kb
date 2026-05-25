@@ -7,11 +7,11 @@ import java.util.UUID;
 /**
  * Synchronous operation interface for book-scoped individual reduction.
  *
- * <p>Implemented by {@link BookIndividualReductionHandler} so that the CLI module
+ * <p>Implemented by {@link BookIndividualReductionHandler} so that the step-by-step execution controller
  * can invoke individual reduction directly without going through Spring
  * {@code @TransactionalEventListener} dispatch.
  *
- * <p>The CLI module provides the transaction context; this interface
+ * <p>The step-by-step execution controller provides the transaction context; this interface
  * simply exposes the business logic.
  */
 @FunctionalInterface

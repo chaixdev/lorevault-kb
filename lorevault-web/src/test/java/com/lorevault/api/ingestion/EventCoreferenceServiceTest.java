@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion;
 
+import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.llm.LlmClient;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.content.mention.EventMention;
@@ -65,7 +66,7 @@ class EventCoreferenceServiceTest {
 
     private void stubPromptRendering() {
         doReturn("prompt").when(promptTemplate).render(any());
-        when(promptRepository.get("event-coref-user")).thenReturn(promptTemplate);
+        when(promptRepository.get(PromptName.EVENT_COREF_USER)).thenReturn(promptTemplate);
     }
 
     @Test
@@ -320,7 +321,7 @@ class EventCoreferenceServiceTest {
     @Test
     @DisplayName("mentionTextWithInstructionLikeContent_isStructurallyIsolated")
     void mentionTextWithInstructionLikeContent_isStructurallyIsolated() {
-        when(promptRepository.get("event-coref-user")).thenReturn(promptTemplate);
+        when(promptRepository.get(PromptName.EVENT_COREF_USER)).thenReturn(promptTemplate);
 
         UUID chapterId = UUID.randomUUID();
         UUID jobId = UUID.randomUUID();
@@ -389,7 +390,7 @@ class EventCoreferenceServiceTest {
     private EventMention mention(UUID id, UUID sceneId, UUID chapterId, int extractionIndex, String displayName, String evidence) {
         return new EventMention(
                 id,
-                "scene-analysis",
+                PromptName.SCENE_ANALYSIS.promptKey(),
                 displayName,
                 "normalized",
                 List.of(),

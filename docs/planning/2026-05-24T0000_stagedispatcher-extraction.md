@@ -357,10 +357,36 @@ Or: keep the `@Async` annotation on the dispatcher but route the actual executio
 
 ---
 
-## Sequencing
+## Test Coverage Gap (May 25, 2026)
+
+The Phase 1 cleanup deleted 20 stale test files that tested the old event-driven handler API (see [quick wins implementation notes](2026-05-24T0000_submission-cleanup-quick-wins.md)). These covered:
+
+| Category | Deleted | What they tested | Replacement needed |
+|----------|---------|------------------|--------------------|
+| Old domain model tests | 6 | `IngestionJob`, `StatusRecord`, `IngestionJobGraphRepository` | Already covered by `StageGraphRepository` tests (new model) |
+| Handler `handleXxxEvent` tests | 14 | Direct event-listener invocation on 13 pipeline handlers | Per-handler `onTrigger(StageCompletedEvent, StageKey)` tests |
+
+The 14 deleted handler tests represented the bulk of pipeline-stage test coverage. They validated:
+- Happy path: handler publishes correct completion event
+- Failure path: handler publishes `IngestionFailedEvent` on exceptions
+- Edge cases: empty input, duplicate processing, missing entities
+
+**Coverage parity must be restored before merging the StageDispatcher.** Specifically:
+
+1. **`StageDispatcher` unit test** — verify it routes each `StageKey` → correct executor, catches handler exceptions, and emits `StageCompletedEvent` with success/failure.
+
+2. **Per-handler `onTrigger` tests** — rewrite the 14 deleted tests against the new `onTrigger` API. Each should:
+   - Construct a `StageCompletedEvent` (or `StageTriggeredEvent`) with the correct `StageKey`
+   - Call `handler.onTrigger(jobId, chapterId)` (or bookId for book-level)
+   - Verify `Stage` transitions in `StageGraphRepository` (idempotency, skip, complete, fail)
+   - Verify downstream event publishing
+
+3. **Integration test** — end-to-end: submit chapter → dispatcher triggers scene detection → handler executes → `StageCompletedEvent` emitted → next stage triggered.
+
+**Estimated additional effort:** ~60 minutes (test writing). This should be part of the Phase 3 StageDispatcher PR — the tests serve as both validation and documentation of the dispatcher contract.
 
 **Phase 3 — structural change, standalone PR.**
 
 Dependencies: Quick wins (Phase 1) + PipelineStageSupport removal (Phase 2) must be complete. The dispatcher cannot coexist with handlers that still have their own `@Async`/`@EventListener`/`onTrigger`.
 
-**Estimated effort:** ~90 minutes (design + implementation + integration test).
+**Estimated effort:** ~150 minutes (design + implementation + test coverage parity). Includes ~60 minutes to rewrite the 14 deleted handler tests against the `onTrigger` API.

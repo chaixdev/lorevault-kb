@@ -59,7 +59,7 @@ Key files examined:
 Current code-path findings:
 
 1. `SceneDetectionService.performFullSceneDetection(...)` creates a synthetic `Chapter` plus temporary in-memory `Scene` objects for triad analysis.
-2. That same flow runs `triadOrchestrationService.analyzeChapterTriadsWithIndividuals(...)` and immediately calls `triadEdgePersistenceService.applyTriadAnalyses(...)`.
+2. That same flow runs `triadOrchestrationService.analyzeChapterTriads(...)` and immediately calls `triadEdgePersistenceService.applyTriadAnalyses(...)`.
 3. Only later, `SceneDetectionHandler.detectAndPersistScenes(...)` calls `sceneProcessingService.persistDetectedScenes(...)` to save the real current-chapter scene nodes.
 4. `TemporalEdgeWriteRepository.upsertTemporalEdge(...)` uses `MATCH` on both scene endpoints before `MERGE`, so triad edges that reference scenes not yet durable in Neo4j do not materialize.
 5. Cross-chapter triad reasoning may therefore exist conceptually or in-memory without having a durable scene-identity path broad enough to write those edges reliably.

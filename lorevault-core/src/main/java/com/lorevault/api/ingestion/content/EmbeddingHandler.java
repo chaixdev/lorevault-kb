@@ -1,10 +1,10 @@
 package com.lorevault.api.ingestion.content;
 
 import com.lorevault.api.ai.embedding.EmbeddingGenerationException;
-import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
+import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
+
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
-import com.lorevault.api.ingestion.job.IngestionJobService;
-import com.lorevault.api.ingestion.job.IngestionStatus;
 
 import com.lorevault.api.content.chunk.ChunkGraphRepository;
 import com.lorevault.api.ai.embedding.EmbeddingService;
@@ -27,7 +27,7 @@ import java.util.UUID;
  * Listens to: StageTriggeredEvent (EMBEDDING)
  * Emits: StageCompletedEvent (on success, skip, or failure)
  *
- * Implements {@link EmbeddingOperation} so the CLI module or step-execution
+ * Implements {@link EmbeddingOperation} so the step-by-step execution controller or step-execution
  * endpoints can invoke embedding generation directly without Spring event dispatch.
  *
  * Responsibilities:
@@ -40,27 +40,22 @@ public class EmbeddingHandler implements EmbeddingOperation {
 
     private final ChunkGraphRepository chunkRepo;
     private final EmbeddingService embeddingService;
-    private final IngestionJobService ingestionJobService;
     private final ApplicationEventPublisher eventPublisher;
-    private final PipelineStageSupport stageSupport;
     private final StageGraphRepository stageRepo;
     private final StageOutputGraphRepository stageOutputRepo;
 
     public EmbeddingHandler(
             ChunkGraphRepository chunkRepo,
             EmbeddingService embeddingService,
-            IngestionJobService ingestionJobService,
             StageGraphRepository stageRepo,
             StageOutputGraphRepository stageOutputRepo,
             ApplicationEventPublisher eventPublisher
     ) {
         this.chunkRepo = chunkRepo;
         this.embeddingService = embeddingService;
-        this.ingestionJobService = ingestionJobService;
         this.stageRepo = stageRepo;
         this.stageOutputRepo = stageOutputRepo;
         this.eventPublisher = eventPublisher;
-        this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
     }
 
     @Async("ingestionLaneTaskExecutor")
@@ -99,16 +94,13 @@ public class EmbeddingHandler implements EmbeddingOperation {
     public StepResult execute(UUID jobId, UUID chapterId) {
         long start = System.currentTimeMillis();
         try {
-            stageSupport.updateJobStatus(jobId, IngestionStatus.EMBEDDING_CHUNKS,
-                    "Generating vector embeddings for semantic search");
-
             // Idempotency: skip if embeddings already exist for this chapter
             int existingEmbeddings = chunkRepo.countEmbeddingsByChapterId(chapterId);
             if (existingEmbeddings > 0) {
                 log.info("[EMBEDDING] Skipping — {} embeddings already exist for chapter {}",
                         existingEmbeddings, chapterId);
                 long elapsed = System.currentTimeMillis() - start;
-                return StepResult.success("EMBEDDING",
+                return StepResult.success(StageKey.EMBEDDING.name(),
                         String.format("Skipped — %d embeddings already exist", existingEmbeddings),
                         Map.of("embeddingsGenerated", existingEmbeddings),
                         elapsed);
@@ -117,14 +109,11 @@ public class EmbeddingHandler implements EmbeddingOperation {
             // Generate embeddings for all chunks in the chapter
             int embeddedCount = embeddingService.generateEmbeddingsForChapter(chapterId);
 
-            stageSupport.updateJobStatus(jobId, IngestionStatus.EMBEDDING_CHUNKS,
-                    String.format("Generated embeddings for %d chunks", embeddedCount));
-
             log.info("[EMBEDDING] Completed for chapter {}: {} embeddings generated",
                     chapterId, embeddedCount);
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success("EMBEDDING",
+            return StepResult.success(StageKey.EMBEDDING.name(),
                     String.format("Generated embeddings for %d chunks", embeddedCount),
                     Map.of("embeddingsGenerated", embeddedCount),
                     elapsed);
@@ -133,10 +122,10 @@ public class EmbeddingHandler implements EmbeddingOperation {
             log.error("[EMBEDDING] Failed for job={} chapter={}: {}", jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure("EMBEDDING",
-                            PipelineStageSupport.sanitizeExceptionMessage(e), elapsed)
-                    : StepResult.failure("EMBEDDING",
-                            PipelineStageSupport.sanitizeExceptionMessage(e), elapsed);
+                    ? StepResult.retryableFailure(StageKey.EMBEDDING.name(),
+                            sanitizeMessage(e), elapsed)
+                    : StepResult.failure(StageKey.EMBEDDING.name(),
+                            sanitizeMessage(e), elapsed);
         }
     }
 

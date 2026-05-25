@@ -6,11 +6,11 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import com.lorevault.api.ingestion.events.StageCompletedEvent;
 import com.lorevault.api.ingestion.events.StageTriggeredEvent;
-import com.lorevault.api.ingestion.job.IngestionJobService;
-import com.lorevault.api.ingestion.job.IngestionStatus;
 import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
 import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
-import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
+import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
+
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
@@ -23,20 +23,17 @@ public class ChapterIndividualResolutionHandler implements ChapterIndividualReso
 
     private final ChapterIndividualResolutionService chapterIndividualResolutionService;
     private final ApplicationEventPublisher eventPublisher;
-    private final PipelineStageSupport stageSupport;
     private final StageGraphRepository stageRepo;
     private final StageOutputGraphRepository stageOutputRepo;
 
     public ChapterIndividualResolutionHandler(
             ChapterIndividualResolutionService chapterIndividualResolutionService,
-            IngestionJobService ingestionJobService,
             ApplicationEventPublisher eventPublisher,
             StageGraphRepository stageRepo,
             StageOutputGraphRepository stageOutputRepo
     ) {
         this.chapterIndividualResolutionService = chapterIndividualResolutionService;
         this.eventPublisher = eventPublisher;
-        this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         this.stageRepo = stageRepo;
         this.stageOutputRepo = stageOutputRepo;
     }
@@ -77,8 +74,6 @@ public class ChapterIndividualResolutionHandler implements ChapterIndividualReso
     @Override
     public StepResult execute(UUID jobId, UUID chapterId) {
         long start = System.currentTimeMillis();
-        stageSupport.updateJobStatus(jobId, IngestionStatus.RESOLVING_INDIVIDUALS, "Resolving individual entities for chapter...");
-
         try {
             ChapterIndividualResolutionResult response = chapterIndividualResolutionService.resolveChapter(chapterId);
 
@@ -102,7 +97,7 @@ public class ChapterIndividualResolutionHandler implements ChapterIndividualReso
             }
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success("CHAPTER_INDIVIDUAL_RESOLUTION",
+            return StepResult.success(StageKey.CHAPTER_INDIVIDUAL_RESOLUTION.name(),
                     response.message() != null ? response.message() : "Completed",
                     Map.of(
                             "rawIndividualsProcessed", response.rawIndividualsProcessed(),
@@ -113,8 +108,8 @@ public class ChapterIndividualResolutionHandler implements ChapterIndividualReso
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
             log.error("[LANE:INDIVIDUAL] [CHAPTER_INDIVIDUAL_RESOLUTION] Failed: jobId={}, chapterId={}", jobId, chapterId, e);
-            return StepResult.failure("CHAPTER_INDIVIDUAL_RESOLUTION",
-                    PipelineStageSupport.sanitizeExceptionMessage(e), elapsed);
+            return StepResult.failure(StageKey.CHAPTER_INDIVIDUAL_RESOLUTION.name(),
+                    sanitizeMessage(e), elapsed);
         }
     }
 }

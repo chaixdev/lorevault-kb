@@ -299,7 +299,7 @@ Key ideas carried forward:
 SceneDetectionHandler.handleChapterIngestion()
   → detectAndPersistScenes()           (scene segmentation)
   → defaultTemporalEdgeService.createAllDefaults()  (NEXT_IN_READING_ORDER edges)
-  → sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals()  (triad analysis)
+  → sceneRelationshipAnalysisService.analyzeChapterTriads()  (triad analysis)
   → sceneTemporalRelationshipPersistenceService.applyTemporalRelationships() (TEMPORAL edges)
   → individualPersistenceService.persistExtractedIndividuals()
   → collectivePersistenceService.persistExtractedCollectives()
@@ -439,7 +439,7 @@ There are **no edges between entity nodes of different types** (no `IndividualMe
      - `generateProvisionalRelTypeId()` — lowercases, replaces spaces with underscores, strips non-alphanumeric, prefixes "R:provisional."
      - `normalizeCertainty()` — maps to "Explicit"/"StronglyImplied"/"WeaklyImplied" (default)
      - `truncate()` — caps evidence at 500 chars, description at 1000 chars
-   - Wired into `analyzeChapterTriadsWithIndividuals()` alongside existing entity extraction maps
+   - Wired into `analyzeChapterTriads()` alongside existing entity extraction maps
 
 7. **RelationClaimPersistenceService** (`lorevault-core/.../ingestion/infrastructure/RelationClaimPersistenceService.java`):
    - Follows the exact same pattern as `IndividualPersistenceService`

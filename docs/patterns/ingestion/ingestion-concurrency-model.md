@@ -48,7 +48,7 @@ The original pipeline ran triad analysis only during the current chapter's pipel
 
 - For each new boundary, it checks `sceneTemporalRelationshipPersistenceService.hasAnyTemporalRelationshipBetween(previousSceneId, nextSceneId)` in both directions.
 - If a `TEMPORAL` relationship already exists in either direction, replay is skipped.
-- Otherwise, it runs `analyzeChapterTriadsWithIndividuals` for the next chapter with `triadChapter = boundary.getNextChapterId()` and filters the resulting triad analyses to the boundary pair, then writes the `TEMPORAL` edge directly without calling the LLM again.
+- Otherwise, it runs `analyzeChapterTriads` for the next chapter with `triadChapter = boundary.getNextChapterId()` and filters the resulting triad analyses to the boundary pair, then writes the `TEMPORAL` edge directly without calling the LLM again.
 
 This means:
 - **Happy path** (chapters submitted in order): triad analysis runs once per chapter, no replay overhead.

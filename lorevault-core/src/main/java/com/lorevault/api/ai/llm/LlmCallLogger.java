@@ -1,12 +1,13 @@
 package com.lorevault.api.ai.llm;
 
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import java.util.UUID;
 
 public interface LlmCallLogger {
 
     void logCall(
             UUID jobId,
-            String step,
+            StageKey stage,
             String provider,
             String model,
             Double temperature,

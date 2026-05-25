@@ -1,5 +1,6 @@
 package com.lorevault.api.web.query.health;
 
+import com.lorevault.api.config.ModelSlot;
 import com.lorevault.api.health.SystemHealthService;
 import com.lorevault.api.health.HealthMetricsCollector;
 import org.junit.jupiter.api.AfterEach;
@@ -36,8 +37,8 @@ class HealthControllerWebMvcTest {
         var embeddingHealth = new SystemHealthService.EmbeddingHealthStatus(true, null, 5, 768);
         var databaseHealth = new SystemHealthService.DatabaseHealthStatus(true, null, 4);
         var chatSlotsHealth = Map.of(
-                "nlp-small", new HealthMetricsCollector.ModelHealthStatus(true, "small", "OK", 10, 10, 1),
-                "nlp-big", new HealthMetricsCollector.ModelHealthStatus(true, "big", "OK", 12, 12, 1)
+                ModelSlot.NLP_SMALL.slotName(), new HealthMetricsCollector.ModelHealthStatus(true, "small", "OK", 10, 10, 1),
+                ModelSlot.NLP_BIG.slotName(), new HealthMetricsCollector.ModelHealthStatus(true, "big", "OK", 12, 12, 1)
         );
         var systemHealth = new SystemHealthService.SystemHealthResponse(true, llmHealth, embeddingHealth, chatSlotsHealth, databaseHealth);
         

@@ -7,7 +7,7 @@ import java.util.UUID;
 /**
  * Synchronous operation interface for embedding generation.
  *
- * <p>Implemented by {@link EmbeddingHandler} so that the CLI module or
+ * <p>Implemented by {@link EmbeddingHandler} so that the step-by-step execution controller or
  * step-execution endpoints can invoke embedding generation directly
  * without going through Spring {@code @EventListener} dispatch.
  */

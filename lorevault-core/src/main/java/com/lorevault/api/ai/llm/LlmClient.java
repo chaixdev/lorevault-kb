@@ -2,9 +2,11 @@ package com.lorevault.api.ai.llm;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.config.LoreVaultPromptProperties;
 import com.lorevault.api.config.LoreVaultModelsProperties;
+import com.lorevault.api.config.ModelSlot;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -15,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import java.util.Map;
 import java.util.UUID;
 
@@ -65,10 +68,11 @@ public class LlmClient {
     private static final double SEGMENTATION_INPUT_BUDGET_RATIO = 0.70d;
 
     public SegmentationBudgetCheck evaluateSegmentationBudget(String chapterText) {
-        PromptTemplate template = promptRepository.get("chapter-segmentation");
+        PromptTemplate template = promptRepository.get(PromptName.CHAPTER_SEGMENTATION);
         String systemPrompt = template.render(Map.of());
 
-        String modelSlot = promptProperties.getChapterSegmentationModel();
+        String modelSlotStr = promptProperties.getChapterSegmentationModel();
+        ModelSlot modelSlot = ModelSlot.NLP_BIG.slotName().equals(modelSlotStr) ? ModelSlot.NLP_BIG : ModelSlot.NLP_SMALL;
         LoreVaultModelsProperties.ModelProperties cfg = getModelProperties(modelSlot);
 
         int estimatedPromptTokens = estimateTokens(systemPrompt);
@@ -78,7 +82,7 @@ public class LlmClient {
         int usableInputBudget = (int) Math.floor(maxContextTokens * SEGMENTATION_INPUT_BUDGET_RATIO);
 
         return new SegmentationBudgetCheck(
-                modelSlot,
+                modelSlotStr,
                 maxContextTokens,
                 usableInputBudget,
                 estimatedPromptTokens,
@@ -89,7 +93,7 @@ public class LlmClient {
     }
 
     public String detectScenesTwoPass(UUID jobId, String chapterText) {
-        String segmentationModelId = getModelIdForStage("segmentation");
+        String segmentationModelId = getModelIdForStage(StageKey.SCENE_SEGMENTATION);
         log.debug("[LLM] Starting two-stage scene detection: inputLength={} chars, segmentationModel={}", 
                  chapterText == null ? 0 : chapterText.length(), segmentationModelId);
         
@@ -103,38 +107,41 @@ public class LlmClient {
     }
 
     public String detectChapterSegmentation(UUID jobId, String chapterText) {
-        PromptTemplate template = promptRepository.get("chapter-segmentation");
+        PromptTemplate template = promptRepository.get(PromptName.CHAPTER_SEGMENTATION);
         String systemPrompt = template.render(Map.of());
         
-        String modelId = promptProperties.getChapterSegmentationModel();
-        ChatClient chatClient = getChatClientForModel(modelId);
-        String actualModelId = getModelIdForStage("segmentation");
+        String modelSlotStr = promptProperties.getChapterSegmentationModel();
+        ModelSlot modelSlot = ModelSlot.NLP_BIG.slotName().equals(modelSlotStr) ? ModelSlot.NLP_BIG : ModelSlot.NLP_SMALL;
+        ChatClient chatClient = getChatClientForModel(modelSlot);
+        String actualModelId = getModelIdForStage(StageKey.SCENE_SEGMENTATION);
         
-        return executeSceneDetectionCall(jobId, "chapter-segmentation", systemPrompt, chapterText, chatClient, actualModelId);
+        return executeSceneDetectionCall(jobId, StageKey.SCENE_SEGMENTATION, systemPrompt, chapterText, chatClient, actualModelId);
     }
 
     public String detectSceneAnalysis(UUID jobId, String segmentationXmlResult) {
-        PromptTemplate template = promptRepository.get("scene-analysis");
+        PromptTemplate template = promptRepository.get(PromptName.SCENE_ANALYSIS);
         String systemPrompt = template.render(Map.of());
         
-        String modelId = promptProperties.getSceneAnalysisModel();
-        ChatClient chatClient = getChatClientForModel(modelId);
-        String actualModelId = getModelIdForStage("analysis");
+        String modelSlotStr = promptProperties.getSceneAnalysisModel();
+        ModelSlot modelSlot = ModelSlot.NLP_BIG.slotName().equals(modelSlotStr) ? ModelSlot.NLP_BIG : ModelSlot.NLP_SMALL;
+        ChatClient chatClient = getChatClientForModel(modelSlot);
+        String actualModelId = getModelIdForStage(StageKey.CHAPTER_EVENT_RESOLUTION);
         
-        return executeSceneDetectionCall(jobId, "scene-analysis", systemPrompt, segmentationXmlResult, chatClient, actualModelId);
+        return executeSceneDetectionCall(jobId, StageKey.SCENE_SEGMENTATION, systemPrompt, segmentationXmlResult, chatClient, actualModelId);
     }
 
     public <T> T detectSceneAnalysisTriad(UUID jobId, String systemPrompt, Map<String, Object> userVariables, Class<T> responseType) {
-        PromptTemplate userTemplate = promptRepository.get("scene-analysis-user");
+        PromptTemplate userTemplate = promptRepository.get(PromptName.SCENE_ANALYSIS_USER);
         String userInput = userTemplate.render(userVariables);
 
-        String modelId = promptProperties.getSceneAnalysisModel();
-        ChatClient chatClient = getChatClientForModel(modelId);
-        String actualModelId = getModelIdForStage("analysis");
+        String modelSlotStr = promptProperties.getSceneAnalysisModel();
+        ModelSlot modelSlot = ModelSlot.NLP_BIG.slotName().equals(modelSlotStr) ? ModelSlot.NLP_BIG : ModelSlot.NLP_SMALL;
+        ChatClient chatClient = getChatClientForModel(modelSlot);
+        String actualModelId = getModelIdForStage(StageKey.CHAPTER_EVENT_RESOLUTION);
 
         return executeSceneDetectionStructuredCall(
                 jobId,
-                "scene-analysis",
+                StageKey.CHAPTER_EVENT_RESOLUTION,
                 promptProperties.getSceneAnalysisPath(),
                 systemPrompt,
                 userInput,
@@ -157,16 +164,17 @@ public class LlmClient {
             UUID jobId,
             String userInput
     ) {
-        PromptTemplate systemTemplate = promptRepository.get("event-coref-system");
+        PromptTemplate systemTemplate = promptRepository.get(PromptName.EVENT_COREF_SYSTEM);
         String systemPrompt = systemTemplate.render(Map.of());
 
-        String modelId = promptProperties.getSceneAnalysisModel();
-        ChatClient chatClient = getChatClientForModel(modelId);
-        String actualModelId = getModelIdForStage("analysis");
+        String modelSlotStr = promptProperties.getSceneAnalysisModel();
+        ModelSlot modelSlot = ModelSlot.NLP_BIG.slotName().equals(modelSlotStr) ? ModelSlot.NLP_BIG : ModelSlot.NLP_SMALL;
+        ChatClient chatClient = getChatClientForModel(modelSlot);
+        String actualModelId = getModelIdForStage(StageKey.CHAPTER_EVENT_RESOLUTION);
 
         return executeSceneDetectionStructuredCall(
                 jobId,
-                "event-coref",
+                StageKey.CHAPTER_EVENT_RESOLUTION,
                 promptProperties.getEventCorefSystemPath(),
                 systemPrompt,
                 userInput,
@@ -184,14 +192,14 @@ public class LlmClient {
             UUID jobId,
             String userInput
     ) {
-        PromptTemplate systemTemplate = promptRepository.get("event-merge-system");
+        PromptTemplate systemTemplate = promptRepository.get(PromptName.EVENT_MERGE_SYSTEM);
         String systemPrompt = systemTemplate.render(Map.of());
 
-        ChatClient chatClient = getChatClientForModel("nlp-small");
+        ChatClient chatClient = getChatClientForModel(ModelSlot.NLP_SMALL);
 
         return executeSceneDetectionStructuredCall(
                 jobId,
-                "event-merge",
+                StageKey.CHAPTER_EVENT_RESOLUTION,
                 promptProperties.getEventMergeSystemPath(),
                 systemPrompt,
                 userInput,
@@ -202,7 +210,7 @@ public class LlmClient {
     }
 
     public String getEventCorefModelId() {
-        return getModelIdForStage("analysis");
+        return getModelIdForStage(StageKey.CHAPTER_EVENT_RESOLUTION);
     }
 
     /**
@@ -213,36 +221,34 @@ public class LlmClient {
      * @throws RuntimeException if all retry attempts fail
      */
     public String detectScenes(String chapterText) {
-        PromptTemplate template = promptRepository.get("scene-analysis");
+        PromptTemplate template = promptRepository.get(PromptName.SCENE_ANALYSIS);
         String systemPrompt = template.render(Map.of());
         
-        return executeSceneDetectionCall(null, "scene-detection-single-pass", systemPrompt, chapterText, nlpSmallChatClient, nlpSmallModelId);
+        return executeSceneDetectionCall(null, StageKey.SCENE_SEGMENTATION, systemPrompt, chapterText, nlpSmallChatClient, nlpSmallModelId);
     }
 
     /**
      * Get the appropriate ChatClient for the specified model slot.
      */
-    private ChatClient getChatClientForModel(String modelSlot) {
+    private ChatClient getChatClientForModel(ModelSlot modelSlot) {
         return switch (modelSlot) {
-            case "nlp-big" -> nlpBigChatClient;
-            case "nlp-small" -> nlpSmallChatClient;
-            default -> nlpSmallChatClient; // Default fallback
+            case NLP_BIG -> nlpBigChatClient;
+            case NLP_SMALL -> nlpSmallChatClient;
         };
     }
     
-    private String getModelIdForStage(String stage) {
+    private String getModelIdForStage(StageKey stage) {
         return switch (stage) {
-            case "segmentation" -> "nlp-big".equals(promptProperties.getChapterSegmentationModel()) ? nlpBigModelId : nlpSmallModelId;
-            case "analysis" -> "nlp-big".equals(promptProperties.getSceneAnalysisModel()) ? nlpBigModelId : nlpSmallModelId;
+            case SCENE_SEGMENTATION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getChapterSegmentationModel()) ? nlpBigModelId : nlpSmallModelId;
+            case CHAPTER_EVENT_RESOLUTION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getSceneAnalysisModel()) ? nlpBigModelId : nlpSmallModelId;
             default -> nlpSmallModelId;
         };
     }
 
-    private LoreVaultModelsProperties.ModelProperties getModelProperties(String modelSlot) {
+    private LoreVaultModelsProperties.ModelProperties getModelProperties(ModelSlot modelSlot) {
         return switch (modelSlot) {
-            case "nlp-big" -> modelProperties.nlpBig();
-            case "nlp-small" -> modelProperties.nlpSmall();
-            default -> modelProperties.nlpSmall();
+            case NLP_BIG -> modelProperties.nlpBig();
+            case NLP_SMALL -> modelProperties.nlpSmall();
         };
     }
 
@@ -258,7 +264,8 @@ public class LlmClient {
      * @return Raw XML response from the AI model
      * @throws RuntimeException if all retry attempts fail
      */
-    private String executeSceneDetectionCall(UUID jobId, String step, String systemPrompt, String userInput, ChatClient chatClient, String modelId) {
+    private String executeSceneDetectionCall(UUID jobId, StageKey stage, String systemPrompt, String userInput, ChatClient chatClient, String modelId) {
+        String step = stage.name().toLowerCase().replace('_', '-');
         log.debug("[LLM] {} request: inputLength={} chars, model={}", 
                  step, userInput == null ? 0 : userInput.length(), modelId);
         log.trace("[LLM] System prompt ({} chars): {}", systemPrompt.length(), systemPrompt);
@@ -319,12 +326,12 @@ public class LlmClient {
             long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
             persistLlmCallSafely(
                     jobId,
-                    step,
+                    stage,
                     modelId,
                     options.getTemperature(),
                     options.getTopP(),
                     options.getMaxTokens(),
-                    step.equals("chapter-segmentation") ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
+                    stage == StageKey.SCENE_SEGMENTATION ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
                     systemPrompt,
                     safeInput,
                     response,
@@ -338,9 +345,10 @@ public class LlmClient {
         }
     }
 
-    private <T> T executeSceneDetectionStructuredCall(UUID jobId, String step, String promptTemplateId,
-                                                      String systemPrompt, String userInput,
-                                                      ChatClient chatClient, String modelId, Class<T> responseType) {
+    private <T> T executeSceneDetectionStructuredCall(UUID jobId, StageKey stage, String promptTemplateId,
+                                                       String systemPrompt, String userInput,
+                                                       ChatClient chatClient, String modelId, Class<T> responseType) {
+        String step = stage.name().toLowerCase().replace('_', '-');
         log.debug("[LLM] {} request: inputLength={} chars, model={}",
                 step, userInput == null ? 0 : userInput.length(), modelId);
 
@@ -390,7 +398,7 @@ public class LlmClient {
             String responseBody = serializeStructuredResponse(response);
             persistLlmCallSafely(
                     jobId,
-                    step,
+                    stage,
                     modelId,
                     options.getTemperature(),
                     options.getTopP(),
@@ -409,7 +417,7 @@ public class LlmClient {
     }
 
     private void persistLlmCallSafely(UUID jobId,
-                                      String step,
+                                      StageKey stage,
                                       String modelId,
                                       Double temperature,
                                       Double topP,
@@ -419,10 +427,11 @@ public class LlmClient {
                                       String input,
                                       String responseBody,
                                       long elapsedMs) {
+        String step = stage.name().toLowerCase().replace('_', '-');
         try {
             llmLog.logCall(
                     jobId,
-                    step,
+                    stage,
                     "openai-compatible",
                     modelId,
                     temperature,

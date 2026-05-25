@@ -1,9 +1,8 @@
 package com.lorevault.api.ingestion.scene;
 
-import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
-import com.lorevault.api.ingestion.job.IngestionJobService;
-import com.lorevault.api.ingestion.job.IngestionStatus;
+import com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.scene.Scene;
@@ -45,9 +44,9 @@ import java.util.stream.Collectors;
  * Listens to: StageTriggeredEvent (SCENE_SEGMENTATION)
  * Emits: StageCompletedEvent (on success, skip, or failure)
  * <p>
- * Implements {@link SceneDetectionOperation} so the CLI module can invoke
+ * Implements {@link SceneDetectionOperation} so the step-by-step execution controller can invoke
  * scene detection directly without going through Spring event dispatch.
- * The CLI provides the transaction context; this handler provides the logic.
+ * The step-by-step execution controller provides the transaction context; this handler provides the logic.
  */
 @Component
 @Slf4j
@@ -68,7 +67,6 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
     private final TriadTemporalEdgeRequestFactory triadTemporalEdgeRequestFactory;
     private final SceneRelationshipAnalysisService sceneRelationshipAnalysisService;
     private final ApplicationEventPublisher eventPublisher;
-    private final PipelineStageSupport stageSupport;
     private final StageGraphRepository stageRepo;
     private final StageOutputGraphRepository stageOutputRepo;
 
@@ -83,7 +81,6 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             LocationPersistenceService locationPersistenceService,
             EventPersistenceService eventPersistenceService,
             RelationClaimPersistenceService relationClaimPersistenceService,
-            IngestionJobService ingestionJobService,
             DefaultTemporalEdgeService defaultTemporalEdgeService,
             SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService,
             TriadTemporalEdgeRequestFactory triadTemporalEdgeRequestFactory,
@@ -107,7 +104,6 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
         this.triadTemporalEdgeRequestFactory = triadTemporalEdgeRequestFactory;
         this.sceneRelationshipAnalysisService = sceneRelationshipAnalysisService;
         this.eventPublisher = eventPublisher;
-        this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         this.stageRepo = stageRepo;
         this.stageOutputRepo = stageOutputRepo;
     }
@@ -148,7 +144,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
     }
 
     /**
-     * Synchronous scene detection logic, callable from CLI or event listener.
+     * Synchronous scene detection logic, callable from step-by-step execution controller or event listener.
      *
      * <p>Transaction boundaries are managed internally by the individual
      * persistence services (each has its own {@code @Transactional}).
@@ -157,7 +153,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
      * the connection pool and create lock contention.
      *
      * <p>When called from the event listener, the {@code @Async} + {@code AFTER_COMMIT}
-     * wrapper handles the scheduling boundary. When called from the CLI,
+     * wrapper handles the scheduling boundary. When called from the step-by-step execution controller,
      * the orchestrator does not need to provide a transaction context.
      * @param jobId     the ingestion job ID
      * @param chapterId the chapter to process
@@ -174,8 +170,6 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
 
             UUID bookId = chapter.getBookId();
 
-            stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
-                    "Analyzing chapter text with AI to identify semantic scene boundaries");
 
             // Check for existing scenes (idempotency)
             List<Scene> existingScenes = sceneRepo.findByChapterId(chapterId);
@@ -186,7 +180,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                 // or StepExecutionCommandController), not here — so that fireEvents=false
                 // can suppress the cascade.
                 long elapsed = System.currentTimeMillis() - start;
-                return StepResult.success("SCENE_DETECTION",
+                return StepResult.success(StageKey.SCENE_SEGMENTATION.name(),
                         String.format("Skipped — %d scenes already exist", existingScenes.size()),
                         Map.of("scenesDetected", existingScenes.size()),
                         elapsed);
@@ -223,15 +217,11 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                         .orElseThrow(() -> new IllegalArgumentException("Chapter not found for triad analysis: " + chapterId));
                 triadChapter.setScenes(List.copyOf(scenes));
 
-                sceneRelationshipOutcome = sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
+                sceneRelationshipOutcome = sceneRelationshipAnalysisService.analyzeChapterTriads(
                         jobId,
                         triadChapter,
-                        statusProps -> stageSupport.updateJobStatus(
-                                jobId,
-                                IngestionStatus.SCENE_TRIAD_ANALYSIS,
-                                "Triad analysis for scenes [prev, curr, next]",
-                                statusProps
-                        )
+                        statusProps -> {
+                        }
                 );
             }
             sceneTemporalRelationshipPersistenceService.applyTemporalRelationships(
@@ -243,7 +233,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             );
 
             //TODO: resume walkthrough review
-            replayBoundaryTemporalProjection(jobId, temporalDefaults.newlyCreatedCrossChapterBoundaries());
+            enrichCrossChapterTemporalEdges(jobId, temporalDefaults.newlyCreatedCrossChapterBoundaries());
 
             if (! scenes.isEmpty()) {
                 individualPersistenceService.persistExtractedIndividuals(scenes, sceneRelationshipOutcome.sceneIndividualExtractions());
@@ -253,15 +243,13 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                 eventPersistenceService.persistExtractedEvents(scenes, sceneRelationshipOutcome.sceneEventExtractions());
                 relationClaimPersistenceService.persistExtractedRelationClaims(scenes, sceneRelationshipOutcome.sceneRelationClaimExtractions());
             }
-            stageSupport.updateJobStatus(jobId, IngestionStatus.SCENE_SEGMENTATION,
-                    String.format("Detected %d semantic scenes from chapter text", scenes.size()));
 
             // Note: ScenesDetectedEvent is emitted by the caller (handleChapterIngestion
             // or StepExecutionCommandController), not here — so that fireEvents=false
             // can suppress the cascade.
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success("SCENE_DETECTION",
+            return StepResult.success(StageKey.SCENE_SEGMENTATION.name(),
                     String.format("Detected %d scenes", scenes.size()),
                     Map.of("scenesDetected", scenes.size()),
                     elapsed);
@@ -271,10 +259,10 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             log.error("[SCENE_DETECTION] Failed for job={} chapter={}: {}", jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ?StepResult.retryableFailure("SCENE_DETECTION",
-                    PipelineStageSupport.sanitizeExceptionMessage(e), elapsed)
-                    : StepResult.failure("SCENE_DETECTION",
-                    PipelineStageSupport.sanitizeExceptionMessage(e), elapsed);
+                    ?StepResult.retryableFailure(StageKey.SCENE_SEGMENTATION.name(),
+                    ExceptionSanitizer.sanitizeMessage(e), elapsed)
+                    : StepResult.failure(StageKey.SCENE_SEGMENTATION.name(),
+                    ExceptionSanitizer.sanitizeMessage(e), elapsed);
         }
     }
 
@@ -289,8 +277,8 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
         }
 
         // Use AI to detect scenes (passing jobId for status tracking)
-        var segmentationOutcome = sceneDetectionService.detectScenesInChapter(jobId, chapter);
-        var scenesWithCoords = segmentationOutcome.scenes();
+        SceneDetectionService.SceneSegmentationOutcome segmentationOutcome = sceneDetectionService.detectScenesInChapter(jobId, chapter);
+        List<SceneWithCoordinates> scenesWithCoords = segmentationOutcome.scenes();
 
         if (scenesWithCoords.isEmpty()) {
             log.info("[SCENE_DETECTION] No scenes detected for chapter {}", chapterId);
@@ -301,7 +289,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
         return sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords);
     }
 
-    private void replayBoundaryTemporalProjection(UUID jobId, List<CrossChapterBoundaryProjection> boundaries) {
+    private void enrichCrossChapterTemporalEdges(UUID jobId, List<CrossChapterBoundaryProjection> boundaries) {
         if (boundaries == null || boundaries.isEmpty()) {
             return;
         }
@@ -333,7 +321,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
 
             laterChapter.setScenes(List.of(firstScene));
 
-            var replayOutcome = sceneRelationshipAnalysisService.analyzeChapterTriadsWithIndividuals(
+            TriadAnalysisModels.SceneRelationshipOutcome replayOutcome = sceneRelationshipAnalysisService.analyzeChapterTriads(
                     jobId,
                     laterChapter,
                     statusProps -> {

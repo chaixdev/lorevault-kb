@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion.infrastructure;
 
+import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ingestion.triad.TriadAnalysisArtifactLookup;
 import com.lorevault.api.ingestion.resolution.event.LlmCallRecord;
 import com.lorevault.api.ingestion.job.ChapterIngestionJobGraphRepository;
@@ -46,6 +47,6 @@ public class GraphTriadAnalysisArtifactLookup implements TriadAnalysisArtifactLo
         if (jobId == null || stageId == null) {
             return Optional.empty();
         }
-        return llmCallRepo.findLatestByJobStepAndStage(jobId, "scene-analysis", stageId);
+        return llmCallRepo.findLatestByJobStepAndStage(jobId, PromptName.SCENE_ANALYSIS.promptKey(), stageId);
     }
 }

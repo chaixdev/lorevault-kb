@@ -19,21 +19,19 @@ public class PromptLocationResolver {
     /**
      * Resolve a logical prompt name to its resource path.
      * 
-     * @param logicalName the logical name (e.g., "chapter-segmentation")
+     * @param name the prompt name enum
      * @return the full resource path
-     * @throws IllegalArgumentException if prompt name is not recognized
      */
-    public String resolve(String logicalName) {
-        return switch (logicalName) {
-            case "chapter-segmentation" -> getChapterSegmentationPath();
-            case "scene-analysis" -> getSceneAnalysisPath();
-            case "scene-analysis-user" -> getSceneAnalysisUserPath();
-            case "rag-answer-generation" -> getRagAnswerGenerationPath();
-            case "event-coref-system" -> promptProperties.getEventCorefSystemPath();
-            case "event-coref-user" -> promptProperties.getPromptPath("event-coref-usertemplate.st");
-            case "event-merge-system" -> promptProperties.getEventMergeSystemPath();
-            case "event-merge-user" -> promptProperties.getPromptPath("event-merge-user.st");
-            default -> throw new IllegalArgumentException("Unknown prompt name: " + logicalName);
+    public String resolve(PromptName name) {
+        return switch (name) {
+            case CHAPTER_SEGMENTATION -> getChapterSegmentationPath();
+            case SCENE_ANALYSIS -> getSceneAnalysisPath();
+            case SCENE_ANALYSIS_USER -> getSceneAnalysisUserPath();
+            case RAG_ANSWER_GENERATION -> getRagAnswerGenerationPath();
+            case EVENT_COREF_SYSTEM -> promptProperties.getEventCorefSystemPath();
+            case EVENT_COREF_USER -> promptProperties.getPromptPath("event-coref-usertemplate.st");
+            case EVENT_MERGE_SYSTEM -> promptProperties.getEventMergeSystemPath();
+            case EVENT_MERGE_USER -> promptProperties.getPromptPath("event-merge-user.st");
         };
     }
 

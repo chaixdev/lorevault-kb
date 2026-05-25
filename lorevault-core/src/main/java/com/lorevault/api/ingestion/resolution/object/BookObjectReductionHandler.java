@@ -2,11 +2,10 @@ package com.lorevault.api.ingestion.resolution.object;
 
 import com.lorevault.api.ingestion.events.StageCompletedEvent;
 import com.lorevault.api.ingestion.events.StageTriggeredEvent;
-import com.lorevault.api.ingestion.job.IngestionJobService;
-import com.lorevault.api.ingestion.job.IngestionStatus;
 import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
 import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
-import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
+import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
+
 import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
@@ -29,14 +28,12 @@ public class BookObjectReductionHandler implements BookObjectReductionOperation 
 
     private final BookObjectReductionService bookObjectReductionService;
     private final ApplicationEventPublisher eventPublisher;
-    private final PipelineStageSupport stageSupport;
     private final BookReductionClaimService bookReductionClaimService;
     private final StageGraphRepository stageRepo;
     private final StageOutputGraphRepository stageOutputRepo;
 
     public BookObjectReductionHandler(
             BookObjectReductionService bookObjectReductionService,
-            IngestionJobService ingestionJobService,
             ApplicationEventPublisher eventPublisher,
             BookReductionClaimService bookReductionClaimService,
             StageGraphRepository stageRepo,
@@ -44,7 +41,6 @@ public class BookObjectReductionHandler implements BookObjectReductionOperation 
     ) {
         this.bookObjectReductionService = bookObjectReductionService;
         this.eventPublisher = eventPublisher;
-        this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         this.bookReductionClaimService = bookReductionClaimService;
         this.stageRepo = stageRepo;
         this.stageOutputRepo = stageOutputRepo;
@@ -89,9 +85,6 @@ public class BookObjectReductionHandler implements BookObjectReductionOperation 
         }
 
         try {
-            stageSupport.updateJobStatus(jobId, IngestionStatus.PERSISTING_DATA,
-                    "Reducing chapter-level objects to book-level objects");
-
             BookObjectResolutionResult response = bookObjectReductionService.resolveBook(bookId);
 
             long elapsed = System.currentTimeMillis() - start;
@@ -124,9 +117,9 @@ public class BookObjectReductionHandler implements BookObjectReductionOperation 
             boolean retryable = isRetryableError(e);
             return retryable
                     ? StepResult.retryableFailure(STAGE_BOOK_OBJECT_REDUCTION,
-                            PipelineStageSupport.sanitizeExceptionMessage(e), elapsed)
+                            sanitizeMessage(e), elapsed)
                     : StepResult.failure(STAGE_BOOK_OBJECT_REDUCTION,
-                            PipelineStageSupport.sanitizeExceptionMessage(e), elapsed);
+                            sanitizeMessage(e), elapsed);
         } finally {
             bookReductionClaimService.releaseClaim(bookId, CLAIM_LANE);
         }

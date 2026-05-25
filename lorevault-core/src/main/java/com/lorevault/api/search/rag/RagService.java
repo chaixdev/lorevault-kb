@@ -21,6 +21,7 @@ import com.lorevault.api.search.extraction.QuestionIntent;
 import com.lorevault.api.search.semantic.CypherTemplateRegistry;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.chunk.ChunkGraphRepository;
+import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -529,7 +530,7 @@ public class RagService {
     }
 
     private String buildSystemPrompt() {
-        return promptRepository.get("rag-answer-generation").render();
+        return promptRepository.get(PromptName.RAG_ANSWER_GENERATION).render();
     }
 
     private String buildUserPrompt(String question, String context) {

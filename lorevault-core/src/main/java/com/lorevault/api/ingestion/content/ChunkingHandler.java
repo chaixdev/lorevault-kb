@@ -1,9 +1,7 @@
 package com.lorevault.api.ingestion.content;
 
-import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
-import com.lorevault.api.ingestion.job.IngestionJobService;
-import com.lorevault.api.ingestion.job.IngestionStatus;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.chunk.Chunk;
@@ -27,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
 import static com.lorevault.api.ingestion.infrastructure.HashUtils.generateSha256Hash;
 
 /**
@@ -35,7 +34,7 @@ import static com.lorevault.api.ingestion.infrastructure.HashUtils.generateSha25
  * Listens to: StageTriggeredEvent (CHUNKING)
  * Emits: StageCompletedEvent (on success, skip, or failure)
  *
- * Implements {@link ChunkingOperation} so the CLI module or step-execution
+ * Implements {@link ChunkingOperation} so the step-by-step execution controller or step-execution
  * endpoints can invoke chunking directly without Spring event dispatch.
  *
  * Responsibilities:
@@ -52,7 +51,6 @@ public class ChunkingHandler implements ChunkingOperation {
     private final SceneGraphRepository sceneRepo;
     private final TextChunkingService textChunkingService;
     private final ApplicationEventPublisher eventPublisher;
-    private final PipelineStageSupport stageSupport;
     private final StageGraphRepository stageRepo;
     private final StageOutputGraphRepository stageOutputRepo;
 
@@ -61,7 +59,6 @@ public class ChunkingHandler implements ChunkingOperation {
             ChunkGraphRepository chunkRepo,
             SceneGraphRepository sceneRepo,
             TextChunkingService textChunkingService,
-            IngestionJobService ingestionJobService,
             StageGraphRepository stageRepo,
             StageOutputGraphRepository stageOutputRepo,
             ApplicationEventPublisher eventPublisher
@@ -71,7 +68,6 @@ public class ChunkingHandler implements ChunkingOperation {
         this.sceneRepo = sceneRepo;
         this.textChunkingService = textChunkingService;
         this.eventPublisher = eventPublisher;
-        this.stageSupport = new PipelineStageSupport(ingestionJobService, eventPublisher);
         this.stageRepo = stageRepo;
         this.stageOutputRepo = stageOutputRepo;
     }
@@ -112,9 +108,6 @@ public class ChunkingHandler implements ChunkingOperation {
     public StepResult execute(UUID jobId, UUID chapterId) {
         long start = System.currentTimeMillis();
         try {
-            stageSupport.updateJobStatus(jobId, IngestionStatus.CHUNKING,
-                    "Breaking down scenes into embeddable text chunks");
-
             // Check for existing chunks (idempotency)
             boolean chunksExist = chunkRepo.existsForChapterViaScenes(chapterId) || chunkRepo.existsForChapter(chapterId);
             if (chunksExist) {
@@ -122,7 +115,7 @@ public class ChunkingHandler implements ChunkingOperation {
                 int existingCount = via > 0 ? via : chunkRepo.countByChapterId(chapterId);
                 log.info("[CHUNKING] Found {} existing chunks for chapter {}, skipping", existingCount, chapterId);
                 long elapsed = System.currentTimeMillis() - start;
-                return StepResult.success("CHUNKING",
+                return StepResult.success(StageKey.CHUNKING.name(),
                         String.format("Skipped — %d chunks already exist", existingCount),
                         Map.of("chunksCreated", existingCount),
                         elapsed);
@@ -136,7 +129,7 @@ public class ChunkingHandler implements ChunkingOperation {
             if (chapterText == null || chapterText.isEmpty()) {
                 log.warn("[CHUNKING] Chapter {} has no text content", chapterId);
                 long elapsed = System.currentTimeMillis() - start;
-                return StepResult.success("CHUNKING", "No text content — 0 chunks created",
+                return StepResult.success(StageKey.CHUNKING.name(), "No text content — 0 chunks created",
                         Map.of("chunksCreated", 0), elapsed);
             }
 
@@ -144,18 +137,15 @@ public class ChunkingHandler implements ChunkingOperation {
             List<Scene> scenes = sceneRepo.findByChapterId(chapterId);
             int totalChunks = createChunksFromScenes(chapterText, scenes);
 
-            stageSupport.updateJobStatus(jobId, IngestionStatus.CHUNKING,
-                    String.format("Created %d chunks from %d scenes", totalChunks, scenes.size()));
-
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success("CHUNKING",
+            return StepResult.success(StageKey.CHUNKING.name(),
                     String.format("Created %d chunks from %d scenes", totalChunks, scenes.size()),
                     Map.of("chunksCreated", totalChunks),
                     elapsed);
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
             log.error("[CHUNKING] Failed for job={} chapter={}: {}", jobId, chapterId, e.getMessage(), e);
-            return StepResult.failure("CHUNKING", PipelineStageSupport.sanitizeExceptionMessage(e), elapsed);
+            return StepResult.failure(StageKey.CHUNKING.name(), sanitizeMessage(e), elapsed);
         }
     }
 

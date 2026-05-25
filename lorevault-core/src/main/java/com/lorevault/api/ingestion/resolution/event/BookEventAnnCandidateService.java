@@ -1,7 +1,8 @@
 package com.lorevault.api.ingestion.resolution.event;
 
 import com.lorevault.api.content.association.ChapterEvent;
-import com.lorevault.api.ingestion.pipeline.PipelineStageSupport;
+import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
+
 import com.lorevault.api.ingestion.job.IngestionFailure;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -134,7 +135,7 @@ public class BookEventAnnCandidateService {
 
             return pairs;
         } catch (Exception e) {
-            log.warn("[EventAnn] ANN query failed for source={} chapter={} error={}", source.id(), chapterId, PipelineStageSupport.sanitizeExceptionMessage(e));
+            log.warn("[EventAnn] ANN query failed for source={} chapter={} error={}", source.id(), chapterId, sanitizeMessage(e));
             throw annQueryFailure(source.id(), chapterId, e);
         }
     }

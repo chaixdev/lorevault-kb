@@ -1,7 +1,7 @@
 # Submission Flow Code Quality Cleanup
 
-**Date:** May 23, 2026
-**Status:** Active — planning complete, ready for execution
+**Date:** May 23, 2026 (updated May 24, 2026)
+**Status:** Active — Phase 1 complete, Phase 2 pending full walkthrough (#18)
 **Discovered:** Code walkthrough post durable-ingestion-orchestration implementation
 **Walkthrough progress:** Traced from chapter upload → `bootstrapJob` → `SceneDetectionHandler`. Remaining data flow (chunking, embedding, resolution lanes, book reductions, INGESTION_COMPLETE) to be analyzed in a future session (#18).
 **Design note:** Walkthrough surfaced a paradigm tension between service-oriented (LLM default) and richer domain model design. Captured in [Service-Oriented vs Rich Domain Model](../concepts/service-oriented-vs-domain-model.md).
@@ -246,7 +246,7 @@ Scenes currently have `sceneIndex` that is chapter-scoped (index within chapter,
 
 ### 16. Collapse repeated extraction loop patterns in `SceneRelationshipAnalysisService`
 
-**Problem:** `analyzeChapterTriadsWithIndividuals()` has two 6× repeated blocks (one per entity type: individuals, locations, objects, collectives, events, relationClaims):
+**Problem:** `analyzeChapterTriads()` has two 6× repeated blocks (one per entity type: individuals, locations, objects, collectives, events, relationClaims):
 
 **Block 1 — collect (lines 216-257):** normalize → guard-empty → merge into `Map<Integer, List<T>>`:
 ```java
@@ -299,16 +299,16 @@ List<TriadAnalysisModels.SceneIndividualExtraction> sceneIndividualExtractions =
 - `SceneRelationshipAnalysisService.java` — add `mergeIfNotEmpty` helper, add `coalesce` helper, collapse 12 repeated blocks
 - `TriadAnalysisModels.java` — add `sealed interface SceneExtraction` and implement on 6 records (if option A)
 
-### 17. Rename `analyzeChapterTriadsWithIndividuals` → `analyzeChapterTriads`, delete dead wrapper
+### 17. Rename `analyzeChapterTriads` → `analyzeChapterTriads`, delete dead wrapper
 
 **Problem:** Two naming issues in `SceneRelationshipAnalysisService`:
 
-1. `analyzeChapterTriadsWithIndividuals` handles all six entity types (individuals, locations, objects, collectives, events, relationClaims) but name implies individuals-only — historical artifact from when the method only handled individuals + locations. The 2-arg overload (line 152) delegates to the 3-arg overload (line 157) with a no-op callback. Both are misleadingly named.
+1. `analyzeChapterTriads` handles all six entity types (individuals, locations, objects, collectives, events, relationClaims) but name implies individuals-only — historical artifact from when the method only handled individuals + locations. The 2-arg overload (line 152) delegates to the 3-arg overload (line 157) with a no-op callback. Both are misleadingly named.
 
-2. `analyzeChapterTriads(UUID, Chapter)` at line 301 is a thin wrapper that calls `analyzeChapterTriadsWithIndividuals(jobId, chapter).triadAnalyses()` and discards all entity extraction results. It has **zero production callers** — only 10 test call sites in `SceneRelationshipAnalysisServiceTest`. Dead production code.
+2. `analyzeChapterTriads(UUID, Chapter)` at line 301 is a thin wrapper that calls `analyzeChapterTriads(jobId, chapter).triadAnalyses()` and discards all entity extraction results. It has **zero production callers** — only 10 test call sites in `SceneRelationshipAnalysisServiceTest`. Dead production code.
 
 **Fix:**
-1. Rename `analyzeChapterTriadsWithIndividuals` → `analyzeChapterTriads` (both overloads) — it's the canonical triad analysis method, it handles everything
+1. Rename `analyzeChapterTriads` → `analyzeChapterTriads` (both overloads) — it's the canonical triad analysis method, it handles everything
 2. Delete the current `analyzeChapterTriads` wrapper — callers use `analyzeChapterTriads(...).triadAnalyses()` instead
 3. Update 2 production call sites (`SceneDetectionHandler.java:226, 335`) + 11 test call sites (8 in `SceneDetectionHandlerTest`, 2 in `IndividualResolutionIT`, 1 in `SceneRelationshipAnalysisServiceTest`) + 8 doc references
 
@@ -333,9 +333,9 @@ The walkthrough paused at `SceneDetectionHandler` persistence block. Issues #12 
 Issues #7 (StageDispatcher), #10a (delete events), #12 (delete PipelineStageSupport), #14 (buildTriad API change), and #17 (rename method) will break tests. Before execution, grep for all references to deleted/moved types and include test updates in scope.
 
 **Affected test files (known):**
-- `SceneDetectionHandlerTest.java` — references `PipelineStageSupport`, `analyzeChapterTriadsWithIndividuals`
-- `SceneRelationshipAnalysisServiceTest.java` — references `analyzeChapterTriads`, `analyzeChapterTriadsWithIndividuals`
-- `IndividualResolutionIT.java` — references `analyzeChapterTriadsWithIndividuals`
+- `SceneDetectionHandlerTest.java` — references `PipelineStageSupport`, `analyzeChapterTriads`
+- `SceneRelationshipAnalysisServiceTest.java` — references `analyzeChapterTriads`, `analyzeChapterTriads`
+- `IndividualResolutionIT.java` — references `analyzeChapterTriads`
 - Other handler tests TBD by walkthrough + grep
 
 ### 20. Document StageDispatcher transaction boundary
@@ -346,22 +346,22 @@ The dispatcher's `onTrigger` runs `@Async` + `@EventListener`. The coordinator p
 
 ## Sequencing
 
-### Phase 1 — Quick Wins (extracted to [dedicated doc](2026-05-24T0000_submission-cleanup-quick-wins.md))
+### Phase 1 — Quick Wins ✅ COMPLETED May 24, 2026
 
-Low-risk, high-certainty items. Execute immediately — no walkthrough prerequisite.
+Low-risk, high-certainty items. Executed in a single wave of 5 parallel fixers. See [implementation notes](2026-05-24T0000_submission-cleanup-quick-wins.md).
 
-| Issue | Item | Estimate |
-|-------|------|----------|
-| #4 | Javadoc "CLI" fix | 1 line |
-| #6 | bootstrapJob map simplification | ~5 lines |
-| #8 | Unclear var → explicit types (3 cases) | 3 lines |
-| #11 | LLM call logging — type-safe StageKey | ~10 lines |
-| #12a | Extract `sanitizeExceptionMessage` to `ExceptionSanitizer` | New utility class |
-| #12b | Remove 16 `stageSupport.updateJobStatus(...)` call sites | 16 deletions |
-| #17 | Rename `analyzeChapterTriadsWithIndividuals` → `analyzeChapterTriads` | 22 files |
-| #22 | Rename `replayBoundaryTemporalProjection` → `enrichCrossChapterTemporalEdges` | 1 file |
+| Issue | Item | Status | Actual |
+|-------|------|--------|--------|
+| #4 | Javadoc "CLI" fix | ✅ | 1 line |
+| #6 | bootstrapJob map simplification | ✅ | ~5 lines |
+| #8 | Unclear var → explicit types (3 cases) | ✅ | 3 lines + SceneWithCoordinates inner-class fix |
+| #11 | LLM call logging — type-safe StageKey | ✅ | ~12 lines, LLM_STEP_TO_STAGE deleted |
+| #12a | Extract `sanitizeExceptionMessage` to `ExceptionSanitizer` | ✅ | New utility class, 23 call sites (not 14) |
+| #12b | Remove 18 `updateJobStatus(...)` call sites | ✅ | 18 deletions (not 16) + field/import cleanup |
+| #17 | Rename `analyzeChapterTriadsWithIndividuals` → `analyzeChapterTriads` | ✅ | 13 files (not 22), 42 references |
+| #22 | Rename `replayBoundaryTemporalProjection` → `enrichCrossChapterTemporalEdges` | ✅ | 1 file |
 
-**Combined:** ~30 min, ~13 files modified, 1 new utility class.
+**Actual:** 31 files modified, +138/-284 lines, 1 new utility class. ~5 min wall (parallel), <2 min compile + test.
 
 ### Phase 2 — Post-Walkthrough Cleanup (#18 prerequisite)
 
@@ -397,13 +397,30 @@ Walkthrough must be completed first to reveal additional `PipelineStageSupport` 
 | #15 | Deferred — book-scoped scene index is a decision point, not a task |
 | #8 (blanket ban) | Scaled back — fix ~3 unclear cases only, add coding standards guidance |
 
+### Phase 4 — Discovered During Phase 1 Execution
+
+Items surfaced while executing Phase 1 but not falling within its scope. Not sequenced — each is independent and can be picked up at any point.
+
+| # | Item | Source | Blast radius | Notes |
+|---|------|--------|-------------|-------|
+| P4-1 | **Relocate vector index name constants** — `"chapter_event_embedding_idx"` and `"chunk_embedding_idx"` duplicated across `Neo4jSchemaInitializer`, `BookEventAnnCandidateService`, and `Neo4jSemanticSearch`. Move to entity classes (`ChapterEvent.VECTOR_INDEX_NAME`, `Chunk.VECTOR_INDEX_NAME`). | User finding (May 25) | 3 production + 1 test | Eliminates 3-way duplication. Entity owns its index name. |
+| P4-2 | **`StepResult.stepName` String → StageKey** — Phase 1 replaced magic strings in call sites with `StageKey.name()`. The record field itself remains a `String`. Should be `StageKey` for compile-time safety. | Phase 1 execution | ~62 call sites, 13 handlers, `StageCompletedEvent` | Touches the core pipeline result type. Phase 3 candidate; fits alongside StageDispatcher. |
+| P4-3 | **Eliminate handler-level static `STAGE_*` constants** — `STAGE_CHAPTER_OBJECT_RESOLUTION`, `STAGE_BOOK_OBJECT_REDUCTION`, etc. are pre-existing `String` constants that duplicate `StageKey.name()`. Replace with `StageKey` references. | Phase 1 execution | 6 handlers | Low risk; pure rename. Can do independently. |
+| P4-4 | **Consolidate remaining `safeMessage()` definitions** — Oracle review G1 flagged 7 independent definitions. Phase 1 extracted the canonical one into `ExceptionSanitizer`. 6 more remain in: `IngestionFailure`, `IngestionService`, `IngestionIsolatedLookupService`, `SceneDetectionService`, `EventCoreferenceService`, `BookEventMergeVerificationService`. Replace all with `ExceptionSanitizer.safeMessage()`. | Oracle review (G1) | 6 files | Low risk; pure dedup. Each is a private method with identical logic. |
+| P4-5 | **Audit `IngestionStatus` for orphaned values** — Oracle review G6. After Phase 1 removed all `updateJobStatus` calls, some `IngestionStatus` enum values may be unused. | Oracle review (G6) | 1 enum file | Scan and remove dead constants, update references. |
+| P4-6 | **`SceneDetectionHandler` double chapter lookup** — Oracle review G5. Handler fetches chapter data twice when once would suffice. | Oracle review (G5) | 1 handler | Optimization; not correctness-critical. |
+| P4-7 | **Fix architecture test cycle** — `CorePackageBoundaryArchitectureTest` detects `ingestion.events` ↔ `ingestion.pipeline` cycle (`StageCompletedEvent` references `StageKey` + `StepResult`). Options: move `StageCompletedEvent` to `pipeline` package, or extract shared types to a third package. | Phase 1 verification | 2-3 files | Pre-existing; not caused by Phase 1. Blocking for a fully green `mvn test`. |
+| P4-8 | **`LlmClient.detectScenes()` and `detectScenesTwoPass()` are dead** — Explorer found zero production callers. Both methods log LLM calls but are never invoked. | Phase 1 exploration (QW4) | 1 file, ~50 lines | Delete dead code. |
+| P4-9 | **`safeMessage()` in `PipelineStageSupport`** — The `safeMessage` delegating method in `PipelineStageSupport` was left behind because `runStage()` (also dead) calls it. Once `PipelineStageSupport` is deleted (P2 #12c), this is gone. | Phase 1 execution | 1 file | Resolved when #12c executes. Noted for completeness. |
+
 ## Estimated Effort
 
 | Phase | Time | Files |
 |-------|------|-------|
-| Phase 1 — Quick wins | ~30 min | ~13 modified, 1 new |
+| Phase 1 — Quick wins | ✅ Done | 31 modified, 1 new |
 | Phase 2 — Post-walkthrough | ~150 min | 25+ modified, 15+ deleted |
 | Phase 3 — Structural | ~120 min | 20+ modified, 4 new, 1 deleted |
-| **Total** | **~300 min** | **50+ modified, 16+ deleted, 5 new** |
+| Phase 4 — Discovered (unscheduled) | ~60 min | 10+ modified |
+| **Total** | **~330 min** | **60+ modified, 16+ deleted, 5 new** |
 
 

@@ -120,7 +120,7 @@ public class IngestionService {
      * Prepare a chapter for step-by-step pipeline execution.
      *
      * <p>Creates the chapter (if new) and an ingestion job, but does <em>not</em>
-     * publish {@link ChapterIngestionEvent}. The caller (CLI) is responsible for
+     * publish {@link ChapterIngestionEvent}. The caller (step-by-step execution controller) is responsible for
      * invoking individual pipeline steps via their Operation interfaces.
      *
      * @return the job and chapter IDs
@@ -133,7 +133,7 @@ public class IngestionService {
         ChapterValidationResult validationResult = validateAndProcessChapter(bookId, chapterNumber, chapterTitle, chapterText);
         UUID chapterId = validationResult.getChapterId();
 
-        // Create job but do NOT bootstrap stages — CLI will drive steps manually
+        // Create job but do NOT bootstrap stages — the step-by-step execution controller will drive steps manually
         ChapterIngestionJob job = ingestionJobService.createIngestionJob(chapterId);
         log.info("Prepared chapter {} for step-by-step processing, jobId={}", chapterId, job.getId());
 
