@@ -29,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Stage 2 — Event Co-reference Pass.
  *
- * <p>Accepts an ordered list of scene IDs for a chapter (from {@code ScenesDetectedEvent}),
+ * <p>Accepts an ordered list of scene IDs for a chapter (from {@code StageCompletedEvent} with SCENE_SEGMENTATION),
  * drives a rolling window of 3 scenes over them, and for each window calls the LLM with all
  * {@code EventMention} nodes grouped by scene to judge which mentions refer to the same event.
  * Writes {@code SAME_EVENT} relationship edges for confident matches.</p>

@@ -176,9 +176,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             if (! existingScenes.isEmpty()) {
                 log.info("[SCENE_DETECTION] Found {} existing scenes for chapter {}, skipping detection",
                         existingScenes.size(), chapterId);
-                // Note: ScenesDetectedEvent is emitted by the caller (handleChapterIngestion
-                // or StepExecutionCommandController), not here — so that fireEvents=false
-                // can suppress the cascade.
+                // Note: StageCompletedEvent is emitted by the caller
                 long elapsed = System.currentTimeMillis() - start;
                 return StepResult.success(StageKey.SCENE_SEGMENTATION.name(),
                         String.format("Skipped — %d scenes already exist", existingScenes.size()),

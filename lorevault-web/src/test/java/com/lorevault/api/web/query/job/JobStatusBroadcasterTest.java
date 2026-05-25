@@ -1,12 +1,14 @@
 package com.lorevault.api.web.query.job;
 
-import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
+import com.lorevault.api.ingestion.events.StageCompletedEvent;
+import com.lorevault.api.ingestion.pipeline.StageKey;
+import com.lorevault.api.ingestion.pipeline.StepResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,15 +35,19 @@ class JobStatusBroadcasterTest {
     }
 
     @Test
-    @DisplayName("status update broadcasts without dropping healthy emitters")
-    void onStatusUpdateBroadcasts() {
+    @DisplayName("stage completed broadcasts without dropping healthy emitters")
+    void onStageCompletedBroadcasts() {
         broadcaster.register();
 
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
-        ScenesDetectedEvent event = new ScenesDetectedEvent(this, jobId, chapterId, UUID.randomUUID(), List.of(UUID.randomUUID()));
+        UUID bookId = UUID.randomUUID();
+        StageCompletedEvent event = new StageCompletedEvent(
+                this, jobId, chapterId, bookId, StageKey.SCENE_SEGMENTATION,
+                StepResult.success(StageKey.SCENE_SEGMENTATION.name(), "Detected 5 scenes", Map.of("scenesDetected", 5), 1234L)
+        );
 
-        broadcaster.onStatusUpdate(event);
+        broadcaster.onStageCompleted(event);
 
         assertThat(broadcaster.getConnectionCount()).isEqualTo(1);
     }

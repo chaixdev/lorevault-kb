@@ -1,10 +1,6 @@
 package com.lorevault.api.web.query.job;
 
-import com.lorevault.api.ingestion.events.ChunksCreatedEvent;
-import com.lorevault.api.ingestion.events.IngestionCompletedEvent;
-import com.lorevault.api.ingestion.events.IngestionEvent;
-import com.lorevault.api.ingestion.events.IngestionFailedEvent;
-import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
+import com.lorevault.api.ingestion.events.StageCompletedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -43,7 +39,7 @@ public class JobStatusBroadcaster {
     }
 
     @EventListener
-    void onStatusUpdate(IngestionEvent event) {
+    void onStageCompleted(StageCompletedEvent event) {
         broadcast("status-update", buildPayload(event));
     }
 
@@ -74,29 +70,17 @@ public class JobStatusBroadcaster {
         }
     }
 
-    private Map<String, Object> buildPayload(IngestionEvent event) {
+    private Map<String, Object> buildPayload(StageCompletedEvent event) {
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("eventType", event.getEventType());
+        payload.put("eventType", "STAGE_COMPLETED");
         payload.put("jobId", event.getJobId());
         payload.put("chapterId", event.getChapterId());
-        payload.put("timestamp", event.getEventTime().toString());
-
-        if (event instanceof ScenesDetectedEvent sceneEvent) {
-            payload.put("sceneCount", sceneEvent.getSceneCount());
-            payload.put("bookId", sceneEvent.getBookId());
-        } else if (event instanceof ChunksCreatedEvent chunkEvent) {
-            payload.put("chunkCount", chunkEvent.getChunkCount());
-            payload.put("bookId", chunkEvent.getBookId());
-        } else if (event instanceof IngestionCompletedEvent completeEvent) {
-            payload.put("totalScenes", completeEvent.getTotalScenes());
-            payload.put("totalChunks", completeEvent.getTotalChunks());
-            payload.put("totalEmbeddings", completeEvent.getTotalEmbeddings());
-        } else if (event instanceof IngestionFailedEvent failedEvent) {
-            payload.put("failedStage", failedEvent.getFailedStage());
-            payload.put("errorMessage", failedEvent.getErrorMessage());
-            payload.put("retryable", failedEvent.isRetryable());
-        }
-
+        payload.put("bookId", event.getBookId());
+        payload.put("stage", event.getStage().name());
+        payload.put("success", event.getResult() != null && event.getResult().success());
+        payload.put("summary", event.getResult() != null ? event.getResult().summary() : "");
+        payload.put("counts", event.getResult() != null ? event.getResult().counts() : Map.of());
+        payload.put("elapsedMs", event.getResult() != null ? event.getResult().durationMs() : 0);
         return payload;
     }
 

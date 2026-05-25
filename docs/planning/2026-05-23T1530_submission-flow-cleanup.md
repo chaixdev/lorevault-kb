@@ -372,7 +372,7 @@ Low-risk, high-certainty items. Executed in a single wave of 5 parallel fixers. 
 | **#3** ✅ | Remove both dead guards (ID + book hydration) | Done May 25: −8 lines in `createNewChapter` |
 | **#5** ✅ | Extract shared `doSubmitChapter()`, keep both public methods | Done May 25: dedup logic shared, both methods delegate |
 | **#12c** ✅ | Delete `PipelineStageSupport.java`, `IngestionJobService.updateJobStatus()`, `PipelineStageSupportTest.java` | Done May 25: −1 class, −1 method, −1 test |
-| #10a | Fix broken SSE + delete 12 dead event classes | Extracted to [SSE doc](2026-05-24T0000_sse-event-migration.md). Live bug — promoted from Phase 3. |
+| **#10a** ✅ | Fix broken SSE + delete 15 dead event classes | Done May 25: `JobStatusBroadcaster` switched to `StageCompletedEvent`, 15 dead events deleted, test updated |
 | #13 | Scan + eliminate handler→service guard duplication | |
 | #16 | Collapse extraction loop patterns | Option A (sealed interface) |
 | #21 | Scan + eliminate unnecessary intermediate result records | Sequence AFTER #16 |
