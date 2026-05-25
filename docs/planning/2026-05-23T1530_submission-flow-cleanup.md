@@ -367,12 +367,12 @@ Low-risk, high-certainty items. Executed in a single wave of 5 parallel fixers. 
 
 | Issue | Item | Notes |
 |-------|------|-------|
-| #1 | Delete `IngestionIsolatedLookupService`, fold into `IngestionService` | |
-| #2 | Record-ify `ChapterValidationResult` | |
-| #3 | Remove both dead guards (ID + book hydration) | Oracle confirmed both dead |
-| #5 | Extract shared `doSubmitChapter()`, keep both public methods | Oracle: don't collapse |
+| **#1** ✅ | Delete `IngestionIsolatedLookupService`, fold into `IngestionService` | Done May 25: −1 class, generic `isolatedLookup(Supplier, ...)` helper |
+| **#2** ✅ | Record-ify `ChapterValidationResult` | Done May 25: clean record with static factories |
+| **#3** ✅ | Remove both dead guards (ID + book hydration) | Done May 25: −8 lines in `createNewChapter` |
+| **#5** ✅ | Extract shared `doSubmitChapter()`, keep both public methods | Done May 25: dedup logic shared, both methods delegate |
+| **#12c** ✅ | Delete `PipelineStageSupport.java`, `IngestionJobService.updateJobStatus()`, `PipelineStageSupportTest.java` | Done May 25: −1 class, −1 method, −1 test |
 | #10a | Fix broken SSE + delete 12 dead event classes | Extracted to [SSE doc](2026-05-24T0000_sse-event-migration.md). Live bug — promoted from Phase 3. |
-| #12c | Delete `PipelineStageSupport.java`, `IngestionJobService.updateJobStatus()`, `PipelineStageSupportTest.java` | Phase 1 removed call sites + extracted sanitize |
 | #13 | Scan + eliminate handler→service guard duplication | |
 | #16 | Collapse extraction loop patterns | Option A (sealed interface) |
 | #21 | Scan + eliminate unnecessary intermediate result records | Sequence AFTER #16 |

@@ -4,6 +4,7 @@ import com.lorevault.api.ingestion.job.JobStatusDetails;
 import com.lorevault.api.ingestion.job.PaginatedJobSummaries;
 import com.lorevault.api.ingestion.job.IngestionFailure;
 import com.lorevault.api.ingestion.job.ChapterIngestionJob;
+import com.lorevault.api.ingestion.job.ChapterIngestionJobGraphRepository;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.ingestion.job.IngestionJobService;
@@ -11,7 +12,6 @@ import com.lorevault.api.library.book.Book;
 import com.lorevault.api.library.book.PublicationCoordinates;
 import com.lorevault.api.library.book.BookGraphRepository;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static com.lorevault.api.ingestion.infrastructure.HashUtils.generateSha256Hash;
 
@@ -33,11 +35,6 @@ import static com.lorevault.api.ingestion.infrastructure.HashUtils.generateSha25
  * <p>
  * Processing is handled by event-driven handlers:
  * SceneDetectionHandler → ChunkingHandler → EmbeddingHandler
- * <p>
- * Best-effort lookups (content-hash, active-job, recent-job) are delegated to
- * {@link IngestionIsolatedLookupService}, which runs each query in its own
- * REQUIRES_NEW read-only transaction.  This prevents a Neo4j session failure
- * during a lookup from poisoning the caller's submit transaction.
  */
 @Service
 @RequiredArgsConstructor
@@ -48,24 +45,17 @@ public class IngestionService {
     private final BookGraphRepository bookRepo;
     private final IngestionJobService ingestionJobService;
     private final ApplicationEventPublisher eventPublisher;
-    private final IngestionIsolatedLookupService isolatedLookup;
+    private final ChapterIngestionJobGraphRepository jobRepo;
 
     /**
-     * Context object for chapter validation results
+     * Context object for chapter validation results.
      */
-    public static class ChapterValidationResult {
-        @Getter private final boolean isExistingChapter;
-        @Getter private final UUID chapterId;
-        @Getter private final String contentHash;
-        private final boolean hasActiveJob;
-
-        private ChapterValidationResult(boolean isExistingChapter, UUID chapterId, String contentHash, boolean hasActiveJob) {
-            this.isExistingChapter = isExistingChapter;
-            this.chapterId = chapterId;
-            this.contentHash = contentHash;
-            this.hasActiveJob = hasActiveJob;
-        }
-
+    public record ChapterValidationResult(
+        boolean isExistingChapter,
+        UUID chapterId,
+        String contentHash,
+        boolean hasActiveJob
+    ) {
         public static ChapterValidationResult existingChapter(UUID chapterId, String contentHash, boolean hasActiveJob) {
             return new ChapterValidationResult(true, chapterId, contentHash, hasActiveJob);
         }
@@ -73,8 +63,6 @@ public class IngestionService {
         public static ChapterValidationResult newChapter(UUID chapterId, String contentHash) {
             return new ChapterValidationResult(false, chapterId, contentHash, false);
         }
-
-        public boolean hasActiveJob() { return hasActiveJob; }
     }
 
     /**
@@ -85,35 +73,7 @@ public class IngestionService {
     public IngestionSubmissionResult submitChapter(UUID bookId, Integer chapterNumber, String chapterTitle, String chapterText) {
         log.info("Processing chapter submission: bookId={}, chapterNumber={}, title={}",
             bookId, chapterNumber, chapterTitle);
-
-        // Validate chapter and handle duplicates
-        ChapterValidationResult validationResult = validateAndProcessChapter(bookId, chapterNumber, chapterTitle, chapterText);
-
-        UUID chapterId = validationResult.getChapterId();
-
-        // Handle existing chapter case
-        if (validationResult.isExistingChapter()) {
-            if (validationResult.hasActiveJob()) {
-                Optional<UUID> activeJobId = isolatedLookup.findMostRecentJobId(chapterId);
-                if (activeJobId.isPresent()) {
-                    return new IngestionSubmissionResult(activeJobId.get(), chapterId);
-                }
-                throw buildSubmissionLookupFailure(
-                        "CHAPTER_ACTIVE_JOB_ID_MISSING",
-                        "Active chapter ingestion job could not be resolved for chapter: " + chapterId,
-                        chapterId,
-                        builder -> builder.detail("lookupType", "recentJob")
-                );
-            }
-
-            // Create new job for existing chapter
-            ChapterIngestionJob job = ingestionJobService.createIngestionJob(chapterId);
-            return new IngestionSubmissionResult(job.getId(), chapterId);
-        }
-
-        // Create job for new chapter
-        ChapterIngestionJob job = ingestionJobService.createIngestionJob(chapterId);
-        return new IngestionSubmissionResult(job.getId(), chapterId);
+        return doSubmitChapter(bookId, chapterNumber, chapterTitle, chapterText);
     }
 
     /**
@@ -129,14 +89,42 @@ public class IngestionService {
     public IngestionSubmissionResult prepareChapter(UUID bookId, Integer chapterNumber, String chapterTitle, String chapterText) {
         log.info("Preparing chapter for step-by-step ingestion: bookId={}, chapterNumber={}, title={}",
             bookId, chapterNumber, chapterTitle);
+        IngestionSubmissionResult result = doSubmitChapter(bookId, chapterNumber, chapterTitle, chapterText);
+        log.info("Prepared chapter {} for step-by-step processing, jobId={}", result.chapterId(), result.jobId());
+        return result;
+    }
 
-        ChapterValidationResult validationResult = validateAndProcessChapter(bookId, chapterNumber, chapterTitle, chapterText);
-        UUID chapterId = validationResult.getChapterId();
+    /**
+     * Shared submission logic with duplicate detection.
+     *
+     * @return the submission result with job and chapter IDs
+     */
+    private IngestionSubmissionResult doSubmitChapter(UUID bookId, Integer chapterNumber, String chapterTitle, String chapterText) {
+        ChapterValidationResult result = validateAndProcessChapter(bookId, chapterNumber, chapterTitle, chapterText);
+        UUID chapterId = result.chapterId();
 
-        // Create job but do NOT bootstrap stages — the step-by-step execution controller will drive steps manually
+        // Handle existing chapter with active job — return existing job ID (dedup)
+        if (result.isExistingChapter() && result.hasActiveJob()) {
+            Optional<UUID> activeJobId = isolatedLookup(
+                () -> jobRepo.findFirstByChapterIdOrderByCreatedAtDesc(chapterId)
+                    .map(ChapterIngestionJob::getId),
+                "CHAPTER_RECENT_JOB_LOOKUP_FAILED",
+                "Chapter submission lookup failed during findMostRecentJobForChapter",
+                b -> { b.detail("chapterId", chapterId); b.detail("lookupType", "recentJob"); }
+            );
+            if (activeJobId.isPresent()) {
+                return new IngestionSubmissionResult(activeJobId.get(), chapterId);
+            }
+            throw buildSubmissionLookupFailure(
+                "CHAPTER_ACTIVE_JOB_ID_MISSING",
+                "Active chapter ingestion job could not be resolved for chapter: " + chapterId,
+                chapterId,
+                builder -> builder.detail("lookupType", "recentJob")
+            );
+        }
+
+        // Create new job
         ChapterIngestionJob job = ingestionJobService.createIngestionJob(chapterId);
-        log.info("Prepared chapter {} for step-by-step processing, jobId={}", chapterId, job.getId());
-
         return new IngestionSubmissionResult(job.getId(), chapterId);
     }
 
@@ -158,8 +146,6 @@ public class IngestionService {
 
     /**
      * Validate chapter submission and handle duplicate detection.
-     * Lookup queries are delegated to {@link IngestionIsolatedLookupService}
-     * so that they run in isolated read-only transactions.
      */
     private ChapterValidationResult validateAndProcessChapter(UUID bookId, Integer chapterNumber, String chapterTitle, String chapterText) {
         log.info("Validating chapter submission: bookId={}, chapterNumber={}, title={}",
@@ -167,12 +153,22 @@ public class IngestionService {
 
         String contentHash = generateSha256Hash(chapterText);
 
-        // Check for existing chapter with same content — isolated REQUIRES_NEW read-only tx
-        Optional<Chapter> existingChapter = isolatedLookup.findChapterByContentHash(contentHash);
+        // Check for existing chapter with same content
+        Optional<Chapter> existingChapter = isolatedLookup(
+            () -> chapterRepo.findByContentHash(contentHash),
+            "CHAPTER_HASH_LOOKUP_FAILED",
+            "Chapter submission lookup failed during findChapterByContentHash",
+            b -> { b.detail("lookupType", "contentHash"); b.detail("contentHash", contentHash); }
+        );
         if (existingChapter.isPresent()) {
             UUID chapterId = existingChapter.get().getId();
-            // Isolated REQUIRES_NEW read-only tx
-            boolean hasActiveJob = isolatedLookup.existsActiveForChapter(chapterId);
+            // Isolated lookup for active job check
+            boolean hasActiveJob = isolatedLookup(
+                () -> jobRepo.existsActiveForChapter(chapterId),
+                "CHAPTER_ACTIVE_JOB_LOOKUP_FAILED",
+                "Chapter submission lookup failed during existsActiveForChapter",
+                b -> { b.detail("chapterId", chapterId); b.detail("lookupType", "activeJob"); }
+            );
             return ChapterValidationResult.existingChapter(chapterId, contentHash, hasActiveJob);
         }
 
@@ -184,12 +180,6 @@ public class IngestionService {
     private UUID createNewChapter(UUID bookId, Integer chapterNumber, String chapterTitle, String chapterText, String contentHash) {
         try {
             Chapter chapter = buildChapter(bookId, chapterNumber, chapterTitle, chapterText, contentHash);
-            if (chapter.getId() == null) {
-                chapter.setId(UUID.randomUUID());
-            }
-            if (chapter.getBook() == null && chapter.getBookId() != null) {
-                bookRepo.findById(chapter.getBookId()).ifPresent(chapter::setBook);
-            }
             Chapter persisted = chapterRepo.save(chapter);
 
             // Handle mock scenarios where createChapter might return null
@@ -250,6 +240,23 @@ public class IngestionService {
             detailsAppender.append(failureBuilder);
         }
         return new ChapterSubmissionLookupException(failureBuilder.build());
+    }
+
+    private <T> T isolatedLookup(Supplier<T> query, String code, String message,
+                                  Consumer<IngestionFailure.Builder> details) {
+        try {
+            return query.get();
+        } catch (Exception e) {
+            log.warn("Required lookup failed: {}", e.getMessage());
+            log.debug("Required lookup failure details:", e);
+            var builder = IngestionFailure.builder(code, message + ": " + safeMessage(e))
+                    .exceptionType(e.getClass().getSimpleName())
+                    .stage("CHAPTER_SUBMISSION");
+            if (details != null) {
+                details.accept(builder);
+            }
+            throw new ChapterSubmissionLookupException(builder.build(), e);
+        }
     }
 
     @FunctionalInterface

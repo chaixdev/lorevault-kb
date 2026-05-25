@@ -146,18 +146,6 @@ public class IngestionJobService {
         logJobFailed(job, errorMessage + " (data cleaned up for retry)");
     }
 
-    /**
-     * Update job status — simplified no-op in the durable model.
-     * <p>
-     * Stage-level status is managed by the coordinator through {@link Stage} nodes.
-     * This method exists for API compatibility but no longer creates
-     * {@code StatusRecord} nodes.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateJobStatus(UUID jobId, IngestionStatus status, String description, Map<String, Object> properties) {
-        log.debug("Status update for job {}: {} - {}", jobId, status, description);
-    }
-
     // ================================
     // JOB QUERY OPERATIONS
     // ================================

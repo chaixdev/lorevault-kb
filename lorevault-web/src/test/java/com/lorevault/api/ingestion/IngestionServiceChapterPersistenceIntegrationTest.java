@@ -1,7 +1,6 @@
 package com.lorevault.api.ingestion;
 import com.lorevault.api.library.book.PublicationCoordinates;
 import com.lorevault.api.ingestion.job.IngestionJobService;
-import com.lorevault.api.ingestion.submission.IngestionIsolatedLookupService;
 import com.lorevault.api.ingestion.submission.IngestionService;
 
 import com.lorevault.api.library.book.Book;
@@ -32,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataNeo4jTest
 @Testcontainers
-@Import({IngestionService.class, IngestionIsolatedLookupService.class, IngestionJobService.class})
+@Import({IngestionService.class, IngestionJobService.class})
 @ActiveProfiles("test")
 @Tag("integration")
 class IngestionServiceChapterPersistenceIntegrationTest {

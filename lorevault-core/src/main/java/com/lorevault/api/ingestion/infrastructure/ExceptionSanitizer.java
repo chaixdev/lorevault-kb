@@ -3,7 +3,7 @@ package com.lorevault.api.ingestion.infrastructure;
 /**
  * Shared exception message sanitization utilities.
  *
- * <p>Extracted from {@code PipelineStageSupport} to survive its planned deletion.
+ * <p>Previously part of the deleted {@code PipelineStageSupport} class.
  * Consolidates the previously duplicated {@code safeMessage} pattern used in 7+ classes.
  */
 public final class ExceptionSanitizer {
@@ -28,9 +28,7 @@ public final class ExceptionSanitizer {
     /**
      * Strips CR/LF from an exception message and truncates to 200 characters.
      *
-     * <p>This is the canonical sanitizer for user-facing error messages. Callers that
-     * previously used {@code PipelineStageSupport.sanitizeExceptionMessage(e)} should
-     * migrate to this method.
+     * <p>This is the canonical sanitizer for user-facing error messages.
      */
     public static String sanitizeMessage(Exception e) {
         if (e == null) {
