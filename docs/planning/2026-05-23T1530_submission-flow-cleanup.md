@@ -363,23 +363,21 @@ Low-risk, high-certainty items. Executed in a single wave of 5 parallel fixers. 
 
 **Actual:** 31 files modified, +138/-284 lines, 1 new utility class. ~5 min wall (parallel), <2 min compile + test.
 
-### Phase 2 — Post-Walkthrough Cleanup (#18 prerequisite)
-
-Walkthrough must be completed first to reveal additional `PipelineStageSupport` call sites, guard duplications, and handler patterns.
+### Phase 2 — IngestionService + Inline Pipeline Cleanup
 
 | Issue | Item | Notes |
 |-------|------|-------|
-| **#18** | Complete walkthrough | **BLOCKING** — run first |
-| **#19** | Test impact analysis | **BLOCKING** — run after walkthrough |
 | #1 | Delete `IngestionIsolatedLookupService`, fold into `IngestionService` | |
 | #2 | Record-ify `ChapterValidationResult` | |
 | #3 | Remove both dead guards (ID + book hydration) | Oracle confirmed both dead |
 | #5 | Extract shared `doSubmitChapter()`, keep both public methods | Oracle: don't collapse |
-| #10a | Fix broken SSE + delete 12 dead event classes | Extracted to [SSE doc](2026-05-24T0000_sse-event-migration.md). Promoted from Phase 3 — bug fix. |
+| #10a | Fix broken SSE + delete 12 dead event classes | Extracted to [SSE doc](2026-05-24T0000_sse-event-migration.md). Live bug — promoted from Phase 3. |
 | #12c | Delete `PipelineStageSupport.java`, `IngestionJobService.updateJobStatus()`, `PipelineStageSupportTest.java` | Phase 1 removed call sites + extracted sanitize |
-| #13 | Scan + eliminate handler→service guard duplication | Walkthrough reveals all handlers |
+| #13 | Scan + eliminate handler→service guard duplication | |
 | #16 | Collapse extraction loop patterns | Option A (sealed interface) |
 | #21 | Scan + eliminate unnecessary intermediate result records | Sequence AFTER #16 |
+
+Items #13, #16, and #21 benefit from the full pipeline walkthrough (tracked in [PROJECT-STATUS](../../../PROJECT-STATUS.md)) but can be approached incrementally — each handler can be analyzed independently.
 
 ### Phase 3 — Structural Changes (separate PRs)
 
@@ -418,9 +416,10 @@ Items surfaced while executing Phase 1 but not falling within its scope. Not seq
 | Phase | Time | Files |
 |-------|------|-------|
 | Phase 1 — Quick wins | ✅ Done | 31 modified, 1 new |
-| Phase 2 — Post-walkthrough | ~150 min | 25+ modified, 15+ deleted |
+| Phase 2 — IngestionService + inline pipeline | ~120 min | 20+ modified, 15+ deleted |
 | Phase 3 — Structural | ~120 min | 20+ modified, 4 new, 1 deleted |
 | Phase 4 — Discovered (unscheduled) | ~60 min | 10+ modified |
-| **Total** | **~330 min** | **60+ modified, 16+ deleted, 5 new** |
+| *Walkthrough (tracked in PROJECT-STATUS)* | *~90 min* | *read-only* |
+| **Total** | **~390 min** | **60+ modified, 16+ deleted, 5 new** |
 
 
