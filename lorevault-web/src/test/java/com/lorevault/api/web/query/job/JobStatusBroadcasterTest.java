@@ -44,7 +44,7 @@ class JobStatusBroadcasterTest {
         UUID bookId = UUID.randomUUID();
         StageCompletedEvent event = new StageCompletedEvent(
                 this, jobId, chapterId, bookId, StageKey.SCENE_SEGMENTATION,
-                StepResult.success(StageKey.SCENE_SEGMENTATION.name(), "Detected 5 scenes", Map.of("scenesDetected", 5), 1234L)
+                StepResult.success(StageKey.SCENE_SEGMENTATION, "Detected 5 scenes", Map.of("scenesDetected", 5), 1234L)
         );
 
         broadcaster.onStageCompleted(event);

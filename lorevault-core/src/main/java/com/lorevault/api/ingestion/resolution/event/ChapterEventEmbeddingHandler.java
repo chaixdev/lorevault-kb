@@ -81,7 +81,7 @@ public class ChapterEventEmbeddingHandler {
             stageRepo.setSkipped(jobId, event.getStage());
             eventPublisher.publishEvent(new StageCompletedEvent(
                     this, jobId, chapterId, event.getStage(),
-                    StepResult.success(event.getStage().name(),
+                    StepResult.success(event.getStage(),
                             "Skipped \u2014 already completed", 0L)));
             log.info("[SKIPPED] Stage {} already completed for chapter {}", event.getStage(), chapterId);
             return;
@@ -164,7 +164,7 @@ public class ChapterEventEmbeddingHandler {
                     reductionResult.referenceLinksWritten()
             );
 
-            result = StepResult.success(StageKey.CHAPTER_EVENT_EMBEDDING.name(),
+            result = StepResult.success(StageKey.CHAPTER_EVENT_EMBEDDING,
                     String.format("Embedded %d events, %d candidate pairs, %d book events created",
                             embeddedCount, candidatePairs.size(), reductionResult.bookEventsCreated()),
                     Map.of(
@@ -181,9 +181,9 @@ public class ChapterEventEmbeddingHandler {
                     jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             result = retryable
-                    ? StepResult.retryableFailure(StageKey.CHAPTER_EVENT_EMBEDDING.name(),
+                    ? StepResult.retryableFailure(StageKey.CHAPTER_EVENT_EMBEDDING,
                             sanitizeMessage(e), elapsed)
-                    : StepResult.failure(StageKey.CHAPTER_EVENT_EMBEDDING.name(),
+                    : StepResult.failure(StageKey.CHAPTER_EVENT_EMBEDDING,
                             sanitizeMessage(e), elapsed);
         }
 

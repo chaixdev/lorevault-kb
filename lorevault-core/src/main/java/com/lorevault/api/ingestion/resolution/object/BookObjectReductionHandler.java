@@ -60,7 +60,7 @@ public class BookObjectReductionHandler implements BookObjectReductionOperation 
             stageRepo.setSkipped(jobId, event.getStage());
             eventPublisher.publishEvent(new StageCompletedEvent(
                     this, jobId, chapterId, bookId, event.getStage(),
-                    StepResult.success(event.getStage().name(),
+                    StepResult.success(event.getStage(),
                             "Skipped — already completed", 0L)));
             log.info("[SKIPPED] Book stage {} already completed for book {}", event.getStage(), bookId);
             return;
@@ -79,7 +79,7 @@ public class BookObjectReductionHandler implements BookObjectReductionOperation 
         if (!bookReductionClaimService.tryAcquireClaim(bookId, CLAIM_LANE)) {
             long elapsed = System.currentTimeMillis() - start;
             log.warn("[BOOK_OBJECT_REDUCTION] Claim contention for bookId={}", bookId);
-            return StepResult.retryableFailure(StageKey.BOOK_OBJECT_REDUCTION.name(),
+            return StepResult.retryableFailure(StageKey.BOOK_OBJECT_REDUCTION,
                     "Claim contention — another worker holds the reduction claim for this book", elapsed);
         }
 
@@ -93,7 +93,7 @@ public class BookObjectReductionHandler implements BookObjectReductionOperation 
                         "[LANE:OBJECT] [BOOK_OBJECT_REDUCTION] Completed: jobId={}, bookId={}, chapterObjectCount={}, bookObjectCount={}",
                         jobId, bookId, response.chapterObjectsProcessed(), response.bookObjectsCreated()
                 );
-                return StepResult.success(StageKey.BOOK_OBJECT_REDUCTION.name(),
+                return StepResult.success(StageKey.BOOK_OBJECT_REDUCTION,
                         String.format("Reduced %d chapter objects into %d book objects",
                                 response.chapterObjectsProcessed(), response.bookObjectsCreated()),
                         Map.of("chapterObjectsProcessed", response.chapterObjectsProcessed(),
@@ -104,7 +104,7 @@ public class BookObjectReductionHandler implements BookObjectReductionOperation 
                         "[LANE:OBJECT] [BOOK_OBJECT_REDUCTION] Skipped: jobId={}, bookId={}, reason={}",
                         jobId, bookId, response.message()
                 );
-                return StepResult.success(StageKey.BOOK_OBJECT_REDUCTION.name(),
+                return StepResult.success(StageKey.BOOK_OBJECT_REDUCTION,
                         "Skipped — " + response.message(),
                         Map.of("chapterObjectsProcessed", response.chapterObjectsProcessed(),
                                 "bookObjectsCreated", response.bookObjectsCreated()),
@@ -115,9 +115,9 @@ public class BookObjectReductionHandler implements BookObjectReductionOperation 
             log.error("[BOOK_OBJECT_REDUCTION] Failed for job={} bookId={}: {}", jobId, bookId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure(StageKey.BOOK_OBJECT_REDUCTION.name(),
+                    ? StepResult.retryableFailure(StageKey.BOOK_OBJECT_REDUCTION,
                             sanitizeMessage(e), elapsed)
-                    : StepResult.failure(StageKey.BOOK_OBJECT_REDUCTION.name(),
+                    : StepResult.failure(StageKey.BOOK_OBJECT_REDUCTION,
                             sanitizeMessage(e), elapsed);
         } finally {
             bookReductionClaimService.releaseClaim(bookId, CLAIM_LANE);

@@ -2,6 +2,7 @@ package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.ingestion.resolution.object.ChapterObjectResolutionOperation;
 
@@ -43,7 +44,7 @@ class ChapterObjectResolutionCommandControllerWebMvcTest {
         when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
         when(chapterObjectResolutionOperation.execute(null, chapterId))
                 .thenReturn(StepResult.success(
-                        "RESOLVE_OBJECTS",
+                        StageKey.CHAPTER_OBJECT_RESOLUTION,
                         "Resolved chapter objects",
                         Map.of("mentionCount", 3, "chapterObjectCount", 2),
                         150L

@@ -129,7 +129,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             stageRepo.setSkipped(jobId, event.getStage());
             eventPublisher.publishEvent(new StageCompletedEvent(
                     this, jobId, chapterId, event.getStage(),
-                    StepResult.success(event.getStage().name(),
+                    StepResult.success(event.getStage(),
                             "Skipped — already completed", 0L)));
             log.info("[SCENE_DETECTION] Skipped — StageOutput already exists for chapter {}", chapterId);
             return;
@@ -178,7 +178,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                         existingScenes.size(), chapterId);
                 // Note: StageCompletedEvent is emitted by the caller
                 long elapsed = System.currentTimeMillis() - start;
-                return StepResult.success(StageKey.SCENE_SEGMENTATION.name(),
+                return StepResult.success(StageKey.SCENE_SEGMENTATION,
                         String.format("Skipped — %d scenes already exist", existingScenes.size()),
                         Map.of("scenesDetected", existingScenes.size()),
                         elapsed);
@@ -247,7 +247,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             // can suppress the cascade.
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(StageKey.SCENE_SEGMENTATION.name(),
+            return StepResult.success(StageKey.SCENE_SEGMENTATION,
                     String.format("Detected %d scenes", scenes.size()),
                     Map.of("scenesDetected", scenes.size()),
                     elapsed);
@@ -257,9 +257,9 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             log.error("[SCENE_DETECTION] Failed for job={} chapter={}: {}", jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ?StepResult.retryableFailure(StageKey.SCENE_SEGMENTATION.name(),
+                    ?StepResult.retryableFailure(StageKey.SCENE_SEGMENTATION,
                     ExceptionSanitizer.sanitizeMessage(e), elapsed)
-                    : StepResult.failure(StageKey.SCENE_SEGMENTATION.name(),
+                    : StepResult.failure(StageKey.SCENE_SEGMENTATION,
                     ExceptionSanitizer.sanitizeMessage(e), elapsed);
         }
     }

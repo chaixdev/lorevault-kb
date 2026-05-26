@@ -88,7 +88,7 @@ public class ChunkingHandler implements ChunkingOperation {
             stageRepo.setSkipped(jobId, event.getStage());
             eventPublisher.publishEvent(new StageCompletedEvent(
                     this, jobId, chapterId, event.getStage(),
-                    StepResult.success(event.getStage().name(),
+                    StepResult.success(event.getStage(),
                             "Skipped — already completed", 0L)));
             log.info("[CHUNKING] Skipped — StageOutput already exists for chapter {}", chapterId);
             return;
@@ -115,7 +115,7 @@ public class ChunkingHandler implements ChunkingOperation {
                 int existingCount = via > 0 ? via : chunkRepo.countByChapterId(chapterId);
                 log.info("[CHUNKING] Found {} existing chunks for chapter {}, skipping", existingCount, chapterId);
                 long elapsed = System.currentTimeMillis() - start;
-                return StepResult.success(StageKey.CHUNKING.name(),
+                return StepResult.success(StageKey.CHUNKING,
                         String.format("Skipped — %d chunks already exist", existingCount),
                         Map.of("chunksCreated", existingCount),
                         elapsed);
@@ -129,7 +129,7 @@ public class ChunkingHandler implements ChunkingOperation {
             if (chapterText == null || chapterText.isEmpty()) {
                 log.warn("[CHUNKING] Chapter {} has no text content", chapterId);
                 long elapsed = System.currentTimeMillis() - start;
-                return StepResult.success(StageKey.CHUNKING.name(), "No text content — 0 chunks created",
+                return StepResult.success(StageKey.CHUNKING, "No text content — 0 chunks created",
                         Map.of("chunksCreated", 0), elapsed);
             }
 
@@ -138,14 +138,14 @@ public class ChunkingHandler implements ChunkingOperation {
             int totalChunks = createChunksFromScenes(chapterText, scenes);
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(StageKey.CHUNKING.name(),
+            return StepResult.success(StageKey.CHUNKING,
                     String.format("Created %d chunks from %d scenes", totalChunks, scenes.size()),
                     Map.of("chunksCreated", totalChunks),
                     elapsed);
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
             log.error("[CHUNKING] Failed for job={} chapter={}: {}", jobId, chapterId, e.getMessage(), e);
-            return StepResult.failure(StageKey.CHUNKING.name(), sanitizeMessage(e), elapsed);
+            return StepResult.failure(StageKey.CHUNKING, sanitizeMessage(e), elapsed);
         }
     }
 

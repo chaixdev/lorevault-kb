@@ -53,7 +53,7 @@ public class ChapterCollectiveResolutionHandler implements ChapterCollectiveReso
             stageRepo.setSkipped(jobId, event.getStage());
             eventPublisher.publishEvent(new StageCompletedEvent(
                     this, jobId, chapterId, event.getStage(),
-                    StepResult.success(event.getStage().name(),
+                    StepResult.success(event.getStage(),
                             "Skipped \u2014 already completed", 0L)));
             log.info("[SKIPPED] Stage {} already completed for chapter {}", event.getStage(), chapterId);
             return;
@@ -102,7 +102,7 @@ public class ChapterCollectiveResolutionHandler implements ChapterCollectiveReso
             }
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(StageKey.CHAPTER_COLLECTIVE_RESOLUTION.name(),
+            return StepResult.success(StageKey.CHAPTER_COLLECTIVE_RESOLUTION,
                     response.message() != null ? response.message() : "Completed",
                     Map.of(
                             "rawCollectivesProcessed", response.rawCollectivesProcessed(),
@@ -113,7 +113,7 @@ public class ChapterCollectiveResolutionHandler implements ChapterCollectiveReso
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
             log.error("[LANE:COLLECTIVE] [CHAPTER_COLLECTIVE_RESOLUTION] Failed: jobId={}, chapterId={}", jobId, chapterId, e);
-            return StepResult.failure(StageKey.CHAPTER_COLLECTIVE_RESOLUTION.name(),
+            return StepResult.failure(StageKey.CHAPTER_COLLECTIVE_RESOLUTION,
                     sanitizeMessage(e), elapsed);
         }
     }

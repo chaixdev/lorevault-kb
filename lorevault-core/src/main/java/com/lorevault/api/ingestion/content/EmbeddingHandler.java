@@ -74,7 +74,7 @@ public class EmbeddingHandler implements EmbeddingOperation {
             stageRepo.setSkipped(jobId, event.getStage());
             eventPublisher.publishEvent(new StageCompletedEvent(
                     this, jobId, chapterId, event.getStage(),
-                    StepResult.success(event.getStage().name(),
+                    StepResult.success(event.getStage(),
                             "Skipped — already completed", 0L)));
             log.info("[EMBEDDING] Skipped — StageOutput already exists for chapter {}", chapterId);
             return;
@@ -100,7 +100,7 @@ public class EmbeddingHandler implements EmbeddingOperation {
                 log.info("[EMBEDDING] Skipping — {} embeddings already exist for chapter {}",
                         existingEmbeddings, chapterId);
                 long elapsed = System.currentTimeMillis() - start;
-                return StepResult.success(StageKey.EMBEDDING.name(),
+                return StepResult.success(StageKey.EMBEDDING,
                         String.format("Skipped — %d embeddings already exist", existingEmbeddings),
                         Map.of("embeddingsGenerated", existingEmbeddings),
                         elapsed);
@@ -113,7 +113,7 @@ public class EmbeddingHandler implements EmbeddingOperation {
                     chapterId, embeddedCount);
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(StageKey.EMBEDDING.name(),
+            return StepResult.success(StageKey.EMBEDDING,
                     String.format("Generated embeddings for %d chunks", embeddedCount),
                     Map.of("embeddingsGenerated", embeddedCount),
                     elapsed);
@@ -122,9 +122,9 @@ public class EmbeddingHandler implements EmbeddingOperation {
             log.error("[EMBEDDING] Failed for job={} chapter={}: {}", jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure(StageKey.EMBEDDING.name(),
+                    ? StepResult.retryableFailure(StageKey.EMBEDDING,
                             sanitizeMessage(e), elapsed)
-                    : StepResult.failure(StageKey.EMBEDDING.name(),
+                    : StepResult.failure(StageKey.EMBEDDING,
                             sanitizeMessage(e), elapsed);
         }
     }

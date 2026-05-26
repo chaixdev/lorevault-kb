@@ -2,6 +2,7 @@ package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.ingestion.resolution.collective.ChapterCollectiveResolutionOperation;
 
@@ -43,7 +44,7 @@ class ChapterCollectiveResolutionCommandControllerWebMvcTest {
         when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
         when(chapterCollectiveResolutionOperation.execute(null, chapterId))
                 .thenReturn(StepResult.success(
-                        "RESOLVE_COLLECTIVES",
+                        StageKey.CHAPTER_COLLECTIVE_RESOLUTION,
                         "Resolved chapter collectives",
                         Map.of("mentionCount", 3, "chapterCollectiveCount", 2),
                         150L

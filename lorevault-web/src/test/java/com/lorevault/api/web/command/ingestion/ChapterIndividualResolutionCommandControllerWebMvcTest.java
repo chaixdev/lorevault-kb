@@ -2,6 +2,7 @@ package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionOperation;
 
@@ -43,7 +44,7 @@ class ChapterIndividualResolutionCommandControllerWebMvcTest {
         when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
         when(chapterIndividualResolutionOperation.execute(null, chapterId))
                 .thenReturn(StepResult.success(
-                        "RESOLVE_INDIVIDUALS",
+                        StageKey.CHAPTER_INDIVIDUAL_RESOLUTION,
                         "Resolved chapter individual mentions",
                         Map.of("mentionCount", 3, "chapterIndividualCount", 2),
                         150L

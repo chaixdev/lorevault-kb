@@ -3,6 +3,8 @@ package com.lorevault.api.ingestion.pipeline;
 import java.util.Collections;
 import java.util.Map;
 
+import com.lorevault.api.ingestion.pipeline.StageKey;
+
 /**
  * Result of a single pipeline step execution.
  *
@@ -11,7 +13,7 @@ import java.util.Map;
  * which are captured in the {@link #counts} map.
  *
  * @param success     whether the step completed without error
- * @param stepName    logical step name (e.g., "SCENE_DETECTION")
+ * @param stepName    the pipeline stage key identifying this step
  * @param summary     human-readable summary of what happened
  * @param counts      step-specific integer metrics (e.g., "scenesDetected" → 5)
  * @param durationMs  wall-clock time in milliseconds
@@ -19,7 +21,7 @@ import java.util.Map;
  */
 public record StepResult(
         boolean success,
-        String stepName,
+        StageKey stepName,
         String summary,
         Map<String, Integer> counts,
         long durationMs,
@@ -30,22 +32,22 @@ public record StepResult(
     }
 
     /** Create a successful result with counts. */
-    public static StepResult success(String stepName, String summary, Map<String, Integer> counts, long durationMs) {
+    public static StepResult success(StageKey stepName, String summary, Map<String, Integer> counts, long durationMs) {
         return new StepResult(true, stepName, summary, counts, durationMs, false);
     }
 
     /** Create a successful result with no counts. */
-    public static StepResult success(String stepName, String summary, long durationMs) {
+    public static StepResult success(StageKey stepName, String summary, long durationMs) {
         return new StepResult(true, stepName, summary, Collections.emptyMap(), durationMs, false);
     }
 
     /** Create a failure result (non-retryable by default). */
-    public static StepResult failure(String stepName, String summary, long durationMs) {
+    public static StepResult failure(StageKey stepName, String summary, long durationMs) {
         return new StepResult(false, stepName, summary, Collections.emptyMap(), durationMs, false);
     }
 
     /** Create a retryable failure result. */
-    public static StepResult retryableFailure(String stepName, String summary, long durationMs) {
+    public static StepResult retryableFailure(StageKey stepName, String summary, long durationMs) {
         return new StepResult(false, stepName, summary, Collections.emptyMap(), durationMs, true);
     }
 }

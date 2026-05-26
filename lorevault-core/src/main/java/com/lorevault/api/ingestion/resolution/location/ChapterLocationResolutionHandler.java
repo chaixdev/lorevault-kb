@@ -53,7 +53,7 @@ public class ChapterLocationResolutionHandler implements ChapterLocationResoluti
             stageRepo.setSkipped(jobId, event.getStage());
             eventPublisher.publishEvent(new StageCompletedEvent(
                     this, jobId, chapterId, event.getStage(),
-                    StepResult.success(event.getStage().name(),
+                    StepResult.success(event.getStage(),
                             "Skipped \u2014 already completed", 0L)));
             log.info("[SKIPPED] Stage {} already completed for chapter {}", event.getStage(), chapterId);
             return;
@@ -96,7 +96,7 @@ public class ChapterLocationResolutionHandler implements ChapterLocationResoluti
             }
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(StageKey.CHAPTER_LOCATION_RESOLUTION.name(),
+            return StepResult.success(StageKey.CHAPTER_LOCATION_RESOLUTION,
                     response.message() != null ? response.message() : "Completed",
                     Map.of(
                             "rawLocationsProcessed", response.rawLocationsProcessed(),
@@ -107,7 +107,7 @@ public class ChapterLocationResolutionHandler implements ChapterLocationResoluti
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
             log.error("[LANE:LOCATION] [CHAPTER_LOCATION_RESOLUTION] Failed: jobId={}, chapterId={}", jobId, chapterId, e);
-            return StepResult.failure(StageKey.CHAPTER_LOCATION_RESOLUTION.name(),
+            return StepResult.failure(StageKey.CHAPTER_LOCATION_RESOLUTION,
                     sanitizeMessage(e), elapsed);
         }
     }

@@ -80,7 +80,7 @@ public class ChapterEventResolutionHandler implements ChapterEventResolutionOper
             stageRepo.setSkipped(jobId, event.getStage());
             eventPublisher.publishEvent(new StageCompletedEvent(
                     this, jobId, chapterId, event.getStage(),
-                    StepResult.success(event.getStage().name(),
+                    StepResult.success(event.getStage(),
                             "Skipped \u2014 already completed", 0L)));
             log.info("[SKIPPED] Stage {} already completed for chapter {}", event.getStage(), chapterId);
             return;
@@ -117,7 +117,7 @@ public class ChapterEventResolutionHandler implements ChapterEventResolutionOper
                     chapterEventResolutionService.resolveChapter(chapterId);
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(StageKey.CHAPTER_EVENT_RESOLUTION.name(),
+            return StepResult.success(StageKey.CHAPTER_EVENT_RESOLUTION,
                     String.format("Coref: %d windows, %d links; Aggregation: %d events from %d mentions",
                             corefResult.windowsRun(), corefResult.linksCreated(),
                             aggregationResult.chapterEventsCreated(),
@@ -137,9 +137,9 @@ public class ChapterEventResolutionHandler implements ChapterEventResolutionOper
                     jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure(StageKey.CHAPTER_EVENT_RESOLUTION.name(),
+                    ? StepResult.retryableFailure(StageKey.CHAPTER_EVENT_RESOLUTION,
                             sanitizeMessage(e), elapsed)
-                    : StepResult.failure(StageKey.CHAPTER_EVENT_RESOLUTION.name(),
+                    : StepResult.failure(StageKey.CHAPTER_EVENT_RESOLUTION,
                             sanitizeMessage(e), elapsed);
         }
     }
