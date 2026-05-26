@@ -23,7 +23,6 @@ import java.util.UUID;
 
 /**
  * Client responsible for making AI calls for scene detection.
- * Supports both single-pass (legacy) and two-pass scene detection workflows.
  * Encapsulates the AI model configuration, prompt loading, and retry logic.
  */
 @Component
@@ -92,20 +91,6 @@ public class LlmClient {
         );
     }
 
-    public String detectScenesTwoPass(UUID jobId, String chapterText) {
-        String segmentationModelId = getModelIdForStage(StageKey.SCENE_SEGMENTATION);
-        log.debug("[LLM] Starting two-stage scene detection: inputLength={} chars, segmentationModel={}", 
-                 chapterText == null ? 0 : chapterText.length(), segmentationModelId);
-        
-        String segmentationResult = detectChapterSegmentation(jobId, chapterText);
-        log.debug("[LLM] Chapter segmentation completed, result length={} chars", segmentationResult.length());
-        
-        String analysisResult = detectSceneAnalysis(jobId, segmentationResult);
-        log.debug("[LLM] Scene analysis completed, final result length={} chars", analysisResult.length());
-        
-        return analysisResult;
-    }
-
     public String detectChapterSegmentation(UUID jobId, String chapterText) {
         PromptTemplate template = promptRepository.get(PromptName.CHAPTER_SEGMENTATION);
         String systemPrompt = template.render(Map.of());
@@ -116,18 +101,6 @@ public class LlmClient {
         String actualModelId = getModelIdForStage(StageKey.SCENE_SEGMENTATION);
         
         return executeSceneDetectionCall(jobId, StageKey.SCENE_SEGMENTATION, systemPrompt, chapterText, chatClient, actualModelId);
-    }
-
-    public String detectSceneAnalysis(UUID jobId, String segmentationXmlResult) {
-        PromptTemplate template = promptRepository.get(PromptName.SCENE_ANALYSIS);
-        String systemPrompt = template.render(Map.of());
-        
-        String modelSlotStr = promptProperties.getSceneAnalysisModel();
-        ModelSlot modelSlot = ModelSlot.NLP_BIG.slotName().equals(modelSlotStr) ? ModelSlot.NLP_BIG : ModelSlot.NLP_SMALL;
-        ChatClient chatClient = getChatClientForModel(modelSlot);
-        String actualModelId = getModelIdForStage(StageKey.CHAPTER_EVENT_RESOLUTION);
-        
-        return executeSceneDetectionCall(jobId, StageKey.SCENE_SEGMENTATION, systemPrompt, segmentationXmlResult, chatClient, actualModelId);
     }
 
     public <T> T detectSceneAnalysisTriad(UUID jobId, String systemPrompt, Map<String, Object> userVariables, Class<T> responseType) {
@@ -214,20 +187,6 @@ public class LlmClient {
     }
 
     /**
-     * Legacy method: single-pass scene detection using the v2 prompt.
-     * 
-     * @param chapterText The full chapter text to analyze
-     * @return Raw XML response from the AI model
-     * @throws RuntimeException if all retry attempts fail
-     */
-    public String detectScenes(String chapterText) {
-        PromptTemplate template = promptRepository.get(PromptName.SCENE_ANALYSIS);
-        String systemPrompt = template.render(Map.of());
-        
-        return executeSceneDetectionCall(null, StageKey.SCENE_SEGMENTATION, systemPrompt, chapterText, nlpSmallChatClient, nlpSmallModelId);
-    }
-
-    /**
      * Get the appropriate ChatClient for the specified model slot.
      */
     private ChatClient getChatClientForModel(ModelSlot modelSlot) {
@@ -254,11 +213,10 @@ public class LlmClient {
 
     /**
      * Execute a scene detection call with retry logic.
-     * Common implementation for both stages and legacy single-pass.
-     * 
-     * @param step Descriptive name for logging (e.g., "chapter-segmentation", "scene-analysis", "scene-detection-single-pass")
+     *
+     * @param step Descriptive name for logging (e.g., "chapter-segmentation")
      * @param systemPrompt The system prompt to use
-     * @param userInput The user input (chapter text or chapter segmentation results)
+     * @param userInput The user input (chapter text)
      * @param chatClient The ChatClient to use for this call
      * @param modelId The model ID for logging
      * @return Raw XML response from the AI model

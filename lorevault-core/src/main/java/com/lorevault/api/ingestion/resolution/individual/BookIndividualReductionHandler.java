@@ -6,6 +6,7 @@ import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
 import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
 import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
@@ -22,7 +23,6 @@ import java.util.UUID;
 @Slf4j
 public class BookIndividualReductionHandler implements BookIndividualReductionOperation {
 
-    static final String STAGE_BOOK_INDIVIDUAL_REDUCTION = "BOOK_INDIVIDUAL_REDUCTION";
     private static final String CLAIM_LANE = "BOOK_INDIVIDUAL_REDUCTION";
 
     private final BookIndividualReductionService bookIndividualReductionService;
@@ -79,7 +79,7 @@ public class BookIndividualReductionHandler implements BookIndividualReductionOp
         if (!bookReductionClaimService.tryAcquireClaim(bookId, CLAIM_LANE)) {
             long elapsed = System.currentTimeMillis() - start;
             log.warn("[BOOK_INDIVIDUAL_REDUCTION] Claim contention for bookId={}", bookId);
-            return StepResult.retryableFailure(STAGE_BOOK_INDIVIDUAL_REDUCTION,
+            return StepResult.retryableFailure(StageKey.BOOK_INDIVIDUAL_REDUCTION.name(),
                     "Claim contention — another worker holds the reduction claim for this book", elapsed);
         }
 
@@ -93,7 +93,7 @@ public class BookIndividualReductionHandler implements BookIndividualReductionOp
                         "[LANE:INDIVIDUAL] [BOOK_INDIVIDUAL_REDUCTION] Completed: jobId={}, bookId={}, chapterIndividualCount={}, bookIndividualCount={}",
                         jobId, bookId, response.chapterIndividualsProcessed(), response.bookIndividualsCreated()
                 );
-                return StepResult.success(STAGE_BOOK_INDIVIDUAL_REDUCTION,
+                return StepResult.success(StageKey.BOOK_INDIVIDUAL_REDUCTION.name(),
                         String.format("Reduced %d chapter individuals into %d book individuals",
                                 response.chapterIndividualsProcessed(), response.bookIndividualsCreated()),
                         Map.of("chapterIndividualsProcessed", response.chapterIndividualsProcessed(),
@@ -104,7 +104,7 @@ public class BookIndividualReductionHandler implements BookIndividualReductionOp
                         "[LANE:INDIVIDUAL] [BOOK_INDIVIDUAL_REDUCTION] Skipped: jobId={}, bookId={}, reason={}",
                         jobId, bookId, response.message()
                 );
-                return StepResult.success(STAGE_BOOK_INDIVIDUAL_REDUCTION,
+                return StepResult.success(StageKey.BOOK_INDIVIDUAL_REDUCTION.name(),
                         "Skipped — " + response.message(),
                         Map.of("chapterIndividualsProcessed", response.chapterIndividualsProcessed(),
                                 "bookIndividualsCreated", response.bookIndividualsCreated()),
@@ -115,9 +115,9 @@ public class BookIndividualReductionHandler implements BookIndividualReductionOp
             log.error("[BOOK_INDIVIDUAL_REDUCTION] Failed for job={} bookId={}: {}", jobId, bookId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure(STAGE_BOOK_INDIVIDUAL_REDUCTION,
+                    ? StepResult.retryableFailure(StageKey.BOOK_INDIVIDUAL_REDUCTION.name(),
                             sanitizeMessage(e), elapsed)
-                    : StepResult.failure(STAGE_BOOK_INDIVIDUAL_REDUCTION,
+                    : StepResult.failure(StageKey.BOOK_INDIVIDUAL_REDUCTION.name(),
                             sanitizeMessage(e), elapsed);
         } finally {
             bookReductionClaimService.releaseClaim(bookId, CLAIM_LANE);

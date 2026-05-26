@@ -20,6 +20,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Node("Chunk")
 public class Chunk {
+    public static final String VECTOR_INDEX_NAME = "chunk_embedding_idx";
+
     @Id
     private UUID id;
 

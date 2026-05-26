@@ -23,6 +23,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import static com.lorevault.api.common.error.ExceptionSanitizer.safeMessage;
 import static com.lorevault.api.ingestion.infrastructure.HashUtils.generateSha256Hash;
 
 /**
@@ -203,11 +204,6 @@ public class IngestionService {
                     .build();
             throw new ChapterPersistenceException(failure, e);
         }
-    }
-
-    private String safeMessage(Exception exception) {
-        String message = exception.getMessage();
-        return message != null ? message : exception.getClass().getSimpleName();
     }
 
     private Chapter buildChapter(UUID bookId, Integer chapterNumber, String chapterTitle, String chapterText, String contentHash) {

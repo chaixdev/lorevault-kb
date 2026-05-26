@@ -1,5 +1,7 @@
 package com.lorevault.api.ingestion.job;
 
+import static com.lorevault.api.common.error.ExceptionSanitizer.safeMessage;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -39,13 +41,6 @@ public record IngestionFailure(
 
     public static Builder builder(String code, String message) {
         return new Builder(code, message);
-    }
-
-    private static String safeMessage(Exception exception) {
-        if (exception == null) {
-            return "Unknown ingestion failure";
-        }
-        return exception.getMessage() != null ? exception.getMessage() : exception.getClass().getSimpleName();
     }
 
     private static void putIfPresent(Map<String, Object> props, String key, Object value) {

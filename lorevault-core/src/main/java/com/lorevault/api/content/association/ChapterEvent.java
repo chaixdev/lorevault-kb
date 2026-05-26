@@ -41,4 +41,6 @@ public record ChapterEvent(
         String embeddingHash,
         /** Timestamp when the embedding was last (re)computed. */
         LocalDateTime embeddedAt
-) {}
+) {
+    public static final String VECTOR_INDEX_NAME = "chapter_event_embedding_idx";
+}

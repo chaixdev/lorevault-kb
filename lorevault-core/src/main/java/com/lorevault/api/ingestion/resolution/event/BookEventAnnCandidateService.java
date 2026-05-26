@@ -33,8 +33,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class BookEventAnnCandidateService {
 
-    private static final String VECTOR_INDEX_NAME = "chapter_event_embedding_idx";
-
     private final Neo4jClient neo4jClient;
     private final BookEventAnnProperties annProperties;
 
@@ -109,7 +107,7 @@ public class BookEventAnnCandidateService {
                         ORDER BY score DESC
                         LIMIT $topK
                         """)
-                    .bind(VECTOR_INDEX_NAME).to("indexName")
+                    .bind(ChapterEvent.VECTOR_INDEX_NAME).to("indexName")
                     .bind(limit).to("limit")
                     .bind(embeddingList).to("embedding")
                     .bind(source.id().toString()).to("sourceId")

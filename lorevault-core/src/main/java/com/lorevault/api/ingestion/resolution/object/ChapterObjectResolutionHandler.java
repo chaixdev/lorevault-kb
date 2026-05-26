@@ -6,6 +6,7 @@ import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
 import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import java.util.Map;
 import java.util.UUID;
@@ -18,8 +19,6 @@ import org.springframework.context.event.EventListener;
 @Component
 @Slf4j
 public class ChapterObjectResolutionHandler implements ChapterObjectResolutionOperation {
-
-    static final String STAGE_CHAPTER_OBJECT_RESOLUTION = "CHAPTER_OBJECT_RESOLUTION";
 
     private final ChapterObjectResolutionService chapterObjectResolutionService;
     private final ApplicationEventPublisher eventPublisher;
@@ -103,7 +102,7 @@ public class ChapterObjectResolutionHandler implements ChapterObjectResolutionOp
             }
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(STAGE_CHAPTER_OBJECT_RESOLUTION,
+            return StepResult.success(StageKey.CHAPTER_OBJECT_RESOLUTION.name(),
                     response.message() != null ? response.message() : "Completed",
                     Map.of(
                             "rawObjectsProcessed", response.rawObjectsProcessed(),
@@ -114,7 +113,7 @@ public class ChapterObjectResolutionHandler implements ChapterObjectResolutionOp
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
             log.error("[LANE:OBJECT] [CHAPTER_OBJECT_RESOLUTION] Failed: jobId={}, chapterId={}", jobId, chapterId, e);
-            return StepResult.failure(STAGE_CHAPTER_OBJECT_RESOLUTION,
+            return StepResult.failure(StageKey.CHAPTER_OBJECT_RESOLUTION.name(),
                     sanitizeMessage(e), elapsed);
         }
     }

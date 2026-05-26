@@ -6,6 +6,7 @@ import com.lorevault.api.ai.llm.LlmRetryStrategy.LlmRetryResult;
 import com.lorevault.api.ai.llm.LlmClient;
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.ingestion.job.IngestionFailure;
+import static com.lorevault.api.common.error.ExceptionSanitizer.safeMessage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -54,7 +55,7 @@ public class SceneDetectionService {
             }
             throw buildSceneDetectionFailure(
                     "SCENE_DETECTION_FAILED",
-                    "Scene detection failed: " + safeMessage(e),
+                    "Scene detection failed: " + safeMessage((Exception) e),
                     chapterId,
                     e
             );
@@ -92,7 +93,7 @@ public class SceneDetectionService {
             }
             throw buildSceneDetectionFailure(
                     "SCENE_DETECTION_FAILED",
-                    "Scene detection failed: " + safeMessage(e),
+                    "Scene detection failed: " + safeMessage((Exception) e),
                     chapterId,
                     e
             );
@@ -220,14 +221,6 @@ public class SceneDetectionService {
                 .detail("chapterId", chapterId)
                 .build();
         return new SceneDetectionException(failure, cause);
-    }
-
-    private String safeMessage(Throwable throwable) {
-        if (throwable == null) {
-            return "Unknown scene detection failure";
-        }
-        String message = throwable.getMessage();
-        return message != null ? message : throwable.getClass().getSimpleName();
     }
 
     private boolean isKnownRetryableMessage(String message) {

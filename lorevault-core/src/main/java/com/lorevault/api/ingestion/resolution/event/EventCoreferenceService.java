@@ -8,6 +8,7 @@ import com.lorevault.api.content.mention.EventMention;
 import com.lorevault.api.content.mention.EventMentionGraphRepository;
 import com.lorevault.api.ingestion.job.IngestionFailure;
 import com.lorevault.api.ingestion.job.IngestionFailureCarrier;
+import static com.lorevault.api.common.error.ExceptionSanitizer.safeMessage;
 import jakarta.annotation.Nullable;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -112,7 +113,7 @@ public class EventCoreferenceService {
                 failureCount++;
                 failedWindows.add(windowSceneIds);
                 log.warn("[EVENT_COREF] Window failed: chapterId={}, jobId={}, windowIndex={}, windowScenes={}, error={}",
-                        chapterId, jobId, windowIndex, windowSceneIds, safeMessage(ex));
+                        chapterId, jobId, windowIndex, windowSceneIds, safeMessage((Exception) ex));
                 log.debug("[EVENT_COREF] Window failure details: chapterId={}, jobId={}, windowIndex={}",
                         chapterId, jobId, windowIndex, ex);
             }
@@ -337,13 +338,6 @@ public class EventCoreferenceService {
 
     private String formatWindowRange(List<UUID> windowSceneIds) {
         return windowSceneIds.stream().map(UUID::toString).collect(Collectors.joining("->"));
-    }
-
-    private String safeMessage(Throwable throwable) {
-        if (throwable == null || throwable.getMessage() == null) {
-            return "unknown";
-        }
-        return throwable.getMessage();
     }
 
     public static final class EventCoreferenceException extends RuntimeException implements IngestionFailureCarrier {

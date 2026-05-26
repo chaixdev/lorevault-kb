@@ -5,6 +5,7 @@ import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.ai.llm.LlmClient;
 import com.lorevault.api.content.association.ChapterEvent;
+import static com.lorevault.api.common.error.ExceptionSanitizer.safeMessage;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -78,7 +79,7 @@ public class BookEventMergeVerificationService {
                         chapterId,
                         pair.eventId1(),
                         pair.eventId2(),
-                        safeMessage(ex)
+                        safeMessage((Exception) ex)
                 );
                 response = null;
             }
@@ -200,10 +201,4 @@ public class BookEventMergeVerificationService {
         return confidence;
     }
 
-    private String safeMessage(Throwable throwable) {
-        if (throwable == null || throwable.getMessage() == null) {
-            return "unknown";
-        }
-        return throwable.getMessage();
-    }
 }

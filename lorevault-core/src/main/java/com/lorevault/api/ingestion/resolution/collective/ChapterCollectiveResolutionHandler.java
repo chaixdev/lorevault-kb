@@ -6,6 +6,7 @@ import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
 import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import java.util.Map;
 import java.util.UUID;
@@ -18,8 +19,6 @@ import org.springframework.context.event.EventListener;
 @Component
 @Slf4j
 public class ChapterCollectiveResolutionHandler implements ChapterCollectiveResolutionOperation {
-
-    static final String STAGE_CHAPTER_COLLECTIVE_RESOLUTION = "CHAPTER_COLLECTIVE_RESOLUTION";
 
     private final ChapterCollectiveResolutionService chapterCollectiveResolutionService;
     private final ApplicationEventPublisher eventPublisher;
@@ -103,7 +102,7 @@ public class ChapterCollectiveResolutionHandler implements ChapterCollectiveReso
             }
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(STAGE_CHAPTER_COLLECTIVE_RESOLUTION,
+            return StepResult.success(StageKey.CHAPTER_COLLECTIVE_RESOLUTION.name(),
                     response.message() != null ? response.message() : "Completed",
                     Map.of(
                             "rawCollectivesProcessed", response.rawCollectivesProcessed(),
@@ -114,7 +113,7 @@ public class ChapterCollectiveResolutionHandler implements ChapterCollectiveReso
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
             log.error("[LANE:COLLECTIVE] [CHAPTER_COLLECTIVE_RESOLUTION] Failed: jobId={}, chapterId={}", jobId, chapterId, e);
-            return StepResult.failure(STAGE_CHAPTER_COLLECTIVE_RESOLUTION,
+            return StepResult.failure(StageKey.CHAPTER_COLLECTIVE_RESOLUTION.name(),
                     sanitizeMessage(e), elapsed);
         }
     }

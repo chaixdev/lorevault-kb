@@ -38,10 +38,6 @@ import org.springframework.context.event.EventListener;
 @Slf4j
 public class ChapterEventResolutionHandler implements ChapterEventResolutionOperation {
 
-    static final String STAGE_EVENT_COREF = "EVENT_COREF";
-    static final String STAGE_CHAPTER_EVENT_AGGREGATION = "CHAPTER_EVENT_AGGREGATION";
-    static final String STAGE_EVENT_RESOLUTION_PUBLISH = "EVENT_RESOLUTION_PUBLISH";
-
     private final EventCoreferenceService eventCoreferenceService;
     private final ChapterEventResolutionService chapterEventResolutionService;
     private final SceneGraphRepository sceneRepo;

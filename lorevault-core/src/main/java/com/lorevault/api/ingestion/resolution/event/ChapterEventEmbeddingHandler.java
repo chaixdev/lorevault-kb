@@ -5,6 +5,7 @@ import com.lorevault.api.content.association.ChapterEvent;
 import com.lorevault.api.ai.embedding.EmbeddingGenerationException;
 import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.ingestion.events.StageCompletedEvent;
 import com.lorevault.api.ingestion.events.StageTriggeredEvent;
@@ -34,8 +35,6 @@ import org.springframework.context.event.EventListener;
 public class ChapterEventEmbeddingHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ChapterEventEmbeddingHandler.class);
-
-    static final String STAGE_EVENT_EMBEDDING = "EVENT_EMBEDDING";
 
     private final ChapterEventEmbeddingService embeddingService;
     private final ChapterEventEmbeddingTransactionSupport txSupport;
@@ -165,7 +164,7 @@ public class ChapterEventEmbeddingHandler {
                     reductionResult.referenceLinksWritten()
             );
 
-            result = StepResult.success(STAGE_EVENT_EMBEDDING,
+            result = StepResult.success(StageKey.CHAPTER_EVENT_EMBEDDING.name(),
                     String.format("Embedded %d events, %d candidate pairs, %d book events created",
                             embeddedCount, candidatePairs.size(), reductionResult.bookEventsCreated()),
                     Map.of(
@@ -182,9 +181,9 @@ public class ChapterEventEmbeddingHandler {
                     jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             result = retryable
-                    ? StepResult.retryableFailure(STAGE_EVENT_EMBEDDING,
+                    ? StepResult.retryableFailure(StageKey.CHAPTER_EVENT_EMBEDDING.name(),
                             sanitizeMessage(e), elapsed)
-                    : StepResult.failure(STAGE_EVENT_EMBEDDING,
+                    : StepResult.failure(StageKey.CHAPTER_EVENT_EMBEDDING.name(),
                             sanitizeMessage(e), elapsed);
         }
 
