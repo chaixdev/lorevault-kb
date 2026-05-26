@@ -3,7 +3,7 @@ package com.lorevault.api.ingestion.resolution.event;
 import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.content.association.ChapterEvent;
 import com.lorevault.api.ai.embedding.EmbeddingGenerationException;
-import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.ingestion.events.StageCompletedEvent;

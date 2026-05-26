@@ -214,79 +214,21 @@ public class SceneRelationshipAnalysisService {
 
             int sceneIndex = t.current().getSceneIndex() == null ? -1 : t.current().getSceneIndex();
             if (sceneIndex >= 0) {
-                List<TriadAnalysisModels.IndividualExtraction> triadIndividuals = normalizeIndividuals(normalized);
-                if (!triadIndividuals.isEmpty()) {
-                    extractedIndividualsBySceneIndex
-                            .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
-                            .addAll(triadIndividuals);
-                }
-
-                List<TriadAnalysisModels.LocationExtraction> triadLocations = normalizeLocations(normalized);
-                if (!triadLocations.isEmpty()) {
-                    extractedLocationsBySceneIndex
-                            .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
-                            .addAll(triadLocations);
-                }
-
-                List<TriadAnalysisModels.ObjectExtraction> triadObjects = normalizeObjects(normalized);
-                if (!triadObjects.isEmpty()) {
-                    extractedObjectsBySceneIndex
-                            .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
-                            .addAll(triadObjects);
-                }
-
-                List<TriadAnalysisModels.CollectiveExtraction> triadCollectives = normalizeCollectives(normalized);
-                if (!triadCollectives.isEmpty()) {
-                    extractedCollectivesBySceneIndex
-                            .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
-                            .addAll(triadCollectives);
-                }
-
-                List<TriadAnalysisModels.EventExtraction> triadEvents = normalizeEvents(normalized);
-                if (!triadEvents.isEmpty()) {
-                    extractedEventsBySceneIndex
-                            .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
-                            .addAll(triadEvents);
-                }
-
-                List<TriadAnalysisModels.RelationClaimExtraction> triadRelationClaims = normalizeRelationClaims(normalized);
-                if (!triadRelationClaims.isEmpty()) {
-                    extractedRelationClaimsBySceneIndex
-                            .computeIfAbsent(sceneIndex, key -> new ArrayList<>())
-                            .addAll(triadRelationClaims);
-                }
+                mergeIfNotEmpty(extractedIndividualsBySceneIndex, sceneIndex, normalizeIndividuals(normalized));
+                mergeIfNotEmpty(extractedLocationsBySceneIndex, sceneIndex, normalizeLocations(normalized));
+                mergeIfNotEmpty(extractedObjectsBySceneIndex, sceneIndex, normalizeObjects(normalized));
+                mergeIfNotEmpty(extractedCollectivesBySceneIndex, sceneIndex, normalizeCollectives(normalized));
+                mergeIfNotEmpty(extractedEventsBySceneIndex, sceneIndex, normalizeEvents(normalized));
+                mergeIfNotEmpty(extractedRelationClaimsBySceneIndex, sceneIndex, normalizeRelationClaims(normalized));
             }
         }
 
-        List<TriadAnalysisModels.SceneIndividualExtraction> sceneExtractions = extractedIndividualsBySceneIndex.entrySet().stream()
-                .map(e -> new TriadAnalysisModels.SceneIndividualExtraction(e.getKey(), List.copyOf(e.getValue())))
-                .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneIndividualExtraction::sceneIndex))
-                .toList();
-
-        List<TriadAnalysisModels.SceneLocationExtraction> sceneLocationExtractions = extractedLocationsBySceneIndex.entrySet().stream()
-                .map(e -> new TriadAnalysisModels.SceneLocationExtraction(e.getKey(), List.copyOf(e.getValue())))
-                .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneLocationExtraction::sceneIndex))
-                .toList();
-
-        List<TriadAnalysisModels.SceneCollectiveExtraction> sceneCollectiveExtractions = extractedCollectivesBySceneIndex.entrySet().stream()
-                .map(e -> new TriadAnalysisModels.SceneCollectiveExtraction(e.getKey(), List.copyOf(e.getValue())))
-                .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneCollectiveExtraction::sceneIndex))
-                .toList();
-
-        List<TriadAnalysisModels.SceneObjectExtraction> sceneObjectExtractions = extractedObjectsBySceneIndex.entrySet().stream()
-                .map(e -> new TriadAnalysisModels.SceneObjectExtraction(e.getKey(), List.copyOf(e.getValue())))
-                .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneObjectExtraction::sceneIndex))
-                .toList();
-
-        List<TriadAnalysisModels.SceneEventExtraction> sceneEventExtractions = extractedEventsBySceneIndex.entrySet().stream()
-                .map(e -> new TriadAnalysisModels.SceneEventExtraction(e.getKey(), List.copyOf(e.getValue())))
-                .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneEventExtraction::sceneIndex))
-                .toList();
-
-        List<TriadAnalysisModels.SceneRelationClaimExtraction> sceneRelationClaimExtractions = extractedRelationClaimsBySceneIndex.entrySet().stream()
-                .map(e -> new TriadAnalysisModels.SceneRelationClaimExtraction(e.getKey(), List.copyOf(e.getValue())))
-                .sorted(java.util.Comparator.comparingInt(TriadAnalysisModels.SceneRelationClaimExtraction::sceneIndex))
-                .toList();
+        List<TriadAnalysisModels.SceneIndividualExtraction> sceneExtractions = coalesce(extractedIndividualsBySceneIndex, TriadAnalysisModels.SceneIndividualExtraction::new);
+        List<TriadAnalysisModels.SceneLocationExtraction> sceneLocationExtractions = coalesce(extractedLocationsBySceneIndex, TriadAnalysisModels.SceneLocationExtraction::new);
+        List<TriadAnalysisModels.SceneCollectiveExtraction> sceneCollectiveExtractions = coalesce(extractedCollectivesBySceneIndex, TriadAnalysisModels.SceneCollectiveExtraction::new);
+        List<TriadAnalysisModels.SceneObjectExtraction> sceneObjectExtractions = coalesce(extractedObjectsBySceneIndex, TriadAnalysisModels.SceneObjectExtraction::new);
+        List<TriadAnalysisModels.SceneEventExtraction> sceneEventExtractions = coalesce(extractedEventsBySceneIndex, TriadAnalysisModels.SceneEventExtraction::new);
+        List<TriadAnalysisModels.SceneRelationClaimExtraction> sceneRelationClaimExtractions = coalesce(extractedRelationClaimsBySceneIndex, TriadAnalysisModels.SceneRelationClaimExtraction::new);
 
         return new TriadAnalysisModels.SceneRelationshipOutcome(
                 analyses,
@@ -696,6 +638,24 @@ public class SceneRelationshipAnalysisService {
                 .detail("nextSceneId", triad.next() != null ? triad.next().getEventId() : null);
 
         return new TriadAnalysisException(builder.build());
+    }
+
+    private static <T> void mergeIfNotEmpty(Map<Integer, List<T>> bucket, int sceneIndex, List<T> items) {
+        if (!items.isEmpty()) {
+            bucket.computeIfAbsent(sceneIndex, k -> new ArrayList<>()).addAll(items);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <E, T> List<T> coalesce(
+            Map<Integer, List<E>> bucket,
+            java.util.function.BiFunction<Integer, List<E>, T> constructor) {
+        return bucket.entrySet().stream()
+                .map(e -> constructor.apply(e.getKey(), List.copyOf(e.getValue())))
+                .sorted((a, b) -> Integer.compare(
+                        ((TriadAnalysisModels.SceneExtraction) a).sceneIndex(),
+                        ((TriadAnalysisModels.SceneExtraction) b).sceneIndex()))
+                .toList();
     }
 
     private boolean isBlank(String value) {

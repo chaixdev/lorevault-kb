@@ -1,7 +1,7 @@
 package com.lorevault.api.ingestion.resolution.event;
 
 import com.lorevault.api.ai.llm.EventCorefModels;
-import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
 import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
@@ -10,7 +10,6 @@ import com.lorevault.api.ingestion.events.StageTriggeredEvent;
 import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
 import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 
-import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.scene.Scene;
 import com.lorevault.api.content.scene.SceneGraphRepository;

@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 import static com.lorevault.api.ingestion.infrastructure.HashUtils.generateSha256Hash;
 
 /**

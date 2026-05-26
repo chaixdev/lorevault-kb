@@ -8,6 +8,16 @@ public final class TriadAnalysisModels {
     private TriadAnalysisModels() {
     }
 
+    public sealed interface SceneExtraction permits
+            SceneIndividualExtraction,
+            SceneLocationExtraction,
+            SceneObjectExtraction,
+            SceneCollectiveExtraction,
+            SceneEventExtraction,
+            SceneRelationClaimExtraction {
+        int sceneIndex();
+    }
+
     public record IndividualExtraction(
             List<String> aliases,
             String physicalProperties,
@@ -52,19 +62,19 @@ public final class TriadAnalysisModels {
     ) {
     }
 
-    public record SceneIndividualExtraction(int sceneIndex, List<IndividualExtraction> individuals) {
+    public record SceneIndividualExtraction(int sceneIndex, List<IndividualExtraction> individuals) implements SceneExtraction {
     }
 
-    public record SceneLocationExtraction(int sceneIndex, List<LocationExtraction> locations) {
+    public record SceneLocationExtraction(int sceneIndex, List<LocationExtraction> locations) implements SceneExtraction {
     }
 
-    public record SceneObjectExtraction(int sceneIndex, List<ObjectExtraction> objects) {
+    public record SceneObjectExtraction(int sceneIndex, List<ObjectExtraction> objects) implements SceneExtraction {
     }
 
-    public record SceneCollectiveExtraction(int sceneIndex, List<CollectiveExtraction> collectives) {
+    public record SceneCollectiveExtraction(int sceneIndex, List<CollectiveExtraction> collectives) implements SceneExtraction {
     }
 
-    public record SceneEventExtraction(int sceneIndex, List<EventExtraction> events) {
+    public record SceneEventExtraction(int sceneIndex, List<EventExtraction> events) implements SceneExtraction {
     }
 
     public record RelationClaimExtraction(
@@ -80,7 +90,7 @@ public final class TriadAnalysisModels {
     ) {
     }
 
-    public record SceneRelationClaimExtraction(int sceneIndex, List<RelationClaimExtraction> relationClaims) {
+    public record SceneRelationClaimExtraction(int sceneIndex, List<RelationClaimExtraction> relationClaims) implements SceneExtraction {
     }
 
     public record SceneRelationshipAnalysis(

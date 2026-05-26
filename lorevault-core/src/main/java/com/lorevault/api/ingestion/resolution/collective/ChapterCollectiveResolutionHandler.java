@@ -4,7 +4,7 @@ import com.lorevault.api.ingestion.events.StageCompletedEvent;
 import com.lorevault.api.ingestion.events.StageTriggeredEvent;
 import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
 import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
-import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import java.util.Map;

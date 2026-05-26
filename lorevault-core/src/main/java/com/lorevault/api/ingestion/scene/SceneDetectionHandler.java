@@ -2,7 +2,7 @@ package com.lorevault.api.ingestion.scene;
 
 import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
-import com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer;
+import com.lorevault.api.common.error.ExceptionSanitizer;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.scene.Scene;
@@ -267,12 +267,6 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
     private List<Scene> detectAndPersistScenes(UUID jobId, Chapter chapter) {
         UUID chapterId = chapter.getId();
         log.info("[SCENE_DETECTION] Detecting scenes for chapter {}", chapterId);
-
-        String chapterText = chapter.getRawText();
-        if (chapterText == null || chapterText.trim().isEmpty()) {
-            log.warn("[SCENE_DETECTION] Chapter {} has no text content", chapterId);
-            return List.of();
-        }
 
         // Use AI to detect scenes (passing jobId for status tracking)
         SceneDetectionService.SceneSegmentationOutcome segmentationOutcome = sceneDetectionService.detectScenesInChapter(jobId, chapter);

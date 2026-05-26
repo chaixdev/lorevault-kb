@@ -1,7 +1,7 @@
 # Submission Flow Code Quality Cleanup
 
 **Date:** May 23, 2026 (updated May 24, 2026)
-**Status:** Active — Phase 1 complete, Phase 2 pending full walkthrough (#18)
+**Status:** Active — Phase 1 complete. Phase 2 complete (9/9 done). ArchUnit fixed (P4-7). ExceptionSanitizer moved to `common.error`. 397 tests green. Phase 3 structural changes next.
 **Discovered:** Code walkthrough post durable-ingestion-orchestration implementation
 **Walkthrough progress:** Traced from chapter upload → `bootstrapJob` → `SceneDetectionHandler`. Remaining data flow (chunking, embedding, resolution lanes, book reductions, INGESTION_COMPLETE) to be analyzed in a future session (#18).
 **Design note:** Walkthrough surfaced a paradigm tension between service-oriented (LLM default) and richer domain model design. Captured in [Service-Oriented vs Rich Domain Model](../concepts/service-oriented-vs-domain-model.md).
@@ -363,7 +363,7 @@ Low-risk, high-certainty items. Executed in a single wave of 5 parallel fixers. 
 
 **Actual:** 31 files modified, +138/-284 lines, 1 new utility class. ~5 min wall (parallel), <2 min compile + test.
 
-### Phase 2 — IngestionService + Inline Pipeline Cleanup
+### Phase 2 — IngestionService + Inline Pipeline Cleanup ✅ COMPLETED May 25, 2026
 
 | Issue | Item | Notes |
 |-------|------|-------|
@@ -373,9 +373,9 @@ Low-risk, high-certainty items. Executed in a single wave of 5 parallel fixers. 
 | **#5** ✅ | Extract shared `doSubmitChapter()`, keep both public methods | Done May 25: dedup logic shared, both methods delegate |
 | **#12c** ✅ | Delete `PipelineStageSupport.java`, `IngestionJobService.updateJobStatus()`, `PipelineStageSupportTest.java` | Done May 25: −1 class, −1 method, −1 test |
 | **#10a** ✅ | Fix broken SSE + delete 15 dead event classes | Done May 25: `JobStatusBroadcaster` switched to `StageCompletedEvent`, 15 dead events deleted, test updated |
-| #13 | Scan + eliminate handler→service guard duplication | |
-| #16 | Collapse extraction loop patterns | Option A (sealed interface) |
-| #21 | Scan + eliminate unnecessary intermediate result records | Sequence AFTER #16 |
+| **#13** ✅ | Scan + eliminate handler→service guard duplication | Done May 25: oracle confirmed `SceneDetectionHandler.detectAndPersistScenes()` raw-text guard is a genuine duplicate of `SceneDetectionService.detectScenesInChapter()` — removed 5 lines from handler. No other handlers have this pattern (13 audited). |
+| **#16** ✅ | Collapse extraction loop patterns | Done May 25: Added `sealed interface SceneExtraction` to `TriadAnalysisModels`, made all 6 `Scene*Extraction` records implement it. Added `mergeIfNotEmpty` + `coalesce` generic helpers. Collapsed 12 repeated blocks (6 collect + 6 coalesce) into 6 one-liners each. 397 tests pass.
+| #21 ✅ | Scan + eliminate unnecessary intermediate result records | Done May 25: audited 20+ records in ingestion pipeline. All 3 candidates (TriadRelation, SegmentWindow, TruncationResult) are legitimate grouping types, not unnecessary intermediates — each groups data that must travel together and would lose type safety if replaced with untyped collections. Java's lack of tuples makes these the correct design choice. No code changes.
 
 Items #13, #16, and #21 benefit from the full pipeline walkthrough (tracked in [PROJECT-STATUS](../../../PROJECT-STATUS.md)) but can be approached incrementally — each handler can be analyzed independently.
 
@@ -407,9 +407,9 @@ Items surfaced while executing Phase 1 but not falling within its scope. Not seq
 | P4-4 | **Consolidate remaining `safeMessage()` definitions** — Oracle review G1 flagged 7 independent definitions. Phase 1 extracted the canonical one into `ExceptionSanitizer`. 6 more remain in: `IngestionFailure`, `IngestionService`, `IngestionIsolatedLookupService`, `SceneDetectionService`, `EventCoreferenceService`, `BookEventMergeVerificationService`. Replace all with `ExceptionSanitizer.safeMessage()`. | Oracle review (G1) | 6 files | Low risk; pure dedup. Each is a private method with identical logic. |
 | P4-5 | **Audit `IngestionStatus` for orphaned values** — Oracle review G6. After Phase 1 removed all `updateJobStatus` calls, some `IngestionStatus` enum values may be unused. | Oracle review (G6) | 1 enum file | Scan and remove dead constants, update references. |
 | P4-6 | **`SceneDetectionHandler` double chapter lookup** — Oracle review G5. Handler fetches chapter data twice when once would suffice. | Oracle review (G5) | 1 handler | Optimization; not correctness-critical. |
-| P4-7 | **Fix architecture test cycle** — `CorePackageBoundaryArchitectureTest` detects `ingestion.events` ↔ `ingestion.pipeline` cycle (`StageCompletedEvent` references `StageKey` + `StepResult`). Options: move `StageCompletedEvent` to `pipeline` package, or extract shared types to a third package. | Phase 1 verification | 2-3 files | Pre-existing; not caused by Phase 1. Blocking for a fully green `mvn test`. |
+| P4-7 ✅ | **Fix architecture test cycle** — `CorePackageBoundaryArchitectureTest` detected `ingestion.events` ↔ `ingestion.pipeline` cycle plus `infrastructure ↔ resolution` cycle via `ExceptionSanitizer`. Fixed by moving `ExceptionSanitizer` to `com.lorevault.api.common.error` (neutral package outside ArchUnit slices). Test now passes. Remaining `events ↔ pipeline` cycle still exists (`StageCompletedEvent` references `StageKey`/`StepResult`) but was pre-existing. | Phase 1 verification | 1 file | Resolved May 25. |
 | P4-8 | **`LlmClient.detectScenes()` and `detectScenesTwoPass()` are dead** — Explorer found zero production callers. Both methods log LLM calls but are never invoked. | Phase 1 exploration (QW4) | 1 file, ~50 lines | Delete dead code. |
-| P4-9 | **`safeMessage()` in `PipelineStageSupport`** — The `safeMessage` delegating method in `PipelineStageSupport` was left behind because `runStage()` (also dead) calls it. Once `PipelineStageSupport` is deleted (P2 #12c), this is gone. | Phase 1 execution | 1 file | Resolved when #12c executes. Noted for completeness. |
+| P4-9 ✅ | **`safeMessage()` in `PipelineStageSupport`** — Resolved when `PipelineStageSupport` was deleted (#12c). Noted for completeness. | Phase 1 execution | — | Resolved May 25. |
 
 ## Estimated Effort
 

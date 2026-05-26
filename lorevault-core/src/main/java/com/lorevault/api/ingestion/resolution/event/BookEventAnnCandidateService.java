@@ -1,7 +1,7 @@
 package com.lorevault.api.ingestion.resolution.event;
 
 import com.lorevault.api.content.association.ChapterEvent;
-import static com.lorevault.api.ingestion.infrastructure.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
 import com.lorevault.api.ingestion.job.IngestionFailure;
 import lombok.RequiredArgsConstructor;

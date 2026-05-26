@@ -1,4 +1,4 @@
-package com.lorevault.api.ingestion.infrastructure;
+package com.lorevault.api.common.error;
 
 /**
  * Shared exception message sanitization utilities.
