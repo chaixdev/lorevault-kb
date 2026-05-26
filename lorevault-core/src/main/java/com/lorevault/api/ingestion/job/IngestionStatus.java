@@ -8,12 +8,16 @@ public enum IngestionStatus {
     
     /**
      * The request has been accepted and is awaiting processing by a worker
+     * @deprecated No consumers. Kept for backward compatibility with API clients that may reference this value.
      */
+    @Deprecated
     QUEUED,
     
     /**
      * Job dequeued. Text normalization and content hash deduplication is in progress
+     * @deprecated No consumers. Kept for backward compatibility with API clients that may reference this value.
      */
+    @Deprecated
     PREPROCESSING_STARTED,
     
     /**
@@ -35,7 +39,9 @@ public enum IngestionStatus {
     
     /**
      * The local SLM is performing its initial pass to extract all potential entity mentions
+     * @deprecated No consumers. Kept for backward compatibility with API clients that may reference this value.
      */
+    @Deprecated
     EXTRACTING_ENTITIES,
 
     /**
@@ -45,7 +51,9 @@ public enum IngestionStatus {
 
     /**
      * The system is aggregating co-reference chains into chapter-level event records.
+     * @deprecated No consumers. Kept for backward compatibility with API clients that may reference this value.
      */
+    @Deprecated
     CHAPTER_EVENT_AGGREGATION,
 
     /**
@@ -85,7 +93,9 @@ public enum IngestionStatus {
 
     /**
      * All synthesis is complete. The system is performing final conflict resolution and saving enhanced entity data
+     * @deprecated No consumers. Kept for backward compatibility with API clients that may reference this value.
      */
+    @Deprecated
     PERSISTING_DATA,
     
     /**

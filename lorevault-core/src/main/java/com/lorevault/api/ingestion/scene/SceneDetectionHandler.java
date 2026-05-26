@@ -211,13 +211,11 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                     List.of()
             );
             if ( !scenes.isEmpty()) {
-                Chapter triadChapter = chapterRepo.findById(chapterId)
-                        .orElseThrow(() -> new IllegalArgumentException("Chapter not found for triad analysis: " + chapterId));
-                triadChapter.setScenes(List.copyOf(scenes));
+                chapter.setScenes(List.copyOf(scenes));
 
                 sceneRelationshipOutcome = sceneRelationshipAnalysisService.analyzeChapterTriads(
                         jobId,
-                        triadChapter,
+                        chapter,
                         statusProps -> {
                         }
                 );
