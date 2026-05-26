@@ -5,13 +5,14 @@ package com.lorevault.api.content.timeline.domain;
  * These represent the 7 primary relations with forward orientation.
  */
 public enum CanonicalRelation {
+    // LoreVault's canonical subset of Allen interval relations.
+    // MEETS is normalised to BEFORE; EQUALS is normalised to OVERLAPS.
+    // Both enum values remain for completeness but are not canonical output.
     BEFORE,
-    @Deprecated(since = "April 2026", forRemoval = false)
-    MEETS,
+    MEETS,     // acknowledged — normalised to BEFORE
     OVERLAPS,
     STARTS,
     DURING,
     FINISHES,
-    @Deprecated(since = "April 2026", forRemoval = false)
-    EQUALS
+    EQUALS     // acknowledged — normalised to OVERLAPS
 }

@@ -1,11 +1,11 @@
 package com.lorevault.api.content.timeline.domain;
 
 public enum TemporalRelation {
+    // All 13 Allen interval relations are listed for completeness.
+    // LoreVault normalizes MEETS → BEFORE, MET_BY → BEFORE (flipped), and EQUALS → OVERLAPS.
     BEFORE,
-    @Deprecated(since = "April 2026", forRemoval = false)
-    MEETS,
-    @Deprecated(since = "April 2026", forRemoval = false)
-    MET_BY,
+    MEETS,    // acknowledged — normalized to BEFORE
+    MET_BY,   // acknowledged — normalized to BEFORE (flipped)
     OVERLAPS,
     OVERLAPPED_BY,
     DURING,
@@ -14,7 +14,6 @@ public enum TemporalRelation {
     STARTED_BY,
     FINISHES,
     FINISHED_BY,
-    @Deprecated(since = "April 2026", forRemoval = false)
-    EQUALS,
-    AFTER  // Keep for bidirectional convenience
+    EQUALS,   // acknowledged — normalized to OVERLAPS
+    AFTER     // bidirectional convenience
 }

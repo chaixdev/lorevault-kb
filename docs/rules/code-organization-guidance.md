@@ -238,6 +238,31 @@ When placement is ambiguous, ask these questions in order:
 
 Choose the smallest package structure that answers those questions clearly.
 
+## Backward compatibility is never the goal
+
+**Do not maintain code for backward compatibility.** The codebase evolves forward. If a method, enum value, or class has zero production callers, delete it. If it still has callers, migrate them and then delete it. Do not add `@Deprecated` to keep old code alive.
+
+`@Deprecated` in this codebase means **"marked for removal — migrate callers or delete."** It is not a suggestion, a convention, or a signal of mere preference. Deprecated code with zero callers is dead code and must be removed immediately. Deprecated code with callers requires a migration plan with a concrete target version.
+
+### @Deprecated discipline
+
+| Rule | |
+|------|--|
+| Every `@Deprecated` must include `forRemoval = true` and a target version | `@Deprecated(forRemoval = true)` — no indefinite deprecation |
+| Every `@Deprecated` must have a `@deprecated` Javadoc tag naming the replacement | `@deprecated use {@link NewMethod} instead. Scheduled for removal in v0.10.` |
+| Dead deprecated code (zero production callers) must be deleted, not annotated | If you're adding `@Deprecated`, also check if you can just delete it |
+| Enum values with zero references outside the enum file are dead and must be deleted | Do not `@Deprecated` them |
+| "backward compatibility" in Javadoc is a deletion signal | Any method claiming to "exist only for backward compatibility" must be deleted immediately |
+
+### Practical decision rule
+
+When you are tempted to keep code "for backward compatibility":
+1. Who calls it? If zero production callers → delete.
+2. If callers exist, what is the replacement? Migrate callers → delete.
+3. If no replacement exists yet, file a migration task — do not mark `@Deprecated` as a placeholder.
+
+The codebase is small enough and the team is small enough that deprecation-as-communication is unnecessary. Direct deletion with caller migration is always preferred.
+
 ## Related docs
 
 - [Development workflow](development-workflow.md)

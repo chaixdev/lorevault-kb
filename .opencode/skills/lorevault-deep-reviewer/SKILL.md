@@ -167,6 +167,9 @@ What to look for:
 - New cross-module or cross-package dependencies that deepen known coupling risks
 - New LLM call chains without null guards, timeouts, or `maxTokens`
 - Premature abstraction or speculative generality
+- **`@Deprecated` annotations on production code** — unless accompanied by a migration path already executed and a removal date. Deprecated code that has zero callers must be flagged as dead code (HIGH). Deprecated code that still has callers must be flagged with a migration plan gap (MEDIUM).
+- **"Backward compatibility" kept code** — any method, enum value, or class whose documentation claims it "exists only for backward compatibility" must be flagged. If zero production callers, flag as dead code (HIGH). If callers exist, flag as deferred migration (MEDIUM) with a concrete recommendation for the caller replacement.
+- **`forRemoval = false`** — flag all `@Deprecated(forRemoval = false)` as deprecated-by-convention. The codebase policy is to prune decisively, not to carry deprecation indefinitely.
 
 ---
 
@@ -309,3 +312,25 @@ After aggregating production code findings:
 
 Test gaps are findings. A production code fix is incomplete without a test that guards
 it from regression.
+
+---
+
+## Deprecated Code and Backward Compatibility
+
+The codebase policy is: **do not code for backward compatibility, ever.** Prune decisively.
+
+Every `@Deprecated` annotation or "backward compatibility" comment in production code is a finding:
+
+| Pattern | Severity | Action |
+|---------|----------|--------|
+| `@Deprecated` + zero production callers | 🔴 CRITICAL | Delete immediately — dead code that signals planned removal but was never removed |
+| `@Deprecated` + production callers exist | 🟠 HIGH | Migration incomplete — caller must be migrated to the replacement before the deprecation can be removed |
+| "exists only for backward compatibility" in Javadoc | 🔴 CRITICAL | Delete immediately — codebase does not maintain backward-compat shims |
+| `@Deprecated(forRemoval = false)` | 🟡 MEDIUM | Flag — the codebase policy is `forRemoval = true` with a target version; indefinite deprecation is not accepted |
+| Enum value with no code references outside its own class | 🔴 CRITICAL | Delete — orphaned enum value serving no purpose |
+
+For each finding, report:
+- The deprecated element (method, enum value, class, field)
+- Whether it has any production callers (grep the entire `lorevault-core` and `lorevault-web` source trees)
+- If it has callers: what migration is needed before deletion
+- If it has no callers: confirm it is safe to delete and recommend immediate removal
