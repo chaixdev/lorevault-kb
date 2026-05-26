@@ -2,9 +2,6 @@ package com.lorevault.api.ingestion.job;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
-import com.lorevault.api.content.chunk.ChunkGraphRepository;
-import com.lorevault.api.content.scene.Scene;
-import com.lorevault.api.content.scene.SceneGraphRepository;
 import com.lorevault.api.ingestion.orchestration.IngestionPipelineCoordinator;
 import com.lorevault.api.ingestion.orchestration.Stage;
 import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
@@ -12,7 +9,6 @@ import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StageStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -34,23 +30,17 @@ import java.util.UUID;
 @Slf4j
 public class IngestionJobService {
 
-    private final ChunkGraphRepository chunkRepo;
-    private final SceneGraphRepository sceneRepo;
     private final ChapterGraphRepository chapterRepo;
     private final ChapterIngestionJobGraphRepository jobRepo;
     private final IngestionPipelineCoordinator coordinator;
     private final StageGraphRepository stageRepo;
 
     public IngestionJobService(
-        ChunkGraphRepository chunkRepo,
-        SceneGraphRepository sceneRepo,
         ChapterGraphRepository chapterRepo,
         ChapterIngestionJobGraphRepository jobRepo,
         IngestionPipelineCoordinator coordinator,
         StageGraphRepository stageRepo
     ) {
-        this.chunkRepo = chunkRepo;
-        this.sceneRepo = sceneRepo;
         this.chapterRepo = chapterRepo;
         this.jobRepo = jobRepo;
         this.coordinator = coordinator;
@@ -80,70 +70,6 @@ public class IngestionJobService {
 
         log.info("Created ingestion job {} for chapter {}", persistedJob.getId(), chapterId);
         return persistedJob;
-    }
-
-    /**
-     * Mark job as completed successfully — simplified in the durable model.
-     * <p>
-     * Stage completion is handled by the coordinator reacting to
-     * {@code StageCompletedEvent}. The {@code INGESTION_COMPLETE} stage completion
-     * triggers the coordinator to do final work. This method logs completion and
-     * no longer creates {@code StatusRecord} nodes. It is intentionally a no-op
-     * and exists only for backward compatibility; hence the {@code logJob*} naming.
-     */
-    @Transactional
-    public void logJobComplete(ChapterIngestionJob job, UUID chapterId, int chapterLength) {
-        int via = chunkRepo.countByChapterIdViaScenes(chapterId);
-        int chunkCount = via > 0 ? via : chunkRepo.countByChapterId(chapterId);
-
-        log.info("Job {} completed successfully with {} chunks", job.getId(), chunkCount);
-    }
-
-    /**
-     * Mark job as failed — simplified in the durable model.
-     * <p>
-     * The coordinator handles FAILED stage transitions. This method logs the failure
-     * and no longer creates {@code StatusRecord} nodes. It is intentionally a no-op
-     * and exists only for backward compatibility; hence the {@code logJob*} naming.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void logJobFailed(ChapterIngestionJob job, String errorMessage) {
-        log.error("Job {} failed: {}", job.getId(), errorMessage);
-    }
-
-    /**
-     * Mark job as failed and clean up any partially processed data.
-     * This allows a clean retry of the chapter later.
-     * <p>
-     * This method performs data cleanup and then delegates to {@link #logJobFailed}
-     * for the failure log entry. It is intentionally a log-only no-op w.r.t.
-     * job state and exists only for backward compatibility.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void logJobFailedWithCleanup(ChapterIngestionJob job, String errorMessage) {
-        UUID chapterId = job.getChapterId();
-
-        // Clean up partially processed data
-        int viaCount = chunkRepo.countByChapterIdViaScenes(chapterId);
-        int deletedChunks;
-        if (viaCount > 0) {
-            chunkRepo.deleteByChapterIdViaScenes(chapterId);
-            deletedChunks = viaCount;
-        } else {
-            int legacyCount = chunkRepo.countByChapterId(chapterId);
-            if (legacyCount > 0) {
-                chunkRepo.deleteByChapterId(chapterId);
-            }
-            deletedChunks = legacyCount;
-        }
-        log.info("Cleaned up {} chunks for failed chapter {} (graph)", deletedChunks, chapterId);
-
-        List<Scene> existingScenes = sceneRepo.findByChapterId(chapterId);
-        sceneRepo.deleteByChapterId(chapterId);
-        int deletedScenes = existingScenes.size();
-        log.info("Cleaned up {} scenes for failed chapter {} (graph)", deletedScenes, chapterId);
-
-        logJobFailed(job, errorMessage + " (data cleaned up for retry)");
     }
 
     // ================================
