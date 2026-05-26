@@ -37,8 +37,8 @@ public class GraphTriadAnalysisArtifactLookup implements TriadAnalysisArtifactLo
      */
     @Override
     public Optional<UUID> findLatestTriadStageIdByCurrentSceneId(UUID jobId, UUID currentSceneId) {
-        // StatusRecord-based lookup is deprecated with the new Stage model.
-        // Triad analysis status correlation will need a dedicated refactoring pass.
+        // StatusRecord-based lookup removed with the new Stage model.
+        // Triad analysis status correlation needs a dedicated refactoring pass.
         return Optional.empty();
     }
 

@@ -167,9 +167,8 @@ What to look for:
 - New cross-module or cross-package dependencies that deepen known coupling risks
 - New LLM call chains without null guards, timeouts, or `maxTokens`
 - Premature abstraction or speculative generality
-- **`@Deprecated` annotations on production code** — unless accompanied by a migration path already executed and a removal date. Deprecated code that has zero callers must be flagged as dead code (HIGH). Deprecated code that still has callers must be flagged with a migration plan gap (MEDIUM).
-- **"Backward compatibility" kept code** — any method, enum value, or class whose documentation claims it "exists only for backward compatibility" must be flagged. If zero production callers, flag as dead code (HIGH). If callers exist, flag as deferred migration (MEDIUM) with a concrete recommendation for the caller replacement.
-- **`forRemoval = false`** — flag all `@Deprecated(forRemoval = false)` as deprecated-by-convention. The codebase policy is to prune decisively, not to carry deprecation indefinitely.
+- **`@Deprecated` annotations on production code** — deprecated code must not exist in the codebase. One or zero: code is either used or it is removed. Any `@Deprecated` annotation is automatically a finding; no exceptions for `forRemoval = false` or migration plans. See Deprecated Code and Backward Compatibility section for severity and action.
+- **"Backward compatibility" kept code** — any method, enum value, or class whose documentation claims it "exists only for backward compatibility" must be deleted immediately. Flag as CRITICAL.
 
 ---
 
@@ -317,16 +316,14 @@ it from regression.
 
 ## Deprecated Code and Backward Compatibility
 
-The codebase policy is: **do not code for backward compatibility, ever.** Prune decisively.
+**Deprecated code does not exist in this codebase.** Code is either used and must remain, or unused and must be deleted. There is no third state. `@Deprecated` is not a signal, a preference, or a migration tracker — it is not permitted.
 
 Every `@Deprecated` annotation or "backward compatibility" comment in production code is a finding:
 
 | Pattern | Severity | Action |
 |---------|----------|--------|
-| `@Deprecated` + zero production callers | 🔴 CRITICAL | Delete immediately — dead code that signals planned removal but was never removed |
-| `@Deprecated` + production callers exist | 🟠 HIGH | Migration incomplete — caller must be migrated to the replacement before the deprecation can be removed |
+| `@Deprecated` (any form) | 🔴 CRITICAL | Delete the deprecated code. If callers exist, migrate them first, then delete. Do not add `forRemoval` flags — just remove it. |
 | "exists only for backward compatibility" in Javadoc | 🔴 CRITICAL | Delete immediately — codebase does not maintain backward-compat shims |
-| `@Deprecated(forRemoval = false)` | 🟡 MEDIUM | Flag — the codebase policy is `forRemoval = true` with a target version; indefinite deprecation is not accepted |
 | Enum value with no code references outside its own class | 🔴 CRITICAL | Delete — orphaned enum value serving no purpose |
 
 For each finding, report:
