@@ -7,27 +7,6 @@ package com.lorevault.api.ingestion.job;
 public enum IngestionStatus {
     
     /**
-     * The request has been accepted and is awaiting processing by a worker
-     * @deprecated No consumers. Kept for backward compatibility with API clients that may reference this value.
-     */
-    @Deprecated
-    QUEUED,
-    
-    /**
-     * Job dequeued. Text normalization and content hash deduplication is in progress
-     * @deprecated No consumers. Kept for backward compatibility with API clients that may reference this value.
-     */
-    @Deprecated
-    PREPROCESSING_STARTED,
-    
-    /**
-     * The local SLM is actively analyzing the text to identify semantic scene boundaries
-     * @deprecated Use SCENE_SEGMENTATION for new code. Kept for backward compatibility.
-     */
-    @Deprecated
-    DETECTING_SCENES,
-    
-    /**
      * Chapter segmentation: Scene boundary detection and segmentation
      */
     SCENE_SEGMENTATION,
@@ -36,25 +15,11 @@ public enum IngestionStatus {
      * Scene analysis: Triad-based analysis (prev/curr/next) for temporal relations
      */
     SCENE_TRIAD_ANALYSIS,
-    
-    /**
-     * The local SLM is performing its initial pass to extract all potential entity mentions
-     * @deprecated No consumers. Kept for backward compatibility with API clients that may reference this value.
-     */
-    @Deprecated
-    EXTRACTING_ENTITIES,
 
     /**
      * The system is resolving cross-scene event co-reference links for a chapter.
      */
     EVENT_COREF,
-
-    /**
-     * The system is aggregating co-reference chains into chapter-level event records.
-     * @deprecated No consumers. Kept for backward compatibility with API clients that may reference this value.
-     */
-    @Deprecated
-    CHAPTER_EVENT_AGGREGATION,
 
     /**
      * The system is embedding chapter-level events and generating book-event merge candidates.
@@ -90,13 +55,6 @@ public enum IngestionStatus {
      * The system is resolving object entity mentions into chapter-level object records.
      */
     RESOLVING_OBJECTS,
-
-    /**
-     * All synthesis is complete. The system is performing final conflict resolution and saving enhanced entity data
-     * @deprecated No consumers. Kept for backward compatibility with API clients that may reference this value.
-     */
-    @Deprecated
-    PERSISTING_DATA,
     
     /**
      * All stages finished successfully. The ingested content is now available for querying
@@ -120,14 +78,9 @@ public enum IngestionStatus {
      */
     public int getProgressPercentage() {
         return switch (this) {
-            case QUEUED -> 0;
-            case PREPROCESSING_STARTED -> 5;
-            case DETECTING_SCENES -> 15; // Keep for backward compatibility
             case SCENE_SEGMENTATION -> 15;
             case SCENE_TRIAD_ANALYSIS -> 25;
-            case EXTRACTING_ENTITIES -> 35;
             case EVENT_COREF -> 42;
-            case CHAPTER_EVENT_AGGREGATION -> 46;
             case EVENT_CANDIDATE_GENERATION -> 48;
             case EMBEDDING_CHUNKS -> 50;
             case CHUNKING -> 50;
@@ -135,7 +88,6 @@ public enum IngestionStatus {
             case RESOLVING_COLLECTIVES -> 60;
             case RESOLVING_LOCATIONS -> 65;
             case RESOLVING_OBJECTS -> 70;
-            case PERSISTING_DATA -> 95;
             case COMPLETE -> 100;
             case FAILED -> -1; // Indicates error state
         };

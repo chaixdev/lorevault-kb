@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
-**Last Updated:** May 25, 2026
-**Status:** Active — Phase 1 cleanup complete. Phase 2 in progress. Pipeline walkthrough ongoing.
+**Last Updated:** May 26, 2026
+**Status:** Active — Phases 1+2+4 complete. 397 tests green, ArchUnit passing. Phase 3 structural changes next.
 **Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state, terminology alignment (resolution → reduction). Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
@@ -62,29 +62,31 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 
 ## What Is Next
 
-### Immediate: Code walkthrough (in progress)
+### Immediate: Code walkthrough (ongoing)
 
 Walk the durable orchestration end-to-end to identify simplification, cleanup, and consistency improvements. **Progress:** `submitChapter` → `bootstrapJob` → `SceneDetectionHandler` — complete. **Remaining:** chunking, embedding, resolution lanes, book reductions.
 
 | Completed leg | Findings |
 |---|---|
-| `submitChapter` → `bootstrapJob` → `SceneDetectionHandler` | 20 cleanup items surfaced, oracle-reviewed (16/20 confirmed), organized into 4 phases |
+| `submitChapter` → `bootstrapJob` → `SceneDetectionHandler` | 20 cleanup items surfaced, oracle-reviewed (16/20 confirmed), organized into 4 phases. All 4 phases now complete. |
 
 The walkthrough is a standing activity — it feeds findings into the cleanup plan but is not itself a Phase 2 blocking dependency. Phase 2 items can be tackled incrementally as individual handlers are understood.
 
-### Immediate: Phase 2 — IngestionService + inline pipeline cleanup (in progress)
+### Immediate: Phases 1+2+4 complete ✅
 
-After the walkthrough: adopt Micrometer `Timer.Sample` for pipeline stage timing (see `docs/planning/2026-05-23T1700_micrometer-stage-timing.md`).
+All cleanup phases now done. See [Submission Flow Cleanup](planning/2026-05-23T1530_submission-flow-cleanup.md) for full details. Phase 3 structural changes (StageDispatcher, buildTriad refactor) are the next level of effort.
 
 ### Phase A: Complete ingestion pipeline hardening
 
 Near-term execution slices before pivoting to AWS/n8n:
 
-1. **Cleanup from durable orchestration walkthrough** (Phase 1 ✅, Phase 2 in progress)
+1. **Cleanup from durable orchestration walkthrough** (Phases 1+2+4 ✅, Phase 3 pending)
    - 20 items identified from SceneDetectionHandler walkthrough, 16 confirmed by oracle
    - Phase 1 complete (May 25): 7 quick wins, 3 new enums, 20 stale tests deleted, CLI language unified, StepResult → StageKey
-   - Phase 2 active: IngestionService cleanup, PipelineStageSupport deletion, SSE fix, handler guard consolidation
+   - Phase 2 complete (May 25): IngestionService consolidation, PipelineStageSupport deleted, SSE fix, guard removal, loop collapse, sealed interface
+   - Phase 4 complete (May 26): vector index constants, handler constants eliminated, safeMessage consolidation, dead code removal, IngestionStatus audit, double lookup fix, ArchUnit boundary fix
    - Phase 3 pending: StageDispatcher extraction, triad refactoring
+   - 397 tests, 0 failures, 0 errors
    - Phase 4 tracking: 9 items discovered during Phase 1 execution
    - Master plan: [Submission Flow Cleanup](planning/2026-05-23T1530_submission-flow-cleanup.md)
    - Design docs: [Quick Wins](planning/2026-05-24T0000_submission-cleanup-quick-wins.md), [StageDispatcher](planning/2026-05-24T0000_stagedispatcher-extraction.md), [SSE Migration](planning/2026-05-24T0000_sse-event-migration.md)
