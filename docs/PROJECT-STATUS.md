@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
-**Last Updated:** May 26, 2026
-**Status:** Active — Phases 1+2+4 complete. 397 tests green, ArchUnit passing. Phase 3 structural changes next.
+**Last Updated:** May 27, 2026
+**Status:** Active — Phases 1+2+4 complete. 397 tests green, ArchUnit passing. Phase 3 structural changes next: unified entity consolidation → StageDispatcher → per-scene buildTriad.
 **Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state, terminology alignment (resolution → reduction). Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
@@ -72,9 +72,17 @@ Walk the durable orchestration end-to-end to identify simplification, cleanup, a
 
 The walkthrough is a standing activity — it feeds findings into the cleanup plan but is not itself a Phase 2 blocking dependency. Phase 2 items can be tackled incrementally as individual handlers are understood.
 
-### Immediate: Phases 1+2+4 complete ✅
+### Immediate: Phase 3 structural changes (active)
 
-All cleanup phases now done. See [Submission Flow Cleanup](planning/2026-05-23T1530_submission-flow-cleanup.md) for full details. Phase 3 structural changes (StageDispatcher, buildTriad refactor) are the next level of effort.
+Three items, ordered by layering (services below handlers, buildTriad independent):
+
+| Order | Item | Impact | Design doc |
+|---|---|---|---|
+| **3a** | Unified entity consolidation | -457 lines. Extract shared `ConsolidationEngine` + `ClusterMerger` from 8 resolution/reduction services. Replaces 4 divergent clustering algorithms with one connected-components engine. Correctness upgrades: Object/Collective gain alias-aware merging, Individual gains aliases entirely. | [Unified Entity Consolidation](planning/2026-05-27T0015_unified-entity-consolidation.md) |
+| **3b** | StageDispatcher extraction (#7/#20) | Remove 65 orchestration injection points from 13 handlers. Handlers become pure `StageOperation` beans — just `execute(DispatchContext ctx)`. Centralized `@Async`, `@EventListener`, guard, idempotency, error boundary, MDC, and Micrometer timing. | [StageDispatcher Extraction](planning/2026-05-24T0000_stagedispatcher-extraction.md) |
+| **3c** | per-scene `buildTriad` (#14) | Refactor triad analysis from per-chapter `buildTriadsForChapter` to per-scene `buildTriad`. Independent of items 3a and 3b. | (in master cleanup plan) |
+
+**Rationale:** Consolidation is lower in the layer stack than StageDispatcher — services are called by handlers. Doing consolidation first means StageDispatcher lands on a cleaner, more uniform codebase.
 
 ### Phase A: Complete ingestion pipeline hardening
 
@@ -85,11 +93,11 @@ Near-term execution slices before pivoting to AWS/n8n:
    - Phase 1 complete (May 25): 7 quick wins, 3 new enums, 20 stale tests deleted, CLI language unified, StepResult → StageKey
    - Phase 2 complete (May 25): IngestionService consolidation, PipelineStageSupport deleted, SSE fix, guard removal, loop collapse, sealed interface
    - Phase 4 complete (May 26): vector index constants, handler constants eliminated, safeMessage consolidation, dead code removal, IngestionStatus audit, double lookup fix, ArchUnit boundary fix
-   - Phase 3 pending: StageDispatcher extraction, triad refactoring
-   - 397 tests, 0 failures, 0 errors
-   - Phase 4 tracking: 9 items discovered during Phase 1 execution
-   - Master plan: [Submission Flow Cleanup](planning/2026-05-23T1530_submission-flow-cleanup.md)
-   - Design docs: [Quick Wins](planning/2026-05-24T0000_submission-cleanup-quick-wins.md), [StageDispatcher](planning/2026-05-24T0000_stagedispatcher-extraction.md), [SSE Migration](planning/2026-05-24T0000_sse-event-migration.md)
+    - Phase 3 pending: unified entity consolidation (3a) → StageDispatcher extraction (3b) → per-scene buildTriad (3c)
+    - 397 tests, 0 failures, 0 errors
+    - Phase 4 tracking: 9 items discovered during Phase 1 execution
+    - Master plan: [Submission Flow Cleanup](planning/2026-05-23T1530_submission-flow-cleanup.md)
+    - Design docs: [Quick Wins](planning/2026-05-24T0000_submission-cleanup-quick-wins.md), [StageDispatcher](planning/2026-05-24T0000_stagedispatcher-extraction.md), [SSE Migration](planning/2026-05-24T0000_sse-event-migration.md), [Unified Consolidation](planning/2026-05-27T0015_unified-entity-consolidation.md)
 
 2. **Concept entity lane**
    - Implement the 6th regular entity ladder for Concept using the established `Mention → ChapterEntity → BookEntity` pattern
@@ -186,7 +194,8 @@ The code walkthrough continues until the full pipeline is reviewed. Pipeline har
 - [Brainstorm](brainstorm/README.md)
 - [Submission Flow Cleanup](planning/2026-05-23T1530_submission-flow-cleanup.md) — master cleanup plan (20 issues)
 - [Cleanup Quick Wins](planning/2026-05-24T0000_submission-cleanup-quick-wins.md) — Phase 1 (~30 min)
-- [StageDispatcher Extraction](planning/2026-05-24T0000_stagedispatcher-extraction.md) — Phase 3 structural change
+- [StageDispatcher Extraction](planning/2026-05-24T0000_stagedispatcher-extraction.md) — Phase 3b structural change
+- [Unified Entity Consolidation](planning/2026-05-27T0015_unified-entity-consolidation.md) — Phase 3a structural change
 - [SSE Event Migration](planning/2026-05-24T0000_sse-event-migration.md) — Phase 2 bug fix
 - [n8n Ingestion-Retrieval Boundary Strategy](brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md) — strategic n8n enhancement plan
 - [AWS Cloud-Native Learning Path](brainstorm/aws-cloud-native/2026-05-11T2027_aws-cloud-native-learning-path.md) — AWS deployment strategy

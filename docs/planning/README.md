@@ -115,3 +115,4 @@ At minimum, each planning item should include:
 - [Relation Evidence Harvesting and Catalog Discovery — Phased Solution Design](2026-05-07T1917_relation-evidence-harvesting.md)
 - [Catalog Module](2026-05-13T2027_relation-catalog-module.md)
 - [Entity Pipeline Terminology Alignment](2026-05-20T1536_entity-pipeline-terminology-alignment.md)
+- [Unified Entity Consolidation Algorithm](2026-05-27T0015_unified-entity-consolidation.md)
