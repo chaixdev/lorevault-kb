@@ -104,46 +104,67 @@ public class SceneDetectionService {
                                                            UUID chapterId,
                                                            String chapterText,
                                                            Chapter chapter) {
-        LlmRetryConfig retryConfig = LlmRetryConfig.defaultConfig();
+        int maxAttempts = 4;
+        long startTime = System.currentTimeMillis();
+        Exception lastException = null;
 
         log.info("Chapter segmentation starting with retry (max {} attempts) for job {}",
-                retryConfig.getMaxAttempts(), jobId);
+                maxAttempts, jobId);
 
-        LlmRetryResult<SceneSegmentationOutcome> retryResult = llmRetryStrategy.executeWithRetry(
-                "Scene Detection",
-                retryConfig,
-                () -> performFullSceneDetection(jobId, chapterId, chapterText, chapter));
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            double temperature = 0.1 + ((attempt - 1) * 0.2); // 0.1, 0.3, 0.5, 0.7
+            try {
+                log.info("Chapter segmentation: attempt {}/{} with temperature={} for job {}",
+                        attempt, maxAttempts, temperature, jobId);
 
-        if (retryResult.isSuccess()) {
-            String successMsg = String.format("Chapter segmentation succeeded after %d/%d attempts in %d ms",
-                    retryResult.getAttemptsUsed(), retryConfig.getMaxAttempts(), retryResult.getTotalDurationMs());
+                SceneSegmentationOutcome result = performFullSceneDetection(
+                        jobId, chapterId, chapterText, chapter, temperature);
 
-            log.info("Scene detection successful for chapter {}: {}", chapterId, successMsg);
-            return retryResult.getResult();
+                long totalDuration = System.currentTimeMillis() - startTime;
+                log.info("Scene detection successful for chapter {}: attempt {}/{} in {} ms",
+                        chapterId, attempt, maxAttempts, totalDuration);
+                return result;
+
+            } catch (Exception e) {
+                lastException = e;
+                boolean retryable = isExpectedRetryableSegmentationFailure(e);
+                log.warn("[LLM-Retry] Scene Detection attempt {}/{} failed: {} (retryable={})",
+                        attempt, maxAttempts, e.getMessage(), retryable);
+
+                if (!retryable || attempt >= maxAttempts) {
+                    break;
+                }
+                // exponential backoff with jitter
+                try {
+                    long delay = (long) (200 * Math.pow(2, attempt - 1));
+                    Thread.sleep(delay + (long) (Math.random() * delay));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
         }
 
-        String failureMsg = String.format("Chapter segmentation failed after %d attempts in %d ms: %s",
-                retryResult.getAttemptsUsed(), retryResult.getTotalDurationMs(),
-                retryResult.getLastException().getMessage());
+        long totalDuration = System.currentTimeMillis() - startTime;
+        log.error("Scene detection failed permanently after {} attempts in {} ms: {}",
+                maxAttempts, totalDuration, lastException != null ? lastException.getMessage() : "unknown");
 
-        if (retryResult.getLastException() instanceof SceneLocalizationException sceneLocalizationException) {
-            throw sceneLocalizationException;
+        if (lastException instanceof SceneLocalizationException sle) {
+            throw sle;
         }
-
-        log.error("Scene detection failed for chapter {}: {}", chapterId, failureMsg);
-        String detailsMsg = String.join("; ", retryResult.getAttemptDetails());
         throw buildSceneDetectionFailure(
                 "SCENE_DETECTION_RETRY_EXHAUSTED",
-                "Scene detection failed with retry: " + failureMsg + " | Attempts: " + detailsMsg,
+                "Scene detection failed with retry: " + (lastException != null ? lastException.getMessage() : "unknown"),
                 chapterId,
-                retryResult.getLastException()
+                lastException
         );
     }
 
     private SceneSegmentationOutcome performFullSceneDetection(UUID jobId,
                                                                UUID chapterId,
                                                                String chapterText,
-                                                               Chapter chapterMetadata) {
+                                                               Chapter chapterMetadata,
+                                                               double temperature) {
         try {
             log.info("Chapter segmentation: starting for job {} chapter {}", jobId, chapterId);
 
@@ -162,7 +183,7 @@ public class SceneDetectionService {
                         chapterId, budgetCheck.estimatedTotalInput(), budgetCheck.usableInputBudget(), segments.size());
             }
 
-            List<SceneWithCoordinates> scenes = processSegments(jobId, chapterId, segments);
+            List<SceneWithCoordinates> scenes = processSegments(jobId, chapterId, segments, temperature);
             if (scenes.isEmpty()) {
                 throw buildSceneDetectionFailure(
                         "SCENE_COORDINATE_LOCALIZATION_EMPTY",
@@ -236,11 +257,11 @@ public class SceneDetectionService {
                 || message.contains("Chapter segmentation failed after");
     }
 
-    private List<SceneWithCoordinates> processSegments(UUID jobId, UUID chapterId, List<SegmentWindow> segments) {
+    private List<SceneWithCoordinates> processSegments(UUID jobId, UUID chapterId, List<SegmentWindow> segments, double temperature) {
         List<SceneWithCoordinates> rebasedScenes = new ArrayList<>();
 
         for (SegmentWindow segment : segments) {
-            List<SceneWithCoordinates> localizedSegmentScenes = detectScenesInSingleSegment(jobId, chapterId, segment.text());
+            List<SceneWithCoordinates> localizedSegmentScenes = detectScenesInSingleSegment(jobId, chapterId, segment.text(), temperature);
             if (localizedSegmentScenes.isEmpty()) {
                 throw buildSceneDetectionFailure(
                         "SCENE_SEGMENT_NO_LOCALIZABLE_SCENES",
@@ -310,8 +331,8 @@ public class SceneDetectionService {
         return renumbered;
     }
 
-    private List<SceneWithCoordinates> detectScenesInSingleSegment(UUID jobId, UUID chapterId, String segmentText) {
-        String segmentationXmlResponse = llmClient.detectChapterSegmentation(jobId, segmentText);
+    private List<SceneWithCoordinates> detectScenesInSingleSegment(UUID jobId, UUID chapterId, String segmentText, double temperature) {
+        String segmentationXmlResponse = llmClient.detectChapterSegmentation(jobId, segmentText, temperature);
         List<SceneDetectionResult> sceneResults = sceneProcessingService.parseSceneDetectionXml(segmentationXmlResponse, segmentText.length());
         if (sceneResults.isEmpty()) {
             throw buildSceneDetectionFailure(

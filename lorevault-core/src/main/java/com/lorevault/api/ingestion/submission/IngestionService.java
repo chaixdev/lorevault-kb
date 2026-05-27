@@ -218,9 +218,11 @@ public class IngestionService {
         coords.setBookNumber(book.getBookNumber() != null ? book.getBookNumber() : 0);
         coords.setChapterNumber(chapterNumber);
 
-        return Chapter.createWithReferences(
+        Chapter chapter = Chapter.createWithReferences(
                 book.getId(), book.getUniverseId(), book.getSeriesId(),
                 coords, chapterTitle, chapterText, contentHash);
+        chapter.setBook(book);  // hydrate @Relationship(type = "IN_BOOK")
+        return chapter;
     }
 
     private ChapterSubmissionLookupException buildSubmissionLookupFailure(String code,

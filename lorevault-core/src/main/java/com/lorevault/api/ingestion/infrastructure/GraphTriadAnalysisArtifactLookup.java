@@ -4,6 +4,8 @@ import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ingestion.triad.TriadAnalysisArtifactLookup;
 import com.lorevault.api.ingestion.resolution.event.LlmCallRecord;
 import com.lorevault.api.ingestion.job.ChapterIngestionJobGraphRepository;
+import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -14,12 +16,15 @@ public class GraphTriadAnalysisArtifactLookup implements TriadAnalysisArtifactLo
 
     private final ChapterIngestionJobGraphRepository jobRepo;
     private final LlmCallRecordGraphRepository llmCallRepo;
+    private final StageGraphRepository stageRepo;
 
     public GraphTriadAnalysisArtifactLookup(
             ChapterIngestionJobGraphRepository jobRepo,
-            LlmCallRecordGraphRepository llmCallRepo) {
+            LlmCallRecordGraphRepository llmCallRepo,
+            StageGraphRepository stageRepo) {
         this.jobRepo = jobRepo;
         this.llmCallRepo = llmCallRepo;
+        this.stageRepo = stageRepo;
     }
 
     @Override
@@ -31,15 +36,19 @@ public class GraphTriadAnalysisArtifactLookup implements TriadAnalysisArtifactLo
     }
 
     /**
-     * Triad stage correlation now uses Stage nodes instead of StatusRecord.
-     * Returns null for now — triad temporal edges will be rebuilt during
-     * the full triad refactoring pass.
+     * Find the SCENE_SEGMENTATION stage for the given job.
+     * Temporal edges produced by triad analysis are attributed to the
+     * chapter's scene segmentation stage (per-chapter granularity).
+     * Full per-scene provenance will be available after per-scene buildTriad is
+     * adopted progressively in SceneDetectionHandler.
      */
     @Override
     public Optional<UUID> findLatestTriadStageIdByCurrentSceneId(UUID jobId, UUID currentSceneId) {
-        // StatusRecord-based lookup removed with the new Stage model.
-        // Triad analysis status correlation needs a dedicated refactoring pass.
-        return Optional.empty();
+        if (jobId == null) {
+            return Optional.empty();
+        }
+        return stageRepo.findByJobIdAndStep(jobId, StageKey.SCENE_SEGMENTATION)
+                .map(stage -> stage.getId());
     }
 
     @Override

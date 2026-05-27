@@ -92,6 +92,10 @@ public class LlmClient {
     }
 
     public String detectChapterSegmentation(UUID jobId, String chapterText) {
+        return detectChapterSegmentation(jobId, chapterText, 0.1);
+    }
+
+    public String detectChapterSegmentation(UUID jobId, String chapterText, double temperature) {
         PromptTemplate template = promptRepository.get(PromptName.CHAPTER_SEGMENTATION);
         String systemPrompt = template.render(Map.of());
         
@@ -100,7 +104,7 @@ public class LlmClient {
         ChatClient chatClient = getChatClientForModel(modelSlot);
         String actualModelId = getModelIdForStage(StageKey.SCENE_SEGMENTATION);
         
-        return executeSceneDetectionCall(jobId, StageKey.SCENE_SEGMENTATION, systemPrompt, chapterText, chatClient, actualModelId);
+        return executeSceneDetectionCall(jobId, StageKey.SCENE_SEGMENTATION, systemPrompt, chapterText, chatClient, actualModelId, temperature);
     }
 
     public <T> T detectSceneAnalysisTriad(UUID jobId, String systemPrompt, Map<String, Object> userVariables, Class<T> responseType) {
@@ -223,24 +227,27 @@ public class LlmClient {
      * @throws RuntimeException if all retry attempts fail
      */
     private String executeSceneDetectionCall(UUID jobId, StageKey stage, String systemPrompt, String userInput, ChatClient chatClient, String modelId) {
+        return executeSceneDetectionCall(jobId, stage, systemPrompt, userInput, chatClient, modelId, 0.1);
+    }
+
+    private String executeSceneDetectionCall(UUID jobId, StageKey stage, String systemPrompt, String userInput, ChatClient chatClient, String modelId, double temperature) {
         String step = stage.name().toLowerCase().replace('_', '-');
         log.debug("[LLM] {} request: inputLength={} chars, model={}", 
                  step, userInput == null ? 0 : userInput.length(), modelId);
         log.trace("[LLM] System prompt ({} chars): {}", systemPrompt.length(), systemPrompt);
         
-        // Create options for consistent, deterministic results
-        OpenAiChatOptions options = OpenAiChatOptions.builder()
-            .temperature(0.1)
-            .topP(0.9)
-            .maxTokens(6000)
-            .build();
-            
         final String safeInput = userInput == null ? "" : userInput;
         
         try {
             long start = System.nanoTime();
             String response = retryTemplate.execute(retryContext -> {
                 int retryCount = retryContext.getRetryCount();
+                double attemptTemp = temperature + (retryCount * 0.1);
+                OpenAiChatOptions options = OpenAiChatOptions.builder()
+                    .temperature(attemptTemp)
+                    .topP(0.9)
+                    .maxTokens(6000)
+                    .build();
                 String attemptMsg = retryCount > 0 ? " (retry=" + retryCount + ")" : "";
                 if (retryCount > 0) {
                     log.warn("[LLM] Retrying: jobId={}, step={}, model={}, attempt={}",
@@ -286,9 +293,9 @@ public class LlmClient {
                     jobId,
                     stage,
                     modelId,
-                    options.getTemperature(),
-                    options.getTopP(),
-                    options.getMaxTokens(),
+                    temperature,
+                    0.9,
+                    6000,
                     stage == StageKey.SCENE_SEGMENTATION ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
                     systemPrompt,
                     safeInput,

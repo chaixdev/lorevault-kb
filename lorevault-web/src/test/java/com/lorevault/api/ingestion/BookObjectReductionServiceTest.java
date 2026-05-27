@@ -43,7 +43,7 @@ class BookObjectReductionServiceTest {
     private BookObjectReductionService service;
 
     @Test
-    @DisplayName("Rebuilds book objects by normalized name and alias bridging")
+    @DisplayName("Rebuilds book objects by normalized name only")
     void rebuildsBookObjectsByNormalizedNameOnly() {
         UUID bookId = UUID.randomUUID();
         UUID chapterAId = UUID.randomUUID();
@@ -127,8 +127,8 @@ class BookObjectReductionServiceTest {
     }
 
     @Test
-    @DisplayName("Reduces chapter objects through shared aliases when normalized names differ")
-    void reducesObjectsThroughSharedAliases() {
+    @DisplayName("Does not reduce chapter objects through shared aliases when normalized names differ")
+    void doesNotReduceObjectsThroughSharedAliases() {
         UUID bookId = UUID.randomUUID();
         UUID chapterAId = UUID.randomUUID();
         UUID chapterBId = UUID.randomUUID();
@@ -141,22 +141,23 @@ class BookObjectReductionServiceTest {
         when(chapterObjectRepository.findByBookId(bookId)).thenReturn(List.of(dagger, sword));
         when(bookObjectPersistenceService.replaceBookObjects(any(), any(), any()))
                 .thenAnswer(invocation -> invocation.getArgument(1));
-        when(bookObjectPersistenceService.countByBookId(bookId)).thenReturn(1L);
+        when(bookObjectPersistenceService.countByBookId(bookId)).thenReturn(2L);
 
         BookObjectResolutionResult response = service.resolveBook(bookId);
 
         assertThat(response.success()).isTrue();
-        assertThat(response.bookObjectsCreated()).isEqualTo(1);
+        assertThat(response.bookObjectsCreated()).isEqualTo(2);
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<BookObject>> savedCaptor = ArgumentCaptor.forClass(List.class);
         verify(bookObjectPersistenceService).replaceBookObjects(eq(bookId), savedCaptor.capture(), any());
 
-        List<BookObject> saved = savedCaptor.getValue();
-        assertThat(saved).hasSize(1);
-        BookObject merged = saved.get(0);
-        assertThat(merged.chapterObjectCount()).isEqualTo(2);
-        assertThat(merged.aliases()).containsExactly("Moonblade");
+        assertThat(savedCaptor.getValue())
+                .extracting(BookObject::normalizedName, BookObject::chapterObjectCount)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple("silver sword", 1),
+                        org.assertj.core.groups.Tuple.tuple("ceremonial dagger", 1)
+                );
     }
 
     private ChapterObject chapterObject(

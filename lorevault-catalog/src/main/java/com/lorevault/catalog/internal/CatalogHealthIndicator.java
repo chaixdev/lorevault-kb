@@ -2,6 +2,7 @@ package com.lorevault.catalog.internal;
 
 import java.util.Map;
 
+
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

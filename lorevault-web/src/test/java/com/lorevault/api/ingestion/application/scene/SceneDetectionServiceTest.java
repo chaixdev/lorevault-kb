@@ -1,5 +1,4 @@
 package com.lorevault.api.ingestion.application.scene;
-import com.lorevault.api.ai.llm.LlmRetryStrategy;
 import com.lorevault.api.config.ModelSlot;
 import com.lorevault.api.ingestion.scene.SceneDetectionException;
 import com.lorevault.api.ingestion.scene.SceneLocalizationException;
@@ -15,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -24,6 +22,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -36,8 +35,6 @@ class SceneDetectionServiceTest {
     private LlmClient llmClient;
     @Mock
     private SceneProcessingService sceneProcessingService;
-    @Spy
-    private LlmRetryStrategy llmRetryStrategy;
     @InjectMocks
     private SceneDetectionService sceneDetectionService;
 
@@ -53,7 +50,7 @@ class SceneDetectionServiceTest {
         );
 
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
-        when(llmClient.detectChapterSegmentation(eq(jobId), any(String.class))).thenReturn("<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>");
+        when(llmClient.detectChapterSegmentation(eq(jobId), any(String.class), anyDouble())).thenReturn("<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>");
         when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt()))
                 .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "", "", "", "")));
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
@@ -66,7 +63,7 @@ class SceneDetectionServiceTest {
         assertThat(scenes.get(0).potentialSplitSceneStart()).isFalse();
         assertThat(scenes.get(1).potentialSplitSceneStart()).isTrue();
         assertThat(scenes.get(1).potentialSplitSceneEnd()).isFalse();
-        verify(llmClient, times(2)).detectChapterSegmentation(eq(jobId), any(String.class));
+        verify(llmClient, times(2)).detectChapterSegmentation(eq(jobId), any(String.class), anyDouble());
     }
 
     @Test
@@ -81,7 +78,7 @@ class SceneDetectionServiceTest {
         );
 
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
-        when(llmClient.detectChapterSegmentation(eq(jobId), eq(chapterText))).thenReturn("<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>");
+        when(llmClient.detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble())).thenReturn("<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>");
         when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt()))
                 .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "", "", "", "")));
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
@@ -92,7 +89,7 @@ class SceneDetectionServiceTest {
         assertThat(scenes).hasSize(1);
         assertThat(scenes.get(0).potentialSplitSceneStart()).isFalse();
         assertThat(scenes.get(0).potentialSplitSceneEnd()).isFalse();
-        verify(llmClient, times(1)).detectChapterSegmentation(eq(jobId), eq(chapterText));
+        verify(llmClient, times(1)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
     }
 
     @Test
@@ -107,7 +104,7 @@ class SceneDetectionServiceTest {
         );
 
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
-        when(llmClient.detectChapterSegmentation(eq(jobId), eq(chapterText))).thenReturn(
+        when(llmClient.detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble())).thenReturn(
                 "<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>"
         );
         when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt())).thenReturn(List.of(
@@ -124,7 +121,7 @@ class SceneDetectionServiceTest {
                 .hasMessageContaining("Scene detection failed with retry")
                 .hasMessageContaining("Scene coordinate localization dropped scenes");
 
-        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText));
+        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
     }
 
     @Test
@@ -139,7 +136,7 @@ class SceneDetectionServiceTest {
         );
 
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
-        when(llmClient.detectChapterSegmentation(eq(jobId), eq(chapterText))).thenReturn(
+        when(llmClient.detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble())).thenReturn(
                 "<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>"
         );
         when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt())).thenReturn(List.of(
@@ -161,7 +158,7 @@ class SceneDetectionServiceTest {
                 .hasMessageContaining("Scene detection failed with retry")
                 .hasMessageContaining("Scene coordinate localization dropped scenes");
 
-        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText));
+        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
     }
 
     @Test
@@ -176,7 +173,7 @@ class SceneDetectionServiceTest {
         );
 
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
-        when(llmClient.detectChapterSegmentation(eq(jobId), any(String.class))).thenReturn(
+        when(llmClient.detectChapterSegmentation(eq(jobId), any(String.class), anyDouble())).thenReturn(
                 "<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>"
         );
         when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt()))
@@ -188,7 +185,7 @@ class SceneDetectionServiceTest {
                 .hasMessageContaining("Scene detection failed with retry")
                 .hasMessageContaining("Scene coordinate localization returned empty results");
 
-        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), any(String.class));
+        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), any(String.class), anyDouble());
     }
 
     @Test
@@ -203,7 +200,7 @@ class SceneDetectionServiceTest {
         );
 
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
-        when(llmClient.detectChapterSegmentation(eq(jobId), eq(chapterText))).thenReturn(
+        when(llmClient.detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble())).thenReturn(
                 "<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>"
         );
         when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt()))
@@ -227,7 +224,7 @@ class SceneDetectionServiceTest {
                 .isInstanceOf(SceneLocalizationException.class)
                 .hasMessageContaining("start anchor 'anchor' was not found");
 
-        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText));
+        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
     }
 
 }

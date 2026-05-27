@@ -284,13 +284,14 @@ public class IngestionPipelineCoordinator {
             return null;
         }
         return neo4jClient.query("""
-                MATCH (c:Chapter {id: $chapterId})-[:IN_BOOK]->(b:Book)
-                RETURN b.id
+                MATCH (c:Chapter {id: $chapterId})
+                WHERE c.bookId IS NOT NULL
+                RETURN c.bookId
                 """)
                 .bind(chapterId.toString()).to("chapterId")
                 .fetchAs(UUID.class)
                 .mappedBy((typeSystem, record) ->
-                        UUID.fromString(record.get("b.id").asString()))
+                        UUID.fromString(record.get("c.bookId").asString()))
                 .one()
                 .orElse(null);
     }

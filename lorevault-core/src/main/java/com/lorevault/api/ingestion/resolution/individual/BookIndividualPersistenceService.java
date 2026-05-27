@@ -23,11 +23,7 @@ public class BookIndividualPersistenceService {
     private final BookIndividualGraphRepository bookIndividualRepository;
 
     @Transactional
-    public List<BookIndividual> replaceBookIndividuals(
-            UUID bookId,
-            List<BookIndividual> bookIndividuals,
-            List<List<UUID>> chapterIndividualIdsByBookIndividual
-    ) {
+    public List<BookIndividual> replaceBookIndividuals(UUID bookId, List<BookIndividual> bookIndividuals) {
         bookIndividualRepository.deleteByBookId(bookId);
         if (bookIndividuals.isEmpty()) {
             return List.of();
@@ -35,13 +31,13 @@ public class BookIndividualPersistenceService {
 
         List<BookIndividual> savedIndividuals = new ArrayList<>(bookIndividualRepository.saveAll(bookIndividuals));
 
-        for (int i = 0; i < savedIndividuals.size(); i++) {
-            BookIndividual bookIndividual = savedIndividuals.get(i);
+        for (BookIndividual bookIndividual : savedIndividuals) {
             bookIndividualRepository.linkBookToIndividual(bookId, bookIndividual.id());
-            List<UUID> chapterIndividualIds = chapterIndividualIdsByBookIndividual.get(i);
-            for (UUID chapterIndividualId : chapterIndividualIds) {
-                bookIndividualRepository.linkChapterIndividualToBookIndividual(chapterIndividualId, bookIndividual.id());
-            }
+            bookIndividualRepository.linkChapterIndividualsForBookAndNameToBookIndividual(
+                    bookId,
+                    bookIndividual.normalizedName(),
+                    bookIndividual.id()
+            );
         }
 
         return savedIndividuals;

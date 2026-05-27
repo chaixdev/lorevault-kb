@@ -1,7 +1,6 @@
 package com.lorevault.api.content.association;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
@@ -14,7 +13,6 @@ public record ChapterIndividual(
         UUID chapterId,
         String displayName,
         String normalizedName,
-        List<String> aliases,
         Integer mentionCount,
         @CreatedDate LocalDateTime createdAt,
         @LastModifiedDate LocalDateTime updatedAt

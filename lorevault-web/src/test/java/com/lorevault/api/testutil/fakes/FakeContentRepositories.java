@@ -369,6 +369,8 @@ public class FakeContentRepositories {
             if (removed != null) removed.forEach(s -> scenesById.remove(s.getId()));
         }
 
+        @Override public Optional<UUID> findPreviousSceneIdByReadingOrder(UUID sceneId) { return Optional.empty(); }
+        @Override public Optional<UUID> findNextSceneIdByReadingOrder(UUID sceneId) { return Optional.empty(); }
         @Override public long countNextInReadingOrderBetween(UUID fromId, UUID toId) { return 0; }
         @Override public void createNextInReadingOrderBetween(UUID fromId, UUID toId) { }
         @Override public void linkChunkToScene(UUID sceneId, UUID chunkId, Integer chunkIndex) { }

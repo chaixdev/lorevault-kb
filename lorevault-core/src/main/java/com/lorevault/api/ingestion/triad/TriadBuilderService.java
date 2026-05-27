@@ -1,103 +1,68 @@
 package com.lorevault.api.ingestion.triad;
 
-import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.scene.Scene;
-import com.lorevault.api.content.chapter.ChapterReadRepository;
 import com.lorevault.api.content.scene.SceneGraphRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 
 /**
- * Builds triads of scenes (previous, current, next) for a chapter.
- * Supports cross-chapter previous scene resolution (last scene of previous chapter).
+ * Builds scene triads (previous, current, next) for per-scene triad analysis.
+ * Uses NEXT_IN_READING_ORDER edges in the graph to resolve cross-chapter
+ * adjacency, eliminating the need for in-memory chapter-scoped iteration.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class TriadBuilderService {
 
     public record SceneTriad(Scene previous, Scene current, Scene next) {}
 
     private final SceneGraphRepository sceneRepo;
-    private final ChapterReadRepository chapterReadRepo;
+
+    public TriadBuilderService(SceneGraphRepository sceneRepo) {
+        this.sceneRepo = sceneRepo;
+    }
 
     /**
-     * Build scene triads for the provided chapter.
-     * @param chapter The Chapter aggregate (must have id, bookId, chapterNumber)
-     * @return ordered list of triads, one per current scene in the chapter
+     * Build a scene triad for the given current scene.
+     * Resolves {@code previous} and {@code next} via NEXT_IN_READING_ORDER
+     * edges in the graph — naturally handles cross-chapter boundaries.
+     *
+     * @param currentSceneId the eventId of the current scene
+     * @return a SceneTriad (previous and next may be null at book boundaries)
      */
-    public List<SceneTriad> buildTriadsForChapter(Chapter chapter) {
-        UUID chapterId = chapter.getId();
-        if (chapterId == null) {
-            log.warn("TriadBuilder: chapter has no id; returning empty triads");
-            return List.of();
-        }
+    public SceneTriad buildTriad(UUID currentSceneId) {
+        Scene curr = sceneRepo.findById(currentSceneId)
+                .orElseThrow(() -> new IllegalArgumentException("Scene not found: " + currentSceneId));
 
-        // Prefer in-memory scenes if provided (e.g., retry-aware pipeline builds temp scenes)
-        List<Scene> scenes = new ArrayList<>();
-        if (chapter.getScenes() != null && !chapter.getScenes().isEmpty()) {
-            scenes.addAll(chapter.getScenes());
-            log.debug("TriadBuilder: using {} in-memory scenes for chapter {}", scenes.size(), chapterId);
-        } else {
-            scenes.addAll(sceneRepo.findByChapterId(chapterId));
-            log.debug("TriadBuilder: loaded {} scenes from graph for chapter {}", scenes.size(), chapterId);
-        }
-        scenes.sort(Comparator.comparingInt(Scene::getSceneIndex));
-        if (scenes.isEmpty()) {
-            log.info("TriadBuilder: no scenes found for chapter {}", chapterId);
-            return List.of();
-        }
+        Scene prev = findPreviousInReadingOrder(currentSceneId).orElse(null);
+        Scene next = findNextInReadingOrder(currentSceneId).orElse(null);
 
-        // Resolve cross-chapter previous scene (last scene of previous chapter, if any)
-        Scene crossChapterPrev = resolveCrossChapterPreviousScene(chapter);
-
-        List<SceneTriad> triads = new ArrayList<>();
-        for (int i = 0; i < scenes.size(); i++) {
-            Scene prev = (i == 0) ? crossChapterPrev : scenes.get(i - 1);
-            Scene curr = scenes.get(i);
-            Scene next = (i < scenes.size() - 1) ? scenes.get(i + 1) : null;
-            triads.add(new SceneTriad(prev, curr, next));
-        }
-        return triads;
+        return new SceneTriad(prev, curr, next);
     }
 
-    private Scene resolveCrossChapterPreviousScene(Chapter chapter) {
-        try {
-            if (chapter.getBookId() == null || chapter.getChapterNumber() == null) return null;
-            int currentNumber = chapter.getChapterNumber();
-            if (currentNumber <= 1) return null;
-
-            List<UUID> chapterIds = chapterReadRepo.findChapterIdsUpTo(chapter.getBookId(), currentNumber);
-            if (chapterIds == null || chapterIds.isEmpty()) return null;
-
-            int idx = chapterIds.indexOf(chapter.getId());
-            if (idx <= 0) {
-                // Fallback: if current id not in list, assume previous is just before currentNumber
-                Optional<UUID> prevIdOpt = chapterIds.stream()
-                        .limit(Math.max(0, chapterIds.size() - 1))
-                        .reduce((a, b) -> b);
-                if (prevIdOpt.isEmpty()) return null;
-                return findLastScene(prevIdOpt.get()).orElse(null);
-            }
-
-            UUID prevChapterId = chapterIds.get(idx - 1);
-            return findLastScene(prevChapterId).orElse(null);
-        } catch (Exception e) {
-            log.debug("TriadBuilder: failed to resolve cross-chapter previous scene: {}", e.getMessage());
-            return null;
-        }
+    /**
+     * Build a scene triad from already-loaded Scene objects.
+     * Used by callers that iterate scenes in memory and track adjacency.
+     */
+    public SceneTriad buildTriad(Scene previous, Scene current, Scene next) {
+        return new SceneTriad(previous, current, next);
     }
 
-    private Optional<Scene> findLastScene(UUID chapterId) {
-        List<Scene> scenes = new ArrayList<>(sceneRepo.findByChapterId(chapterId));
-        if (scenes.isEmpty()) return Optional.empty();
-        return scenes.stream().max(Comparator.comparingInt(Scene::getSceneIndex));
+    public Optional<Scene> findPreviousInReadingOrder(UUID sceneId) {
+        return sceneRepo.findPreviousSceneIdByReadingOrder(sceneId)
+                .flatMap(sceneRepo::findById);
+    }
+
+    public Optional<Scene> findNextInReadingOrder(UUID sceneId) {
+        return sceneRepo.findNextSceneIdByReadingOrder(sceneId)
+                .flatMap(sceneRepo::findById);
+    }
+
+    public List<Scene> loadScenesForChapter(UUID chapterId) {
+        return sceneRepo.findByChapterId(chapterId);
     }
 }

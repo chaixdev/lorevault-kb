@@ -17,6 +17,14 @@ public interface BookIndividualGraphRepository extends Neo4jRepository<BookIndiv
     void deleteByBookId(UUID bookId);
 
     @Query("""
+            MATCH (c:Chapter)-[:IN_BOOK]->(b:Book {id: $bookId})
+            MATCH (c)-[:HAS_INDIVIDUAL]->(ci:ChapterIndividual)
+            WHERE ci.normalizedName = $normalizedName
+            RETURN count(DISTINCT ci)
+            """)
+    long countChapterIndividualsForBookAndName(UUID bookId, String normalizedName);
+
+    @Query("""
             MATCH (bi:BookIndividual {bookId: $bookId})
             RETURN count(bi)
             """)
@@ -38,4 +46,11 @@ public interface BookIndividualGraphRepository extends Neo4jRepository<BookIndiv
             """)
     void linkChapterIndividualToBookIndividual(UUID chapterIndividualId, UUID bookIndividualId);
 
+    @Query("""
+            MATCH (c:Chapter)-[:IN_BOOK]->(:Book {id: $bookId})
+            MATCH (c)-[:HAS_INDIVIDUAL]->(ci:ChapterIndividual {normalizedName: $normalizedName})
+            MATCH (bi:BookIndividual {id: $bookIndividualId})
+            MERGE (ci)-[:REFERS_TO]->(bi)
+            """)
+    void linkChapterIndividualsForBookAndNameToBookIndividual(UUID bookId, String normalizedName, UUID bookIndividualId);
 }

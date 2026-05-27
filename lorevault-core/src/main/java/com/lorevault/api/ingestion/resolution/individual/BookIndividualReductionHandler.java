@@ -48,6 +48,9 @@ public class BookIndividualReductionHandler implements BookIndividualReductionOp
     @Async("ingestionLaneTaskExecutor")
     @EventListener
     public void onTrigger(StageTriggeredEvent event) {
+        // 0. Stage key guard: reject events for other stages
+        if (event.getStage() != StageKey.BOOK_INDIVIDUAL_REDUCTION) return;
+
         if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
             return;
         }

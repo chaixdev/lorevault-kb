@@ -148,6 +148,86 @@ public class SceneRelationshipAnalysisService {
     }
 
     /**
+     * Run LLM triad analysis and return the raw structured result.
+     * Callers use {@link #buildSceneRelationshipAnalysis} to convert to the analysis model
+     * and {@link #extractEntitiesFromTriad} for entity extractions.
+     */
+    public TriadStructuredResult runTriadAnalysis(
+            UUID jobId, Chapter chapter, TriadBuilderService.SceneTriad triad,
+            int triadIndex, String systemPrompt) {
+        Map<String, Object> vars = buildUserVars(chapter, triad);
+        Map<String, Object> statusProps = new HashMap<>();
+        statusProps.put("triadIndex", triadIndex);
+        statusProps.put("prevSceneId", triad.previous() != null ? triad.previous().getEventId() : null);
+        statusProps.put("currentSceneId", triad.current() != null ? triad.current().getEventId() : null);
+        statusProps.put("nextSceneId", triad.next() != null ? triad.next().getEventId() : null);
+        statusProps.put("prevSceneIndex", triad.previous() != null ? triad.previous().getSceneIndex() : null);
+        statusProps.put("currentSceneIndex", triad.current().getSceneIndex());
+        statusProps.put("nextSceneIndex", triad.next() != null ? triad.next().getSceneIndex() : null);
+        return analyzeTriadWithSemanticRetry(jobId, systemPrompt, vars, triad, statusProps);
+    }
+
+    /** Build SceneRelationshipAnalysis from a raw triad analysis result. */
+    public TriadAnalysisModels.SceneRelationshipAnalysis buildSceneRelationshipAnalysis(
+            TriadBuilderService.SceneTriad triad, TriadStructuredResult normalized) {
+        String inv = normalized.previousToCurrent() != null
+                ? invertPrevToCurr(normalized.previousToCurrent().temporalType())
+                : null;
+        return new TriadAnalysisModels.SceneRelationshipAnalysis(
+                triad.previous() != null ? triad.previous().getEventId() : null,
+                triad.current() != null ? triad.current().getEventId() : null,
+                triad.next() != null ? triad.next().getEventId() : null,
+                triad.previous() != null ? triad.previous().getSceneIndex() : null,
+                triad.current().getSceneIndex(),
+                triad.next() != null ? triad.next().getSceneIndex() : null,
+                normalized.timelineMarker(),
+                normalized.previousToCurrent() != null ? normalized.previousToCurrent().temporalType() : null,
+                normalized.previousToCurrent() != null ? normalized.previousToCurrent().certainty() : null,
+                normalized.previousToCurrent() != null ? normalized.previousToCurrent().evidence() : null,
+                normalized.currentToNext() != null ? normalized.currentToNext().temporalType() : null,
+                normalized.currentToNext() != null ? normalized.currentToNext().certainty() : null,
+                normalized.currentToNext() != null ? normalized.currentToNext().evidence() : null,
+                inv
+        );
+    }
+
+    /**
+     * Analyze a single scene triad (prev, curr, next) via LLM.
+     * Convenience wrapper around {@link #runTriadAnalysis} +
+     * {@link #buildSceneRelationshipAnalysis}.
+     */
+    public TriadAnalysisModels.SceneRelationshipAnalysis analyzeSceneTriad(
+            UUID jobId, Chapter chapter, TriadBuilderService.SceneTriad triad,
+            int triadIndex, String systemPrompt) {
+        TriadStructuredResult result = runTriadAnalysis(jobId, chapter, triad, triadIndex, systemPrompt);
+        return buildSceneRelationshipAnalysis(triad, result);
+    }
+
+    /** Extract and normalize entities from a single triad analysis. */
+    public TriadExtractions extractEntitiesFromTriad(Scene currentScene, TriadStructuredResult normalized) {
+        int sceneIndex = currentScene.getSceneIndex() == null ? -1 : currentScene.getSceneIndex();
+        return new TriadExtractions(
+                normalizeIndividuals(normalized),
+                normalizeLocations(normalized),
+                normalizeObjects(normalized),
+                normalizeCollectives(normalized),
+                normalizeEvents(normalized),
+                normalizeRelationClaims(normalized),
+                sceneIndex
+        );
+    }
+
+    public record TriadExtractions(
+            List<TriadAnalysisModels.IndividualExtraction> individuals,
+            List<TriadAnalysisModels.LocationExtraction> locations,
+            List<TriadAnalysisModels.ObjectExtraction> objects,
+            List<TriadAnalysisModels.CollectiveExtraction> collectives,
+            List<TriadAnalysisModels.EventExtraction> events,
+            List<TriadAnalysisModels.RelationClaimExtraction> relationClaims,
+            int sceneIndex
+    ) {}
+
+    /**
      * Analyze scene triads and return normalized results.
      */
     public TriadAnalysisModels.SceneRelationshipOutcome analyzeChapterTriads(UUID jobId, Chapter chapter) {
@@ -156,10 +236,10 @@ public class SceneRelationshipAnalysisService {
     }
 
     public TriadAnalysisModels.SceneRelationshipOutcome analyzeChapterTriads(UUID jobId,
-                                                                                             Chapter chapter,
-                                                                                             Consumer<Map<String, Object>> onTriadStart) {
-        List<TriadBuilderService.SceneTriad> triads = triadBuilder.buildTriadsForChapter(chapter);
-        if (triads.isEmpty()) {
+                                                                                              Chapter chapter,
+                                                                                              Consumer<Map<String, Object>> onTriadStart) {
+        List<Scene> scenes = loadScenes(chapter);
+        if (scenes.isEmpty()) {
             return new TriadAnalysisModels.SceneRelationshipOutcome(List.of(), List.of(), List.of());
         }
 
@@ -174,70 +254,74 @@ public class SceneRelationshipAnalysisService {
         Map<Integer, List<TriadAnalysisModels.EventExtraction>> extractedEventsBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadAnalysisModels.RelationClaimExtraction>> extractedRelationClaimsBySceneIndex = new HashMap<>();
 
+        Scene crossChapterPrev = triadBuilder.findPreviousInReadingOrder(
+                scenes.get(0).getEventId()
+        ).orElse(null);
+
         int triadIndex = 0;
-        for (TriadBuilderService.SceneTriad t : triads) {
-            Map<String, Object> vars = buildUserVars(chapter, t);
+        for (int i = 0; i < scenes.size(); i++) {
+            Scene prev = (i == 0) ? crossChapterPrev : scenes.get(i - 1);
+            Scene curr = scenes.get(i);
+            Scene next = (i < scenes.size() - 1) ? scenes.get(i + 1) : null;
+
+            TriadBuilderService.SceneTriad triad = triadBuilder.buildTriad(prev, curr, next);
 
             Map<String, Object> statusProps = new HashMap<>();
-            statusProps.put("triadIndex", triadIndex++);
-            statusProps.put("prevSceneId", t.previous() != null ? t.previous().getEventId() : null);
-            statusProps.put("currentSceneId", t.current() != null ? t.current().getEventId() : null);
-            statusProps.put("nextSceneId", t.next() != null ? t.next().getEventId() : null);
-            statusProps.put("prevSceneIndex", t.previous() != null ? t.previous().getSceneIndex() : null);
-            statusProps.put("currentSceneIndex", t.current().getSceneIndex());
-            statusProps.put("nextSceneIndex", t.next() != null ? t.next().getSceneIndex() : null);
-
+            statusProps.put("triadIndex", triadIndex);
+            statusProps.put("currentSceneIndex", curr.getSceneIndex());
             onTriadStart.accept(new HashMap<>(statusProps));
 
-            TriadStructuredResult normalized = analyzeTriadWithSemanticRetry(jobId, systemPrompt, vars, t, statusProps);
+            // Single LLM call per triad — both analysis and extractions from same result
+            TriadStructuredResult normalized = runTriadAnalysis(jobId, chapter, triad, triadIndex, systemPrompt);
+            analyses.add(buildSceneRelationshipAnalysis(triad, normalized));
 
-            String inv = normalized.previousToCurrent() != null
-                    ? invertPrevToCurr(normalized.previousToCurrent().temporalType())
-                    : null;
-
-            analyses.add(new TriadAnalysisModels.SceneRelationshipAnalysis(
-                    t.previous() != null ? t.previous().getEventId() : null,
-                    t.current() != null ? t.current().getEventId() : null,
-                    t.next() != null ? t.next().getEventId() : null,
-                    t.previous() != null ? t.previous().getSceneIndex() : null,
-                    t.current().getSceneIndex(),
-                    t.next() != null ? t.next().getSceneIndex() : null,
-                    normalized.timelineMarker(),
-                    normalized.previousToCurrent() != null ? normalized.previousToCurrent().temporalType() : null,
-                    normalized.previousToCurrent() != null ? normalized.previousToCurrent().certainty() : null,
-                    normalized.previousToCurrent() != null ? normalized.previousToCurrent().evidence() : null,
-                    normalized.currentToNext() != null ? normalized.currentToNext().temporalType() : null,
-                    normalized.currentToNext() != null ? normalized.currentToNext().certainty() : null,
-                    normalized.currentToNext() != null ? normalized.currentToNext().evidence() : null,
-                    inv
-            ));
-
-            int sceneIndex = t.current().getSceneIndex() == null ? -1 : t.current().getSceneIndex();
-            if (sceneIndex >= 0) {
-                mergeIfNotEmpty(extractedIndividualsBySceneIndex, sceneIndex, normalizeIndividuals(normalized));
-                mergeIfNotEmpty(extractedLocationsBySceneIndex, sceneIndex, normalizeLocations(normalized));
-                mergeIfNotEmpty(extractedObjectsBySceneIndex, sceneIndex, normalizeObjects(normalized));
-                mergeIfNotEmpty(extractedCollectivesBySceneIndex, sceneIndex, normalizeCollectives(normalized));
-                mergeIfNotEmpty(extractedEventsBySceneIndex, sceneIndex, normalizeEvents(normalized));
-                mergeIfNotEmpty(extractedRelationClaimsBySceneIndex, sceneIndex, normalizeRelationClaims(normalized));
+            if (curr.getSceneIndex() != null && curr.getSceneIndex() >= 0) {
+                int si = curr.getSceneIndex();
+                mergeIfNotEmpty(extractedIndividualsBySceneIndex, si, normalizeIndividuals(normalized));
+                mergeIfNotEmpty(extractedLocationsBySceneIndex, si, normalizeLocations(normalized));
+                mergeIfNotEmpty(extractedObjectsBySceneIndex, si, normalizeObjects(normalized));
+                mergeIfNotEmpty(extractedCollectivesBySceneIndex, si, normalizeCollectives(normalized));
+                mergeIfNotEmpty(extractedEventsBySceneIndex, si, normalizeEvents(normalized));
+                mergeIfNotEmpty(extractedRelationClaimsBySceneIndex, si, normalizeRelationClaims(normalized));
             }
+            triadIndex++;
         }
 
-        List<TriadAnalysisModels.SceneIndividualExtraction> sceneExtractions = coalesce(extractedIndividualsBySceneIndex, TriadAnalysisModels.SceneIndividualExtraction::new);
-        List<TriadAnalysisModels.SceneLocationExtraction> sceneLocationExtractions = coalesce(extractedLocationsBySceneIndex, TriadAnalysisModels.SceneLocationExtraction::new);
-        List<TriadAnalysisModels.SceneCollectiveExtraction> sceneCollectiveExtractions = coalesce(extractedCollectivesBySceneIndex, TriadAnalysisModels.SceneCollectiveExtraction::new);
-        List<TriadAnalysisModels.SceneObjectExtraction> sceneObjectExtractions = coalesce(extractedObjectsBySceneIndex, TriadAnalysisModels.SceneObjectExtraction::new);
-        List<TriadAnalysisModels.SceneEventExtraction> sceneEventExtractions = coalesce(extractedEventsBySceneIndex, TriadAnalysisModels.SceneEventExtraction::new);
-        List<TriadAnalysisModels.SceneRelationClaimExtraction> sceneRelationClaimExtractions = coalesce(extractedRelationClaimsBySceneIndex, TriadAnalysisModels.SceneRelationClaimExtraction::new);
+        return buildOutcome(analyses, extractedIndividualsBySceneIndex, extractedCollectivesBySceneIndex,
+                extractedObjectsBySceneIndex, extractedLocationsBySceneIndex,
+                extractedEventsBySceneIndex, extractedRelationClaimsBySceneIndex);
+    }
 
+    private List<Scene> loadScenes(Chapter chapter) {
+        List<Scene> scenes = new ArrayList<>();
+        if (chapter.getScenes() != null && !chapter.getScenes().isEmpty()) {
+            scenes.addAll(chapter.getScenes());
+        } else {
+            UUID chapterId = chapter.getId();
+            if (chapterId != null) {
+                scenes.addAll(triadBuilder.loadScenesForChapter(chapterId));
+            }
+        }
+        scenes.sort(java.util.Comparator.comparingInt(Scene::getSceneIndex));
+        return scenes;
+    }
+
+    private TriadAnalysisModels.SceneRelationshipOutcome buildOutcome(
+            List<TriadAnalysisModels.SceneRelationshipAnalysis> analyses,
+            Map<Integer, List<TriadAnalysisModels.IndividualExtraction>> individuals,
+            Map<Integer, List<TriadAnalysisModels.CollectiveExtraction>> collectives,
+            Map<Integer, List<TriadAnalysisModels.ObjectExtraction>> objects,
+            Map<Integer, List<TriadAnalysisModels.LocationExtraction>> locations,
+            Map<Integer, List<TriadAnalysisModels.EventExtraction>> events,
+            Map<Integer, List<TriadAnalysisModels.RelationClaimExtraction>> relationClaims) {
         return new TriadAnalysisModels.SceneRelationshipOutcome(
                 analyses,
-                sceneExtractions,
-                sceneCollectiveExtractions,
-                sceneObjectExtractions,
-                sceneLocationExtractions,
-                sceneEventExtractions,
-                sceneRelationClaimExtractions
+                coalesce(individuals, TriadAnalysisModels.SceneIndividualExtraction::new),
+                coalesce(collectives, TriadAnalysisModels.SceneCollectiveExtraction::new),
+                coalesce(objects, TriadAnalysisModels.SceneObjectExtraction::new),
+                coalesce(locations, TriadAnalysisModels.SceneLocationExtraction::new),
+                coalesce(events, TriadAnalysisModels.SceneEventExtraction::new),
+                coalesce(relationClaims, TriadAnalysisModels.SceneRelationClaimExtraction::new)
         );
     }
 

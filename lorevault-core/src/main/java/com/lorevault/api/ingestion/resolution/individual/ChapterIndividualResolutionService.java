@@ -1,44 +1,29 @@
 package com.lorevault.api.ingestion.resolution.individual;
 
 import com.lorevault.api.content.association.ChapterIndividual;
+import com.lorevault.api.content.association.ChapterIndividualCandidate;
 import com.lorevault.api.content.association.ChapterIndividualGraphRepository;
-import com.lorevault.api.content.mention.IndividualMention;
-import com.lorevault.api.content.mention.IndividualMentionGraphRepository;
-import com.lorevault.api.ingestion.resolution.consolidation.ChapterEntityGuardService;
-import com.lorevault.api.ingestion.resolution.consolidation.ConsolidationEngine;
-import com.lorevault.api.ingestion.resolution.consolidation.NameKeys;
-import com.lorevault.api.ingestion.resolution.consolidation.PickFirstNonBlank;
+import com.lorevault.api.content.chapter.ChapterGraphRepository;
 
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class ChapterIndividualResolutionService {
 
     public static final String CHAPTER_RESOLVED = "chapter-resolved";
 
     private final ChapterIndividualGraphRepository chapterIndividualRepository;
-    private final ChapterEntityGuardService chapterEntityGuardService;
-    private final IndividualMentionGraphRepository individualMentionRepository;
-
-    public ChapterIndividualResolutionService(
-            ChapterIndividualGraphRepository chapterIndividualRepository,
-            ChapterEntityGuardService chapterEntityGuardService,
-            IndividualMentionGraphRepository individualMentionRepository
-    ) {
-        this.chapterIndividualRepository = chapterIndividualRepository;
-        this.chapterEntityGuardService = chapterEntityGuardService;
-        this.individualMentionRepository = individualMentionRepository;
-    }
+    private final ChapterGraphRepository chapterGraphRepository;
 
     @Transactional(readOnly = true)
     public boolean chapterExists(UUID chapterId) {
-        return chapterEntityGuardService.chapterExists(chapterId);
+        return chapterId != null && chapterGraphRepository.findById(chapterId).isPresent();
     }
 
     @Transactional
@@ -60,59 +45,52 @@ public class ChapterIndividualResolutionService {
 
         chapterIndividualRepository.deleteByChapterId(chapterId);
 
-        List<IndividualMention> mentions = individualMentionRepository.findByChapterId(chapterId).stream()
-                .sorted(Comparator
-                        .comparing(IndividualMention::normalizedName, Comparator.nullsLast(String::compareTo))
-                        .thenComparing(IndividualMention::displayName, Comparator.nullsLast(String::compareTo))
-                        .thenComparing(IndividualMention::extractionIndex, Comparator.nullsLast(Integer::compareTo)))
-                .toList();
-
-        List<List<IndividualMention>> clusters =
-                ConsolidationEngine.cluster(mentions, mention -> NameKeys.from(mention.normalizedName(), mention.aliases()));
-
-        if (clusters.isEmpty()) {
+        List<ChapterIndividualCandidate> candidates =
+                chapterIndividualRepository.findResolutionCandidates(chapterId);
+        if (candidates.isEmpty()) {
             return new ChapterIndividualResolutionResult(
                     chapterId,
                     false,
                     Math.toIntExact(mentionCount),
                     0,
-                    "No resolvable individual mentions found for chapter"
+                    "No resolvable mentions found for chapter"
             );
         }
 
         List<ChapterIndividual> chapterIndividuals = new ArrayList<>();
-        List<List<UUID>> mentionIdsByIndividual = new ArrayList<>();
-
-        for (List<IndividualMention> cluster : clusters) {
-            IndividualMention representative = cluster.get(0);
-            List<UUID> mentionIds = cluster.stream().map(IndividualMention::id).toList();
-            LinkedHashSet<String> aliases = new LinkedHashSet<>();
-            for (IndividualMention mention : cluster) {
-                if (mention.aliases() != null) {
-                    aliases.addAll(mention.aliases().stream().filter(a -> a != null && !a.isBlank()).toList());
-                }
+        for (ChapterIndividualCandidate candidate : candidates) {
+            if (candidate.getNormalizedName() == null || candidate.getNormalizedName().isBlank()) {
+                continue;
             }
             chapterIndividuals.add(new ChapterIndividual(
                     UUID.randomUUID(),
                     chapterId,
-                    representative.displayName(),
-                    representative.normalizedName(),
-                    List.copyOf(aliases),
-                    mentionIds.size(),
+                    candidate.getDisplayName(),
+                    candidate.getNormalizedName(),
+                    safeMentionCount(candidate.getMentionCount()),
                     null,
                     null
             ));
-            mentionIdsByIndividual.add(mentionIds);
+        }
+
+        if (chapterIndividuals.isEmpty()) {
+            return new ChapterIndividualResolutionResult(
+                    chapterId,
+                    false,
+                    Math.toIntExact(mentionCount),
+                    0,
+                    "No resolvable mentions found for chapter"
+            );
         }
 
         List<ChapterIndividual> savedIndividuals = new ArrayList<>();
         chapterIndividualRepository.saveAll(chapterIndividuals).forEach(savedIndividuals::add);
 
-        for (int i = 0; i < savedIndividuals.size(); i++) {
-            ChapterIndividual chapterIndividual = savedIndividuals.get(i);
+        for (ChapterIndividual chapterIndividual : savedIndividuals) {
             chapterIndividualRepository.linkChapterToIndividual(chapterId, chapterIndividual.id());
             chapterIndividualRepository.linkMentionsToChapterIndividual(
-                    mentionIdsByIndividual.get(i),
+                    chapterId,
+                    chapterIndividual.normalizedName(),
                     chapterIndividual.id(),
                     CHAPTER_RESOLVED
             );
@@ -125,5 +103,12 @@ public class ChapterIndividualResolutionService {
                 Math.toIntExact(chapterIndividualRepository.countChapterIndividualsByChapterId(chapterId)),
                 "Resolved chapter individual mentions"
         );
+    }
+
+    private int safeMentionCount(Long mentionCount) {
+        if (mentionCount == null) {
+            return 0;
+        }
+        return Math.toIntExact(mentionCount);
     }
 }

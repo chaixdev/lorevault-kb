@@ -116,6 +116,9 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
     @Async("sceneDetectionTaskExecutor")
     @EventListener
     public void onTrigger(StageTriggeredEvent event) {
+        // 0. Stage key guard: reject events for other stages
+        if (event.getStage() != StageKey.SCENE_SEGMENTATION) return;
+
         // 1. Guard: only one thread executes at a time
         if (! stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
             return; // already RUNNING or no longer TRIGGERED
@@ -228,8 +231,11 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                     )
             );
 
-            //TODO: resume walkthrough review
-            enrichCrossChapterTemporalEdges(jobId, temporalDefaults.newlyCreatedCrossChapterBoundaries());
+            // dead code — per-scene buildTriad resolves cross-chapter prev naturally via
+            // NEXT_IN_READING_ORDER graph edges. Cross-chapter next edges (last scene of
+            // chapter N → first scene of chapter N+1) will be created progressively when
+            // the next chapter is ingested and its first scene's buildTriad finds prev.
+            // enrichCrossChapterTemporalEdges(jobId, temporalDefaults.newlyCreatedCrossChapterBoundaries());
 
             if (! scenes.isEmpty()) {
                 individualPersistenceService.persistExtractedIndividuals(scenes, sceneRelationshipOutcome.sceneIndividualExtractions());

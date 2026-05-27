@@ -1,38 +1,39 @@
 package com.lorevault.api.ingestion.resolution.individual;
 
 import com.lorevault.api.content.association.BookIndividual;
-import com.lorevault.api.content.association.ChapterIndividual;
-import com.lorevault.api.content.association.ChapterIndividualGraphRepository;
-import com.lorevault.api.ingestion.resolution.consolidation.ConsolidationEngine;
-import com.lorevault.api.ingestion.resolution.consolidation.NameKeys;
+import com.lorevault.api.content.association.BookIndividualGraphRepository;
 import com.lorevault.api.library.book.BookGraphRepository;
 
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import org.neo4j.driver.exceptions.TransientException;
+
+import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.neo4j.driver.exceptions.TransientException;
 
 @Service
 public class BookIndividualReductionService {
 
+    private final BookIndividualGraphRepository bookIndividualRepository;
     private final BookGraphRepository bookGraphRepository;
-    private final ChapterIndividualGraphRepository chapterIndividualRepository;
+    private final Neo4jClient neo4jClient;
     private final BookIndividualPersistenceService bookIndividualPersistenceService;
 
     public BookIndividualReductionService(
+            BookIndividualGraphRepository bookIndividualRepository,
             BookGraphRepository bookGraphRepository,
-            ChapterIndividualGraphRepository chapterIndividualRepository,
+            Neo4jClient neo4jClient,
             BookIndividualPersistenceService bookIndividualPersistenceService
     ) {
+        this.bookIndividualRepository = bookIndividualRepository;
         this.bookGraphRepository = bookGraphRepository;
-        this.chapterIndividualRepository = chapterIndividualRepository;
+        this.neo4jClient = neo4jClient;
         this.bookIndividualPersistenceService = bookIndividualPersistenceService;
     }
 
@@ -51,64 +52,99 @@ public class BookIndividualReductionService {
             return new BookIndividualResolutionResult(null, false, 0, 0, "Book ID is required");
         }
 
-        List<ChapterIndividual> chapterIndividuals = chapterIndividualRepository.findByBookId(bookId).stream()
-                .sorted(Comparator
-                        .comparing(ChapterIndividual::normalizedName, Comparator.nullsLast(String::compareTo))
-                        .thenComparing(ChapterIndividual::displayName, Comparator.nullsLast(String::compareTo)))
-                .toList();
-
-        if (chapterIndividuals.isEmpty()) {
-            bookIndividualPersistenceService.replaceBookIndividuals(bookId, List.of(), List.of());
+        List<BookReductionCandidate> candidates = findReductionCandidates(bookId);
+        if (candidates.isEmpty()) {
+            bookIndividualPersistenceService.replaceBookIndividuals(bookId, List.of());
             return new BookIndividualResolutionResult(bookId, true, 0, 0, "No chapter individuals found for book");
         }
-
-        return resolveBook(bookId, chapterIndividuals);
+        return resolveBook(bookId, candidates);
     }
 
-    BookIndividualResolutionResult resolveBook(UUID bookId, List<ChapterIndividual> chapterIndividuals) {
-
-        List<List<ChapterIndividual>> clusters =
-                ConsolidationEngine.cluster(chapterIndividuals, ci -> NameKeys.from(ci.normalizedName(), ci.aliases()));
-
-        if (clusters.isEmpty()) {
-            return new BookIndividualResolutionResult(bookId, false, chapterIndividuals.size(), 0, "No resolvable chapter individuals found for book");
-        }
+    BookIndividualResolutionResult resolveBook(UUID bookId, List<BookReductionCandidate> candidates) {
 
         List<BookIndividual> bookIndividuals = new ArrayList<>();
-        List<List<UUID>> chapterIndividualIdsByBookIndividual = new ArrayList<>();
-
-        for (List<ChapterIndividual> cluster : clusters) {
-            ChapterIndividual representative = cluster.get(0);
-            List<UUID> chapterIndividualIds = cluster.stream().map(ChapterIndividual::id).toList();
-            LinkedHashSet<String> aliases = new LinkedHashSet<>();
-            for (ChapterIndividual ci : cluster) {
-                if (ci.aliases() != null) {
-                    aliases.addAll(ci.aliases().stream().filter(a -> a != null && !a.isBlank()).toList());
-                }
+        for (BookReductionCandidate candidate : candidates) {
+            if (candidate.normalizedName() == null || candidate.normalizedName().isBlank()) {
+                continue;
             }
             bookIndividuals.add(new BookIndividual(
                     UUID.randomUUID(),
                     bookId,
-                    representative.displayName(),
-                    representative.normalizedName(),
-                    List.copyOf(aliases),
-                    chapterIndividualIds.size(),
-                    representative.id(),
-                    representative.chapterId(),
+                    candidate.displayName(),
+                    candidate.normalizedName(),
+                    safeCount(bookIndividualRepository.countChapterIndividualsForBookAndName(bookId, candidate.normalizedName())),
+                    candidate.chapterIndividualId(),
+                    candidate.chapterId(),
                     null,
                     null
             ));
-            chapterIndividualIdsByBookIndividual.add(chapterIndividualIds);
         }
 
-        bookIndividualPersistenceService.replaceBookIndividuals(bookId, bookIndividuals, chapterIndividualIdsByBookIndividual);
+        if (bookIndividuals.isEmpty()) {
+            return new BookIndividualResolutionResult(bookId, false, candidates.size(), 0, "No resolvable chapter individuals found for book");
+        }
+
+        bookIndividualPersistenceService.replaceBookIndividuals(bookId, bookIndividuals);
 
         return new BookIndividualResolutionResult(
                 bookId,
                 true,
-                chapterIndividuals.size(),
-                Math.toIntExact(bookIndividualPersistenceService.countByBookId(bookId)),
+                candidates.size(),
+                safeCount(bookIndividualPersistenceService.countByBookId(bookId)),
                 "Resolved book-level individuals"
         );
     }
+
+    private int safeCount(long count) {
+        return Math.toIntExact(count);
+    }
+
+    private List<BookReductionCandidate> findReductionCandidates(UUID bookId) {
+        return neo4jClient.query("""
+                MATCH (c:Chapter)-[:IN_BOOK]->(b:Book {id: $bookId})
+                MATCH (c)-[:HAS_INDIVIDUAL]->(ci:ChapterIndividual)
+                WHERE ci.normalizedName IS NOT NULL AND trim(ci.normalizedName) <> ''
+                WITH ci, c
+                ORDER BY ci.normalizedName, coalesce(ci.displayName, ''), c.chapterNumber, coalesce(ci.chapterId, c.id)
+                WITH ci.normalizedName AS normalizedName, collect(DISTINCT ci) AS chapterIndividuals
+                WITH normalizedName, chapterIndividuals, head(chapterIndividuals) AS representative
+                RETURN representative.id AS chapterIndividualId,
+                       representative.chapterId AS chapterId,
+                       representative.displayName AS displayName,
+                       normalizedName AS normalizedName
+                ORDER BY normalizedName
+                """)
+                .bind(bookId != null ? bookId.toString() : null).to("bookId")
+                .fetch()
+                .all()
+                .stream()
+                .map(this::toCandidate)
+                .toList();
+    }
+
+    private BookReductionCandidate toCandidate(Map<String, Object> row) {
+        return new BookReductionCandidate(
+                toUuid(row.get("chapterIndividualId")),
+                toUuid(row.get("chapterId")),
+                (String) row.get("displayName"),
+                (String) row.get("normalizedName")
+        );
+    }
+
+    private UUID toUuid(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof UUID uuid) {
+            return uuid;
+        }
+        return UUID.fromString(value.toString());
+    }
+
+    private record BookReductionCandidate(
+        UUID chapterIndividualId,
+        UUID chapterId,
+        String displayName,
+        String normalizedName
+    ) {}
 }

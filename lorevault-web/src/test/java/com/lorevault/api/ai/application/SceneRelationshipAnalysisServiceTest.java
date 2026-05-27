@@ -22,6 +22,7 @@ import org.springframework.ai.chat.prompt.PromptTemplate;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -66,12 +67,15 @@ class SceneRelationshipAnalysisServiceTest {
     void shouldAnalyzeEachTriadAndReturnRelationshipResults() {
         Chapter testChapter = createTestChapter();
         List<TriadBuilderService.SceneTriad> triads = createTestTriads();
+        testChapter.setScenes(triads.stream().map(TriadBuilderService.SceneTriad::current).toList());
         
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
-        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+        when(triadBuilderService.findPreviousInReadingOrder(any())).thenReturn(Optional.empty());
+        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
+                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
         when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
@@ -92,11 +96,14 @@ class SceneRelationshipAnalysisServiceTest {
     void shouldCallTriadStartCallbackWithPerTriadStatusProperties() {
         Chapter testChapter = createTestChapter();
         List<TriadBuilderService.SceneTriad> triads = createTestTriads();
+        testChapter.setScenes(triads.stream().map(TriadBuilderService.SceneTriad::current).toList());
 
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+        when(triadBuilderService.findPreviousInReadingOrder(any())).thenReturn(Optional.empty());
+        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
+                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
         when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
@@ -111,21 +118,17 @@ class SceneRelationshipAnalysisServiceTest {
 
         List<Map<String, Object>> statusMaps = triadStatusCaptor.getAllValues();
         assertThat(statusMaps.get(0)).containsEntry("triadIndex", 0);
-        assertThat(statusMaps.get(0)).containsEntry("prevSceneIndex", null);
         assertThat(statusMaps.get(0)).containsEntry("currentSceneIndex", 0);
-        assertThat(statusMaps.get(0)).containsEntry("nextSceneIndex", 1);
 
         assertThat(statusMaps.get(1)).containsEntry("triadIndex", 1);
-        assertThat(statusMaps.get(1)).containsEntry("prevSceneIndex", 0);
         assertThat(statusMaps.get(1)).containsEntry("currentSceneIndex", 1);
-        assertThat(statusMaps.get(1)).containsEntry("nextSceneIndex", 2);
     }
 
     @Test
     @DisplayName("Should handle empty triads list gracefully")
     void shouldHandleEmptyTriadsListGracefully() {
         Chapter testChapter = createTestChapter();
-        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(List.of());
+        when(triadBuilderService.loadScenesForChapter(testChapterId)).thenReturn(List.of());
 
         List<TriadAnalysisModels.SceneRelationshipAnalysis> result =
             sceneRelationshipAnalysisService.analyzeChapterTriads(testJobId, testChapter).triadAnalyses();
@@ -139,12 +142,15 @@ class SceneRelationshipAnalysisServiceTest {
     void shouldCallSceneDetectionClientForTriadAnalysis() {
         Chapter testChapter = createTestChapter();
         List<TriadBuilderService.SceneTriad> triads = List.of(createSingleTriad());
+        testChapter.setScenes(triads.stream().map(TriadBuilderService.SceneTriad::current).toList());
         
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
-        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+        when(triadBuilderService.findPreviousInReadingOrder(any())).thenReturn(Optional.empty());
+        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
+                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
         when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
@@ -163,12 +169,15 @@ class SceneRelationshipAnalysisServiceTest {
     void shouldIncludeProperUserVariablesForTriadLlmCall() {
         Chapter testChapter = createTestChapterWithText();
         List<TriadBuilderService.SceneTriad> triads = List.of(createSingleTriad());
+        testChapter.setScenes(triads.stream().map(TriadBuilderService.SceneTriad::current).toList());
         
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
-        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+        when(triadBuilderService.findPreviousInReadingOrder(any())).thenReturn(Optional.empty());
+        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
+                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
         when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
@@ -196,12 +205,16 @@ class SceneRelationshipAnalysisServiceTest {
     @DisplayName("Should fail when required previousToCurrent relation is missing")
     void shouldFailWhenPreviousToCurrentRelationMissing() {
         Chapter testChapter = createTestChapter();
-        List<TriadBuilderService.SceneTriad> triads = List.of(createTriadWithPreviousAndCurrent());
+        TriadBuilderService.SceneTriad singleTriad = createTriadWithPreviousAndCurrent();
+        testChapter.setScenes(List.of(singleTriad.current()));
 
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+        when(triadBuilderService.findPreviousInReadingOrder(eq(singleTriad.current().getEventId())))
+                .thenReturn(Optional.of(singleTriad.previous()));
+        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
+                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
 
         SceneRelationshipAnalysisService.TriadStructuredResult invalid =
                 new SceneRelationshipAnalysisService.TriadStructuredResult("marker", null,
@@ -226,12 +239,16 @@ class SceneRelationshipAnalysisServiceTest {
     @DisplayName("Should retry semantic triad validation failures before succeeding")
     void shouldRetrySemanticTriadValidationFailuresBeforeSucceeding() {
         Chapter testChapter = createTestChapter();
-        List<TriadBuilderService.SceneTriad> triads = List.of(createTriadWithPreviousAndCurrent());
+        TriadBuilderService.SceneTriad singleTriad = createTriadWithPreviousAndCurrent();
+        testChapter.setScenes(List.of(singleTriad.current()));
 
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+        when(triadBuilderService.findPreviousInReadingOrder(eq(singleTriad.current().getEventId())))
+                .thenReturn(Optional.of(singleTriad.previous()));
+        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
+                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
 
         SceneRelationshipAnalysisService.TriadStructuredResult invalid =
                 new SceneRelationshipAnalysisService.TriadStructuredResult("marker", null,
@@ -266,12 +283,16 @@ class SceneRelationshipAnalysisServiceTest {
     @DisplayName("Should normalize legacy meets relation to canonical before")
     void shouldNormalizeLegacyMeetsRelationToCanonicalBefore() {
         Chapter testChapter = createTestChapter();
-        List<TriadBuilderService.SceneTriad> triads = List.of(createTriadWithPreviousAndCurrent());
+        TriadBuilderService.SceneTriad singleTriad = createTriadWithPreviousAndCurrent();
+        testChapter.setScenes(List.of(singleTriad.current()));
 
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+        when(triadBuilderService.findPreviousInReadingOrder(eq(singleTriad.current().getEventId())))
+                .thenReturn(Optional.of(singleTriad.previous()));
+        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
+                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
 
         SceneRelationshipAnalysisService.TriadStructuredResult legacy =
                 new SceneRelationshipAnalysisService.TriadStructuredResult(
@@ -296,12 +317,16 @@ class SceneRelationshipAnalysisServiceTest {
     @DisplayName("Should preserve during as distinct relation in practical vocabulary")
     void shouldPreserveDuringAsDistinctRelation() {
         Chapter testChapter = createTestChapter();
-        List<TriadBuilderService.SceneTriad> triads = List.of(createTriadWithPreviousAndCurrent());
+        TriadBuilderService.SceneTriad singleTriad = createTriadWithPreviousAndCurrent();
+        testChapter.setScenes(List.of(singleTriad.current()));
 
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+        when(triadBuilderService.findPreviousInReadingOrder(eq(singleTriad.current().getEventId())))
+                .thenReturn(Optional.of(singleTriad.previous()));
+        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
+                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
 
         SceneRelationshipAnalysisService.TriadStructuredResult parsed =
                 new SceneRelationshipAnalysisService.TriadStructuredResult(
@@ -326,12 +351,16 @@ class SceneRelationshipAnalysisServiceTest {
     @DisplayName("Should fail when relation type is outside ADR010 practical vocabulary")
     void shouldFailWhenRelationTypeIsOutsideAdr010PracticalVocabulary() {
         Chapter testChapter = createTestChapter();
-        List<TriadBuilderService.SceneTriad> triads = List.of(createTriadWithPreviousAndCurrent());
+        TriadBuilderService.SceneTriad singleTriad = createTriadWithPreviousAndCurrent();
+        testChapter.setScenes(List.of(singleTriad.current()));
 
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+        when(triadBuilderService.findPreviousInReadingOrder(eq(singleTriad.current().getEventId())))
+                .thenReturn(Optional.of(singleTriad.previous()));
+        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
+                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
 
         SceneRelationshipAnalysisService.TriadStructuredResult invalid =
                 new SceneRelationshipAnalysisService.TriadStructuredResult(
@@ -352,12 +381,16 @@ class SceneRelationshipAnalysisServiceTest {
     @DisplayName("Should coarsen legacy equals relation to overlaps")
     void shouldCoarsenLegacyEqualsRelationToOverlaps() {
         Chapter testChapter = createTestChapter();
-        List<TriadBuilderService.SceneTriad> triads = List.of(createTriadWithPreviousAndCurrent());
+        TriadBuilderService.SceneTriad singleTriad = createTriadWithPreviousAndCurrent();
+        testChapter.setScenes(List.of(singleTriad.current()));
 
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.buildTriadsForChapter(testChapter)).thenReturn(triads);
+        when(triadBuilderService.findPreviousInReadingOrder(eq(singleTriad.current().getEventId())))
+                .thenReturn(Optional.of(singleTriad.previous()));
+        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
+                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
 
         SceneRelationshipAnalysisService.TriadStructuredResult legacy =
                 new SceneRelationshipAnalysisService.TriadStructuredResult(

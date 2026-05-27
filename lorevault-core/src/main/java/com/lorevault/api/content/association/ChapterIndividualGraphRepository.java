@@ -31,6 +31,26 @@ public interface ChapterIndividualGraphRepository extends Neo4jRepository<Chapte
             """)
     void deleteByChapterId(UUID chapterId);
 
+    /**
+     * Find resolution candidates for individual mentions in a chapter.
+     * Returns {@link ChapterIndividualCandidate} records instead of a projection interface
+     * to avoid Spring Data Neo4j's DirectFieldAccessFallbackBeanWrapper mapping
+     * result columns onto the repository's domain entity ({@code ChapterIndividual}).
+     */
+    @Query("""
+            MATCH (m:IndividualMention {chapterId: $chapterId})
+            WHERE m.normalizedName IS NOT NULL AND trim(m.normalizedName) <> ''
+            WITH m
+            ORDER BY m.normalizedName, coalesce(m.displayName, ''), coalesce(m.extractionIndex, 0)
+            WITH m.normalizedName AS normalizedName, collect(m) AS mentions
+            WITH normalizedName, mentions, head(mentions) AS representative
+            RETURN representative.displayName AS displayName,
+                   normalizedName AS normalizedName,
+                   size(mentions) AS mentionCount
+            ORDER BY normalizedName
+            """)
+    List<ChapterIndividualCandidate> findResolutionCandidates(UUID chapterId);
+
     @Query("""
             MATCH (c:Chapter {id: $chapterId})
             WITH c
@@ -40,23 +60,16 @@ public interface ChapterIndividualGraphRepository extends Neo4jRepository<Chapte
     void linkChapterToIndividual(UUID chapterId, UUID chapterIndividualId);
 
     @Query("""
+            MATCH (m:IndividualMention {chapterId: $chapterId, normalizedName: $normalizedName})
+            WITH m
             MATCH (ci:ChapterIndividual {id: $chapterIndividualId})
-            WITH ci
-            UNWIND $mentionIds AS mentionId
-            MATCH (m:IndividualMention {id: mentionId})
             MERGE (m)-[:REFERS_TO]->(ci)
             SET m.resolutionStatus = $resolutionStatus
             """)
     void linkMentionsToChapterIndividual(
-            List<UUID> mentionIds,
+            UUID chapterId,
+            String normalizedName,
             UUID chapterIndividualId,
             String resolutionStatus
     );
-
-    @Query("""
-            MATCH (c:Chapter)-[:IN_BOOK]->(:Book {id: $bookId})
-            MATCH (c)-[:HAS_INDIVIDUAL]->(ci:ChapterIndividual)
-            RETURN ci
-            """)
-    List<ChapterIndividual> findByBookId(UUID bookId);
 }

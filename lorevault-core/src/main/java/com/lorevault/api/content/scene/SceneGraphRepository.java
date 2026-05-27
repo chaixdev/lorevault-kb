@@ -4,6 +4,7 @@ import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface SceneGraphRepository extends Neo4jRepository<Scene, UUID> {
@@ -41,4 +42,10 @@ public interface SceneGraphRepository extends Neo4jRepository<Scene, UUID> {
             MERGE (c)-[:HAS_SCENE]->(s)
             """)
     void linkSceneToChapter(UUID chapterId, UUID sceneId);
+
+    @Query("MATCH (prev:Scene)-[:NEXT_IN_READING_ORDER]->(:Scene {eventId: $sceneId}) RETURN prev.eventId")
+    Optional<UUID> findPreviousSceneIdByReadingOrder(UUID sceneId);
+
+    @Query("MATCH (:Scene {eventId: $sceneId})-[:NEXT_IN_READING_ORDER]->(next:Scene) RETURN next.eventId")
+    Optional<UUID> findNextSceneIdByReadingOrder(UUID sceneId);
 }

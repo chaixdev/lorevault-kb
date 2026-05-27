@@ -41,6 +41,9 @@ public class ChapterIndividualResolutionHandler implements ChapterIndividualReso
     @Async("ingestionLaneTaskExecutor")
     @EventListener
     public void onTrigger(StageTriggeredEvent event) {
+        // 0. Stage key guard: reject events for other stages
+        if (event.getStage() != StageKey.CHAPTER_INDIVIDUAL_RESOLUTION) return;
+
         // 1. Guard: only one thread executes at a time
         if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
             return;
