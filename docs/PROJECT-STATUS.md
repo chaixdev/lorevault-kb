@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
 **Last Updated:** May 27, 2026
-**Status:** Active — Phases 1+2+4 complete. 397 tests green, ArchUnit passing. Phase 3 structural changes next: unified entity consolidation → StageDispatcher → per-scene buildTriad.
+**Status:** Active — Phases 1+2+4 complete, Phase 3a complete. 44 consolidation tests + 397 existing = all green. ArchUnit passing. Phase 3b next: StageDispatcher extraction → Phase 3c: per-scene buildTriad.
 **Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state, terminology alignment (resolution → reduction). Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
@@ -78,11 +78,13 @@ Three items, ordered by layering (services below handlers, buildTriad independen
 
 | Order | Item | Impact | Design doc |
 |---|---|---|---|
-| **3a** | Unified entity consolidation | -457 lines. Extract shared `ConsolidationEngine` + `ClusterMerger` from 8 resolution/reduction services. Replaces 4 divergent clustering algorithms with one connected-components engine. Correctness upgrades: Object/Collective gain alias-aware merging, Individual gains aliases entirely. | [Unified Entity Consolidation](planning/2026-05-27T0015_unified-entity-consolidation.md) |
+| **3a** ✅ | Unified entity consolidation | Done. Shared `ConsolidationEngine` + `NameKeys` + `PickFirstNonBlank` + `ChapterEntityGuardService` in `consolidation/`. 8 services refactored, ~1,280 lines of duplicated clustering removed. Object/Collective gain alias-aware merging, Individual gains aliases and ID-based linking. 44 tests green. Smoke-tested on Deathworlders ch 001 (68→68 entities resolved). | [Unified Entity Consolidation](planning/2026-05-27T0015_unified-entity-consolidation.md) |
 | **3b** | StageDispatcher extraction (#7/#20) | Remove 65 orchestration injection points from 13 handlers. Handlers become pure `StageOperation` beans — just `execute(DispatchContext ctx)`. Centralized `@Async`, `@EventListener`, guard, idempotency, error boundary, MDC, and Micrometer timing. | [StageDispatcher Extraction](planning/2026-05-24T0000_stagedispatcher-extraction.md) |
 | **3c** | per-scene `buildTriad` (#14) | Refactor triad analysis from per-chapter `buildTriadsForChapter` to per-scene `buildTriad`. Independent of items 3a and 3b. | (in master cleanup plan) |
 
 **Rationale:** Consolidation is lower in the layer stack than StageDispatcher — services are called by handlers. Doing consolidation first means StageDispatcher lands on a cleaner, more uniform codebase.
+
+**Smoke test findings (May 27):** 7 pre-existing pipeline issues discovered — see [Pipeline Issues from Smoke Test](planning/2026-05-27T0230_pipeline-issues-from-smoke-test.md). Critical fixes needed before further ingestion testing: orchestrator stage ordering (resolution fires before scene detection), book ID propagation to book-level handlers, DATE_TIME coercion in stale recovery, concurrent scene detection workers from stale re-trigger.
 
 ### Phase A: Complete ingestion pipeline hardening
 
