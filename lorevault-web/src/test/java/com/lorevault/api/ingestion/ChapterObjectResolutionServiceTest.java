@@ -9,8 +9,8 @@ import static org.mockito.Mockito.when;
 
 import com.lorevault.api.content.association.ChapterObject;
 import com.lorevault.api.content.association.ChapterObjectGraphRepository;
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.mention.ObjectMention;
+import com.lorevault.api.ingestion.resolution.consolidation.ChapterEntityGuardService;
 import com.lorevault.api.content.mention.ObjectMentionGraphRepository;
 import com.lorevault.api.ingestion.resolution.object.ChapterObjectResolutionResult;
 import com.lorevault.api.ingestion.resolution.object.ChapterObjectResolutionService;
@@ -34,7 +34,7 @@ class ChapterObjectResolutionServiceTest {
     private ChapterObjectGraphRepository chapterObjectRepository;
 
     @Mock
-    private ChapterGraphRepository chapterGraphRepository;
+    private ChapterEntityGuardService chapterEntityGuardService;
 
     @Mock
     private ObjectMentionGraphRepository objectMentionRepository;
@@ -115,13 +115,13 @@ class ChapterObjectResolutionServiceTest {
         assertThat(response.rawObjectsProcessed()).isZero();
         assertThat(response.chapterObjectsCreated()).isZero();
 
-        verify(chapterObjectRepository).deleteByChapterId(chapterId);
+        verify(chapterObjectRepository, never()).deleteByChapterId(any());
         verify(objectMentionRepository, never()).findByChapterId(any());
     }
 
     @Test
-    @DisplayName("Does not merge object mentions through shared aliases when normalized names differ")
-    void doesNotMergeObjectsThroughSharedAliases() {
+    @DisplayName("Merges object mentions through shared aliases when normalized names differ")
+    void mergesObjectsThroughSharedAliases() {
         UUID chapterId = UUID.randomUUID();
         UUID swordId = UUID.randomUUID();
         UUID daggerId = UUID.randomUUID();
@@ -132,31 +132,35 @@ class ChapterObjectResolutionServiceTest {
         when(chapterObjectRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
         when(objectMentionRepository.findByChapterId(chapterId)).thenReturn(List.of(dagger, sword));
         when(chapterObjectRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(chapterObjectRepository.countChapterObjectsByChapterId(chapterId)).thenReturn(2L);
+        when(chapterObjectRepository.countChapterObjectsByChapterId(chapterId)).thenReturn(1L);
 
         ChapterObjectResolutionResult response = service.resolveChapter(chapterId);
 
         assertThat(response.success()).isTrue();
-        assertThat(response.chapterObjectsCreated()).isEqualTo(2);
+        assertThat(response.chapterObjectsCreated()).isEqualTo(1);
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Iterable<ChapterObject>> savedCaptor = ArgumentCaptor.forClass(Iterable.class);
         verify(chapterObjectRepository).saveAll(savedCaptor.capture());
         List<ChapterObject> saved = org.assertj.core.util.Lists.newArrayList(savedCaptor.getValue());
 
-        assertThat(saved)
-                .extracting(ChapterObject::normalizedName, ChapterObject::mentionCount)
-                .containsExactlyInAnyOrder(
-                        org.assertj.core.groups.Tuple.tuple("silver sword", 1),
-                        org.assertj.core.groups.Tuple.tuple("ceremonial dagger", 1)
-                );
+        assertThat(saved).hasSize(1);
+        ChapterObject merged = saved.get(0);
+        assertThat(merged.mentionCount()).isEqualTo(2);
+        assertThat(merged.aliases()).containsExactly("Moonblade");
+
+        verify(chapterObjectRepository).linkMentionsToChapterObject(
+                argThat(ids -> ids.size() == 2 && ids.containsAll(List.of(swordId, daggerId))),
+                eq(merged.id()),
+                eq(ChapterObjectResolutionService.CHAPTER_RESOLVED)
+        );
     }
 
     @Test
     @DisplayName("Skips save when object mentions are present but none are resolvable")
     void skipsSaveWhenNoResolvableObjectMentionsExist() {
         UUID chapterId = UUID.randomUUID();
-        ObjectMention blank = mention(UUID.randomUUID(), chapterId, " ", " ", List.of("alias"), null, null, null, null, 0);
+        ObjectMention blank = mention(UUID.randomUUID(), chapterId, " ", " ", List.of(), null, null, null, null, 0);
 
         when(chapterObjectRepository.countMentionsByChapterId(chapterId)).thenReturn(1L);
         when(objectMentionRepository.findByChapterId(chapterId)).thenReturn(List.of(blank));

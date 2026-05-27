@@ -3,6 +3,9 @@ package com.lorevault.api.ingestion.resolution.collective;
 import com.lorevault.api.content.association.BookCollective;
 import com.lorevault.api.content.association.ChapterCollective;
 import com.lorevault.api.content.association.ChapterCollectiveGraphRepository;
+import com.lorevault.api.ingestion.resolution.consolidation.ConsolidationEngine;
+import com.lorevault.api.ingestion.resolution.consolidation.NameKeys;
+import com.lorevault.api.ingestion.resolution.consolidation.PickFirstNonBlank;
 import com.lorevault.api.library.book.BookGraphRepository;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -49,7 +52,6 @@ public class BookCollectiveReductionService {
         }
 
         List<ChapterCollective> chapterCollectives = chapterCollectiveRepository.findByBookId(bookId).stream()
-                .filter(this::isResolvable)
                 .sorted(Comparator
                         .comparing(ChapterCollective::normalizedName, Comparator.nullsLast(String::compareTo))
                         .thenComparing(ChapterCollective::displayName, Comparator.nullsLast(String::compareTo))
@@ -66,7 +68,10 @@ public class BookCollectiveReductionService {
     }
 
     BookCollectiveResolutionResult resolveBook(UUID bookId, List<ChapterCollective> chapterCollectives) {
-        List<CollectiveCluster> clusters = clusterCollectives(chapterCollectives);
+        List<List<ChapterCollective>> clusters = ConsolidationEngine.cluster(
+                chapterCollectives,
+                cc -> NameKeys.from(cc.normalizedName(), cc.aliases())
+        );
         if (clusters.isEmpty()) {
             return new BookCollectiveResolutionResult(
                     bookId,
@@ -77,27 +82,47 @@ public class BookCollectiveReductionService {
             );
         }
 
-        List<BookCollective> bookCollectives = clusters.stream()
-                .map(cluster -> new BookCollective(
-                        UUID.randomUUID(),
-                        bookId,
-                        cluster.displayName(),
-                        cluster.normalizedName(),
-                        List.copyOf(cluster.aliases()),
-                        cluster.collectiveType(),
-                        cluster.certainty(),
-                        cluster.evidence(),
-                        cluster.chapterCollectiveIds().size(),
-                        cluster.representativeChapterCollectiveId(),
-                        cluster.firstSeenChapterId(),
-                        null,
-                        null
-                ))
-                .toList();
+        List<List<UUID>> chapterCollectiveIdsByBookCollective = new ArrayList<>();
+        List<BookCollective> bookCollectives = new ArrayList<>();
+        for (List<ChapterCollective> cluster : clusters) {
+            ChapterCollective representative = cluster.get(0);
+            LinkedHashSet<String> aliases = new LinkedHashSet<>();
+            String collectiveType = null;
+            String certainty = null;
+            String evidence = null;
+            List<UUID> chapterCollectiveIds = new ArrayList<>();
+            for (ChapterCollective cc : cluster) {
+                if (cc.aliases() != null) {
+                    for (String alias : cc.aliases()) {
+                        if (alias != null && !alias.isBlank()) {
+                            aliases.add(alias);
+                        }
+                    }
+                }
+                collectiveType = PickFirstNonBlank.pick(collectiveType, cc.collectiveType());
+                certainty = PickFirstNonBlank.pick(certainty, cc.certainty());
+                evidence = PickFirstNonBlank.pick(evidence, cc.evidence());
+                chapterCollectiveIds.add(cc.id());
+            }
+            chapterCollectiveIdsByBookCollective.add(chapterCollectiveIds);
 
-        List<List<UUID>> chapterCollectiveIdsByBookCollective = clusters.stream()
-                .map(CollectiveCluster::chapterCollectiveIds)
-                .toList();
+            bookCollectives.add(new BookCollective(
+                    UUID.randomUUID(),
+                    bookId,
+                    representative.displayName(),
+                    representative.normalizedName(),
+                    List.copyOf(aliases),
+                    collectiveType,
+                    certainty,
+                    evidence,
+                    cluster.size(),
+                    representative.id(),
+                    representative.chapterId(),
+                    null,
+                    null
+            ));
+        }
+
         bookCollectivePersistenceService.replaceBookCollectives(
                 bookId,
                 bookCollectives,
@@ -111,91 +136,5 @@ public class BookCollectiveReductionService {
                 Math.toIntExact(bookCollectivePersistenceService.countByBookId(bookId)),
                 "Resolved book-level collectives"
         );
-    }
-
-    private boolean isResolvable(ChapterCollective chapterCollective) {
-        return chapterCollective.normalizedName() != null && !chapterCollective.normalizedName().isBlank();
-    }
-
-    private List<CollectiveCluster> clusterCollectives(List<ChapterCollective> chapterCollectives) {
-        List<CollectiveCluster> clusters = new ArrayList<>();
-        for (ChapterCollective chapterCollective : chapterCollectives) {
-            int clusterIndex = findClusterByNormalizedName(clusters, chapterCollective.normalizedName());
-            if (clusterIndex < 0) {
-                clusters.add(CollectiveCluster.from(chapterCollective));
-                continue;
-            }
-            clusters.set(clusterIndex, clusters.get(clusterIndex).add(chapterCollective));
-        }
-        return clusters;
-    }
-
-    private int findClusterByNormalizedName(List<CollectiveCluster> clusters, String normalizedName) {
-        for (int i = 0; i < clusters.size(); i++) {
-            if (clusters.get(i).normalizedName().equals(normalizedName)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private static String pickFirstNonBlank(String current, String candidate) {
-        if (current != null && !current.isBlank()) {
-            return current;
-        }
-        if (candidate != null && !candidate.isBlank()) {
-            return candidate;
-        }
-        return null;
-    }
-
-    private record CollectiveCluster(
-            String displayName,
-            String normalizedName,
-            LinkedHashSet<String> aliases,
-            String collectiveType,
-            String certainty,
-            String evidence,
-            List<UUID> chapterCollectiveIds,
-            UUID representativeChapterCollectiveId,
-            UUID firstSeenChapterId
-    ) {
-        static CollectiveCluster from(ChapterCollective chapterCollective) {
-            LinkedHashSet<String> aliases = new LinkedHashSet<>();
-            if (chapterCollective.aliases() != null) {
-                aliases.addAll(chapterCollective.aliases().stream().filter(alias -> alias != null && !alias.isBlank()).toList());
-            }
-            return new CollectiveCluster(
-                    chapterCollective.displayName(),
-                    chapterCollective.normalizedName(),
-                    aliases,
-                    chapterCollective.collectiveType(),
-                    chapterCollective.certainty(),
-                    chapterCollective.evidence(),
-                    new ArrayList<>(List.of(chapterCollective.id())),
-                    chapterCollective.id(),
-                    chapterCollective.chapterId()
-            );
-        }
-
-        CollectiveCluster add(ChapterCollective chapterCollective) {
-            LinkedHashSet<String> nextAliases = new LinkedHashSet<>(aliases);
-            if (chapterCollective.aliases() != null) {
-                nextAliases.addAll(chapterCollective.aliases().stream().filter(alias -> alias != null && !alias.isBlank()).toList());
-            }
-            List<UUID> nextIds = new ArrayList<>(chapterCollectiveIds);
-            nextIds.add(chapterCollective.id());
-            return new CollectiveCluster(
-                    displayName,
-                    normalizedName,
-                    nextAliases,
-                    pickFirstNonBlank(collectiveType, chapterCollective.collectiveType()),
-                    pickFirstNonBlank(certainty, chapterCollective.certainty()),
-                    pickFirstNonBlank(evidence, chapterCollective.evidence()),
-                    nextIds,
-                    representativeChapterCollectiveId,
-                    firstSeenChapterId
-            );
-        }
     }
 }

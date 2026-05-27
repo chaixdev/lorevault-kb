@@ -121,20 +121,12 @@ public class TriadTemporalEdgeRequestFactory {
                                                               UUID chapterId,
                                                               UUID currentSceneId,
                                                               Integer currentSceneIndex) {
-        UUID stageId = findRequiredTriadStageId(jobId, currentSceneId, currentSceneIndex);
-        LlmCallRecord callRecord = findRequiredTriadCall(jobId, stageId);
-
-        if (callRecord.getResponse() == null || callRecord.getResponse().getBody() == null) {
-            throw triadArtifactFailure(
-                    "TRIAD_ARTIFACT_UNRECOVERABLE",
-                    "Triad structured output is missing for scene index " + currentSceneIndex,
-                    currentSceneIndex,
-                    stageId,
-                    callRecord
-            );
-        }
-
-        return new TemporalEdgeProvenance(jobId, chapterId, stageId, callRecord.getId());
+        // PLACEHOLDER (pre-#14 buildTriad refactoring):
+        // Per-scene triad Stage correlation is not yet implemented — the StatusRecord-based
+        // lookup was removed during Stage model migration. Returns a provenance record with
+        // null stage/llmCall IDs so temporal edges are still written. Proper provenance will
+        // be restored when buildTriadsForChapter is refactored to per-scene buildTriad (#14).
+        return new TemporalEdgeProvenance(jobId, chapterId, null, null);
     }
 
     private UUID findRequiredTriadStageId(UUID jobId,

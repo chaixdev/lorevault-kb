@@ -18,8 +18,8 @@ mvn verify -P coverage-gate
 mvn test -P architecture-tests
 mvn test -P mutation-testing
 mvn clean compile
-mvn -pl lorevault-web,lorevault-core clean compile -DskipTests
-mvn -pl lorevault-web package -DskipTests
+mvn clean compile -DskipTests
+mvn package -DskipTests
 ```
 
 No Maven wrapper (`./mvnw`) — use `mvn` directly.

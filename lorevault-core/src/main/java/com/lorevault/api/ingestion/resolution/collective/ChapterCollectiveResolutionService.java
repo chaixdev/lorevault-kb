@@ -2,9 +2,12 @@ package com.lorevault.api.ingestion.resolution.collective;
 
 import com.lorevault.api.content.association.ChapterCollective;
 import com.lorevault.api.content.association.ChapterCollectiveGraphRepository;
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.mention.CollectiveMention;
 import com.lorevault.api.content.mention.CollectiveMentionGraphRepository;
+import com.lorevault.api.ingestion.resolution.consolidation.ChapterEntityGuardService;
+import com.lorevault.api.ingestion.resolution.consolidation.ConsolidationEngine;
+import com.lorevault.api.ingestion.resolution.consolidation.NameKeys;
+import com.lorevault.api.ingestion.resolution.consolidation.PickFirstNonBlank;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -19,22 +22,22 @@ public class ChapterCollectiveResolutionService {
     public static final String CHAPTER_RESOLVED = "chapter-resolved";
 
     private final ChapterCollectiveGraphRepository chapterCollectiveRepository;
-    private final ChapterGraphRepository chapterGraphRepository;
+    private final ChapterEntityGuardService chapterEntityGuardService;
     private final CollectiveMentionGraphRepository collectiveMentionRepository;
 
     public ChapterCollectiveResolutionService(
             ChapterCollectiveGraphRepository chapterCollectiveRepository,
-            ChapterGraphRepository chapterGraphRepository,
+            ChapterEntityGuardService chapterEntityGuardService,
             CollectiveMentionGraphRepository collectiveMentionRepository
     ) {
         this.chapterCollectiveRepository = chapterCollectiveRepository;
-        this.chapterGraphRepository = chapterGraphRepository;
+        this.chapterEntityGuardService = chapterEntityGuardService;
         this.collectiveMentionRepository = collectiveMentionRepository;
     }
 
     @Transactional(readOnly = true)
     public boolean chapterExists(UUID chapterId) {
-        return chapterId != null && chapterGraphRepository.findById(chapterId).isPresent();
+        return chapterEntityGuardService.chapterExists(chapterId);
     }
 
     @Transactional
@@ -45,14 +48,12 @@ public class ChapterCollectiveResolutionService {
 
         long mentionCount = chapterCollectiveRepository.countMentionsByChapterId(chapterId);
         if (mentionCount == 0) {
-            chapterCollectiveRepository.deleteByChapterId(chapterId);
             return new ChapterCollectiveResolutionResult(chapterId, true, 0, 0, "No collective mentions found for chapter");
         }
 
         chapterCollectiveRepository.deleteByChapterId(chapterId);
 
         List<CollectiveMention> mentions = collectiveMentionRepository.findByChapterId(chapterId).stream()
-                .filter(this::isResolvable)
                 .sorted(Comparator
                         .comparing(CollectiveMention::normalizedName, Comparator.nullsLast(String::compareTo))
                         .thenComparing(CollectiveMention::displayName, Comparator.nullsLast(String::compareTo))
@@ -61,7 +62,10 @@ public class ChapterCollectiveResolutionService {
                         .thenComparing(CollectiveMention::id, Comparator.nullsLast(UUID::compareTo)))
                 .toList();
 
-        List<CollectiveCluster> clusters = clusterMentions(mentions);
+        List<List<CollectiveMention>> clusters = ConsolidationEngine.cluster(
+                mentions,
+                mention -> NameKeys.from(mention.normalizedName(), mention.aliases())
+        );
         if (clusters.isEmpty()) {
             return new ChapterCollectiveResolutionResult(
                     chapterId,
@@ -72,31 +76,53 @@ public class ChapterCollectiveResolutionService {
             );
         }
 
-        List<ChapterCollective> chapterCollectives = clusters.stream()
-                .map(cluster -> new ChapterCollective(
-                        UUID.randomUUID(),
-                        chapterId,
-                        cluster.displayName(),
-                        cluster.normalizedName(),
-                        List.copyOf(cluster.aliases()),
-                        cluster.collectiveType(),
-                        cluster.certainty(),
-                        cluster.evidence(),
-                        cluster.mentionIds().size(),
-                        null,
-                        null
-                ))
-                .toList();
+        List<List<UUID>> clusterMentionIds = new ArrayList<>();
+        List<ChapterCollective> chapterCollectives = new ArrayList<>();
+        for (List<CollectiveMention> cluster : clusters) {
+            CollectiveMention representative = cluster.get(0);
+            LinkedHashSet<String> aliases = new LinkedHashSet<>();
+            String collectiveType = null;
+            String certainty = null;
+            String evidence = null;
+            List<UUID> mentionIds = new ArrayList<>();
+            for (CollectiveMention mention : cluster) {
+                if (mention.aliases() != null) {
+                    for (String alias : mention.aliases()) {
+                        if (alias != null && !alias.isBlank()) {
+                            aliases.add(alias);
+                        }
+                    }
+                }
+                collectiveType = PickFirstNonBlank.pick(collectiveType, mention.collectiveType());
+                certainty = PickFirstNonBlank.pick(certainty, mention.certainty());
+                evidence = PickFirstNonBlank.pick(evidence, mention.evidence());
+                mentionIds.add(mention.id());
+            }
+            clusterMentionIds.add(mentionIds);
+
+            chapterCollectives.add(new ChapterCollective(
+                    UUID.randomUUID(),
+                    chapterId,
+                    representative.displayName(),
+                    representative.normalizedName(),
+                    List.copyOf(aliases),
+                    collectiveType,
+                    certainty,
+                    evidence,
+                    cluster.size(),
+                    null,
+                    null
+            ));
+        }
 
         List<ChapterCollective> savedCollectives = new ArrayList<>();
         chapterCollectiveRepository.saveAll(chapterCollectives).forEach(savedCollectives::add);
 
         for (int i = 0; i < savedCollectives.size(); i++) {
             ChapterCollective chapterCollective = savedCollectives.get(i);
-            CollectiveCluster cluster = clusters.get(i);
             chapterCollectiveRepository.linkChapterToCollective(chapterId, chapterCollective.id());
             chapterCollectiveRepository.linkMentionsToChapterCollective(
-                    cluster.mentionIds(),
+                    clusterMentionIds.get(i),
                     chapterCollective.id(),
                     CHAPTER_RESOLVED
             );
@@ -109,85 +135,5 @@ public class ChapterCollectiveResolutionService {
                 Math.toIntExact(chapterCollectiveRepository.countChapterCollectivesByChapterId(chapterId)),
                 "Resolved chapter collectives"
         );
-    }
-
-    private boolean isResolvable(CollectiveMention mention) {
-        return mention.normalizedName() != null && !mention.normalizedName().isBlank();
-    }
-
-    private List<CollectiveCluster> clusterMentions(List<CollectiveMention> mentions) {
-        List<CollectiveCluster> clusters = new ArrayList<>();
-        for (CollectiveMention mention : mentions) {
-            int clusterIndex = findClusterByNormalizedName(clusters, mention.normalizedName());
-            if (clusterIndex < 0) {
-                clusters.add(CollectiveCluster.from(mention));
-                continue;
-            }
-            clusters.set(clusterIndex, clusters.get(clusterIndex).add(mention));
-        }
-        return clusters;
-    }
-
-    private int findClusterByNormalizedName(List<CollectiveCluster> clusters, String normalizedName) {
-        for (int i = 0; i < clusters.size(); i++) {
-            if (clusters.get(i).normalizedName().equals(normalizedName)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private static String pickFirstNonBlank(String current, String candidate) {
-        if (current != null && !current.isBlank()) {
-            return current;
-        }
-        if (candidate != null && !candidate.isBlank()) {
-            return candidate;
-        }
-        return null;
-    }
-
-    private record CollectiveCluster(
-            String displayName,
-            String normalizedName,
-            LinkedHashSet<String> aliases,
-            String collectiveType,
-            String certainty,
-            String evidence,
-            List<UUID> mentionIds
-    ) {
-        static CollectiveCluster from(CollectiveMention mention) {
-            LinkedHashSet<String> aliases = new LinkedHashSet<>();
-            if (mention.aliases() != null) {
-                aliases.addAll(mention.aliases().stream().filter(alias -> alias != null && !alias.isBlank()).toList());
-            }
-            return new CollectiveCluster(
-                    mention.displayName(),
-                    mention.normalizedName(),
-                    aliases,
-                    mention.collectiveType(),
-                    mention.certainty(),
-                    mention.evidence(),
-                    new ArrayList<>(List.of(mention.id()))
-            );
-        }
-
-        CollectiveCluster add(CollectiveMention mention) {
-            LinkedHashSet<String> nextAliases = new LinkedHashSet<>(aliases);
-            if (mention.aliases() != null) {
-                nextAliases.addAll(mention.aliases().stream().filter(alias -> alias != null && !alias.isBlank()).toList());
-            }
-            List<UUID> nextMentionIds = new ArrayList<>(mentionIds);
-            nextMentionIds.add(mention.id());
-            return new CollectiveCluster(
-                    displayName,
-                    normalizedName,
-                    nextAliases,
-                    pickFirstNonBlank(collectiveType, mention.collectiveType()),
-                    pickFirstNonBlank(certainty, mention.certainty()),
-                    pickFirstNonBlank(evidence, mention.evidence()),
-                    nextMentionIds
-            );
-        }
     }
 }

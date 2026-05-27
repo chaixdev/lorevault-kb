@@ -2,9 +2,13 @@ package com.lorevault.api.ingestion.resolution.object;
 
 import com.lorevault.api.content.association.ChapterObject;
 import com.lorevault.api.content.association.ChapterObjectGraphRepository;
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.mention.ObjectMention;
 import com.lorevault.api.content.mention.ObjectMentionGraphRepository;
+import com.lorevault.api.ingestion.resolution.consolidation.ChapterEntityGuardService;
+import com.lorevault.api.ingestion.resolution.consolidation.ConsolidationEngine;
+import com.lorevault.api.ingestion.resolution.consolidation.NameKeys;
+import com.lorevault.api.ingestion.resolution.consolidation.PickFirstNonBlank;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -19,22 +23,22 @@ public class ChapterObjectResolutionService {
     public static final String CHAPTER_RESOLVED = "chapter-resolved";
 
     private final ChapterObjectGraphRepository chapterObjectRepository;
-    private final ChapterGraphRepository chapterGraphRepository;
     private final ObjectMentionGraphRepository objectMentionRepository;
+    private final ChapterEntityGuardService chapterEntityGuardService;
 
     public ChapterObjectResolutionService(
             ChapterObjectGraphRepository chapterObjectRepository,
-            ChapterGraphRepository chapterGraphRepository,
-            ObjectMentionGraphRepository objectMentionRepository
+            ObjectMentionGraphRepository objectMentionRepository,
+            ChapterEntityGuardService chapterEntityGuardService
     ) {
         this.chapterObjectRepository = chapterObjectRepository;
-        this.chapterGraphRepository = chapterGraphRepository;
         this.objectMentionRepository = objectMentionRepository;
+        this.chapterEntityGuardService = chapterEntityGuardService;
     }
 
     @Transactional(readOnly = true)
     public boolean chapterExists(UUID chapterId) {
-        return chapterId != null && chapterGraphRepository.findById(chapterId).isPresent();
+        return chapterEntityGuardService.chapterExists(chapterId);
     }
 
     @Transactional
@@ -45,14 +49,12 @@ public class ChapterObjectResolutionService {
 
         long mentionCount = chapterObjectRepository.countMentionsByChapterId(chapterId);
         if (mentionCount == 0) {
-            chapterObjectRepository.deleteByChapterId(chapterId);
             return new ChapterObjectResolutionResult(chapterId, true, 0, 0, "No object mentions found for chapter");
         }
 
         chapterObjectRepository.deleteByChapterId(chapterId);
 
         List<ObjectMention> mentions = objectMentionRepository.findByChapterId(chapterId).stream()
-                .filter(this::isResolvable)
                 .sorted(Comparator
                         .comparing(ObjectMention::normalizedName, Comparator.nullsLast(String::compareTo))
                         .thenComparing(ObjectMention::displayName, Comparator.nullsLast(String::compareTo))
@@ -61,7 +63,11 @@ public class ChapterObjectResolutionService {
                         .thenComparing(ObjectMention::id, Comparator.nullsLast(UUID::compareTo)))
                 .toList();
 
-        List<ObjectCluster> clusters = clusterMentions(mentions);
+        List<List<ObjectMention>> clusters = ConsolidationEngine.cluster(
+                mentions,
+                mention -> NameKeys.from(mention.normalizedName(), mention.aliases())
+        );
+
         if (clusters.isEmpty()) {
             return new ChapterObjectResolutionResult(
                     chapterId,
@@ -72,31 +78,54 @@ public class ChapterObjectResolutionService {
             );
         }
 
-        List<ChapterObject> chapterObjects = clusters.stream()
-                .map(cluster -> new ChapterObject(
-                        UUID.randomUUID(),
-                        chapterId,
-                        cluster.displayName(),
-                        cluster.normalizedName(),
-                        List.copyOf(cluster.aliases()),
-                        cluster.type(),
-                        cluster.material(),
-                        cluster.purpose(),
-                        cluster.description(),
-                        cluster.mentionIds().size(),
-                        null,
-                        null
-                ))
-                .toList();
+        List<ChapterObject> chapterObjects = new ArrayList<>();
+        List<List<UUID>> mentionIdsByCluster = new ArrayList<>();
+
+        for (List<ObjectMention> cluster : clusters) {
+            ObjectMention representative = cluster.get(0);
+            LinkedHashSet<String> aliases = new LinkedHashSet<>();
+            List<UUID> mentionIds = new ArrayList<>();
+            String type = null;
+            String material = null;
+            String purpose = null;
+            String description = null;
+            for (ObjectMention m : cluster) {
+                mentionIds.add(m.id());
+                if (m.aliases() != null) {
+                    m.aliases().stream()
+                            .filter(a -> a != null && !a.isBlank())
+                            .forEach(aliases::add);
+                }
+                type = PickFirstNonBlank.pick(type, m.type());
+                material = PickFirstNonBlank.pick(material, m.material());
+                purpose = PickFirstNonBlank.pick(purpose, m.purpose());
+                description = PickFirstNonBlank.pick(description, m.description());
+            }
+            mentionIdsByCluster.add(mentionIds);
+            chapterObjects.add(new ChapterObject(
+                    UUID.randomUUID(),
+                    chapterId,
+                    representative.displayName(),
+                    representative.normalizedName(),
+                    List.copyOf(aliases),
+                    type,
+                    material,
+                    purpose,
+                    description,
+                    cluster.size(),
+                    null,
+                    null
+            ));
+        }
 
         List<ChapterObject> savedObjects = new ArrayList<>();
         chapterObjectRepository.saveAll(chapterObjects).forEach(savedObjects::add);
 
         for (int i = 0; i < savedObjects.size(); i++) {
             ChapterObject chapterObject = savedObjects.get(i);
-            ObjectCluster cluster = clusters.get(i);
+            List<UUID> mentionIds = mentionIdsByCluster.get(i);
             chapterObjectRepository.linkChapterToObject(chapterId, chapterObject.id());
-            chapterObjectRepository.linkMentionsToChapterObject(cluster.mentionIds(), chapterObject.id(), CHAPTER_RESOLVED);
+            chapterObjectRepository.linkMentionsToChapterObject(mentionIds, chapterObject.id(), CHAPTER_RESOLVED);
         }
 
         return new ChapterObjectResolutionResult(
@@ -106,88 +135,5 @@ public class ChapterObjectResolutionService {
                 Math.toIntExact(chapterObjectRepository.countChapterObjectsByChapterId(chapterId)),
                 "Resolved chapter objects"
         );
-    }
-
-    private boolean isResolvable(ObjectMention mention) {
-        return mention.normalizedName() != null && !mention.normalizedName().isBlank();
-    }
-
-    private List<ObjectCluster> clusterMentions(List<ObjectMention> mentions) {
-        List<ObjectCluster> clusters = new ArrayList<>();
-        for (ObjectMention mention : mentions) {
-            int clusterIndex = findClusterByNormalizedName(clusters, mention.normalizedName());
-            if (clusterIndex < 0) {
-                clusters.add(ObjectCluster.from(mention));
-                continue;
-            }
-            clusters.set(clusterIndex, clusters.get(clusterIndex).add(mention));
-        }
-        return clusters;
-    }
-
-    private int findClusterByNormalizedName(List<ObjectCluster> clusters, String normalizedName) {
-        for (int i = 0; i < clusters.size(); i++) {
-            if (clusters.get(i).normalizedName().equals(normalizedName)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private static String pickFirstNonBlank(String current, String candidate) {
-        if (current != null && !current.isBlank()) {
-            return current;
-        }
-        if (candidate != null && !candidate.isBlank()) {
-            return candidate;
-        }
-        return null;
-    }
-
-    private record ObjectCluster(
-            String displayName,
-            String normalizedName,
-            LinkedHashSet<String> aliases,
-            String type,
-            String material,
-            String purpose,
-            String description,
-            List<UUID> mentionIds
-    ) {
-        static ObjectCluster from(ObjectMention mention) {
-            LinkedHashSet<String> aliases = new LinkedHashSet<>();
-            if (mention.aliases() != null) {
-                aliases.addAll(mention.aliases().stream().filter(alias -> alias != null && !alias.isBlank()).toList());
-            }
-            return new ObjectCluster(
-                    mention.displayName(),
-                    mention.normalizedName(),
-                    aliases,
-                    mention.type(),
-                    mention.material(),
-                    mention.purpose(),
-                    mention.description(),
-                    new ArrayList<>(List.of(mention.id()))
-            );
-        }
-
-        ObjectCluster add(ObjectMention mention) {
-            LinkedHashSet<String> nextAliases = new LinkedHashSet<>(aliases);
-            if (mention.aliases() != null) {
-                nextAliases.addAll(mention.aliases().stream().filter(alias -> alias != null && !alias.isBlank()).toList());
-            }
-            List<UUID> nextMentionIds = new ArrayList<>(mentionIds);
-            nextMentionIds.add(mention.id());
-            return new ObjectCluster(
-                    displayName,
-                    normalizedName,
-                    nextAliases,
-                    pickFirstNonBlank(type, mention.type()),
-                    pickFirstNonBlank(material, mention.material()),
-                    pickFirstNonBlank(purpose, mention.purpose()),
-                    pickFirstNonBlank(description, mention.description()),
-                    nextMentionIds
-            );
-        }
     }
 }

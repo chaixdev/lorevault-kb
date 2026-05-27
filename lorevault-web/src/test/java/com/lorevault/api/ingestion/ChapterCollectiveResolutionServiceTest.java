@@ -10,14 +10,12 @@ import static org.mockito.Mockito.when;
 
 import com.lorevault.api.content.association.ChapterCollective;
 import com.lorevault.api.content.association.ChapterCollectiveGraphRepository;
-import com.lorevault.api.content.chapter.Chapter;
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.mention.CollectiveMention;
+import com.lorevault.api.ingestion.resolution.consolidation.ChapterEntityGuardService;
 import com.lorevault.api.content.mention.CollectiveMentionGraphRepository;
 import com.lorevault.api.ingestion.resolution.collective.ChapterCollectiveResolutionResult;
 import com.lorevault.api.ingestion.resolution.collective.ChapterCollectiveResolutionService;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,7 +33,7 @@ class ChapterCollectiveResolutionServiceTest {
     private ChapterCollectiveGraphRepository chapterCollectiveRepository;
 
     @Mock
-    private ChapterGraphRepository chapterGraphRepository;
+    private ChapterEntityGuardService chapterEntityGuardService;
 
     @Mock
     private CollectiveMentionGraphRepository collectiveMentionRepository;
@@ -44,12 +42,11 @@ class ChapterCollectiveResolutionServiceTest {
     private ChapterCollectiveResolutionService service;
 
     @Test
-    @DisplayName("Checks whether a chapter exists before manual resolution")
+    @DisplayName("Checks whether a chapter exists via guard service")
     void checksWhetherChapterExists() {
         UUID chapterId = UUID.randomUUID();
-        Chapter chapter = new Chapter();
-        chapter.setId(chapterId);
-        when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
+        when(chapterEntityGuardService.chapterExists(chapterId)).thenReturn(true);
+        when(chapterEntityGuardService.chapterExists(null)).thenReturn(false);
 
         assertThat(service.chapterExists(chapterId)).isTrue();
         assertThat(service.chapterExists(null)).isFalse();
@@ -161,7 +158,7 @@ class ChapterCollectiveResolutionServiceTest {
         assertThat(response.rawCollectivesProcessed()).isZero();
         assertThat(response.chapterCollectivesCreated()).isZero();
 
-        verify(chapterCollectiveRepository).deleteByChapterId(chapterId);
+        verify(chapterCollectiveRepository, never()).deleteByChapterId(any());
         verify(collectiveMentionRepository, never()).findByChapterId(any());
     }
 

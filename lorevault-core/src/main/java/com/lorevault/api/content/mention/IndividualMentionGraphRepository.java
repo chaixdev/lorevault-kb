@@ -1,5 +1,6 @@
 package com.lorevault.api.content.mention;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.neo4j.repository.Neo4jRepository;
@@ -14,4 +15,6 @@ public interface IndividualMentionGraphRepository extends Neo4jRepository<Indivi
             MERGE (s)-[:CONTAINS]->(m)
             """)
     void linkMentionToScene(UUID sceneId, UUID mentionId);
+
+    List<IndividualMention> findByChapterId(UUID chapterId);
 }
