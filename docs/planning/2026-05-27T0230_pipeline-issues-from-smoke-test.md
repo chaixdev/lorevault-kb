@@ -132,13 +132,16 @@ Cannot coerce DATE_TIME to LocalDateTime; Error code 'N/A'
 
 ## Prioritized Action Plan
 
-| Priority | Issue | Effort | Prerequisites |
-|----------|-------|--------|---------------|
-| 1 | #1 Proper triad provenance fix | 1-2d | Blocked by #14 (per-scene buildTriad) |
-| 2 | #2 Orchestrator fires resolution before scene detection | 1-2d | None |
-| 3 | #7 Book-level reductions skip (bookId=null) | ~few hours | Coupled with #2 |
-| 4 | #3 Concurrent scene detection workers | ~few hours | None |
-| 5 | #5/#6 DATE_TIME coercion | ~2 hours | None |
-| 6 | #4 Stage key mislabeling | ~2 hours | None |
+| Priority | Issue | Effort | Status |
+|----------|-------|--------|--------|
+| 1 | #1 Proper triad provenance fix | 1-2d | Deferred (blocked by #14) |
+| 2 | #2 Orchestrator fires resolution before scene detection | Resolved by #3 fix | ✅ Fixed May 27 |
+| 3 | #7 Book-level reductions skip (bookId=null) | ~few hours | ✅ Fixed May 27 |
+| 4 | #3 Concurrent scene detection workers | ~few hours | ✅ Fixed May 27 |
+| 5 | #5/#6 DATE_TIME coercion | ~2 hours | ✅ Fixed May 27 |
+| 6 | #4 Stage key mislabeling | ~2 hours | Open (cosmetic) |
 
-**Recommended order:** #5+#6 (quick cosmetic fixes with no deps) → #2+#7 (unblocks book-level reductions) → #3 (LLM cost savings) → #1 (after #14 completes).
+**Fixes applied (May 27):**
+- `StageGraphRepository` / `StageOutputGraphRepository`: `safeLocalDateTime()` helper with try-catch fallback for DATE_TIME coercion (#5/#6)
+- `IngestionPipelineCoordinator`: `findBookId()` + `resolveBookId()` resolves book ID from chapter→book relationship, propagated through `evaluateDownstream`, `recoverStaleTriggers`, and `recoverStaleRunning` (#7)
+- `AsyncConfig`: `sceneDetectionTaskExecutor.maxPoolSize` reduced from 3 to 1 — prevents stale recovery from spawning duplicate workers for the same chapter (#3, which also resolves #2)
