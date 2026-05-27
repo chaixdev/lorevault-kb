@@ -297,12 +297,29 @@ public class StageGraphRepository {
                         ? node.get("errorMessage").asString() : null)
                 .errorRetryable(node.containsKey("errorRetryable") && !node.get("errorRetryable").isNull()
                         ? node.get("errorRetryable").asBoolean() : null)
-                .triggeredAt(node.containsKey("triggeredAt") && !node.get("triggeredAt").isNull()
-                        ? node.get("triggeredAt").asLocalDateTime() : null)
-                .startedAt(node.containsKey("startedAt") && !node.get("startedAt").isNull()
-                        ? node.get("startedAt").asLocalDateTime() : null)
-                .completedAt(node.containsKey("completedAt") && !node.get("completedAt").isNull()
-                        ? node.get("completedAt").asLocalDateTime() : null)
+                .triggeredAt(safeLocalDateTime(node, "triggeredAt"))
+                .startedAt(safeLocalDateTime(node, "startedAt"))
+                .completedAt(safeLocalDateTime(node, "completedAt"))
                 .build();
+    }
+
+    /**
+     * Safely reads a LocalDateTime from a Neo4j node property.
+     * Tries {@link Value#asLocalDateTime()} first; falls back to
+     * {@link Value#asZonedDateTime()}.toLocalDateTime() for values stored as
+     * DATE_TIME with timezone offset by Spring Data Neo4j's {@code @CreatedDate}
+     * or explicit {@code ZonedDateTime} writes.
+     */
+    private static java.time.LocalDateTime safeLocalDateTime(
+            org.neo4j.driver.types.Node node, String key) {
+        if (!node.containsKey(key) || node.get(key).isNull()) {
+            return null;
+        }
+        org.neo4j.driver.Value value = node.get(key);
+        try {
+            return value.asLocalDateTime();
+        } catch (org.neo4j.driver.exceptions.value.Uncoercible e) {
+            return value.asZonedDateTime().toLocalDateTime();
+        }
     }
 }

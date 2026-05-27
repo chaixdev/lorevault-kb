@@ -116,10 +116,11 @@ public class IngestionPipelineCoordinator {
         for (StageKey child : dag.childrenOf(completedStage)) {
             boolean triggered = stageRepo.tryTrigger(jobId, child);
             if (triggered) {
+                UUID resolvedBookId = resolveBookId(chapterId, bookId, child);
                 log.info("[ORCHESTRATION] Barrier open — triggering: jobId={} chapterId={} child={}",
                         jobId, chapterId, child);
                 eventPublisher.publishEvent(
-                        new StageTriggeredEvent(this, jobId, chapterId, bookId, child));
+                        new StageTriggeredEvent(this, jobId, chapterId, resolvedBookId, child));
             }
         }
     }
@@ -136,10 +137,12 @@ public class IngestionPipelineCoordinator {
         Duration graceWindow = Duration.ofSeconds(staleTriggerGraceSeconds);
         List<Stage> stale = stageRepo.findStaleTriggered(graceWindow);
         for (Stage s : stale) {
+            UUID chapterId = findChapterId(s.getJobId());
+            UUID bookId = resolveBookId(chapterId, null, s.getStep());
             log.warn("[ORCHESTRATION] Re-publishing stale trigger: jobId={} step={} triggeredAt={}",
                     s.getJobId(), s.getStep(), s.getTriggeredAt());
             eventPublisher.publishEvent(
-                    new StageTriggeredEvent(this, s.getJobId(), findChapterId(s.getJobId()), s.getStep()));
+                    new StageTriggeredEvent(this, s.getJobId(), chapterId, bookId, s.getStep()));
         }
     }
 
@@ -152,11 +155,13 @@ public class IngestionPipelineCoordinator {
         Duration threshold = Duration.ofSeconds(staleRunningThresholdSeconds);
         List<Stage> stale = stageRepo.findAndResetStaleRunning(threshold, maxStageAttempts);
         for (Stage s : stale) {
+            UUID chapterId = findChapterId(s.getJobId());
+            UUID bookId = resolveBookId(chapterId, null, s.getStep());
             if (s.getStatus() == StageStatus.TRIGGERED) {
                 log.warn("[ORCHESTRATION] Resetting stale RUNNING→TRIGGERED: jobId={} step={} attempt={}/{}",
                         s.getJobId(), s.getStep(), s.getAttemptCount(), maxStageAttempts);
                 eventPublisher.publishEvent(
-                        new StageTriggeredEvent(this, s.getJobId(), findChapterId(s.getJobId()), s.getStep()));
+                        new StageTriggeredEvent(this, s.getJobId(), chapterId, bookId, s.getStep()));
             } else {
                 log.error("[ORCHESTRATION] Stale RUNNING→FAILED (max attempts): jobId={} step={} attempts={}",
                         s.getJobId(), s.getStep(), s.getAttemptCount());
@@ -272,6 +277,40 @@ public class IngestionPipelineCoordinator {
                         UUID.fromString(record.get("j.chapterId").asString()))
                 .one()
                 .orElse(null);
+    }
+
+    private UUID findBookId(UUID chapterId) {
+        if (chapterId == null) {
+            return null;
+        }
+        return neo4jClient.query("""
+                MATCH (c:Chapter {id: $chapterId})-[:IN_BOOK]->(b:Book)
+                RETURN b.id
+                """)
+                .bind(chapterId.toString()).to("chapterId")
+                .fetchAs(UUID.class)
+                .mappedBy((typeSystem, record) ->
+                        UUID.fromString(record.get("b.id").asString()))
+                .one()
+                .orElse(null);
+    }
+
+    private static final Set<StageKey> BOOK_LEVEL_STAGES = Set.of(
+            StageKey.BOOK_INDIVIDUAL_REDUCTION,
+            StageKey.BOOK_COLLECTIVE_REDUCTION,
+            StageKey.BOOK_LOCATION_REDUCTION,
+            StageKey.BOOK_OBJECT_REDUCTION,
+            StageKey.BOOK_EVENT_CANDIDATE_GENERATION
+    );
+
+    private UUID resolveBookId(UUID chapterId, UUID bookId, StageKey child) {
+        if (bookId != null) {
+            return bookId;
+        }
+        if (BOOK_LEVEL_STAGES.contains(child)) {
+            return findBookId(chapterId);
+        }
+        return null;
     }
 
     StageDag dag() {

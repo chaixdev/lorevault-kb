@@ -105,7 +105,7 @@ public class StageOutputGraphRepository {
                             .bookId(node.containsKey("bookId") && !node.get("bookId").isNull()
                                     ? UUID.fromString(node.get("bookId").asString()) : null)
                             .step(StageKey.valueOf(node.get("step").asString()))
-                            .completedAt(node.get("completedAt").asLocalDateTime())
+                            .completedAt(safeLocalDateTime(node, "completedAt"))
                             .build();
                 })
                 .one();
@@ -200,5 +200,18 @@ public class StageOutputGraphRepository {
                 .mappedBy((typeSystem, record) -> UUID.fromString(record.get("b.id").asString()))
                 .one()
                 .orElse(null);
+    }
+
+    private static java.time.LocalDateTime safeLocalDateTime(
+            org.neo4j.driver.types.Node node, String key) {
+        if (!node.containsKey(key) || node.get(key).isNull()) {
+            return null;
+        }
+        org.neo4j.driver.Value value = node.get(key);
+        try {
+            return value.asLocalDateTime();
+        } catch (org.neo4j.driver.exceptions.value.Uncoercible e) {
+            return value.asZonedDateTime().toLocalDateTime();
+        }
     }
 }

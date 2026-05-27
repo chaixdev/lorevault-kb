@@ -81,8 +81,8 @@ public class AsyncConfig {
     @Bean(name = "sceneDetectionTaskExecutor")
     public Executor sceneDetectionTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(1);           // AI calls are typically sequential
-        executor.setMaxPoolSize(3);            // Limited concurrent AI calls
+        executor.setCorePoolSize(1);           // Single-threaded — scene detection is per-chapter,
+        executor.setMaxPoolSize(1);            // not parallelizable within a chapter.
         executor.setQueueCapacity(10);         
         executor.setThreadNamePrefix("scene-detection-");
         executor.setTaskDecorator(mdcTaskDecorator());
