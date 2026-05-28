@@ -1,5 +1,8 @@
 package com.lorevault.api.ingestion.content;
 
+import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
+import com.lorevault.api.ingestion.pipeline.StageOperation;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 
 import java.util.UUID;
@@ -11,8 +14,7 @@ import java.util.UUID;
  * step-execution endpoints can invoke chunking directly without going
  * through Spring {@code @EventListener} dispatch.
  */
-@FunctionalInterface
-public interface ChunkingOperation {
+public interface ChunkingOperation extends StageOperation {
 
     /**
      * Execute chunking for a chapter's scenes.
@@ -21,5 +23,7 @@ public interface ChunkingOperation {
      * @param chapterId the chapter to process
      * @return result summarising what happened
      */
-    StepResult execute(UUID jobId, UUID chapterId);
+    default StepResult execute(UUID jobId, UUID chapterId) {
+        return execute(new DispatchContext(jobId, chapterId, null, StageKey.CHUNKING));
+    }
 }

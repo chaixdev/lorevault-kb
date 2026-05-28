@@ -68,6 +68,27 @@ public class IngestionPipelineCoordinator {
         this.neo4jClient = neo4jClient;
     }
 
+    /**
+     * Test constructor — allows direct injection of @Value fields.
+     */
+    IngestionPipelineCoordinator(
+            StageGraphRepository stageRepo,
+            StageOutputGraphRepository stageOutputRepo,
+            ApplicationEventPublisher eventPublisher,
+            Neo4jClient neo4jClient,
+            long staleTriggerGraceSeconds,
+            long staleRunningThresholdSeconds,
+            int maxStageAttempts) {
+        this.dag = new StageDag();
+        this.stageRepo = stageRepo;
+        this.stageOutputRepo = stageOutputRepo;
+        this.eventPublisher = eventPublisher;
+        this.neo4jClient = neo4jClient;
+        this.staleTriggerGraceSeconds = staleTriggerGraceSeconds;
+        this.staleRunningThresholdSeconds = staleRunningThresholdSeconds;
+        this.maxStageAttempts = maxStageAttempts;
+    }
+
     // ── Event-driven orchestration ──────────────────────────────────
 
     /**
@@ -296,19 +317,11 @@ public class IngestionPipelineCoordinator {
                 .orElse(null);
     }
 
-    private static final Set<StageKey> BOOK_LEVEL_STAGES = Set.of(
-            StageKey.BOOK_INDIVIDUAL_REDUCTION,
-            StageKey.BOOK_COLLECTIVE_REDUCTION,
-            StageKey.BOOK_LOCATION_REDUCTION,
-            StageKey.BOOK_OBJECT_REDUCTION,
-            StageKey.BOOK_EVENT_CANDIDATE_GENERATION
-    );
-
     private UUID resolveBookId(UUID chapterId, UUID bookId, StageKey child) {
         if (bookId != null) {
             return bookId;
         }
-        if (BOOK_LEVEL_STAGES.contains(child)) {
+        if (child.isBookLevel()) {
             return findBookId(chapterId);
         }
         return null;

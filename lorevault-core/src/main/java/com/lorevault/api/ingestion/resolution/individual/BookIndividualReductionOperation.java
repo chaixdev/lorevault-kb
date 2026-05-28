@@ -1,5 +1,8 @@
 package com.lorevault.api.ingestion.resolution.individual;
 
+import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
+import com.lorevault.api.ingestion.pipeline.StageOperation;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 
 import java.util.UUID;
@@ -14,8 +17,7 @@ import java.util.UUID;
  * <p>The step-by-step execution controller provides the transaction context; this interface
  * simply exposes the business logic.
  */
-@FunctionalInterface
-public interface BookIndividualReductionOperation {
+public interface BookIndividualReductionOperation extends StageOperation {
 
     /**
      * Execute individual reduction for a book within an existing transaction.
@@ -24,5 +26,7 @@ public interface BookIndividualReductionOperation {
      * @param bookId the book to process
      * @return result summarising what happened
      */
-    StepResult execute(UUID jobId, UUID bookId);
+    default StepResult execute(UUID jobId, UUID bookId) {
+        return execute(new DispatchContext(jobId, null, bookId, StageKey.BOOK_INDIVIDUAL_REDUCTION));
+    }
 }

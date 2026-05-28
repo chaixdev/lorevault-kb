@@ -5,23 +5,18 @@ import com.lorevault.api.content.association.ChapterEvent;
 import com.lorevault.api.ai.embedding.EmbeddingGenerationException;
 import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
+import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.ForStage;
 import com.lorevault.api.ingestion.pipeline.StageKey;
+import com.lorevault.api.ingestion.pipeline.StageOperation;
 import com.lorevault.api.ingestion.pipeline.StepResult;
-import com.lorevault.api.ingestion.events.StageCompletedEvent;
-import com.lorevault.api.ingestion.events.StageTriggeredEvent;
-import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
-import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.annotation.Async;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.context.event.EventListener;
 
 /**
  * Stage 4 handler for ChapterEvent embedding and in-memory ANN candidate generation.
@@ -31,70 +26,37 @@ import org.springframework.context.event.EventListener;
  * ANN candidate pairs, runs semantic merge verification, and persists book-level events.
  * Emits {@link StageCompletedEvent} so the DAG coordinator can evaluate downstream transitions.
  */
+@Slf4j
 @Component
-public class ChapterEventEmbeddingHandler {
-
-    private static final Logger log = LoggerFactory.getLogger(ChapterEventEmbeddingHandler.class);
+@ForStage(StageKey.CHAPTER_EVENT_EMBEDDING)
+public class ChapterEventEmbeddingHandler implements StageOperation {
 
     private final ChapterEventEmbeddingService embeddingService;
     private final ChapterEventEmbeddingTransactionSupport txSupport;
     private final BookEventAnnCandidateService annCandidateService;
     private final BookEventMergeVerificationService mergeVerificationService;
     private final BookEventReductionService bookEventReductionService;
-    private final ApplicationEventPublisher eventPublisher;
-    private final StageGraphRepository stageRepo;
-    private final StageOutputGraphRepository stageOutputRepo;
 
     public ChapterEventEmbeddingHandler(
             ChapterEventEmbeddingService embeddingService,
             ChapterEventEmbeddingTransactionSupport txSupport,
             BookEventAnnCandidateService annCandidateService,
             BookEventMergeVerificationService mergeVerificationService,
-            BookEventReductionService bookEventReductionService,
-            ApplicationEventPublisher eventPublisher,
-            StageGraphRepository stageRepo,
-            StageOutputGraphRepository stageOutputRepo
+            BookEventReductionService bookEventReductionService
     ) {
         this.embeddingService = embeddingService;
         this.txSupport = txSupport;
         this.annCandidateService = annCandidateService;
         this.mergeVerificationService = mergeVerificationService;
         this.bookEventReductionService = bookEventReductionService;
-        this.eventPublisher = eventPublisher;
-        this.stageRepo = stageRepo;
-        this.stageOutputRepo = stageOutputRepo;
     }
 
-    @Async("ingestionLaneTaskExecutor")
-    @EventListener
-    public void onTrigger(StageTriggeredEvent event) {
-        // 0. Stage key guard: reject events for other stages
-        if (event.getStage() != StageKey.CHAPTER_EVENT_EMBEDDING) return;
+    @Override
+    public StepResult execute(DispatchContext ctx) {
+        UUID jobId = ctx.jobId();
+        UUID chapterId = ctx.chapterId();
+        UUID bookId = ctx.bookId();
 
-        // 1. Guard: only one thread executes at a time
-        if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
-            return;
-        }
-
-        UUID jobId = event.getJobId();
-        UUID chapterId = event.getChapterId();
-
-        // 2. Idempotency: does StageOutput already exist?
-        if (stageOutputRepo.existsByChapterIdAndStep(chapterId, event.getStage())) {
-            stageRepo.setSkipped(jobId, event.getStage());
-            eventPublisher.publishEvent(new StageCompletedEvent(
-                    this, jobId, chapterId, event.getStage(),
-                    StepResult.success(event.getStage(),
-                            "Skipped \u2014 already completed", 0L)));
-            log.info("[SKIPPED] Stage {} already completed for chapter {}", event.getStage(), chapterId);
-            return;
-        }
-
-        log.info("[LANE:EVENT] [EVENT_EMBEDDING] Started: jobId={}, chapterId={}",
-                jobId, chapterId);
-
-        // 3. Do the work (4 sub-stages: embedding, ANN, merge verification, book event reduction)
-        StepResult result;
         long start = System.currentTimeMillis();
         try {
             int embeddedCount = embeddingService.embedChapterEvents(chapterId);
@@ -122,7 +84,7 @@ public class ChapterEventEmbeddingHandler {
             currentChapterEventsById.forEach(chapterEventsById::putIfAbsent);
 
             log.info(
-                    "[LANE:EVENT] [EVENT_MERGE] Starting semantic merge verification: jobId={}, chapterId={}, candidatePairCount={}",
+                    "[EVENT_MERGE] Starting semantic merge verification: jobId={}, chapterId={}, candidatePairCount={}",
                     jobId,
                     chapterId,
                     candidatePairs.size()
@@ -140,7 +102,7 @@ public class ChapterEventEmbeddingHandler {
                     .toList();
 
             log.info(
-                    "[LANE:EVENT] [BOOK_EVENT] Starting write path: jobId={}, chapterId={}, chapterEventCount={}, mergeDecisionCount={}",
+                    "[BOOK_EVENT] Starting write path: jobId={}, chapterId={}, chapterEventCount={}, mergeDecisionCount={}",
                     jobId,
                     chapterId,
                     chapterEvents.size(),
@@ -150,7 +112,7 @@ public class ChapterEventEmbeddingHandler {
                     bookEventReductionService.reduceAndPersist(
                             jobId,
                             chapterId,
-                            event.getBookId(),
+                            bookId,
                             List.copyOf(chapterEventsById.values()),
                             mergeDecisions
                     );
@@ -158,7 +120,7 @@ public class ChapterEventEmbeddingHandler {
             long elapsed = System.currentTimeMillis() - start;
 
             log.info(
-                    "[LANE:EVENT] [EVENT_EMBEDDING] Completed: jobId={}, chapterId={}, embeddedCount={}, candidatePairCount={}, bookEventsCreated={}, referenceLinksWritten={}",
+                    "[EVENT_EMBEDDING] Completed: jobId={}, chapterId={}, embeddedCount={}, candidatePairCount={}, bookEventsCreated={}, referenceLinksWritten={}",
                     jobId,
                     chapterId,
                     embeddedCount,
@@ -167,7 +129,7 @@ public class ChapterEventEmbeddingHandler {
                     reductionResult.referenceLinksWritten()
             );
 
-            result = StepResult.success(StageKey.CHAPTER_EVENT_EMBEDDING,
+            return StepResult.success(StageKey.CHAPTER_EVENT_EMBEDDING,
                     String.format("Embedded %d events, %d candidate pairs, %d book events created",
                             embeddedCount, candidatePairs.size(), reductionResult.bookEventsCreated()),
                     Map.of(
@@ -180,19 +142,15 @@ public class ChapterEventEmbeddingHandler {
 
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            log.error("[LANE:EVENT] [EVENT_EMBEDDING] Failed: jobId={}, chapterId={}: {}",
+            log.error("[EVENT_EMBEDDING] Failed: jobId={}, chapterId={}: {}",
                     jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
-            result = retryable
+            return retryable
                     ? StepResult.retryableFailure(StageKey.CHAPTER_EVENT_EMBEDDING,
                             sanitizeMessage(e), elapsed)
                     : StepResult.failure(StageKey.CHAPTER_EVENT_EMBEDDING,
                             sanitizeMessage(e), elapsed);
         }
-
-        // 4. Emit completion — coordinator handles downstream
-        eventPublisher.publishEvent(new StageCompletedEvent(
-                this, jobId, chapterId, event.getStage(), result));
     }
 
     private boolean isRetryableError(Exception e) {

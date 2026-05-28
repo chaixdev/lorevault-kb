@@ -1,5 +1,8 @@
 package com.lorevault.api.ingestion.resolution.location;
 
+import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
+import com.lorevault.api.ingestion.pipeline.StageOperation;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 
 import java.util.UUID;
@@ -14,8 +17,7 @@ import java.util.UUID;
  * <p>The step-by-step execution controller provides the transaction context; this interface
  * simply exposes the business logic.
  */
-@FunctionalInterface
-public interface ChapterLocationResolutionOperation {
+public interface ChapterLocationResolutionOperation extends StageOperation {
 
     /**
      * Execute location resolution for a chapter within an existing transaction.
@@ -24,5 +26,7 @@ public interface ChapterLocationResolutionOperation {
      * @param chapterId the chapter to process
      * @return result summarising what happened
      */
-    StepResult execute(UUID jobId, UUID chapterId);
+    default StepResult execute(UUID jobId, UUID chapterId) {
+        return execute(new DispatchContext(jobId, chapterId, null, StageKey.CHAPTER_LOCATION_RESOLUTION));
+    }
 }

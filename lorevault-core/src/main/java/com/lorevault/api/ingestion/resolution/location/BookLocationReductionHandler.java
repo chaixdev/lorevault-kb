@@ -1,80 +1,41 @@
 package com.lorevault.api.ingestion.resolution.location;
 
-import com.lorevault.api.ingestion.events.StageCompletedEvent;
-import com.lorevault.api.ingestion.events.StageTriggeredEvent;
-import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
-import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
+import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.ForStage;
 import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
 import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
+import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
+import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.context.event.EventListener;
 
 import java.util.Map;
 import java.util.UUID;
 
 @Component
 @Slf4j
+@ForStage(StageKey.BOOK_LOCATION_REDUCTION)
 public class BookLocationReductionHandler implements BookLocationReductionOperation {
 
     private static final String CLAIM_LANE = "BOOK_LOCATION_REDUCTION";
 
     private final BookLocationReductionService bookLocationReductionService;
-    private final ApplicationEventPublisher eventPublisher;
     private final BookReductionClaimService bookReductionClaimService;
-    private final StageGraphRepository stageRepo;
-    private final StageOutputGraphRepository stageOutputRepo;
 
     public BookLocationReductionHandler(
             BookLocationReductionService bookLocationReductionService,
-            ApplicationEventPublisher eventPublisher,
-            BookReductionClaimService bookReductionClaimService,
-            StageGraphRepository stageRepo,
-            StageOutputGraphRepository stageOutputRepo
+            BookReductionClaimService bookReductionClaimService
     ) {
         this.bookLocationReductionService = bookLocationReductionService;
-        this.eventPublisher = eventPublisher;
         this.bookReductionClaimService = bookReductionClaimService;
-        this.stageRepo = stageRepo;
-        this.stageOutputRepo = stageOutputRepo;
-    }
-
-    @Async("ingestionLaneTaskExecutor")
-    @EventListener
-    public void onTrigger(StageTriggeredEvent event) {
-        // 0. Stage key guard: reject events for other stages
-        if (event.getStage() != StageKey.BOOK_LOCATION_REDUCTION) return;
-
-        if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
-            return;
-        }
-
-        UUID jobId = event.getJobId();
-        UUID chapterId = event.getChapterId();
-        UUID bookId = event.getBookId();
-
-        if (bookId != null && stageOutputRepo.existsByBookIdAndStep(bookId, event.getStage())) {
-            stageRepo.setSkipped(jobId, event.getStage());
-            eventPublisher.publishEvent(new StageCompletedEvent(
-                    this, jobId, chapterId, bookId, event.getStage(),
-                    StepResult.success(event.getStage(),
-                            "Skipped — already completed", 0L)));
-            log.info("[SKIPPED] Book stage {} already completed for book {}", event.getStage(), bookId);
-            return;
-        }
-
-        StepResult result = execute(jobId, bookId);
-
-        eventPublisher.publishEvent(new StageCompletedEvent(
-                this, jobId, chapterId, bookId, event.getStage(), result));
     }
 
     @Override
-    public StepResult execute(UUID jobId, UUID bookId) {
+    public StepResult execute(DispatchContext ctx) {
+        UUID jobId = ctx.jobId();
+        UUID bookId = ctx.bookId();
         long start = System.currentTimeMillis();
 
         if (!bookReductionClaimService.tryAcquireClaim(bookId, CLAIM_LANE)) {
@@ -91,7 +52,7 @@ public class BookLocationReductionHandler implements BookLocationReductionOperat
 
             if (response.success()) {
                 log.info(
-                        "[LANE:LOCATION] [BOOK_LOCATION_REDUCTION] Completed: jobId={}, bookId={}, chapterLocationCount={}, bookLocationCount={}",
+                        "[BOOK_LOCATION_REDUCTION] Completed: jobId={}, bookId={}, chapterLocationCount={}, bookLocationCount={}",
                         jobId, bookId, response.chapterLocationsProcessed(), response.bookLocationsCreated()
                 );
                 return StepResult.success(StageKey.BOOK_LOCATION_REDUCTION,
@@ -102,7 +63,7 @@ public class BookLocationReductionHandler implements BookLocationReductionOperat
                         elapsed);
             } else {
                 log.warn(
-                        "[LANE:LOCATION] [BOOK_LOCATION_REDUCTION] Skipped: jobId={}, bookId={}, reason={}",
+                        "[BOOK_LOCATION_REDUCTION] Skipped: jobId={}, bookId={}, reason={}",
                         jobId, bookId, response.message()
                 );
                 return StepResult.success(StageKey.BOOK_LOCATION_REDUCTION,

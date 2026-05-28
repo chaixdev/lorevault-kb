@@ -1,5 +1,8 @@
 package com.lorevault.api.ingestion.resolution.event;
 
+import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
+import com.lorevault.api.ingestion.pipeline.StageOperation;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 
 import java.util.UUID;
@@ -14,8 +17,7 @@ import java.util.UUID;
  * <p>Executes Stage 2 (LLM co-reference pass) and Stage 3 (chapter event
  * aggregation) in sequence, returning a combined result.
  */
-@FunctionalInterface
-public interface ChapterEventResolutionOperation {
+public interface ChapterEventResolutionOperation extends StageOperation {
 
     /**
      * Execute co-reference resolution and chapter event aggregation.
@@ -24,5 +26,7 @@ public interface ChapterEventResolutionOperation {
      * @param chapterId the chapter to process
      * @return result summarising what happened
      */
-    StepResult execute(UUID jobId, UUID chapterId);
+    default StepResult execute(UUID jobId, UUID chapterId) {
+        return execute(new DispatchContext(jobId, chapterId, null, StageKey.CHAPTER_EVENT_RESOLUTION));
+    }
 }

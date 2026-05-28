@@ -146,6 +146,14 @@ Near-term execution slices before pivoting to AWS/n8n:
 9. **DynamoDB job state** — replace in-memory `ConcurrentHashMap` with conditional writes and TTL
 10. **Step Functions orchestration** — replace `IngestionCompletionCoordinator` fan-in with state machine
 
+### Testing Debt
+
+After the `lorevault-core` / `lorevault-web` module split, all tests remained in `lorevault-web`. This is technical debt — domain-logic tests (pure unit tests with no Spring context) belong in `lorevault-core/src/test/`, and only wiring/integration tests should live in `lorevault-web/src/test/`. The StageDispatcher test suite is the first entry point for doing this right: pure data-structure tests (`StageDagTest`, `StageKeyTest`, `StepResultTest`) go in `lorevault-core`, while Mockito-based dispatcher and coordinator tests stay in `lorevault-web`. A broader test relocation pass is deferred.
+
+### Testing Debt
+
+After the `lorevault-core` / `lorevault-web` module split, all tests remained in `lorevault-web`. This is technical debt — domain-logic tests (pure unit tests with no Spring context) belong in `lorevault-core/src/test/`, and only wiring/integration tests should live in `lorevault-web/src/test/`. The StageDispatcher test suite is the first entry point for doing this right: pure data-structure tests (`StageDagTest`, `StageKeyTest`, `StepResultTest`) go in `lorevault-core`, while Mockito-based dispatcher and coordinator tests stay in `lorevault-web`. A broader test relocation pass is deferred.
+
 ### Deferred
 
 Broader planned directions remain intact after these slices:

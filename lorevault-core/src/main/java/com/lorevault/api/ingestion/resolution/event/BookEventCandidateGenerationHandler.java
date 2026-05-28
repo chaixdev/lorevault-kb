@@ -6,11 +6,10 @@ import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
-import com.lorevault.api.ingestion.events.StageCompletedEvent;
-import com.lorevault.api.ingestion.events.StageTriggeredEvent;
-import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
-import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
+import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.ForStage;
 import com.lorevault.api.ingestion.pipeline.StageKey;
+import com.lorevault.api.ingestion.pipeline.StageOperation;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
 import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
@@ -21,9 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 /**
@@ -39,7 +35,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Slf4j
-public class BookEventCandidateGenerationHandler {
+@ForStage(StageKey.BOOK_EVENT_CANDIDATE_GENERATION)
+public class BookEventCandidateGenerationHandler implements StageOperation {
 
     private static final String CLAIM_LANE = "BOOK_EVENT_CANDIDATE_GENERATION";
 
@@ -48,10 +45,7 @@ public class BookEventCandidateGenerationHandler {
     private final BookEventAnnCandidateService annCandidateService;
     private final BookEventMergeVerificationService mergeVerificationService;
     private final BookEventReductionService bookEventReductionService;
-    private final ApplicationEventPublisher eventPublisher;
     private final BookReductionClaimService bookReductionClaimService;
-    private final StageGraphRepository stageRepo;
-    private final StageOutputGraphRepository stageOutputRepo;
 
     public BookEventCandidateGenerationHandler(
             ChapterGraphRepository chapterRepo,
@@ -59,82 +53,29 @@ public class BookEventCandidateGenerationHandler {
             BookEventAnnCandidateService annCandidateService,
             BookEventMergeVerificationService mergeVerificationService,
             BookEventReductionService bookEventReductionService,
-            ApplicationEventPublisher eventPublisher,
-            BookReductionClaimService bookReductionClaimService,
-            StageGraphRepository stageRepo,
-            StageOutputGraphRepository stageOutputRepo
+            BookReductionClaimService bookReductionClaimService
     ) {
         this.chapterRepo = chapterRepo;
         this.txSupport = txSupport;
         this.annCandidateService = annCandidateService;
         this.mergeVerificationService = mergeVerificationService;
         this.bookEventReductionService = bookEventReductionService;
-        this.eventPublisher = eventPublisher;
         this.bookReductionClaimService = bookReductionClaimService;
-        this.stageRepo = stageRepo;
-        this.stageOutputRepo = stageOutputRepo;
     }
 
-    @Async("ingestionLaneTaskExecutor")
-    @EventListener
-    public void onTrigger(StageTriggeredEvent event) {
-        // 0. Stage key guard: reject events for other stages
-        if (event.getStage() != StageKey.BOOK_EVENT_CANDIDATE_GENERATION) return;
+    @Override
+    public StepResult execute(DispatchContext ctx) {
+        UUID jobId = ctx.jobId();
+        UUID chapterId = ctx.chapterId();
+        UUID bookId = ctx.bookId();
 
-        if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
-            return;
-        }
-
-        UUID jobId = event.getJobId();
-        UUID chapterId = event.getChapterId();
-        UUID bookId = event.getBookId();
-
-        // 1. Book ID is required — skip without blocking the pipeline
+        // Book ID is required
         if (bookId == null) {
             log.warn("[LANE:EVENT] [EVENT_CANDIDATE_GENERATION] Skipped: jobId={}, bookId={}, reason={}",
                     jobId, null, "Book ID is required");
-            stageRepo.setSkipped(jobId, event.getStage());
-            eventPublisher.publishEvent(new StageCompletedEvent(
-                    this, jobId, chapterId, null, event.getStage(),
-                    StepResult.success(event.getStage(), "Book ID is required", 0L)));
-            return;
+            return StepResult.success(StageKey.BOOK_EVENT_CANDIDATE_GENERATION, "Book ID is required", 0L);
         }
 
-        // 2. Idempotency: has this book-level stage already completed?
-        if (stageOutputRepo.existsByBookIdAndStep(bookId, event.getStage())) {
-            stageRepo.setSkipped(jobId, event.getStage());
-            eventPublisher.publishEvent(new StageCompletedEvent(
-                    this, jobId, chapterId, bookId, event.getStage(),
-                    StepResult.success(event.getStage(),
-                            "Skipped — already completed", 0L)));
-            log.info("[LANE:EVENT] [EVENT_CANDIDATE_GENERATION] Skipped: jobId={}, bookId={}, reason=already completed",
-                    jobId, bookId);
-            return;
-        }
-
-        // 3. Execute business logic
-        StepResult result = execute(jobId, chapterId, bookId);
-
-        eventPublisher.publishEvent(new StageCompletedEvent(
-                this, jobId, chapterId, bookId, event.getStage(), result));
-    }
-
-    /**
-     * Execute book-level cross-chapter event candidate generation.
-     *
-     * <ol>
-     *   <li>Acquire a claim on the book's event candidate generation lane</li>
-     *   <li>Load all chapters for the book</li>
-     *   <li>For each chapter, load ChapterEvents and run ANN candidate generation</li>
-     *   <li>Deduplicate candidate pairs across chapters (keep highest ANN score)</li>
-     *   <li>Build a complete map of all events across all chapters</li>
-     *   <li>Run semantic merge verification on deduplicated pairs</li>
-     *   <li>Build merge decisions from verified MERGE results</li>
-     *   <li>Run reduction and persist book events</li>
-     *   <li>Return success with counts</li>
-     * </ol>
-     */
-    public StepResult execute(UUID jobId, UUID chapterId, UUID bookId) {
         long start = System.currentTimeMillis();
 
         log.info("[LANE:EVENT] [EVENT_CANDIDATE_GENERATION] Started: jobId={}, bookId={}", jobId, bookId);

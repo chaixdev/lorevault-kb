@@ -1,5 +1,7 @@
 package com.lorevault.api.ingestion.scene;
 
+import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.ForStage;
 import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 import com.lorevault.api.common.error.ExceptionSanitizer;
@@ -9,10 +11,6 @@ import com.lorevault.api.content.scene.Scene;
 import com.lorevault.api.content.timeline.domain.CrossChapterBoundaryProjection;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.scene.SceneGraphRepository;
-import com.lorevault.api.ingestion.events.StageCompletedEvent;
-import com.lorevault.api.ingestion.events.StageTriggeredEvent;
-import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
-import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeCreationResult;
 import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
 import com.lorevault.api.ingestion.triad.TriadTemporalEdgeRequestFactory;
@@ -27,10 +25,7 @@ import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeService;
 import com.lorevault.api.ingestion.resolution.event.SceneTemporalRelationshipPersistenceService;
 import com.lorevault.api.ingestion.resolution.event.TemporalEdgeWriteRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.context.event.EventListener;
 
 import java.util.List;
 import java.util.Map;
@@ -41,15 +36,13 @@ import java.util.stream.Collectors;
 /**
  * Handler for scene detection stage of the ingestion pipeline.
  * <p>
- * Listens to: StageTriggeredEvent (SCENE_SEGMENTATION)
- * Emits: StageCompletedEvent (on success, skip, or failure)
- * <p>
  * Implements {@link SceneDetectionOperation} so the step-by-step execution controller can invoke
  * scene detection directly without going through Spring event dispatch.
  * The step-by-step execution controller provides the transaction context; this handler provides the logic.
  */
 @Component
 @Slf4j
+@ForStage(StageKey.SCENE_SEGMENTATION)
 public class SceneDetectionHandler implements SceneDetectionOperation {
 
     private final ChapterGraphRepository chapterRepo;
@@ -66,9 +59,6 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
     private final SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService;
     private final TriadTemporalEdgeRequestFactory triadTemporalEdgeRequestFactory;
     private final SceneRelationshipAnalysisService sceneRelationshipAnalysisService;
-    private final ApplicationEventPublisher eventPublisher;
-    private final StageGraphRepository stageRepo;
-    private final StageOutputGraphRepository stageOutputRepo;
 
     public SceneDetectionHandler(
             ChapterGraphRepository chapterRepo,
@@ -84,10 +74,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             DefaultTemporalEdgeService defaultTemporalEdgeService,
             SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService,
             TriadTemporalEdgeRequestFactory triadTemporalEdgeRequestFactory,
-            SceneRelationshipAnalysisService sceneRelationshipAnalysisService,
-            StageGraphRepository stageRepo,
-            StageOutputGraphRepository stageOutputRepo,
-            ApplicationEventPublisher eventPublisher
+            SceneRelationshipAnalysisService sceneRelationshipAnalysisService
     ) {
         this.chapterRepo = chapterRepo;
         this.sceneRepo = sceneRepo;
@@ -103,67 +90,12 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
         this.sceneTemporalRelationshipPersistenceService = sceneTemporalRelationshipPersistenceService;
         this.triadTemporalEdgeRequestFactory = triadTemporalEdgeRequestFactory;
         this.sceneRelationshipAnalysisService = sceneRelationshipAnalysisService;
-        this.eventPublisher = eventPublisher;
-        this.stageRepo = stageRepo;
-        this.stageOutputRepo = stageOutputRepo;
     }
 
-    /**
-     * Event-driven entry point for the async pipeline.
-     * Delegates to {@link #execute(UUID, UUID)} for the actual work,
-     * then emits {@link StageCompletedEvent} so the coordinator handles DAG transitions.
-     */
-    @Async("sceneDetectionTaskExecutor")
-    @EventListener
-    public void onTrigger(StageTriggeredEvent event) {
-        // 0. Stage key guard: reject events for other stages
-        if (event.getStage() != StageKey.SCENE_SEGMENTATION) return;
-
-        // 1. Guard: only one thread executes at a time
-        if (! stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
-            return; // already RUNNING or no longer TRIGGERED
-        }
-
-        UUID jobId = event.getJobId();
-        UUID chapterId = event.getChapterId();
-
-        // 2. Idempotency: does StageOutput already exist?
-        if (stageOutputRepo.existsByChapterIdAndStep(chapterId, event.getStage())) {
-            stageRepo.setSkipped(jobId, event.getStage());
-            eventPublisher.publishEvent(new StageCompletedEvent(
-                    this, jobId, chapterId, event.getStage(),
-                    StepResult.success(event.getStage(),
-                            "Skipped — already completed", 0L)));
-            log.info("[SCENE_DETECTION] Skipped — StageOutput already exists for chapter {}", chapterId);
-            return;
-        }
-
-        // 3. Do the work (existing execute method)
-        StepResult result = execute(jobId, chapterId);
-
-        // 4. Emit completion — coordinator handles DAG transitions
-        eventPublisher.publishEvent(new StageCompletedEvent(
-                this, jobId, chapterId, event.getStage(), result));
-    }
-
-    /**
-     * Synchronous scene detection logic, callable from step-by-step execution controller or event listener.
-     *
-     * <p>Transaction boundaries are managed internally by the individual
-     * persistence services (each has its own {@code @Transactional}).
-     * LLM calls execute outside any transaction, which is intentional —
-     * holding a Neo4j transaction open across network calls would exhaust
-     * the connection pool and create lock contention.
-     *
-     * <p>When called from the event listener, the {@code @Async} + {@code AFTER_COMMIT}
-     * wrapper handles the scheduling boundary. When called from the step-by-step execution controller,
-     * the orchestrator does not need to provide a transaction context.
-     * @param jobId     the ingestion job ID
-     * @param chapterId the chapter to process
-     * @return result summarising scene detection outcome
-     */
     @Override
-    public StepResult execute(UUID jobId, UUID chapterId) {
+    public StepResult execute(DispatchContext ctx) {
+        UUID jobId = ctx.jobId();
+        UUID chapterId = ctx.chapterId();
         long start = System.currentTimeMillis();
 
         try {

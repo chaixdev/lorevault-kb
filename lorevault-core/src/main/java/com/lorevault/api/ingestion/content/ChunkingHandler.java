@@ -1,5 +1,7 @@
 package com.lorevault.api.ingestion.content;
 
+import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.ForStage;
 import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
 
@@ -10,15 +12,8 @@ import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.chunk.ChunkGraphRepository;
 import com.lorevault.api.content.scene.SceneGraphRepository;
 import com.lorevault.api.ai.chunking.TextChunkingService;
-import com.lorevault.api.ingestion.events.StageCompletedEvent;
-import com.lorevault.api.ingestion.events.StageTriggeredEvent;
-import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
-import com.lorevault.api.ingestion.orchestration.StageOutputGraphRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.context.event.EventListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,71 +39,30 @@ import static com.lorevault.api.ingestion.infrastructure.HashUtils.generateSha25
  */
 @Component
 @Slf4j
+@ForStage(StageKey.CHUNKING)
 public class ChunkingHandler implements ChunkingOperation {
 
     private final ChapterGraphRepository chapterRepo;
     private final ChunkGraphRepository chunkRepo;
     private final SceneGraphRepository sceneRepo;
     private final TextChunkingService textChunkingService;
-    private final ApplicationEventPublisher eventPublisher;
-    private final StageGraphRepository stageRepo;
-    private final StageOutputGraphRepository stageOutputRepo;
 
     public ChunkingHandler(
             ChapterGraphRepository chapterRepo,
             ChunkGraphRepository chunkRepo,
             SceneGraphRepository sceneRepo,
-            TextChunkingService textChunkingService,
-            StageGraphRepository stageRepo,
-            StageOutputGraphRepository stageOutputRepo,
-            ApplicationEventPublisher eventPublisher
+            TextChunkingService textChunkingService
     ) {
         this.chapterRepo = chapterRepo;
         this.chunkRepo = chunkRepo;
         this.sceneRepo = sceneRepo;
         this.textChunkingService = textChunkingService;
-        this.eventPublisher = eventPublisher;
-        this.stageRepo = stageRepo;
-        this.stageOutputRepo = stageOutputRepo;
-    }
-
-    @Async("ingestionLaneTaskExecutor")
-    @EventListener
-    public void onTrigger(StageTriggeredEvent event) {
-        // 0. Stage key guard: reject events for other stages
-        if (event.getStage() != StageKey.CHUNKING) return;
-
-        // 1. Guard: only one thread executes at a time
-        if (!stageRepo.setRunningConditionally(event.getJobId(), event.getStage())) {
-            return; // already RUNNING or no longer TRIGGERED
-        }
-
-        UUID jobId = event.getJobId();
-        UUID chapterId = event.getChapterId();
-
-        // 2. Idempotency: does StageOutput already exist?
-        if (stageOutputRepo.existsByChapterIdAndStep(chapterId, event.getStage())) {
-            stageRepo.setSkipped(jobId, event.getStage());
-            eventPublisher.publishEvent(new StageCompletedEvent(
-                    this, jobId, chapterId, event.getStage(),
-                    StepResult.success(event.getStage(),
-                            "Skipped — already completed", 0L)));
-            log.info("[CHUNKING] Skipped — StageOutput already exists for chapter {}", chapterId);
-            return;
-        }
-
-        log.info("[LANE:CONTENT] [CHUNKING] Starting for job={}, chapter={}", jobId, chapterId);
-
-        // 3. Do the work (existing execute method)
-        StepResult result = execute(jobId, chapterId);
-
-        // 4. Emit completion — coordinator handles DAG transitions
-        eventPublisher.publishEvent(new StageCompletedEvent(
-                this, jobId, chapterId, event.getStage(), result));
     }
 
     @Override
-    public StepResult execute(UUID jobId, UUID chapterId) {
+    public StepResult execute(DispatchContext ctx) {
+        UUID jobId = ctx.jobId();
+        UUID chapterId = ctx.chapterId();
         long start = System.currentTimeMillis();
         try {
             // Check for existing chunks (idempotency)
@@ -159,7 +113,7 @@ public class ChunkingHandler implements ChunkingOperation {
             totalChunks += processSceneIntoChunks(chapterText, scene);
         }
 
-        log.debug("[LANE:CONTENT] [CHUNKING] Created {} total chunks from {} scenes", totalChunks, scenes.size());
+        log.debug("[CHUNKING] Created {} total chunks from {} scenes", totalChunks, scenes.size());
         return totalChunks;
     }
 
