@@ -8,8 +8,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import org.springframework.core.task.TaskExecutor;
+
 import java.util.Map;
-import java.util.concurrent.Executor;
 
 /**
  * Configuration for asynchronous processing
@@ -39,7 +40,7 @@ public class AsyncConfig {
      * and completion fan-in remain serialized.
      */
     @Bean(name = "ingestionTaskExecutor")
-    public Executor taskExecutor() {
+    public TaskExecutor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(1);           // Intentionally single-threaded while concurrent uploads are unsupported
         executor.setMaxPoolSize(1);            // Preserve serialized follow-up processing within this deferred model
@@ -61,7 +62,7 @@ public class AsyncConfig {
      * and event embedding/candidate generation.</p>
      */
     @Bean(name = "ingestionLaneTaskExecutor")
-    public Executor ingestionLaneTaskExecutor() {
+    public TaskExecutor ingestionLaneTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(4);
         executor.setMaxPoolSize(6);
@@ -79,7 +80,7 @@ public class AsyncConfig {
      * Separate pool to isolate AI processing from other tasks.
      */
     @Bean(name = "sceneDetectionTaskExecutor")
-    public Executor sceneDetectionTaskExecutor() {
+    public TaskExecutor sceneDetectionTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(1);           // Single-threaded — scene detection is per-chapter,
         executor.setMaxPoolSize(1);            // not parallelizable within a chapter.

@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
-**Last Updated:** May 27, 2026
-**Status:** Active — Phases 1+2+4 complete, Phase 3a complete. 44 consolidation tests + 397 existing = all green. ArchUnit passing. Phase 3b next: StageDispatcher extraction → Phase 3c: per-scene buildTriad.
+**Last Updated:** May 28, 2026
+**Status:** Active — Phases 1+2+4 complete, Phase 3a+3b complete. 463 tests, 0 failures. ArchUnit passing. Phase 3c next: per-scene buildTriad.
 **Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state, terminology alignment (resolution → reduction). Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
@@ -58,6 +58,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Post-split architecture and ingestion hardening continued** — recent follow-up commits enforced architecture boundaries across `ai`, `content`, and `ingestion`; aligned async ingestion handlers with transaction rules; tightened LLM-call/status persistence and book-reduction claim handling; stabilized semantic-search test wiring; refreshed individual-resolution coverage to match the current triad-analysis flow; and codified retry-safe handler ownership guidance
 - **Step execution API surface shipped** — controllers, DTOs, event mapper, query endpoint, StepKey/StepDefinition/StepCatalog, *Operation interfaces, curl-driven skill, and supporting docs/rules; enables agentic step-by-step pipeline execution for iterative development
 - **Durable ingestion orchestration shipped** — replaced in-memory `IngestionCompletionCoordinator` and `StatusRecord` with Neo4j-backed `Stage`/`StageOutput`/`StageDag` orchestrator. 15-stage pipeline DAG with fan-in barrier evaluation via conditional Cypher, stale trigger/RUNNING recovery (`@Scheduled`), cascade invalidation for rerun, idempotency via `StageOutput` nodes, `StageTriggeredEvent`/`StageCompletedEvent` universal lifecycle events. Deleted `IngestionJob`/`StatusRecord`/`IngestionCompletionCoordinator`. 13 handlers unified on `onTrigger` → guard → idempotency → execute → emit pattern. 4 commits on `feature/durable-ingestion-orchestration`, smoke-tested end-to-end. See: `docs/planning/2026-05-22T2300_durable-ingestion-orchestration.md`, `docs/reviews/2026-05-23T1200_durable-ingestion-orchestration-implementation-review.md`
+- **StageDispatcher extraction shipped (Phase 3b)** — centralized orchestration dispatcher replaces per-handler `@Async`/`@EventListener`/`onTrigger` boilerplate across all 15 ingestion handlers. Handlers are now pure `StageOperation` beans implementing only `execute(DispatchContext ctx)`. `StageDispatcher` owns event listening, executor routing (scene detection vs ingestion lane), guard/idempotency/error boundary/MDC. `@ForStage` annotation enables startup-validated handler discovery. `StageKey` enum gained `isChapterStage()`/`isBookLevel()` classification. 66 new tests across 5 test suites (StageDagTest, StageKeyTest, StepResultTest in lorevault-core; StageDispatcherTest, IngestionPipelineCoordinatorTest, StageDispatcherWiringTest in lorevault-web). `AsyncConfig` executor beans fixed to return `TaskExecutor` for proper Spring type resolution. `LoreVaultApiApplicationTest` contextLoads integration test added.
 - **Relation catalog M0–M3 shipped** — `lorevault-catalog` Maven submodule with closed module boundary (`@ApplicationModule(CLOSED)`, ArchUnit rules); public API types (`RelationCatalogService`, `RelationCatalogDefinition`, `RelationCatalogId`, `RelationQuery`, `RelationKindSignature`, `EmbeddingFunction`); PostgreSQL backend with one evolving wipe-state Flyway V1 schema, `ON CONFLICT DO NOTHING` idempotency, HikariCP connection pooling, pgvector extension, `embedding vector(1536)`, and HNSW cosine index; dual-database transaction boundary (catalog: PostgreSQL `REQUIRES_NEW`, core: Neo4j); `RelationClaim` updated with `catalogId` + resolved `definitionKey`; degradation mode when catalog is disabled; Testcontainers PostgreSQL integration tests; `NoOpRelationCatalogService` for catalog-disabled state; `CatalogHealthIndicator` bean (surfaces at `/actuator/health`); `pgvector/pgvector:pg16` Docker image
 
 ## What Is Next
@@ -79,7 +80,7 @@ Three items, ordered by layering (services below handlers, buildTriad independen
 | Order | Item | Impact | Design doc |
 |---|---|---|---|
 | **3a** ✅ | Unified entity consolidation | Done. Shared `ConsolidationEngine` + `NameKeys` + `PickFirstNonBlank` + `ChapterEntityGuardService` in `consolidation/`. 8 services refactored, ~1,280 lines of duplicated clustering removed. Object/Collective gain alias-aware merging, Individual gains aliases and ID-based linking. 44 tests green. Smoke-tested on Deathworlders ch 001 (68→68 entities resolved). | [Unified Entity Consolidation](planning/2026-05-27T0015_unified-entity-consolidation.md) |
-| **3b** | StageDispatcher extraction (#7/#20) | Remove 65 orchestration injection points from 13 handlers. Handlers become pure `StageOperation` beans — just `execute(DispatchContext ctx)`. Centralized `@Async`, `@EventListener`, guard, idempotency, error boundary, MDC, and Micrometer timing. | [StageDispatcher Extraction](planning/2026-05-24T0000_stagedispatcher-extraction.md) |
+| **3b** ✅ | StageDispatcher extraction (#7/#20) | Done. 15 handlers refactored to pure `StageOperation` beans — `execute(DispatchContext ctx)` only. Centralized `StageDispatcher` handles `@EventListener`, executor routing, guard, idempotency, error boundary, MDC. 66 new orchestration tests (StageDispatcherTest 30, IngestionPipelineCoordinatorTest 29, StageDispatcherWiringTest 7). `AsyncConfig` bean return types fixed (`Executor` → `TaskExecutor`). `@Autowired` disambiguation on production constructors. contextLoads integration test added. 463 tests green. | [StageDispatcher Extraction](planning/2026-05-24T0000_stagedispatcher-extraction.md) |
 | **3c** | per-scene `buildTriad` (#14) | Refactor triad analysis from per-chapter `buildTriadsForChapter` to per-scene `buildTriad`. Independent of items 3a and 3b. | (in master cleanup plan) |
 
 **Rationale:** Consolidation is lower in the layer stack than StageDispatcher — services are called by handlers. Doing consolidation first means StageDispatcher lands on a cleaner, more uniform codebase.
@@ -95,8 +96,8 @@ Near-term execution slices before pivoting to AWS/n8n:
    - Phase 1 complete (May 25): 7 quick wins, 3 new enums, 20 stale tests deleted, CLI language unified, StepResult → StageKey
    - Phase 2 complete (May 25): IngestionService consolidation, PipelineStageSupport deleted, SSE fix, guard removal, loop collapse, sealed interface
    - Phase 4 complete (May 26): vector index constants, handler constants eliminated, safeMessage consolidation, dead code removal, IngestionStatus audit, double lookup fix, ArchUnit boundary fix
-    - Phase 3 pending: unified entity consolidation (3a) → StageDispatcher extraction (3b) → per-scene buildTriad (3c)
-    - 397 tests, 0 failures, 0 errors
+     - Phase 3: unified entity consolidation (3a) ✅ → StageDispatcher extraction (3b) ✅ → per-scene buildTriad (3c) pending
+    - 463 tests, 0 failures, 0 errors
     - Phase 4 tracking: 9 items discovered during Phase 1 execution
     - Master plan: [Submission Flow Cleanup](planning/2026-05-23T1530_submission-flow-cleanup.md)
     - Design docs: [Quick Wins](planning/2026-05-24T0000_submission-cleanup-quick-wins.md), [StageDispatcher](planning/2026-05-24T0000_stagedispatcher-extraction.md), [SSE Migration](planning/2026-05-24T0000_sse-event-migration.md), [Unified Consolidation](planning/2026-05-27T0015_unified-entity-consolidation.md)
@@ -148,11 +149,7 @@ Near-term execution slices before pivoting to AWS/n8n:
 
 ### Testing Debt
 
-After the `lorevault-core` / `lorevault-web` module split, all tests remained in `lorevault-web`. This is technical debt — domain-logic tests (pure unit tests with no Spring context) belong in `lorevault-core/src/test/`, and only wiring/integration tests should live in `lorevault-web/src/test/`. The StageDispatcher test suite is the first entry point for doing this right: pure data-structure tests (`StageDagTest`, `StageKeyTest`, `StepResultTest`) go in `lorevault-core`, while Mockito-based dispatcher and coordinator tests stay in `lorevault-web`. A broader test relocation pass is deferred.
-
-### Testing Debt
-
-After the `lorevault-core` / `lorevault-web` module split, all tests remained in `lorevault-web`. This is technical debt — domain-logic tests (pure unit tests with no Spring context) belong in `lorevault-core/src/test/`, and only wiring/integration tests should live in `lorevault-web/src/test/`. The StageDispatcher test suite is the first entry point for doing this right: pure data-structure tests (`StageDagTest`, `StageKeyTest`, `StepResultTest`) go in `lorevault-core`, while Mockito-based dispatcher and coordinator tests stay in `lorevault-web`. A broader test relocation pass is deferred.
+After the `lorevault-core` / `lorevault-web` module split, all tests remained in `lorevault-web`. The StageDispatcher test suite began addressing this: `StageDagTest`, `StageKeyTest`, and `StepResultTest` now live in `lorevault-core/src/test/` as pure unit tests, while `StageDispatcherTest`, `IngestionPipelineCoordinatorTest`, and `StageDispatcherWiringTest` correctly live in `lorevault-web/src/test/` as Mockito-based tests. A broader relocation pass for the remaining ~388 lorevault-web tests is deferred.
 
 ### Deferred
 

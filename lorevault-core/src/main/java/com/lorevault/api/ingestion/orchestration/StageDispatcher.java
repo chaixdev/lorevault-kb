@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
@@ -66,6 +67,7 @@ public class StageDispatcher {
     private final TaskExecutor sceneDetectionTaskExecutor;
     private final TaskExecutor ingestionLaneTaskExecutor;
 
+    @Autowired
     public StageDispatcher(
             List<StageOperation> handlerList,
             StageGraphRepository stageRepo,

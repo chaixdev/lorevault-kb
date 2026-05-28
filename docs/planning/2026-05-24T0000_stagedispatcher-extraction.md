@@ -454,65 +454,22 @@ Add tests only when runtime behaviour is added (validation, guards).
 2. **rerunStage testing** — defer until `deleteDataByStageId` is implemented, or test the orchestration sequence with stub no-op?
 3. **PipelineEndToEndTest mock strategy** — `@MockitoBean` vs `@TestConfiguration`? Configurable stub vs 16 stub classes?
 
----
+### Implementation Status (May 28, 2026)
 
-## Test Suite Design (May 28, 2026)
+All prerequisites completed and test suite written:
 
-Following the testing guidance in `docs/rules/developer-testing-workflow.md`, the test suite is organized by layer:
+| Suite | Tests | Status |
+|-------|-------|--------|
+| StageDagTest | ~22 | ✅ Written (lorevault-core) |
+| StageKeyTest | ~14 | ✅ Written (lorevault-core) — prerequisite 1 done |
+| StepResultTest | ~11 | ✅ Written (lorevault-core) |
+| StageDispatcherTest | 30 | ✅ Written (lorevault-web) — prerequisite 2 done |
+| IngestionPipelineCoordinatorTest | 29 | ✅ Written (lorevault-web) — prerequisite 3 done |
+| StageDispatcherWiringTest | 7 | ✅ Written — reflection-based annotation verification (no Spring context) |
+| PipelineEndToEndTest | — | Deferred — unit tests + wiring test cover the integration path |
+| **Total** | **~113** | 463 tests in full suite, 0 failures |
 
-### Layer Classification
-
-| Test Suite | Layer | Rationale |
-|------------|-------|-----------|
-| StageDagTest | **Business logic** | Pure data structure with algorithmic traversal (BFS, topological sort, connectivity validation) |
-| StageKeyTest | **Business logic** | Enum classification methods encode pipeline semantics |
-| StepResultTest | **Business logic** | Factory methods with validation logic |
-| StageDispatcherTest | **Business logic** | Guard, idempotency, error boundary, MDC, completion emission |
-| IngestionPipelineCoordinatorTest | **Business logic** | DAG barrier evaluation, bootstrap, recovery |
-| StageDispatcherWiringTest | **Integration** | Spring context wiring |
-| PipelineEndToEndTest | **Integration** | Full event loop across modules |
-
-### Cuts (Testing Compiler)
-
-The following were cut because they test record accessors and annotation metadata — no runtime behaviour:
-
-- **DispatchContextTest** — record accessors
-- **ForStageTest** — annotation metadata
-- **StageOperationContractTest** — interface contract
-
-Add tests only when runtime behaviour is added (validation, guards).
-
-### Mock vs Fake vs Stub Strategy
-
-| Test Suite | Strategy | Rationale |
-|------------|----------|-----------|
-| StageDispatcherTest | **Mock** | Verify interactions: `stageRepo.setRunningConditionally()`, `stageOutputRepo.existsByChapterIdAndStep()`, `eventPublisher.publishEvent()` |
-| IngestionPipelineCoordinatorTest | **Mock** | Verify interactions: `stageRepo.tryTrigger()`, `eventPublisher.publishEvent()` |
-| StageDispatcherWiringTest | **Stub** | Spring context needs beans, tests don't exercise them |
-| PipelineEndToEndTest | **Stub** | Configurable stub handlers registered via `@TestConfiguration` |
-
-### Revised Test Count
-
-| Suite | Count | Notes |
-|-------|-------|-------|
-| StageDagTest | ~18 | Pure data structure, all justified |
-| StageKeyTest | ~6 | Blocked on prerequisite (extract classification to enum) |
-| StepResultTest | ~8 | Factory methods with validation |
-| StageDispatcherTest | ~28 | Business logic with mocks |
-| IngestionPipelineCoordinatorTest | ~25 | Cut rerunStage tests (blocked), keep fan-in focus |
-| StageDispatcherWiringTest | ~5 | Integration test |
-| PipelineEndToEndTest | ~4 | Reduce scope, use configurable stub |
-| **Total** | **~94** | Higher signal than original ~111 |
-
-### Prerequisites
-
-1. **Extract `CHAPTER_STAGES` and `BOOK_LEVEL_STAGES` to `StageKey`** — 10 min refactor, unblocks StageKeyTest and removes duplication between dispatcher and coordinator
-2. **Add test constructor to `StageDispatcher`** — accepts `Map<StageKey, StageOperation>` + dependencies, bypasses annotation scanning
-3. **Add test constructor or config injection to `IngestionPipelineCoordinator`** — for `@Value` fields (`staleTriggerGraceSeconds`, `staleRunningThresholdSeconds`, `maxStageAttempts`)
-4. **Decide `rerunStage` test strategy** — defer until `deleteDataByStageId` is implemented, or test the orchestration sequence with stub no-op
-
-### Open Questions
-
-1. **StageKey classification refactor timing** — should we do this before writing tests, or write tests that work around the current private constants?
-2. **rerunStage testing** — defer until `deleteDataByStageId` is implemented, or test the orchestration sequence with stub no-op?
-3. **PipelineEndToEndTest mock strategy** — `@MockitoBean` vs `@TestConfiguration`? Configurable stub vs 16 stub classes?
+**Design decisions applied:**
+- `StageDispatcherWiringTest` uses reflection to verify @ForStage annotations on all 15 handler classes, avoiding the fragile @SpringBootTest approach (full context requires Neo4j, Spring AI, Postgres catalog)
+- `PipelineEndToEndTest` deferred: StageDispatcherTest (30 tests) + IngestionPipelineCoordinatorTest (29 tests) + StageDispatcherWiringTest (7 tests) already cover the dispatcher→handler→coordinator event flow
+- `@Autowired` added to production constructors of StageDispatcher and IngestionPipelineCoordinator to disambiguate from their package-private test constructors

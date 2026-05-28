@@ -12,6 +12,7 @@ import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 
 import java.time.Duration;
@@ -56,6 +57,7 @@ public class IngestionPipelineCoordinator {
     @Value("${lorevault.ingestion.max-stage-attempts:3}")
     private int maxStageAttempts;
 
+    @Autowired
     public IngestionPipelineCoordinator(
             StageGraphRepository stageRepo,
             StageOutputGraphRepository stageOutputRepo,
