@@ -22,7 +22,6 @@ import org.springframework.ai.chat.prompt.PromptTemplate;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -73,9 +72,10 @@ class SceneRelationshipAnalysisServiceTest {
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
-        when(triadBuilderService.findPreviousInReadingOrder(any())).thenReturn(Optional.empty());
-        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
-                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
+        stubBuildTriadBySceneId(Map.of(
+                triads.get(0).current().getEventId(), triads.get(0),
+                triads.get(1).current().getEventId(), triads.get(1)
+        ));
         when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
@@ -101,9 +101,10 @@ class SceneRelationshipAnalysisServiceTest {
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.findPreviousInReadingOrder(any())).thenReturn(Optional.empty());
-        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
-                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
+        stubBuildTriadBySceneId(Map.of(
+                triads.get(0).current().getEventId(), triads.get(0),
+                triads.get(1).current().getEventId(), triads.get(1)
+        ));
         when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
@@ -148,9 +149,7 @@ class SceneRelationshipAnalysisServiceTest {
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
-        when(triadBuilderService.findPreviousInReadingOrder(any())).thenReturn(Optional.empty());
-        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
-                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
+        stubBuildTriadBySceneId(Map.of(triads.get(0).current().getEventId(), triads.get(0)));
         when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
@@ -175,9 +174,7 @@ class SceneRelationshipAnalysisServiceTest {
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         
-        when(triadBuilderService.findPreviousInReadingOrder(any())).thenReturn(Optional.empty());
-        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
-                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
+        stubBuildTriadBySceneId(Map.of(triads.get(0).current().getEventId(), triads.get(0)));
         when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
                 .thenReturn(createMockTriadResult());
 
@@ -211,10 +208,7 @@ class SceneRelationshipAnalysisServiceTest {
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.findPreviousInReadingOrder(eq(singleTriad.current().getEventId())))
-                .thenReturn(Optional.of(singleTriad.previous()));
-        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
-                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
+        stubBuildTriadBySceneId(Map.of(singleTriad.current().getEventId(), singleTriad));
 
         SceneRelationshipAnalysisService.TriadStructuredResult invalid =
                 new SceneRelationshipAnalysisService.TriadStructuredResult("marker", null,
@@ -245,10 +239,7 @@ class SceneRelationshipAnalysisServiceTest {
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.findPreviousInReadingOrder(eq(singleTriad.current().getEventId())))
-                .thenReturn(Optional.of(singleTriad.previous()));
-        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
-                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
+        stubBuildTriadBySceneId(Map.of(singleTriad.current().getEventId(), singleTriad));
 
         SceneRelationshipAnalysisService.TriadStructuredResult invalid =
                 new SceneRelationshipAnalysisService.TriadStructuredResult("marker", null,
@@ -289,10 +280,7 @@ class SceneRelationshipAnalysisServiceTest {
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.findPreviousInReadingOrder(eq(singleTriad.current().getEventId())))
-                .thenReturn(Optional.of(singleTriad.previous()));
-        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
-                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
+        stubBuildTriadBySceneId(Map.of(singleTriad.current().getEventId(), singleTriad));
 
         SceneRelationshipAnalysisService.TriadStructuredResult legacy =
                 new SceneRelationshipAnalysisService.TriadStructuredResult(
@@ -323,10 +311,7 @@ class SceneRelationshipAnalysisServiceTest {
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.findPreviousInReadingOrder(eq(singleTriad.current().getEventId())))
-                .thenReturn(Optional.of(singleTriad.previous()));
-        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
-                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
+        stubBuildTriadBySceneId(Map.of(singleTriad.current().getEventId(), singleTriad));
 
         SceneRelationshipAnalysisService.TriadStructuredResult parsed =
                 new SceneRelationshipAnalysisService.TriadStructuredResult(
@@ -357,10 +342,7 @@ class SceneRelationshipAnalysisServiceTest {
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.findPreviousInReadingOrder(eq(singleTriad.current().getEventId())))
-                .thenReturn(Optional.of(singleTriad.previous()));
-        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
-                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
+        stubBuildTriadBySceneId(Map.of(singleTriad.current().getEventId(), singleTriad));
 
         SceneRelationshipAnalysisService.TriadStructuredResult invalid =
                 new SceneRelationshipAnalysisService.TriadStructuredResult(
@@ -387,10 +369,7 @@ class SceneRelationshipAnalysisServiceTest {
         PromptTemplate mockTemplate = mock(PromptTemplate.class);
         when(promptRepository.get(PromptName.SCENE_ANALYSIS)).thenReturn(mockTemplate);
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
-        when(triadBuilderService.findPreviousInReadingOrder(eq(singleTriad.current().getEventId())))
-                .thenReturn(Optional.of(singleTriad.previous()));
-        when(triadBuilderService.buildTriad(any(), any(), any())).thenAnswer(i ->
-                new TriadBuilderService.SceneTriad(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
+        stubBuildTriadBySceneId(Map.of(singleTriad.current().getEventId(), singleTriad));
 
         SceneRelationshipAnalysisService.TriadStructuredResult legacy =
                 new SceneRelationshipAnalysisService.TriadStructuredResult(
@@ -478,6 +457,17 @@ class SceneRelationshipAnalysisServiceTest {
             mockPrevToCurr,
             mockCurrToNext
         );
+    }
+
+    private void stubBuildTriadBySceneId(Map<UUID, TriadBuilderService.SceneTriad> triadsBySceneId) {
+        when(triadBuilderService.buildTriad(any(UUID.class))).thenAnswer(invocation -> {
+            UUID sceneId = invocation.getArgument(0);
+            TriadBuilderService.SceneTriad triad = triadsBySceneId.get(sceneId);
+            if (triad == null) {
+                throw new IllegalArgumentException("Unexpected sceneId: " + sceneId);
+            }
+            return triad;
+        });
     }
 
     // -----------------------------------------------------------------------

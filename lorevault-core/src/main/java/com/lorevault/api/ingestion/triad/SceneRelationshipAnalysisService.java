@@ -254,17 +254,10 @@ public class SceneRelationshipAnalysisService {
         Map<Integer, List<TriadAnalysisModels.EventExtraction>> extractedEventsBySceneIndex = new HashMap<>();
         Map<Integer, List<TriadAnalysisModels.RelationClaimExtraction>> extractedRelationClaimsBySceneIndex = new HashMap<>();
 
-        Scene crossChapterPrev = triadBuilder.findPreviousInReadingOrder(
-                scenes.get(0).getEventId()
-        ).orElse(null);
-
         int triadIndex = 0;
         for (int i = 0; i < scenes.size(); i++) {
-            Scene prev = (i == 0) ? crossChapterPrev : scenes.get(i - 1);
             Scene curr = scenes.get(i);
-            Scene next = (i < scenes.size() - 1) ? scenes.get(i + 1) : null;
-
-            TriadBuilderService.SceneTriad triad = triadBuilder.buildTriad(prev, curr, next);
+            TriadBuilderService.SceneTriad triad = triadBuilder.buildTriad(curr.getEventId());
 
             Map<String, Object> statusProps = new HashMap<>();
             statusProps.put("triadIndex", triadIndex);

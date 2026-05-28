@@ -8,7 +8,6 @@ import com.lorevault.api.common.error.ExceptionSanitizer;
 
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.scene.Scene;
-import com.lorevault.api.content.timeline.domain.CrossChapterBoundaryProjection;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.scene.SceneGraphRepository;
 import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeCreationResult;
@@ -23,14 +22,12 @@ import com.lorevault.api.ingestion.infrastructure.RelationClaimPersistenceServic
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeService;
 import com.lorevault.api.ingestion.resolution.event.SceneTemporalRelationshipPersistenceService;
-import com.lorevault.api.ingestion.resolution.event.TemporalEdgeWriteRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 /**
@@ -163,12 +160,6 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                     )
             );
 
-            // dead code — per-scene buildTriad resolves cross-chapter prev naturally via
-            // NEXT_IN_READING_ORDER graph edges. Cross-chapter next edges (last scene of
-            // chapter N → first scene of chapter N+1) will be created progressively when
-            // the next chapter is ingested and its first scene's buildTriad finds prev.
-            // enrichCrossChapterTemporalEdges(jobId, temporalDefaults.newlyCreatedCrossChapterBoundaries());
-
             if (! scenes.isEmpty()) {
                 individualPersistenceService.persistExtractedIndividuals(scenes, sceneRelationshipOutcome.sceneIndividualExtractions());
                 collectivePersistenceService.persistExtractedCollectives(scenes, sceneRelationshipOutcome.sceneCollectiveExtractions());
@@ -215,61 +206,6 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
 
         // Persist detected scenes
         return sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords);
-    }
-
-    private void enrichCrossChapterTemporalEdges(UUID jobId, List<CrossChapterBoundaryProjection> boundaries) {
-        if (boundaries == null || boundaries.isEmpty()) {
-            return;
-        }
-
-        for (CrossChapterBoundaryProjection boundary : boundaries) {
-            if (boundary == null || boundary.getPreviousSceneId() == null || boundary.getNextSceneId() == null) {
-                continue;
-            }
-
-            if (sceneTemporalRelationshipPersistenceService.hasAnyTemporalRelationshipBetween(
-                    boundary.getPreviousSceneId(),
-                    boundary.getNextSceneId())) {
-                continue;
-            }
-
-            Chapter laterChapter = chapterRepo.findById(boundary.getNextChapterId()).orElse(null);
-            if (laterChapter == null) {
-                continue;
-            }
-
-            List<Scene> laterScenes = new ArrayList<>(sceneRepo.findByChapterId(boundary.getNextChapterId()));
-            Scene firstScene = laterScenes.stream()
-                    .filter(scene -> boundary.getNextSceneId().equals(scene.getEventId()))
-                    .findFirst()
-                    .orElse(null);
-            if (firstScene == null) {
-                continue;
-            }
-
-            laterChapter.setScenes(List.of(firstScene));
-
-            TriadAnalysisModels.SceneRelationshipOutcome replayOutcome = sceneRelationshipAnalysisService.analyzeChapterTriads(
-                    jobId,
-                    laterChapter,
-                    statusProps -> {
-                    }
-            );
-
-            List<TemporalEdgeWriteRequest> replayRequests = replayOutcome.triadAnalyses().stream()
-                    .filter(analysis -> analysis.prevToCurrType() != null)
-                    .map(analysis -> new TemporalEdgeWriteRequest(
-                            boundary.getPreviousSceneId(),
-                            boundary.getNextSceneId(),
-                            analysis.prevToCurrType(),
-                            analysis.prevToCurrCertainty(),
-                            analysis.prevToCurrEvidence(),
-                            analysis.timelineMarker(),
-                            null
-                    ))
-                    .toList();
-            sceneTemporalRelationshipPersistenceService.applyTemporalRelationships(replayRequests);
-        }
     }
 
     private boolean isRetryableError(Exception e) {
