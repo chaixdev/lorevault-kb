@@ -5,10 +5,10 @@
 
 ## Issue Inventory
 
-### #1: Triad temporal edge provenance is stubbed (BLOCKER — fixed with placeholder)
+### #1: Triad temporal edge provenance is stubbed (DEFERRED — partially unblocked by Phase 3c)
 
-**Severity:** Critical (blocks pipeline)
-**Root cause:** `GraphTriadAnalysisArtifactLookup.findLatestTriadStageIdByCurrentSceneId()` returns `Optional.empty()` — deliberately stubbed during Stage model migration. The StatusRecord-based correlation (`currentSceneId` composite property) was removed but no Stage-based replacement was implemented.
+**Severity:** Medium (temporal edges written without provenance metadata; no functional block)
+**Root cause:** `GraphTriadAnalysisArtifactLookup.findLatestTriadStageIdByCurrentSceneId()` ignores `currentSceneId` and returns the chapter-level `SCENE_SEGMENTATION` stage. `TriadTemporalEdgeRequestFactory.resolveRequiredProvenance()` returns `(jobId, chapterId, null, null)`.
 
 **Affected code:**
 - `TriadAnalysisArtifactLookup.java` / `GraphTriadAnalysisArtifactLookup.java`
@@ -16,9 +16,11 @@
 
 **Current mitigation:** Placeholder returns `null` stageId/llmCallId in `TemporalEdgeProvenance`. Temporal edges are written without proper provenance metadata.
 
-**Proper fix:** Implement Stage-based correlation. Blocked by per-scene `buildTriad` (#14) — need per-scene Stage granularity before a scene→Stage lookup is meaningful.
+**Phase 3c progress:** Per-scene `buildTriad(sceneId)` now uses graph-based prev/next resolution (May 29). The analysis-side blocker is removed. However, the DAG still has one `SCENE_SEGMENTATION` stage per chapter — per-scene Stage granularity is needed before a scene→Stage lookup is meaningful.
 
-**Effort:** Medium. Part of #14 buildTriad refactoring. Proper fix ~1-2 days within that context.
+**Proper fix:** Add per-scene Stage granularity to the DAG (one Stage node per scene within SCENE_SEGMENTATION), then update `GraphTriadAnalysisArtifactLookup` to query the per-scene Stage and `TriadTemporalEdgeRequestFactory` to use it.
+
+**Effort:** Medium. Requires DAG model extension for per-scene stages + lookup implementation.
 
 **Planning doc reference:** `docs/planning/2026-05-22T2300_durable-ingestion-orchestration.md` deviation #3.
 
@@ -78,14 +80,14 @@ Each worker independently called the LLM and created scenes (with idempotent per
 
 ---
 
-### #4: Stage key mislabeling in StageCompletedEvent
+### #4: Stage key mislabeling in StageCompletedEvent — ✅ RESOLVED (May 29 review)
 
 **Severity:** Cosmetic (confusing logs, no functional impact)
-**Root cause:** `StageCompletedEvent` or `StageOutput` carries a stage key that doesn't match the actual stage. The log shows `BOOK_COLLECTIVE_REDUCTION summary=Detected 6 scenes` and `BOOK_EVENT_CANDIDATE_GENERATION summary=Resolved chapter collectives`.
+**Root cause:** Was a symptom of issue #2 (race condition from concurrent stage completions). The `StageDispatcher.emitComplete()` path is clean — always uses `event.getStage()` from the trigger event. `StepEventMapper` (REST command controller path) has correct `StepKey` → `StageKey` mappings.
 
-**Fix approach:** Audit all `StageCompletedEvent` emission points to ensure the correct `StageKey` is set.
+**Residual risk:** `StepEventMapper` is an unvalidated parallel emission path. A future refactoring could silently miswire a `StepKey` → `StageKey` mapping. A validation test mapping every `StepKey` to its matching `@ForStage` handler would catch this.
 
-**Effort:** Small. ~1-2 hours.
+**Effort:** N/A (resolved). Validation test is optional hardening.
 
 ---
 
@@ -134,12 +136,12 @@ Cannot coerce DATE_TIME to LocalDateTime; Error code 'N/A'
 
 | Priority | Issue | Effort | Status |
 |----------|-------|--------|--------|
-| 1 | #1 Proper triad provenance fix | 1-2d | Deferred (blocked by #14) |
+| 1 | #1 Proper triad provenance fix | 1-2d | Deferred (Phase 3c unblocked analysis side; needs per-scene Stage granularity in DAG) |
 | 2 | #2 Orchestrator fires resolution before scene detection | Resolved by #3 fix | ✅ Fixed May 27 |
 | 3 | #7 Book-level reductions skip (bookId=null) | ~few hours | ✅ Fixed May 27 |
 | 4 | #3 Concurrent scene detection workers | ~few hours | ✅ Fixed May 27 |
 | 5 | #5/#6 DATE_TIME coercion | ~2 hours | ✅ Fixed May 27 |
-| 6 | #4 Stage key mislabeling | ~2 hours | Open (cosmetic) |
+| 6 | #4 Stage key mislabeling | N/A | ✅ Resolved (symptom of #2 race condition, confirmed May 29) |
 
 **Fixes applied (May 27):**
 - `StageGraphRepository` / `StageOutputGraphRepository`: `safeLocalDateTime()` helper with try-catch fallback for DATE_TIME coercion (#5/#6)

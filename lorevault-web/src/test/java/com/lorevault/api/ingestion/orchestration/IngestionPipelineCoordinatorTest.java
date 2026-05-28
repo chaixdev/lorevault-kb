@@ -184,14 +184,14 @@ class IngestionPipelineCoordinatorTest {
         @Test
         @DisplayName("creates chapter-level StageOutput and triggers downstream children")
         void createsChapterOutputAndTriggersDownstream() {
-            // CHAPTER_INDIVIDUAL_RESOLUTION → BOOK_INDIVIDUAL_REDUCTION (book-level child)
+            // CHAPTER_INDIVIDUAL_CONSOLIDATION → BOOK_INDIVIDUAL_CONSOLIDATION (book-level child)
             // Since bookId is null and child is book-level, resolveBookId calls findBookId.
             stubNeo4jQuery(BOOK_ID);
 
-            StageKey stage = StageKey.CHAPTER_INDIVIDUAL_RESOLUTION;
+            StageKey stage = StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION;
             StageCompletedEvent event = completedEvent(stage, null, successResult(stage));
 
-            when(stageRepo.tryTrigger(JOB_ID, StageKey.BOOK_INDIVIDUAL_REDUCTION)).thenReturn(true);
+            when(stageRepo.tryTrigger(JOB_ID, StageKey.BOOK_INDIVIDUAL_CONSOLIDATION)).thenReturn(true);
 
             coordinator.onStageCompleted(event);
 
@@ -214,7 +214,7 @@ class IngestionPipelineCoordinatorTest {
             assertThat(published.getJobId()).isEqualTo(JOB_ID);
             assertThat(published.getChapterId()).isEqualTo(CHAPTER_ID);
             assertThat(published.getBookId()).isEqualTo(BOOK_ID);
-            assertThat(published.getStage()).isEqualTo(StageKey.BOOK_INDIVIDUAL_REDUCTION);
+            assertThat(published.getStage()).isEqualTo(StageKey.BOOK_INDIVIDUAL_CONSOLIDATION);
         }
 
         @Test
@@ -260,11 +260,11 @@ class IngestionPipelineCoordinatorTest {
 
             Set<StageKey> childKeys = Set.of(
                     StageKey.CHUNKING,
-                    StageKey.CHAPTER_INDIVIDUAL_RESOLUTION,
-                    StageKey.CHAPTER_COLLECTIVE_RESOLUTION,
-                    StageKey.CHAPTER_LOCATION_RESOLUTION,
-                    StageKey.CHAPTER_OBJECT_RESOLUTION,
-                    StageKey.CHAPTER_EVENT_RESOLUTION);
+                    StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION,
+                    StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION,
+                    StageKey.CHAPTER_LOCATION_CONSOLIDATION,
+                    StageKey.CHAPTER_OBJECT_CONSOLIDATION,
+                    StageKey.CHAPTER_EVENT_CONSOLIDATION);
             assertThat(events)
                     .extracting(e -> ((StageTriggeredEvent) e).getStage())
                     .containsExactlyInAnyOrderElementsOf(childKeys);
@@ -275,7 +275,7 @@ class IngestionPipelineCoordinatorTest {
         void createsBookLevelOutput() {
             stubNeo4jQueryLenient();
 
-            StageKey stage = StageKey.BOOK_INDIVIDUAL_REDUCTION;
+            StageKey stage = StageKey.BOOK_INDIVIDUAL_CONSOLIDATION;
             StageCompletedEvent event = completedEvent(stage, BOOK_ID, successResult(stage));
 
             coordinator.onStageCompleted(event);
@@ -299,11 +299,11 @@ class IngestionPipelineCoordinatorTest {
             StageCompletedEvent event = completedEvent(stage, null, successResult(stage));
 
             when(stageRepo.tryTrigger(JOB_ID, StageKey.CHUNKING)).thenReturn(true);
-            when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_INDIVIDUAL_RESOLUTION)).thenReturn(true);
-            when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_COLLECTIVE_RESOLUTION)).thenReturn(false);
-            when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_LOCATION_RESOLUTION)).thenReturn(false);
-            when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_OBJECT_RESOLUTION)).thenReturn(false);
-            when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_EVENT_RESOLUTION)).thenReturn(false);
+            when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION)).thenReturn(true);
+            when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION)).thenReturn(false);
+            when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_LOCATION_CONSOLIDATION)).thenReturn(false);
+            when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_OBJECT_CONSOLIDATION)).thenReturn(false);
+            when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_EVENT_CONSOLIDATION)).thenReturn(false);
 
             coordinator.onStageCompleted(event);
 
@@ -316,21 +316,21 @@ class IngestionPipelineCoordinatorTest {
                     .toList();
             assertThat(events)
                     .extracting(StageTriggeredEvent::getStage)
-                    .containsExactlyInAnyOrder(StageKey.CHUNKING, StageKey.CHAPTER_INDIVIDUAL_RESOLUTION);
+                    .containsExactlyInAnyOrder(StageKey.CHUNKING, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION);
         }
 
         @Test
         @DisplayName("uses provided bookId for book-level child, skipping Neo4jClient lookup")
         void usesProvidedBookIdForBookLevelChild() {
-            // CHAPTER_INDIVIDUAL_RESOLUTION → BOOK_INDIVIDUAL_REDUCTION (book-level)
+            // CHAPTER_INDIVIDUAL_CONSOLIDATION → BOOK_INDIVIDUAL_CONSOLIDATION (book-level)
             // Event has non-null bookId → resolveBookId returns it immediately,
             // so Neo4jClient.findBookId is never called.
             stubNeo4jQueryLenient();
 
-            StageKey stage = StageKey.CHAPTER_INDIVIDUAL_RESOLUTION;
+            StageKey stage = StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION;
             StageCompletedEvent event = completedEvent(stage, BOOK_ID, successResult(stage));
 
-            when(stageRepo.tryTrigger(JOB_ID, StageKey.BOOK_INDIVIDUAL_REDUCTION)).thenReturn(true);
+            when(stageRepo.tryTrigger(JOB_ID, StageKey.BOOK_INDIVIDUAL_CONSOLIDATION)).thenReturn(true);
 
             coordinator.onStageCompleted(event);
 
@@ -412,7 +412,7 @@ class IngestionPipelineCoordinatorTest {
         void doesNotEvaluateDownstreamOnFailure() {
             stubNeo4jQueryLenient();
 
-            StageKey stage = StageKey.CHAPTER_INDIVIDUAL_RESOLUTION;
+            StageKey stage = StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION;
             StageCompletedEvent event = completedEvent(stage, null, failureResult(stage));
 
             coordinator.onStageCompleted(event);
@@ -432,14 +432,14 @@ class IngestionPipelineCoordinatorTest {
         @Test
         @DisplayName("resolves bookId via findBookId for book-level child when bookId is null")
         void resolvesBookIdForBookLevelChild() {
-            // CHAPTER_INDIVIDUAL_RESOLUTION → BOOK_INDIVIDUAL_REDUCTION (book-level)
+            // CHAPTER_INDIVIDUAL_CONSOLIDATION → BOOK_INDIVIDUAL_CONSOLIDATION (book-level)
             // bookId is null → resolveBookId calls findBookId(chapterId)
             stubNeo4jQuery(BOOK_ID);
 
-            StageKey stage = StageKey.CHAPTER_INDIVIDUAL_RESOLUTION;
+            StageKey stage = StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION;
             StageCompletedEvent event = completedEvent(stage, null, successResult(stage));
 
-            when(stageRepo.tryTrigger(JOB_ID, StageKey.BOOK_INDIVIDUAL_REDUCTION)).thenReturn(true);
+            when(stageRepo.tryTrigger(JOB_ID, StageKey.BOOK_INDIVIDUAL_CONSOLIDATION)).thenReturn(true);
 
             coordinator.onStageCompleted(event);
 
@@ -451,11 +451,11 @@ class IngestionPipelineCoordinatorTest {
         @Test
         @DisplayName("passes null bookId for chapter-level child without calling findBookId")
         void chapterLevelChildNoBookIdLookup() {
-            // CHAPTER_EVENT_RESOLUTION → CHAPTER_EVENT_EMBEDDING (chapter-level)
+            // CHAPTER_EVENT_CONSOLIDATION → CHAPTER_EVENT_EMBEDDING (chapter-level)
             // resolveBookId returns null immediately since child is chapter-level
             stubNeo4jQueryLenient();
 
-            StageKey stage = StageKey.CHAPTER_EVENT_RESOLUTION;
+            StageKey stage = StageKey.CHAPTER_EVENT_CONSOLIDATION;
             StageCompletedEvent event = completedEvent(stage, null, successResult(stage));
 
             when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_EVENT_EMBEDDING)).thenReturn(true);
@@ -565,7 +565,7 @@ class IngestionPipelineCoordinatorTest {
         @Test
         @DisplayName("resolves bookId for book-level stale stages")
         void resolvesBookIdForBookLevelStage() {
-            Stage stale = stageWithStatus(StageKey.BOOK_INDIVIDUAL_REDUCTION, StageStatus.TRIGGERED);
+            Stage stale = stageWithStatus(StageKey.BOOK_INDIVIDUAL_CONSOLIDATION, StageStatus.TRIGGERED);
 
             when(stageRepo.findStaleTriggered(Duration.ofSeconds(STALE_TRIGGER_GRACE)))
                     .thenReturn(List.of(stale));
@@ -606,7 +606,7 @@ class IngestionPipelineCoordinatorTest {
 
             StageTriggeredEvent published = eventCaptor.getValue();
             assertThat(published.getBookId()).isEqualTo(BOOK_ID);
-            assertThat(published.getStage()).isEqualTo(StageKey.BOOK_INDIVIDUAL_REDUCTION);
+            assertThat(published.getStage()).isEqualTo(StageKey.BOOK_INDIVIDUAL_CONSOLIDATION);
         }
 
         @Test
@@ -793,7 +793,7 @@ class IngestionPipelineCoordinatorTest {
         void callsFindStageIdForEachDepthStage() {
             stubNeo4jQueryLenient();
 
-            StageKey rerunStage = StageKey.CHAPTER_EVENT_RESOLUTION;
+            StageKey rerunStage = StageKey.CHAPTER_EVENT_CONSOLIDATION;
             Set<StageKey> invalidated = coordinator.dag().transitiveDownstream(rerunStage);
             List<StageKey> byDepth = coordinator.dag().topologicalDepthDescending(invalidated);
 
@@ -947,7 +947,7 @@ class IngestionPipelineCoordinatorTest {
             // uses it directly for children. No Neo4jClient queries needed.
             stubNeo4jQueryLenient();
 
-            StageKey stage = StageKey.BOOK_INDIVIDUAL_REDUCTION;
+            StageKey stage = StageKey.BOOK_INDIVIDUAL_CONSOLIDATION;
             StageCompletedEvent event = completedEvent(stage, BOOK_ID, successResult(stage));
 
             when(stageRepo.tryTrigger(JOB_ID, StageKey.INGESTION_COMPLETE)).thenReturn(false);

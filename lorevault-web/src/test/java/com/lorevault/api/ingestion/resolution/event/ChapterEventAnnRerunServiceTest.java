@@ -3,7 +3,7 @@ package com.lorevault.api.ingestion.resolution.event;
 import com.lorevault.api.content.association.ChapterEventGraphRepository;
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
-import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
+import com.lorevault.api.ingestion.events.ChapterEventsConsolidatedEvent;
 import com.lorevault.api.library.book.Book;
 import com.lorevault.api.library.book.BookGraphRepository;
 import com.lorevault.api.library.universe.Universe;
@@ -69,7 +69,7 @@ class ChapterEventAnnRerunServiceTest {
 
         ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
         verify(eventPublisher).publishEvent(captor.capture());
-        ChapterEventsResolvedEvent published = (ChapterEventsResolvedEvent) captor.getValue();
+        ChapterEventsConsolidatedEvent published = (ChapterEventsConsolidatedEvent) captor.getValue();
         assertThat(published.getChapterId()).isEqualTo(chapterId);
         assertThat(published.getBookId()).isEqualTo(bookId);
         assertThat(published.getMentionCount()).isEqualTo(3);
@@ -103,10 +103,10 @@ class ChapterEventAnnRerunServiceTest {
 
         ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
         verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(captor.capture());
-        List<ChapterEventsResolvedEvent> published = captor.getAllValues().stream()
-                .map(ChapterEventsResolvedEvent.class::cast)
+        List<ChapterEventsConsolidatedEvent> published = captor.getAllValues().stream()
+                .map(ChapterEventsConsolidatedEvent.class::cast)
                 .toList();
-        assertThat(published).extracting(ChapterEventsResolvedEvent::getChapterId)
+        assertThat(published).extracting(ChapterEventsConsolidatedEvent::getChapterId)
                 .containsExactly(chapterOneId, chapterTwoId);
     }
 

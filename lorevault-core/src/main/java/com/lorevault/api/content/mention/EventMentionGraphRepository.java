@@ -20,7 +20,7 @@ public interface EventMentionGraphRepository extends Neo4jRepository<EventMentio
     /**
      * Returns all EventMention nodes for a chapter in deterministic order:
      * by scene extraction order first, then by extractionIndex within each scene.
-     * Used by Stage 3 (ChapterEventResolutionService) to load all mentions for aggregation.
+     * Used by Stage 3 (ChapterEventConsolidationService) to load all mentions for aggregation.
      */
     @Query("""
             MATCH (s:Scene {chapterId: $chapterId})-[:CONTAINS]->(m:EventMention {chapterId: $chapterId})

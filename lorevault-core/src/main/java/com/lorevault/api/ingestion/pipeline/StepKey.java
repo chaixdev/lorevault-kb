@@ -17,17 +17,17 @@ public enum StepKey {
     DETECT_SCENES("chapter"),
     CHUNK("chapter"),
     EMBED("chapter"),
-    RESOLVE_INDIVIDUALS("chapter"),
-    RESOLVE_COLLECTIVES("chapter"),
-    RESOLVE_LOCATIONS("chapter"),
-    RESOLVE_OBJECTS("chapter"),
-    RESOLVE_EVENTS("chapter"),
+    CHAPTER_CONSOLIDATE_INDIVIDUALS("chapter"),
+    CHAPTER_CONSOLIDATE_COLLECTIVES("chapter"),
+    CHAPTER_CONSOLIDATE_LOCATIONS("chapter"),
+    CHAPTER_CONSOLIDATE_OBJECTS("chapter"),
+    CHAPTER_CONSOLIDATE_EVENTS("chapter"),
 
     // ── Book-scoped steps ────────────────────────────────────────
-    REDUCE_INDIVIDUALS("book"),
-    REDUCE_COLLECTIVES("book"),
-    REDUCE_LOCATIONS("book"),
-    REDUCE_OBJECTS("book");
+    BOOK_CONSOLIDATE_INDIVIDUALS("book"),
+    BOOK_CONSOLIDATE_COLLECTIVES("book"),
+    BOOK_CONSOLIDATE_LOCATIONS("book"),
+    BOOK_CONSOLIDATE_OBJECTS("book");
 
     private final String scope;
 
@@ -44,8 +44,8 @@ public enum StepKey {
      * Returns the kebab-case URL segment for this step key.
      *
      * <p>Examples: {@code DETECT_SCENES → "detect-scenes"},
-     * {@code RESOLVE_INDIVIDUALS → "resolve-individuals"},
-     * {@code REDUCE_INDIVIDUALS → "reduce-individuals"}.
+     * {@code CHAPTER_CONSOLIDATE_INDIVIDUALS → "chapter-consolidate-individuals"},
+     * {@code BOOK_CONSOLIDATE_INDIVIDUALS → "book-consolidate-individuals"}.
      */
     public String toUrlSegment() {
         return name().toLowerCase().replace('_', '-');

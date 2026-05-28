@@ -11,8 +11,8 @@ import com.lorevault.api.ingestion.pipeline.ForStage;
 import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StageOperation;
 import com.lorevault.api.ingestion.pipeline.StepResult;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimService;
-import com.lorevault.api.ingestion.resolution.location.BookReductionClaimUnavailableException;
+import com.lorevault.api.ingestion.resolution.location.BookConsolidationClaimService;
+import com.lorevault.api.ingestion.resolution.location.BookConsolidationClaimUnavailableException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -31,7 +31,7 @@ import org.springframework.stereotype.Component;
  * (because when a chapter was processed earlier, later chapters' events weren't yet
  * in the ANN index).
  *
- * <p>Follows the same claim/guard/logging pattern as {@code BookCollectiveReductionHandler}.
+ * <p>Follows the same claim/guard/logging pattern as {@code BookCollectiveConsolidationHandler}.
  */
 @Component
 @Slf4j
@@ -44,23 +44,23 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
     private final ChapterEventEmbeddingTransactionSupport txSupport;
     private final BookEventAnnCandidateService annCandidateService;
     private final BookEventMergeVerificationService mergeVerificationService;
-    private final BookEventReductionService bookEventReductionService;
-    private final BookReductionClaimService bookReductionClaimService;
+    private final BookEventConsolidationService bookEventConsolidationService;
+    private final BookConsolidationClaimService bookConsolidationClaimService;
 
     public BookEventCandidateGenerationHandler(
             ChapterGraphRepository chapterRepo,
             ChapterEventEmbeddingTransactionSupport txSupport,
             BookEventAnnCandidateService annCandidateService,
             BookEventMergeVerificationService mergeVerificationService,
-            BookEventReductionService bookEventReductionService,
-            BookReductionClaimService bookReductionClaimService
+            BookEventConsolidationService bookEventConsolidationService,
+            BookConsolidationClaimService bookConsolidationClaimService
     ) {
         this.chapterRepo = chapterRepo;
         this.txSupport = txSupport;
         this.annCandidateService = annCandidateService;
         this.mergeVerificationService = mergeVerificationService;
-        this.bookEventReductionService = bookEventReductionService;
-        this.bookReductionClaimService = bookReductionClaimService;
+        this.bookEventConsolidationService = bookEventConsolidationService;
+        this.bookConsolidationClaimService = bookConsolidationClaimService;
     }
 
     @Override
@@ -80,7 +80,7 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
 
         log.info("[LANE:EVENT] [EVENT_CANDIDATE_GENERATION] Started: jobId={}, bookId={}", jobId, bookId);
 
-        if (!bookReductionClaimService.tryAcquireClaim(bookId, CLAIM_LANE)) {
+        if (!bookConsolidationClaimService.tryAcquireClaim(bookId, CLAIM_LANE)) {
             long elapsed = System.currentTimeMillis() - start;
             log.info("[EVENT_CANDIDATE_GENERATION] Claim contention for bookId={}", bookId);
             return StepResult.retryableFailure(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
@@ -166,8 +166,8 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
 
             // 5. Run reduction and persist book events
             List<ChapterEvent> allEventList = new ArrayList<>(allEventsById.values());
-            BookEventReductionService.BookEventReductionResult reductionResult =
-                    bookEventReductionService.reduceAndPersist(
+            BookEventConsolidationService.BookEventConsolidationResult reductionResult =
+                    bookEventConsolidationService.reduceAndPersist(
                             jobId, chapterId, bookId, allEventList, mergeDecisions);
 
             long elapsed = System.currentTimeMillis() - start;
@@ -201,7 +201,7 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
                     : StepResult.failure(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
                             sanitizeMessage(e), elapsed);
         } finally {
-            bookReductionClaimService.releaseClaim(bookId, CLAIM_LANE);
+            bookConsolidationClaimService.releaseClaim(bookId, CLAIM_LANE);
         }
     }
 
@@ -216,7 +216,7 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
     /**
      * Determine whether an exception represents a transient error suitable for retry.
      *
-     * <p>Copied from {@code BookCollectiveReductionHandler}.
+     * <p>Copied from {@code BookCollectiveConsolidationHandler}.
      */
     private boolean isRetryableError(Exception e) {
         if (e instanceof org.springframework.web.client.ResourceAccessException) {
@@ -228,7 +228,7 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
         if (e instanceof org.springframework.web.client.HttpServerErrorException) {
             return true;
         }
-        if (e instanceof BookReductionClaimUnavailableException) {
+        if (e instanceof BookConsolidationClaimUnavailableException) {
             return true;
         }
         String message = e.getMessage();

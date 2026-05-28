@@ -26,17 +26,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static com.lorevault.api.ingestion.pipeline.StageKey.BOOK_COLLECTIVE_REDUCTION;
+import static com.lorevault.api.ingestion.pipeline.StageKey.BOOK_COLLECTIVE_CONSOLIDATION;
 import static com.lorevault.api.ingestion.pipeline.StageKey.BOOK_EVENT_CANDIDATE_GENERATION;
-import static com.lorevault.api.ingestion.pipeline.StageKey.BOOK_INDIVIDUAL_REDUCTION;
-import static com.lorevault.api.ingestion.pipeline.StageKey.BOOK_LOCATION_REDUCTION;
-import static com.lorevault.api.ingestion.pipeline.StageKey.BOOK_OBJECT_REDUCTION;
-import static com.lorevault.api.ingestion.pipeline.StageKey.CHAPTER_COLLECTIVE_RESOLUTION;
+import static com.lorevault.api.ingestion.pipeline.StageKey.BOOK_INDIVIDUAL_CONSOLIDATION;
+import static com.lorevault.api.ingestion.pipeline.StageKey.BOOK_LOCATION_CONSOLIDATION;
+import static com.lorevault.api.ingestion.pipeline.StageKey.BOOK_OBJECT_CONSOLIDATION;
+import static com.lorevault.api.ingestion.pipeline.StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION;
 import static com.lorevault.api.ingestion.pipeline.StageKey.CHAPTER_EVENT_EMBEDDING;
-import static com.lorevault.api.ingestion.pipeline.StageKey.CHAPTER_EVENT_RESOLUTION;
-import static com.lorevault.api.ingestion.pipeline.StageKey.CHAPTER_INDIVIDUAL_RESOLUTION;
-import static com.lorevault.api.ingestion.pipeline.StageKey.CHAPTER_LOCATION_RESOLUTION;
-import static com.lorevault.api.ingestion.pipeline.StageKey.CHAPTER_OBJECT_RESOLUTION;
+import static com.lorevault.api.ingestion.pipeline.StageKey.CHAPTER_EVENT_CONSOLIDATION;
+import static com.lorevault.api.ingestion.pipeline.StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION;
+import static com.lorevault.api.ingestion.pipeline.StageKey.CHAPTER_LOCATION_CONSOLIDATION;
+import static com.lorevault.api.ingestion.pipeline.StageKey.CHAPTER_OBJECT_CONSOLIDATION;
 import static com.lorevault.api.ingestion.pipeline.StageKey.CHUNKING;
 import static com.lorevault.api.ingestion.pipeline.StageKey.EMBEDDING;
 import static com.lorevault.api.ingestion.pipeline.StageKey.INGESTION_COMPLETE;
@@ -103,31 +103,31 @@ class StageDispatcherTest {
     @ForStage(EMBEDDING) static class H_EMBEDDING implements StageOperation {
         @Override public StepResult execute(DispatchContext c) { return success(c.stage(), "ok", 0L); }
     }
-    @ForStage(CHAPTER_INDIVIDUAL_RESOLUTION) static class H_CHAPTER_INDIVIDUAL_RESOLUTION implements StageOperation {
+    @ForStage(CHAPTER_INDIVIDUAL_CONSOLIDATION) static class H_CHAPTER_INDIVIDUAL_CONSOLIDATION implements StageOperation {
         @Override public StepResult execute(DispatchContext c) { return success(c.stage(), "ok", 0L); }
     }
-    @ForStage(CHAPTER_COLLECTIVE_RESOLUTION) static class H_CHAPTER_COLLECTIVE_RESOLUTION implements StageOperation {
+    @ForStage(CHAPTER_COLLECTIVE_CONSOLIDATION) static class H_CHAPTER_COLLECTIVE_CONSOLIDATION implements StageOperation {
         @Override public StepResult execute(DispatchContext c) { return success(c.stage(), "ok", 0L); }
     }
-    @ForStage(CHAPTER_LOCATION_RESOLUTION) static class H_CHAPTER_LOCATION_RESOLUTION implements StageOperation {
+    @ForStage(CHAPTER_LOCATION_CONSOLIDATION) static class H_CHAPTER_LOCATION_CONSOLIDATION implements StageOperation {
         @Override public StepResult execute(DispatchContext c) { return success(c.stage(), "ok", 0L); }
     }
-    @ForStage(CHAPTER_OBJECT_RESOLUTION) static class H_CHAPTER_OBJECT_RESOLUTION implements StageOperation {
+    @ForStage(CHAPTER_OBJECT_CONSOLIDATION) static class H_CHAPTER_OBJECT_CONSOLIDATION implements StageOperation {
         @Override public StepResult execute(DispatchContext c) { return success(c.stage(), "ok", 0L); }
     }
-    @ForStage(CHAPTER_EVENT_RESOLUTION) static class H_CHAPTER_EVENT_RESOLUTION implements StageOperation {
+    @ForStage(CHAPTER_EVENT_CONSOLIDATION) static class H_CHAPTER_EVENT_CONSOLIDATION implements StageOperation {
         @Override public StepResult execute(DispatchContext c) { return success(c.stage(), "ok", 0L); }
     }
-    @ForStage(BOOK_INDIVIDUAL_REDUCTION) static class H_BOOK_INDIVIDUAL_REDUCTION implements StageOperation {
+    @ForStage(BOOK_INDIVIDUAL_CONSOLIDATION) static class H_BOOK_INDIVIDUAL_CONSOLIDATION implements StageOperation {
         @Override public StepResult execute(DispatchContext c) { return success(c.stage(), "ok", 0L); }
     }
-    @ForStage(BOOK_COLLECTIVE_REDUCTION) static class H_BOOK_COLLECTIVE_REDUCTION implements StageOperation {
+    @ForStage(BOOK_COLLECTIVE_CONSOLIDATION) static class H_BOOK_COLLECTIVE_CONSOLIDATION implements StageOperation {
         @Override public StepResult execute(DispatchContext c) { return success(c.stage(), "ok", 0L); }
     }
-    @ForStage(BOOK_LOCATION_REDUCTION) static class H_BOOK_LOCATION_REDUCTION implements StageOperation {
+    @ForStage(BOOK_LOCATION_CONSOLIDATION) static class H_BOOK_LOCATION_CONSOLIDATION implements StageOperation {
         @Override public StepResult execute(DispatchContext c) { return success(c.stage(), "ok", 0L); }
     }
-    @ForStage(BOOK_OBJECT_REDUCTION) static class H_BOOK_OBJECT_REDUCTION implements StageOperation {
+    @ForStage(BOOK_OBJECT_CONSOLIDATION) static class H_BOOK_OBJECT_CONSOLIDATION implements StageOperation {
         @Override public StepResult execute(DispatchContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(CHAPTER_EVENT_EMBEDDING) static class H_CHAPTER_EVENT_EMBEDDING implements StageOperation {
@@ -191,15 +191,15 @@ class StageDispatcherTest {
                 new H_SCENE_SEGMENTATION(),
                 new H_CHUNKING(),
                 new H_EMBEDDING(),
-                new H_CHAPTER_INDIVIDUAL_RESOLUTION(),
-                new H_CHAPTER_COLLECTIVE_RESOLUTION(),
-                new H_CHAPTER_LOCATION_RESOLUTION(),
-                new H_CHAPTER_OBJECT_RESOLUTION(),
-                new H_CHAPTER_EVENT_RESOLUTION(),
-                new H_BOOK_INDIVIDUAL_REDUCTION(),
-                new H_BOOK_COLLECTIVE_REDUCTION(),
-                new H_BOOK_LOCATION_REDUCTION(),
-                new H_BOOK_OBJECT_REDUCTION(),
+                new H_CHAPTER_INDIVIDUAL_CONSOLIDATION(),
+                new H_CHAPTER_COLLECTIVE_CONSOLIDATION(),
+                new H_CHAPTER_LOCATION_CONSOLIDATION(),
+                new H_CHAPTER_OBJECT_CONSOLIDATION(),
+                new H_CHAPTER_EVENT_CONSOLIDATION(),
+                new H_BOOK_INDIVIDUAL_CONSOLIDATION(),
+                new H_BOOK_COLLECTIVE_CONSOLIDATION(),
+                new H_BOOK_LOCATION_CONSOLIDATION(),
+                new H_BOOK_OBJECT_CONSOLIDATION(),
                 new H_CHAPTER_EVENT_EMBEDDING(),
                 new H_BOOK_EVENT_CANDIDATE_GENERATION(),
                 new H_INGESTION_COMPLETE()
@@ -360,14 +360,14 @@ class StageDispatcherTest {
     @Test
     @DisplayName("dispatch: book stage with existing output → setSkipped, emit skip event, handler not called")
     void dispatch_bookStage_outputExists_shouldSkipAndEmitCompletedEvent() {
-        when(stageOutputRepo.existsByBookIdAndStep(BOOK_ID, BOOK_INDIVIDUAL_REDUCTION)).thenReturn(true);
+        when(stageOutputRepo.existsByBookIdAndStep(BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION)).thenReturn(true);
 
         var handler = mock(StageOperation.class);
-        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_REDUCTION, handler));
+        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_CONSOLIDATION, handler));
         dispatcher.onTrigger(new StageTriggeredEvent(
-                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_REDUCTION));
+                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION));
 
-        verify(stageRepo).setSkipped(JOB_ID, BOOK_INDIVIDUAL_REDUCTION);
+        verify(stageRepo).setSkipped(JOB_ID, BOOK_INDIVIDUAL_CONSOLIDATION);
         verify(eventPublisher).publishEvent(completedEventCaptor.capture());
         verifyNoInteractions(handler);
 
@@ -375,7 +375,7 @@ class StageDispatcherTest {
         assertThat(event.getJobId()).isEqualTo(JOB_ID);
         assertThat(event.getChapterId()).isEqualTo(CHAPTER_ID);
         assertThat(event.getBookId()).isEqualTo(BOOK_ID);
-        assertThat(event.getStage()).isEqualTo(BOOK_INDIVIDUAL_REDUCTION);
+        assertThat(event.getStage()).isEqualTo(BOOK_INDIVIDUAL_CONSOLIDATION);
         assertThat(event.getResult().success()).isTrue();
         assertThat(event.getResult().summary()).contains("Skipped");
     }
@@ -383,14 +383,14 @@ class StageDispatcherTest {
     @Test
     @DisplayName("dispatch: book stage with no existing output → handler called")
     void dispatch_bookStage_outputNotExists_shouldCallHandler() {
-        when(stageOutputRepo.existsByBookIdAndStep(BOOK_ID, BOOK_INDIVIDUAL_REDUCTION)).thenReturn(false);
+        when(stageOutputRepo.existsByBookIdAndStep(BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION)).thenReturn(false);
 
         var handler = mock(StageOperation.class);
-        when(handler.execute(any())).thenReturn(success(BOOK_INDIVIDUAL_REDUCTION, "executed", 0L));
+        when(handler.execute(any())).thenReturn(success(BOOK_INDIVIDUAL_CONSOLIDATION, "executed", 0L));
 
-        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_REDUCTION, handler));
+        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_CONSOLIDATION, handler));
         dispatcher.onTrigger(new StageTriggeredEvent(
-                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_REDUCTION));
+                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION));
 
         verify(handler).execute(any());
         verify(eventPublisher).publishEvent(any());
@@ -400,12 +400,12 @@ class StageDispatcherTest {
     @DisplayName("dispatch: book stage with null bookId → skip idempotency check, handler called")
     void dispatch_bookStage_bookIdNull_shouldSkipIdempotencyCheckAndCallHandler() {
         var handler = mock(StageOperation.class);
-        when(handler.execute(any())).thenReturn(success(BOOK_INDIVIDUAL_REDUCTION, "executed", 0L));
+        when(handler.execute(any())).thenReturn(success(BOOK_INDIVIDUAL_CONSOLIDATION, "executed", 0L));
 
-        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_REDUCTION, handler));
+        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_CONSOLIDATION, handler));
         // Create event with bookId = null (use 4-arg convenience constructor)
         dispatcher.onTrigger(new StageTriggeredEvent(
-                this, JOB_ID, CHAPTER_ID, BOOK_INDIVIDUAL_REDUCTION));
+                this, JOB_ID, CHAPTER_ID, BOOK_INDIVIDUAL_CONSOLIDATION));
 
         verify(stageOutputRepo, never()).existsByBookIdAndStep(any(), any());
         verify(handler).execute(any());
@@ -566,13 +566,13 @@ class StageDispatcherTest {
     @Test
     @DisplayName("emitComplete: book-level stage — event has correct jobId, chapterId, bookId, stage, result")
     void emitComplete_bookStage_shouldPublishEventWithCorrectFields() {
-        var expectedResult = success(BOOK_INDIVIDUAL_REDUCTION, "book done", 10L);
+        var expectedResult = success(BOOK_INDIVIDUAL_CONSOLIDATION, "book done", 10L);
         var handler = mock(StageOperation.class);
         when(handler.execute(any())).thenReturn(expectedResult);
 
-        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_REDUCTION, handler));
+        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_CONSOLIDATION, handler));
         dispatcher.onTrigger(new StageTriggeredEvent(
-                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_REDUCTION));
+                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION));
 
         verify(eventPublisher).publishEvent(completedEventCaptor.capture());
         var event = completedEventCaptor.getValue();
@@ -580,7 +580,7 @@ class StageDispatcherTest {
         assertThat(event.getJobId()).isEqualTo(JOB_ID);
         assertThat(event.getChapterId()).isEqualTo(CHAPTER_ID);
         assertThat(event.getBookId()).isEqualTo(BOOK_ID);
-        assertThat(event.getStage()).isEqualTo(BOOK_INDIVIDUAL_REDUCTION);
+        assertThat(event.getStage()).isEqualTo(BOOK_INDIVIDUAL_CONSOLIDATION);
         assertThat(event.getResult()).isSameAs(expectedResult);
     }
 
@@ -600,12 +600,12 @@ class StageDispatcherTest {
     @Test
     @DisplayName("emitComplete: skip event for book stage has correct bookId")
     void emitComplete_bookStageSkipEvent_hasCorrectBookId() {
-        when(stageOutputRepo.existsByBookIdAndStep(BOOK_ID, BOOK_INDIVIDUAL_REDUCTION)).thenReturn(true);
+        when(stageOutputRepo.existsByBookIdAndStep(BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION)).thenReturn(true);
 
         var handler = mock(StageOperation.class);
-        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_REDUCTION, handler));
+        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_CONSOLIDATION, handler));
         dispatcher.onTrigger(new StageTriggeredEvent(
-                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_REDUCTION));
+                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION));
 
         verify(eventPublisher).publishEvent(completedEventCaptor.capture());
         assertThat(completedEventCaptor.getValue().getBookId()).isEqualTo(BOOK_ID);
@@ -651,11 +651,11 @@ class StageDispatcherTest {
     @DisplayName("dispatch: handler receives DispatchContext with bookId for book-level stage")
     void dispatch_bookStage_contextHasBookId() {
         var handler = mock(StageOperation.class);
-        when(handler.execute(any())).thenReturn(success(BOOK_INDIVIDUAL_REDUCTION, "ok", 0L));
+        when(handler.execute(any())).thenReturn(success(BOOK_INDIVIDUAL_CONSOLIDATION, "ok", 0L));
 
-        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_REDUCTION, handler));
+        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_CONSOLIDATION, handler));
         dispatcher.onTrigger(new StageTriggeredEvent(
-                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_REDUCTION));
+                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION));
 
         var ctxCaptor = ArgumentCaptor.forClass(DispatchContext.class);
         verify(handler).execute(ctxCaptor.capture());
@@ -663,7 +663,7 @@ class StageDispatcherTest {
         assertThat(ctx.jobId()).isEqualTo(JOB_ID);
         assertThat(ctx.chapterId()).isEqualTo(CHAPTER_ID);
         assertThat(ctx.bookId()).isEqualTo(BOOK_ID);
-        assertThat(ctx.stage()).isEqualTo(BOOK_INDIVIDUAL_REDUCTION);
+        assertThat(ctx.stage()).isEqualTo(BOOK_INDIVIDUAL_CONSOLIDATION);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

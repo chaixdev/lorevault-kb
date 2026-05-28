@@ -35,20 +35,20 @@ public class ChapterEventEmbeddingHandler implements StageOperation {
     private final ChapterEventEmbeddingTransactionSupport txSupport;
     private final BookEventAnnCandidateService annCandidateService;
     private final BookEventMergeVerificationService mergeVerificationService;
-    private final BookEventReductionService bookEventReductionService;
+    private final BookEventConsolidationService bookEventConsolidationService;
 
     public ChapterEventEmbeddingHandler(
             ChapterEventEmbeddingService embeddingService,
             ChapterEventEmbeddingTransactionSupport txSupport,
             BookEventAnnCandidateService annCandidateService,
             BookEventMergeVerificationService mergeVerificationService,
-            BookEventReductionService bookEventReductionService
+            BookEventConsolidationService bookEventConsolidationService
     ) {
         this.embeddingService = embeddingService;
         this.txSupport = txSupport;
         this.annCandidateService = annCandidateService;
         this.mergeVerificationService = mergeVerificationService;
-        this.bookEventReductionService = bookEventReductionService;
+        this.bookEventConsolidationService = bookEventConsolidationService;
     }
 
     @Override
@@ -108,8 +108,8 @@ public class ChapterEventEmbeddingHandler implements StageOperation {
                     chapterEvents.size(),
                     mergeDecisions.size()
             );
-            BookEventReductionService.BookEventReductionResult reductionResult =
-                    bookEventReductionService.reduceAndPersist(
+            BookEventConsolidationService.BookEventConsolidationResult reductionResult =
+                    bookEventConsolidationService.reduceAndPersist(
                             jobId,
                             chapterId,
                             bookId,

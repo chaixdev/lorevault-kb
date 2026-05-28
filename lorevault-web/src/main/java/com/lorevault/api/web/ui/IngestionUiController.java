@@ -282,7 +282,7 @@ public class IngestionUiController {
             return null;
         }
 
-        return resolveBook(form, universeId, seriesId, bookSelection, bindingResult);
+        return consolidateBook(form, universeId, seriesId, bookSelection, bindingResult);
     }
 
     private UUID resolveUniverse(ChapterUploadForm form, String universeSelection, BindingResult bindingResult) {
@@ -317,7 +317,7 @@ public class IngestionUiController {
         return parseUuid(seriesSelection);
     }
 
-    private UUID resolveBook(ChapterUploadForm form, UUID universeId, UUID seriesId, String bookSelection, BindingResult bindingResult) {
+    private UUID consolidateBook(ChapterUploadForm form, UUID universeId, UUID seriesId, String bookSelection, BindingResult bindingResult) {
         if (NEW_SELECTION.equals(bookSelection)) {
             if (isBlank(form.getNewBookTitle())) {
                 bindingResult.rejectValue("newBookTitle", "book.title.required", "Book title is required when creating a new book");

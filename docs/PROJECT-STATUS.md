@@ -2,7 +2,7 @@
 
 **Last Updated:** May 29, 2026
 **Status:** Active — Phases 1+2+4 complete, Phase 3a+3b+3c complete. 463 tests, 0 failures. ArchUnit passing.
-**Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state, terminology alignment (resolution → reduction). Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
+**Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state. Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
 ## What LoreVault Is
@@ -86,7 +86,7 @@ Three items, ordered by layering (services below handlers, buildTriad independen
 
 **Rationale:** Consolidation is lower in the layer stack than StageDispatcher — services are called by handlers. Doing consolidation first means StageDispatcher lands on a cleaner, more uniform codebase.
 
-**Smoke test findings (May 27):** 7 pre-existing pipeline issues discovered — see [Pipeline Issues from Smoke Test](planning/2026-05-27T0230_pipeline-issues-from-smoke-test.md). Critical fixes needed before further ingestion testing: orchestrator stage ordering (resolution fires before scene detection), book ID propagation to book-level handlers, DATE_TIME coercion in stale recovery, concurrent scene detection workers from stale re-trigger.
+**Smoke test findings (May 27):** 7 pre-existing pipeline issues discovered — see [Pipeline Issues from Smoke Test](planning/2026-05-27T0230_pipeline-issues-from-smoke-test.md). 6 of 7 resolved (orchestrator ordering, book ID propagation, DATE_TIME coercion, concurrent workers, stage key mislabeling). 1 deferred: triad provenance needs per-scene Stage granularity in DAG.
 
 ### Phase A: Complete ingestion pipeline hardening
 
@@ -115,11 +115,9 @@ Near-term execution slices before pivoting to AWS/n8n:
    - Keep `RelationClaim` as evidence/provenance; typed edges are the query acceleration layer
    - See: `docs/planning/2026-05-07T1917_relation-evidence-harvesting.md`, `docs/planning/2026-05-13T2027_relation-catalog-module.md`
 
-4. **Terminology alignment: resolution/reduction → consolidation**
-   - The pipeline uses three terms (resolution, reduction, aggregate) for the same class of operation
-   - Rename chapter-level `*Resolution*` and book-level `*Reduction*` handlers, services, results, events → `*Consolidation*`
-   - See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md` — **decided: consolidation**
-   - Apply before Concept lane implementation so the new lane uses canonical terminology
+4. **Terminology alignment: resolution/reduction → consolidation** ✅
+   - Done. ~50 files renamed, 18 enum values updated (StageKey + StepKey), all endpoint paths changed to `consolidate-*`, Neo4j constraints renamed, 13 test files renamed. `BookConsolidationRedirectController` provides redirects from both legacy `resolve-*` and `reduce-*` URLs. 463 tests green.
+   - See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md`
 
 5. **Relation edge projection** — now covered by item #3 above
 
@@ -181,7 +179,6 @@ The code walkthrough continues until the full pipeline is reviewed. Pipeline har
 
 - **Legacy domain events:** 12 dead event classes (`ScenesDetectedEvent`, `ChunksCreatedEvent`, etc.) no longer published — handlers now publish `StageCompletedEvent`. `JobStatusBroadcaster` SSE is silently broken (listens to `IngestionEvent` but never receives it). Fix planned — see [SSE Event Migration](planning/2026-05-24T0000_sse-event-migration.md) (Phase 2, live bug fix).
 
-- **Terminology alignment:** The pipeline will use **consolidation** as the canonical term for both chapter-level and book-level entity pipeline steps. Rename `*Resolution*` → `*Consolidation*` and `*Reduction*` → `*Consolidation*`. Decision made; implementation deferred. See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md`
 - **n8n deployment model:** Self-hosted Docker alongside LoreVault, or n8n Cloud? Decision deferred to n8n sprint phase.
 - **AWS clone strategy:** How much of `lorevault-kb` domain logic should be shared as a library vs. rewritten for `lorevault-aws`? Decision deferred to AWS foundation phase.
 - **Cypher Template Catalog:** Should this become a fourth Maven module following the Relation Catalog pattern? Deferred — depends on agentic retrieval usage patterns.

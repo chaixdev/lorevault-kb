@@ -1,11 +1,11 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionResult;
-import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionService;
-import com.lorevault.api.ingestion.resolution.location.BookLocationReductionService;
-import com.lorevault.api.ingestion.resolution.location.BookLocationResolutionResult;
-import com.lorevault.api.ingestion.resolution.location.ChapterLocationResolutionResult;
-import com.lorevault.api.ingestion.resolution.location.ChapterLocationResolutionService;
+import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualConsolidationResult;
+import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualConsolidationService;
+import com.lorevault.api.ingestion.resolution.location.BookLocationConsolidationService;
+import com.lorevault.api.ingestion.resolution.location.BookLocationConsolidationResult;
+import com.lorevault.api.ingestion.resolution.location.ChapterLocationConsolidationResult;
+import com.lorevault.api.ingestion.resolution.location.ChapterLocationConsolidationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,21 +28,21 @@ class UiOperatorActionsControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ChapterIndividualResolutionService chapterIndividualResolutionService;
+    private ChapterIndividualConsolidationService chapterIndividualConsolidationService;
 
     @MockitoBean
-    private ChapterLocationResolutionService chapterLocationResolutionService;
+    private ChapterLocationConsolidationService chapterLocationConsolidationService;
 
     @MockitoBean
-    private BookLocationReductionService bookLocationReductionService;
+    private BookLocationConsolidationService bookLocationConsolidationService;
 
     @Test
     void chapterIndividualActionReturnsToast() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        when(chapterIndividualResolutionService.resolveChapter(chapterId))
-                .thenReturn(new ChapterIndividualResolutionResult(chapterId, true, 3, 2, "Resolved chapter individuals"));
+        when(chapterIndividualConsolidationService.consolidateChapter(chapterId))
+                .thenReturn(new ChapterIndividualConsolidationResult(chapterId, true, 3, 2, "Resolved chapter individuals"));
 
-        mockMvc.perform(post("/ui/actions/chapters/" + chapterId + "/resolve-individuals"))
+        mockMvc.perform(post("/ui/actions/chapters/" + chapterId + "/chapter-consolidate-individuals"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Resolved chapter individuals")));
     }
@@ -50,10 +50,10 @@ class UiOperatorActionsControllerTest {
     @Test
     void chapterLocationActionReturnsToast() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        when(chapterLocationResolutionService.resolveChapter(chapterId))
-                .thenReturn(new ChapterLocationResolutionResult(chapterId, true, 2, 1, "Resolved chapter locations"));
+        when(chapterLocationConsolidationService.consolidateChapter(chapterId))
+                .thenReturn(new ChapterLocationConsolidationResult(chapterId, true, 2, 1, "Resolved chapter locations"));
 
-        mockMvc.perform(post("/ui/actions/chapters/" + chapterId + "/resolve-locations"))
+        mockMvc.perform(post("/ui/actions/chapters/" + chapterId + "/chapter-consolidate-locations"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Resolved chapter locations")));
     }
@@ -61,10 +61,10 @@ class UiOperatorActionsControllerTest {
     @Test
     void bookLocationActionReturnsToast() throws Exception {
         UUID bookId = UUID.randomUUID();
-        when(bookLocationReductionService.resolveBook(bookId))
-                .thenReturn(new BookLocationResolutionResult(bookId, true, 4, 2, "Resolved book-level locations"));
+        when(bookLocationConsolidationService.consolidateBook(bookId))
+                .thenReturn(new BookLocationConsolidationResult(bookId, true, 4, 2, "Resolved book-level locations"));
 
-        mockMvc.perform(post("/ui/actions/books/" + bookId + "/resolve-locations"))
+        mockMvc.perform(post("/ui/actions/books/" + bookId + "/chapter-consolidate-locations"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Resolved book-level locations")));
     }

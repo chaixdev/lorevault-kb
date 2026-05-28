@@ -48,60 +48,60 @@ public class StepCatalog {
                         List.of(StepKey.CHUNK)
                 ),
                 new StepDefinition(
-                        StepKey.RESOLVE_INDIVIDUALS,
-                        "Resolve individual entity mentions across scenes",
+                        StepKey.CHAPTER_CONSOLIDATE_INDIVIDUALS,
+                        "Consolidate individual entity mentions across scenes",
                         "chapter",
                         List.of(StepKey.DETECT_SCENES)
                 ),
                 new StepDefinition(
-                        StepKey.RESOLVE_COLLECTIVES,
-                        "Resolve collective entity mentions across scenes",
+                        StepKey.CHAPTER_CONSOLIDATE_COLLECTIVES,
+                        "Consolidate collective entity mentions across scenes",
                         "chapter",
                         List.of(StepKey.DETECT_SCENES)
                 ),
                 new StepDefinition(
-                        StepKey.RESOLVE_LOCATIONS,
-                        "Resolve location entity mentions across scenes",
+                        StepKey.CHAPTER_CONSOLIDATE_LOCATIONS,
+                        "Consolidate location entity mentions across scenes",
                         "chapter",
                         List.of(StepKey.DETECT_SCENES)
                 ),
                 new StepDefinition(
-                        StepKey.RESOLVE_OBJECTS,
-                        "Resolve object entity mentions across scenes",
+                        StepKey.CHAPTER_CONSOLIDATE_OBJECTS,
+                        "Consolidate object entity mentions across scenes",
                         "chapter",
                         List.of(StepKey.DETECT_SCENES)
                 ),
                 new StepDefinition(
-                        StepKey.RESOLVE_EVENTS,
-                        "Resolve narrative events across scenes",
+                        StepKey.CHAPTER_CONSOLIDATE_EVENTS,
+                        "Consolidate narrative events across scenes",
                         "chapter",
                         List.of(StepKey.DETECT_SCENES)
                 ),
 
                 // ── Book-scoped steps ────────────────────────────────────
                 new StepDefinition(
-                        StepKey.REDUCE_INDIVIDUALS,
-                        "Reduce chapter-level individuals to book-level entities",
+                        StepKey.BOOK_CONSOLIDATE_INDIVIDUALS,
+                        "Consolidate chapter-level individuals to book-level entities",
                         "book",
-                        List.of(StepKey.RESOLVE_INDIVIDUALS)
+                        List.of(StepKey.CHAPTER_CONSOLIDATE_INDIVIDUALS)
                 ),
                 new StepDefinition(
-                        StepKey.REDUCE_COLLECTIVES,
-                        "Reduce chapter-level collectives to book-level entities",
+                        StepKey.BOOK_CONSOLIDATE_COLLECTIVES,
+                        "Consolidate chapter-level collectives to book-level entities",
                         "book",
-                        List.of(StepKey.RESOLVE_COLLECTIVES)
+                        List.of(StepKey.CHAPTER_CONSOLIDATE_COLLECTIVES)
                 ),
                 new StepDefinition(
-                        StepKey.REDUCE_LOCATIONS,
-                        "Reduce chapter-level locations to book-level entities",
+                        StepKey.BOOK_CONSOLIDATE_LOCATIONS,
+                        "Consolidate chapter-level locations to book-level entities",
                         "book",
-                        List.of(StepKey.RESOLVE_LOCATIONS)
+                        List.of(StepKey.CHAPTER_CONSOLIDATE_LOCATIONS)
                 ),
                 new StepDefinition(
-                        StepKey.REDUCE_OBJECTS,
-                        "Reduce chapter-level objects to book-level entities",
+                        StepKey.BOOK_CONSOLIDATE_OBJECTS,
+                        "Consolidate chapter-level objects to book-level entities",
                         "book",
-                        List.of(StepKey.RESOLVE_OBJECTS)
+                        List.of(StepKey.CHAPTER_CONSOLIDATE_OBJECTS)
                 )
         );
     }

@@ -114,10 +114,10 @@ public class StageOutputGraphRepository {
     // ── Book-level stage detection ─────────────────────────────────
 
     private static final Set<StageKey> BOOK_LEVEL_STAGES = Set.of(
-            StageKey.BOOK_INDIVIDUAL_REDUCTION,
-            StageKey.BOOK_COLLECTIVE_REDUCTION,
-            StageKey.BOOK_LOCATION_REDUCTION,
-            StageKey.BOOK_OBJECT_REDUCTION
+            StageKey.BOOK_INDIVIDUAL_CONSOLIDATION,
+            StageKey.BOOK_COLLECTIVE_CONSOLIDATION,
+            StageKey.BOOK_LOCATION_CONSOLIDATION,
+            StageKey.BOOK_OBJECT_CONSOLIDATION
     );
 
     private static boolean isBookLevelStage(StageKey stage) {

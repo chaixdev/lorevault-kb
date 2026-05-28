@@ -5,7 +5,7 @@ import com.lorevault.api.ingestion.content.ChunkingOperation;
 import com.lorevault.api.ingestion.content.EmbeddingOperation;
 import com.lorevault.api.ingestion.pipeline.StepKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
-import com.lorevault.api.ingestion.resolution.event.ChapterEventResolutionOperation;
+import com.lorevault.api.ingestion.resolution.event.ChapterEventConsolidationOperation;
 import com.lorevault.api.ingestion.scene.SceneDetectionOperation;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,7 +31,7 @@ public class StepExecutionCommandController {
     private final SceneDetectionOperation sceneDetectionOperation;
     private final ChunkingOperation chunkingOperation;
     private final EmbeddingOperation embeddingOperation;
-    private final ChapterEventResolutionOperation chapterEventResolutionOperation;
+    private final ChapterEventConsolidationOperation chapterEventResolutionOperation;
     private final StepEventMapper stepEventMapper;
 
     @PostMapping("/chapters/{chapterId}/detect-scenes")
@@ -187,8 +187,8 @@ public class StepExecutionCommandController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/chapters/{chapterId}/resolve-events")
-    public ResponseEntity<?> resolveChapterEvents(
+    @PostMapping("/chapters/{chapterId}/chapter-consolidate-events")
+    public ResponseEntity<?> consolidateChapterEvents(
             @PathVariable String chapterId,
             @RequestParam(defaultValue = "false") boolean fireEvents,
             @RequestParam(required = false) String jobId) {
@@ -202,7 +202,7 @@ public class StepExecutionCommandController {
                     .message("Chapter ID must be a valid UUID")
                     .details("chapterId", chapterId)
                     .timestamp(LocalDateTime.now())
-                    .path("/api/command/ingest/chapters/" + chapterId + "/resolve-events")
+                    .path("/api/command/ingest/chapters/" + chapterId + "/chapter-consolidate-events")
                     .build());
         }
 
@@ -216,7 +216,7 @@ public class StepExecutionCommandController {
                         .message("Job ID must be a valid UUID")
                         .details("jobId", jobId)
                         .timestamp(LocalDateTime.now())
-                        .path("/api/command/ingest/chapters/" + chapterId + "/resolve-events")
+                        .path("/api/command/ingest/chapters/" + chapterId + "/chapter-consolidate-events")
                         .build());
             }
         }
@@ -228,11 +228,11 @@ public class StepExecutionCommandController {
         log.info("[CMD] Resolve chapter events: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
         StepResult result = chapterEventResolutionOperation.execute(jobUuid, chapterUuid);
 
-        StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.RESOLVE_EVENTS, "chapter", chapterId);
+        StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.CHAPTER_CONSOLIDATE_EVENTS, "chapter", chapterId);
 
         if (fireEvents && result.success()) {
-            log.info("[CMD] Publishing completion event for RESOLVE_EVENTS: jobId={}, chapterId={}", jobUuid, chapterUuid);
-            stepEventMapper.publishCompletionEvent(StepKey.RESOLVE_EVENTS, jobUuid, chapterUuid, result);
+            log.info("[CMD] Publishing completion event for CHAPTER_CONSOLIDATE_EVENTS: jobId={}, chapterId={}", jobUuid, chapterUuid);
+            stepEventMapper.publishCompletionEvent(StepKey.CHAPTER_CONSOLIDATE_EVENTS, jobUuid, chapterUuid, result);
         }
 
         return ResponseEntity.ok(response);

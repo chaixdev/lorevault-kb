@@ -114,11 +114,11 @@ public class LlmClient {
         String modelSlotStr = promptProperties.getSceneAnalysisModel();
         ModelSlot modelSlot = ModelSlot.NLP_BIG.slotName().equals(modelSlotStr) ? ModelSlot.NLP_BIG : ModelSlot.NLP_SMALL;
         ChatClient chatClient = getChatClientForModel(modelSlot);
-        String actualModelId = getModelIdForStage(StageKey.CHAPTER_EVENT_RESOLUTION);
+        String actualModelId = getModelIdForStage(StageKey.CHAPTER_EVENT_CONSOLIDATION);
 
         return executeSceneDetectionStructuredCall(
                 jobId,
-                StageKey.CHAPTER_EVENT_RESOLUTION,
+                StageKey.CHAPTER_EVENT_CONSOLIDATION,
                 promptProperties.getSceneAnalysisPath(),
                 systemPrompt,
                 userInput,
@@ -147,11 +147,11 @@ public class LlmClient {
         String modelSlotStr = promptProperties.getSceneAnalysisModel();
         ModelSlot modelSlot = ModelSlot.NLP_BIG.slotName().equals(modelSlotStr) ? ModelSlot.NLP_BIG : ModelSlot.NLP_SMALL;
         ChatClient chatClient = getChatClientForModel(modelSlot);
-        String actualModelId = getModelIdForStage(StageKey.CHAPTER_EVENT_RESOLUTION);
+        String actualModelId = getModelIdForStage(StageKey.CHAPTER_EVENT_CONSOLIDATION);
 
         return executeSceneDetectionStructuredCall(
                 jobId,
-                StageKey.CHAPTER_EVENT_RESOLUTION,
+                StageKey.CHAPTER_EVENT_CONSOLIDATION,
                 promptProperties.getEventCorefSystemPath(),
                 systemPrompt,
                 userInput,
@@ -176,7 +176,7 @@ public class LlmClient {
 
         return executeSceneDetectionStructuredCall(
                 jobId,
-                StageKey.CHAPTER_EVENT_RESOLUTION,
+                StageKey.CHAPTER_EVENT_CONSOLIDATION,
                 promptProperties.getEventMergeSystemPath(),
                 systemPrompt,
                 userInput,
@@ -187,7 +187,7 @@ public class LlmClient {
     }
 
     public String getEventCorefModelId() {
-        return getModelIdForStage(StageKey.CHAPTER_EVENT_RESOLUTION);
+        return getModelIdForStage(StageKey.CHAPTER_EVENT_CONSOLIDATION);
     }
 
     /**
@@ -203,7 +203,7 @@ public class LlmClient {
     private String getModelIdForStage(StageKey stage) {
         return switch (stage) {
             case SCENE_SEGMENTATION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getChapterSegmentationModel()) ? nlpBigModelId : nlpSmallModelId;
-            case CHAPTER_EVENT_RESOLUTION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getSceneAnalysisModel()) ? nlpBigModelId : nlpSmallModelId;
+            case CHAPTER_EVENT_CONSOLIDATION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getSceneAnalysisModel()) ? nlpBigModelId : nlpSmallModelId;
             default -> nlpSmallModelId;
         };
     }

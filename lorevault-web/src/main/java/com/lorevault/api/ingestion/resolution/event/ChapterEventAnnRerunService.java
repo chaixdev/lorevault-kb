@@ -3,7 +3,7 @@ package com.lorevault.api.ingestion.resolution.event;
 import com.lorevault.api.content.association.ChapterEventGraphRepository;
 import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
-import com.lorevault.api.ingestion.events.ChapterEventsResolvedEvent;
+import com.lorevault.api.ingestion.events.ChapterEventsConsolidatedEvent;
 import com.lorevault.api.library.book.Book;
 import com.lorevault.api.library.book.BookGraphRepository;
 import com.lorevault.api.library.universe.UniverseGraphRepository;
@@ -52,7 +52,7 @@ public class ChapterEventAnnRerunService {
             UUID resolvedChapterId = chapter.getId();
             UUID resolvedBookId = selectedChapter.bookId();
 
-            eventPublisher.publishEvent(new ChapterEventsResolvedEvent(
+            eventPublisher.publishEvent(new ChapterEventsConsolidatedEvent(
                     this,
                     jobId,
                     correlationId,

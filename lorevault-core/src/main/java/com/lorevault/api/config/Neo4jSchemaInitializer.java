@@ -94,11 +94,11 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
 
     // Book reduction claim uniqueness (mutex for concurrent book-level reduction per lane)
     private static final String DROP_LEGACY_BOOK_REDUCTION_CLAIM_BOOK_ID_UNIQUE =
-            "DROP CONSTRAINT book_reduction_claim_book_id_unique IF EXISTS";
+            "DROP CONSTRAINT book_consolidation_claim_book_id_unique IF EXISTS";
     private static final String DELETE_LEGACY_BOOK_REDUCTION_CLAIMS =
-            "MATCH (c:BookReductionClaim) WHERE c.id IS NULL OR c.claimedAt IS NULL DELETE c";
+            "MATCH (c:BookConsolidationClaim) WHERE c.id IS NULL OR c.claimedAt IS NULL DELETE c";
     private static final String BOOK_REDUCTION_CLAIM_ID_UNIQUE =
-            "CREATE CONSTRAINT book_reduction_claim_id_unique IF NOT EXISTS FOR (c:BookReductionClaim) REQUIRE c.id IS UNIQUE";
+            "CREATE CONSTRAINT book_consolidation_claim_id_unique IF NOT EXISTS FOR (c:BookConsolidationClaim) REQUIRE c.id IS UNIQUE";
 
     // Content hash uniqueness
     private static final String CHAPTER_CONTENT_HASH_UNIQUE =
@@ -213,9 +213,9 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(BOOK_COLLECTIVE_ID_UNIQUE, "BookCollective.id unique"));
         results.add(executeConstraint(BOOK_COLLECTIVE_SCOPE_UNIQUE, "BookCollective(bookId, normalizedName) unique"));
         results.add(executeConstraint(CHAPTER_CONTENT_HASH_UNIQUE, "Chapter.contentHash unique"));
-        results.add(executeConstraint(DROP_LEGACY_BOOK_REDUCTION_CLAIM_BOOK_ID_UNIQUE, "Legacy BookReductionClaim.bookId unique dropped"));
-        results.add(executeConstraint(DELETE_LEGACY_BOOK_REDUCTION_CLAIMS, "Legacy BookReductionClaim rows deleted"));
-        results.add(executeConstraint(BOOK_REDUCTION_CLAIM_ID_UNIQUE, "BookReductionClaim.id unique"));
+        results.add(executeConstraint(DROP_LEGACY_BOOK_REDUCTION_CLAIM_BOOK_ID_UNIQUE, "Legacy BookConsolidationClaim.bookId unique dropped"));
+        results.add(executeConstraint(DELETE_LEGACY_BOOK_REDUCTION_CLAIMS, "Legacy BookConsolidationClaim rows deleted"));
+        results.add(executeConstraint(BOOK_REDUCTION_CLAIM_ID_UNIQUE, "BookConsolidationClaim.id unique"));
         results.add(executeConstraint(RELATION_CLAIM_ID_UNIQUE, "RelationClaim.id unique"));
 
         // Durable orchestration constraints
@@ -291,7 +291,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             return "ensured: " + description;
         } catch (Exception e) {
             log.error("Failed to create constraint {}: {}", description, e.getMessage());
-            if (description.startsWith("BookReductionClaim") || description.startsWith("Legacy BookReductionClaim")) {
+            if (description.startsWith("BookConsolidationClaim") || description.startsWith("Legacy BookConsolidationClaim")) {
                 throw new IllegalStateException("Critical schema operation failed: " + description, e);
             }
             return "failed: " + description;

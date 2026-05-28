@@ -47,11 +47,11 @@ class StageDagTest {
             assertThat(dag.childrenOf(StageKey.SCENE_SEGMENTATION))
                     .containsExactlyInAnyOrder(
                             StageKey.CHUNKING,
-                            StageKey.CHAPTER_INDIVIDUAL_RESOLUTION,
-                            StageKey.CHAPTER_COLLECTIVE_RESOLUTION,
-                            StageKey.CHAPTER_LOCATION_RESOLUTION,
-                            StageKey.CHAPTER_OBJECT_RESOLUTION,
-                            StageKey.CHAPTER_EVENT_RESOLUTION
+                            StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION,
+                            StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION,
+                            StageKey.CHAPTER_LOCATION_CONSOLIDATION,
+                            StageKey.CHAPTER_OBJECT_CONSOLIDATION,
+                            StageKey.CHAPTER_EVENT_CONSOLIDATION
                     );
         }
 
@@ -63,19 +63,19 @@ class StageDagTest {
 
         @Test
         void chapterResolutionLeadsToBookReduction() {
-            assertThat(dag.childrenOf(StageKey.CHAPTER_INDIVIDUAL_RESOLUTION))
-                    .containsExactly(StageKey.BOOK_INDIVIDUAL_REDUCTION);
-            assertThat(dag.childrenOf(StageKey.CHAPTER_COLLECTIVE_RESOLUTION))
-                    .containsExactly(StageKey.BOOK_COLLECTIVE_REDUCTION);
-            assertThat(dag.childrenOf(StageKey.CHAPTER_LOCATION_RESOLUTION))
-                    .containsExactly(StageKey.BOOK_LOCATION_REDUCTION);
-            assertThat(dag.childrenOf(StageKey.CHAPTER_OBJECT_RESOLUTION))
-                    .containsExactly(StageKey.BOOK_OBJECT_REDUCTION);
+            assertThat(dag.childrenOf(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION))
+                    .containsExactly(StageKey.BOOK_INDIVIDUAL_CONSOLIDATION);
+            assertThat(dag.childrenOf(StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION))
+                    .containsExactly(StageKey.BOOK_COLLECTIVE_CONSOLIDATION);
+            assertThat(dag.childrenOf(StageKey.CHAPTER_LOCATION_CONSOLIDATION))
+                    .containsExactly(StageKey.BOOK_LOCATION_CONSOLIDATION);
+            assertThat(dag.childrenOf(StageKey.CHAPTER_OBJECT_CONSOLIDATION))
+                    .containsExactly(StageKey.BOOK_OBJECT_CONSOLIDATION);
         }
 
         @Test
         void eventResolutionLeadsToEventEmbedding() {
-            assertThat(dag.childrenOf(StageKey.CHAPTER_EVENT_RESOLUTION))
+            assertThat(dag.childrenOf(StageKey.CHAPTER_EVENT_CONSOLIDATION))
                     .containsExactly(StageKey.CHAPTER_EVENT_EMBEDDING);
         }
 
@@ -89,13 +89,13 @@ class StageDagTest {
         void allBookLevelStagesLeadToIngestionComplete() {
             assertThat(dag.childrenOf(StageKey.EMBEDDING))
                     .containsExactly(StageKey.INGESTION_COMPLETE);
-            assertThat(dag.childrenOf(StageKey.BOOK_INDIVIDUAL_REDUCTION))
+            assertThat(dag.childrenOf(StageKey.BOOK_INDIVIDUAL_CONSOLIDATION))
                     .containsExactly(StageKey.INGESTION_COMPLETE);
-            assertThat(dag.childrenOf(StageKey.BOOK_COLLECTIVE_REDUCTION))
+            assertThat(dag.childrenOf(StageKey.BOOK_COLLECTIVE_CONSOLIDATION))
                     .containsExactly(StageKey.INGESTION_COMPLETE);
-            assertThat(dag.childrenOf(StageKey.BOOK_LOCATION_REDUCTION))
+            assertThat(dag.childrenOf(StageKey.BOOK_LOCATION_CONSOLIDATION))
                     .containsExactly(StageKey.INGESTION_COMPLETE);
-            assertThat(dag.childrenOf(StageKey.BOOK_OBJECT_REDUCTION))
+            assertThat(dag.childrenOf(StageKey.BOOK_OBJECT_CONSOLIDATION))
                     .containsExactly(StageKey.INGESTION_COMPLETE);
             assertThat(dag.childrenOf(StageKey.BOOK_EVENT_CANDIDATE_GENERATION))
                     .containsExactly(StageKey.INGESTION_COMPLETE);
@@ -134,18 +134,18 @@ class StageDagTest {
             assertThat(dag.parentsOf(StageKey.INGESTION_COMPLETE))
                     .containsExactlyInAnyOrder(
                             StageKey.EMBEDDING,
-                            StageKey.BOOK_INDIVIDUAL_REDUCTION,
-                            StageKey.BOOK_COLLECTIVE_REDUCTION,
-                            StageKey.BOOK_LOCATION_REDUCTION,
-                            StageKey.BOOK_OBJECT_REDUCTION,
+                            StageKey.BOOK_INDIVIDUAL_CONSOLIDATION,
+                            StageKey.BOOK_COLLECTIVE_CONSOLIDATION,
+                            StageKey.BOOK_LOCATION_CONSOLIDATION,
+                            StageKey.BOOK_OBJECT_CONSOLIDATION,
                             StageKey.BOOK_EVENT_CANDIDATE_GENERATION
                     );
         }
 
         @Test
         void bookReductionHasChapterResolutionAsParent() {
-            assertThat(dag.parentsOf(StageKey.BOOK_INDIVIDUAL_REDUCTION))
-                    .containsExactly(StageKey.CHAPTER_INDIVIDUAL_RESOLUTION);
+            assertThat(dag.parentsOf(StageKey.BOOK_INDIVIDUAL_CONSOLIDATION))
+                    .containsExactly(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION);
         }
     }
 
@@ -177,10 +177,10 @@ class StageDagTest {
         }
 
         @Test
-        void fromChapterEventResolutionIncludesEventLane() {
-            Set<StageKey> downstream = dag.transitiveDownstream(StageKey.CHAPTER_EVENT_RESOLUTION);
+        void fromChapterEventConsolidationIncludesEventLane() {
+            Set<StageKey> downstream = dag.transitiveDownstream(StageKey.CHAPTER_EVENT_CONSOLIDATION);
             assertThat(downstream).containsExactlyInAnyOrder(
-                    StageKey.CHAPTER_EVENT_RESOLUTION,
+                    StageKey.CHAPTER_EVENT_CONSOLIDATION,
                     StageKey.CHAPTER_EVENT_EMBEDDING,
                     StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
                     StageKey.INGESTION_COMPLETE

@@ -123,7 +123,7 @@ class LlmClientTest {
         ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(llmLog).logCall(
                 eq(jobId),
-                eq(StageKey.CHAPTER_EVENT_RESOLUTION),
+                eq(StageKey.CHAPTER_EVENT_CONSOLIDATION),
                 eq("openai-compatible"),
                 eq(null),
                 eq(0.1),
@@ -175,7 +175,7 @@ class LlmClientTest {
         ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(llmLog).logCall(
                 eq(jobId),
-                eq(StageKey.CHAPTER_EVENT_RESOLUTION),
+                eq(StageKey.CHAPTER_EVENT_CONSOLIDATION),
                 eq("openai-compatible"),
                 eq(null),
                 eq(0.1),
@@ -220,7 +220,7 @@ class LlmClientTest {
         ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(llmLog).logCall(
                 eq(jobId),
-                eq(StageKey.CHAPTER_EVENT_RESOLUTION),
+                eq(StageKey.CHAPTER_EVENT_CONSOLIDATION),
                 eq("openai-compatible"),
                 eq(null),
                 eq(0.1),

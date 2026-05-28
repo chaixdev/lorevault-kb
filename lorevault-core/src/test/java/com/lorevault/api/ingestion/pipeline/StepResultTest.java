@@ -65,10 +65,10 @@ class StepResultTest {
 
         @Test
         void createsNonRetryableFailure() {
-            StepResult result = StepResult.failure(StageKey.CHAPTER_INDIVIDUAL_RESOLUTION, "Parse error", 300L);
+            StepResult result = StepResult.failure(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION, "Parse error", 300L);
 
             assertThat(result.success()).isFalse();
-            assertThat(result.stepName()).isEqualTo(StageKey.CHAPTER_INDIVIDUAL_RESOLUTION);
+            assertThat(result.stepName()).isEqualTo(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION);
             assertThat(result.summary()).isEqualTo("Parse error");
             assertThat(result.counts()).isEmpty();
             assertThat(result.durationMs()).isEqualTo(300L);

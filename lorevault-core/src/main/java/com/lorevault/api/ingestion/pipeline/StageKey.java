@@ -22,18 +22,18 @@ public enum StageKey {
     CHUNKING,
     EMBEDDING,
 
-    // ── Entity resolution lanes (chapter-level) ────────────────────────
-    CHAPTER_INDIVIDUAL_RESOLUTION,
-    CHAPTER_COLLECTIVE_RESOLUTION,
-    CHAPTER_LOCATION_RESOLUTION,
-    CHAPTER_OBJECT_RESOLUTION,
-    CHAPTER_EVENT_RESOLUTION,
+    // ── Entity consolidation lanes (chapter-level) ─────────────────────
+    CHAPTER_INDIVIDUAL_CONSOLIDATION,
+    CHAPTER_COLLECTIVE_CONSOLIDATION,
+    CHAPTER_LOCATION_CONSOLIDATION,
+    CHAPTER_OBJECT_CONSOLIDATION,
+    CHAPTER_EVENT_CONSOLIDATION,
 
-    // ── Entity reduction lanes (book-level) ────────────────────────────
-    BOOK_INDIVIDUAL_REDUCTION,
-    BOOK_COLLECTIVE_REDUCTION,
-    BOOK_LOCATION_REDUCTION,
-    BOOK_OBJECT_REDUCTION,
+    // ── Entity consolidation lanes (book-level) ────────────────────────
+    BOOK_INDIVIDUAL_CONSOLIDATION,
+    BOOK_COLLECTIVE_CONSOLIDATION,
+    BOOK_LOCATION_CONSOLIDATION,
+    BOOK_OBJECT_CONSOLIDATION,
 
     // ── Event lane (chapter → book) ────────────────────────────────────
     CHAPTER_EVENT_EMBEDDING,
@@ -48,19 +48,19 @@ public enum StageKey {
             SCENE_SEGMENTATION,
             CHUNKING,
             EMBEDDING,
-            CHAPTER_INDIVIDUAL_RESOLUTION,
-            CHAPTER_COLLECTIVE_RESOLUTION,
-            CHAPTER_LOCATION_RESOLUTION,
-            CHAPTER_OBJECT_RESOLUTION,
-            CHAPTER_EVENT_RESOLUTION,
+            CHAPTER_INDIVIDUAL_CONSOLIDATION,
+            CHAPTER_COLLECTIVE_CONSOLIDATION,
+            CHAPTER_LOCATION_CONSOLIDATION,
+            CHAPTER_OBJECT_CONSOLIDATION,
+            CHAPTER_EVENT_CONSOLIDATION,
             CHAPTER_EVENT_EMBEDDING
     );
 
     private static final Set<StageKey> BOOK_LEVEL_STAGES = Set.of(
-            BOOK_INDIVIDUAL_REDUCTION,
-            BOOK_COLLECTIVE_REDUCTION,
-            BOOK_LOCATION_REDUCTION,
-            BOOK_OBJECT_REDUCTION,
+            BOOK_INDIVIDUAL_CONSOLIDATION,
+            BOOK_COLLECTIVE_CONSOLIDATION,
+            BOOK_LOCATION_CONSOLIDATION,
+            BOOK_OBJECT_CONSOLIDATION,
             BOOK_EVENT_CANDIDATE_GENERATION
     );
 
