@@ -7,6 +7,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Property;
 
 /**
  * A single inter-entity relation claim extracted by the LLM during scene analysis.
@@ -49,6 +50,7 @@ public record RelationClaim(
         String certainty,
         String evidenceText,
         String source,
+        @Property("stageId") UUID stageId,
         UUID sceneId,
         UUID chapterId,
         UUID bookId,

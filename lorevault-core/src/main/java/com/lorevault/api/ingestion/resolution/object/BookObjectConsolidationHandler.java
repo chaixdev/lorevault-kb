@@ -38,7 +38,7 @@ public class BookObjectConsolidationHandler implements BookObjectConsolidationOp
         UUID bookId = ctx.bookId();
         long start = System.currentTimeMillis();
 
-        if (!bookConsolidationClaimService.tryAcquireClaim(bookId, CLAIM_LANE)) {
+        if (!bookConsolidationClaimService.tryAcquireClaim(bookId, CLAIM_LANE, ctx.stageId())) {
             long elapsed = System.currentTimeMillis() - start;
             log.warn("[BOOK_OBJECT_CONSOLIDATION] Claim contention for bookId={}", bookId);
             return StepResult.retryableFailure(StageKey.BOOK_OBJECT_CONSOLIDATION,
@@ -46,7 +46,7 @@ public class BookObjectConsolidationHandler implements BookObjectConsolidationOp
         }
 
         try {
-            BookObjectConsolidationResult response = bookObjectConsolidationService.consolidateBook(bookId);
+            BookObjectConsolidationResult response = bookObjectConsolidationService.consolidateBook(ctx, bookId);
 
             long elapsed = System.currentTimeMillis() - start;
 

@@ -11,6 +11,7 @@ import org.springframework.data.annotation.PersistenceCreator;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Property;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -30,6 +31,9 @@ public class Chunk {
 
     @Transient
     private Scene scene;
+
+    @Property("stageId")
+    private UUID stageId;
     private Integer chunkNumberInChapter;
     private Integer startCharInChapter;
     private Integer endCharInChapter;

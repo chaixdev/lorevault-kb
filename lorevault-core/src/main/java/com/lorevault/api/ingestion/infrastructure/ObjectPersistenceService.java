@@ -3,6 +3,7 @@ package com.lorevault.api.ingestion.infrastructure;
 import com.lorevault.api.content.mention.ObjectMention;
 import com.lorevault.api.content.mention.ObjectMentionGraphRepository;
 import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ public class ObjectPersistenceService {
 
     @Transactional
     public void persistExtractedObjects(
+            StageExecutionContext ctx,
             List<Scene> persistedScenes,
             List<TriadAnalysisModels.SceneObjectExtraction> sceneExtractions
     ) {
@@ -59,6 +61,7 @@ public class ObjectPersistenceService {
                         extracted.material(),
                         extracted.purpose(),
                         extracted.description(),
+                        ctx.stageId(),
                         sceneId,
                         chapterId,
                         null,

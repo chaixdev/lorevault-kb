@@ -3,6 +3,7 @@ package com.lorevault.api.ingestion.infrastructure;
 import com.lorevault.api.content.relation.RelationClaim;
 import com.lorevault.api.content.relation.RelationClaimGraphRepository;
 import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import com.lorevault.catalog.RelationCatalogDefinition;
 import com.lorevault.catalog.RelationCatalogService;
@@ -29,6 +30,7 @@ public class RelationClaimPersistenceService {
 
     @Transactional
     public void persistExtractedRelationClaims(
+            StageExecutionContext ctx,
             List<Scene> persistedScenes,
             List<TriadAnalysisModels.SceneRelationClaimExtraction> sceneExtractions
     ) {
@@ -99,6 +101,7 @@ public class RelationClaimPersistenceService {
                         extracted.certainty(),
                         extracted.evidence(),
                         SOURCE,
+                        ctx.stageId(),
                         sceneId,
                         chapterId,
                         null,

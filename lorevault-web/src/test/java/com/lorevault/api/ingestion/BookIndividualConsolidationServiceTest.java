@@ -2,6 +2,8 @@ package com.lorevault.api.ingestion;
 
 import com.lorevault.api.content.association.BookIndividual;
 import com.lorevault.api.content.association.BookIndividualGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.resolution.individual.BookIndividualPersistenceService;
 import com.lorevault.api.ingestion.resolution.individual.BookIndividualConsolidationService;
 import com.lorevault.api.ingestion.resolution.individual.BookIndividualConsolidationResult;
@@ -50,6 +52,10 @@ class BookIndividualConsolidationServiceTest {
     @Mock
     private BookIndividualPersistenceService bookIndividualPersistenceService;
 
+    private static final StageExecutionContext CTX = new StageExecutionContext(
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            StageKey.BOOK_INDIVIDUAL_CONSOLIDATION);
+
     @InjectMocks
     private BookIndividualConsolidationService service;
 
@@ -74,7 +80,7 @@ class BookIndividualConsolidationServiceTest {
         when(bookIndividualPersistenceService.replaceBookIndividuals(any(), any()))
                 .thenAnswer(invocation -> invocation.getArgument(1));
 
-        BookIndividualConsolidationResult response = service.consolidateBook(bookId);
+        BookIndividualConsolidationResult response = service.consolidateBook(CTX, bookId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.chapterIndividualsProcessed()).isEqualTo(2);
@@ -104,7 +110,7 @@ class BookIndividualConsolidationServiceTest {
         when(runnableSpec.fetch()).thenReturn(recordFetchSpec);
         when(recordFetchSpec.all()).thenReturn(List.of());
 
-        BookIndividualConsolidationResult response = service.consolidateBook(bookId);
+        BookIndividualConsolidationResult response = service.consolidateBook(CTX, bookId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.chapterIndividualsProcessed()).isZero();
@@ -115,7 +121,7 @@ class BookIndividualConsolidationServiceTest {
     @Test
     @DisplayName("Retries transient Neo4j lock conflicts at the consolidation boundary")
     void retriesTransientNeo4jLockConflictsAtConsolidationBoundary() throws NoSuchMethodException {
-        Retryable retryable = MergedAnnotations.from(BookIndividualConsolidationService.class.getMethod("consolidateBook", UUID.class))
+        Retryable retryable = MergedAnnotations.from(BookIndividualConsolidationService.class.getMethod("consolidateBook", StageExecutionContext.class, UUID.class))
                 .get(Retryable.class)
                 .synthesize();
 

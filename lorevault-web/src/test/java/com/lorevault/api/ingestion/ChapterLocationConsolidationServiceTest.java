@@ -4,6 +4,8 @@ import com.lorevault.api.content.association.ChapterLocation;
 import com.lorevault.api.content.association.ChapterLocationGraphRepository;
 import com.lorevault.api.content.mention.LocationMention;
 import com.lorevault.api.content.mention.LocationMentionGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.resolution.location.ChapterLocationConsolidationResult;
 import java.util.List;
 import java.util.UUID;
@@ -33,6 +35,10 @@ class ChapterLocationConsolidationServiceTest {
     @Mock
     private LocationMentionGraphRepository locationMentionRepository;
 
+    private static final StageExecutionContext CTX = new StageExecutionContext(
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            StageKey.CHAPTER_LOCATION_CONSOLIDATION);
+
     @InjectMocks
     private ChapterLocationConsolidationService service;
 
@@ -55,7 +61,7 @@ class ChapterLocationConsolidationServiceTest {
         when(chapterLocationRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(chapterLocationRepository.countChapterLocationsByChapterId(chapterId)).thenReturn(2L);
 
-        ChapterLocationConsolidationResult response = service.consolidateChapter(chapterId);
+        ChapterLocationConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.rawLocationsProcessed()).isEqualTo(4);
@@ -108,6 +114,7 @@ class ChapterLocationConsolidationServiceTest {
                 null,
                 null,
                 null,
+                null,
                 UUID.randomUUID(),
                 chapterId,
                 UUID.randomUUID(),
@@ -120,7 +127,7 @@ class ChapterLocationConsolidationServiceTest {
         when(chapterLocationRepository.countMentionsByChapterId(chapterId)).thenReturn(1L);
         when(locationMentionRepository.findByChapterId(chapterId)).thenReturn(List.of(blank));
 
-        ChapterLocationConsolidationResult response = service.consolidateChapter(chapterId);
+        ChapterLocationConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
         assertThat(response.success()).isFalse();
         assertThat(response.rawLocationsProcessed()).isEqualTo(1);
@@ -138,7 +145,7 @@ class ChapterLocationConsolidationServiceTest {
         UUID chapterId = UUID.randomUUID();
         when(chapterLocationRepository.countMentionsByChapterId(chapterId)).thenReturn(0L);
 
-        ChapterLocationConsolidationResult response = service.consolidateChapter(chapterId);
+        ChapterLocationConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
         assertThat(response.success()).isFalse();
         assertThat(response.rawLocationsProcessed()).isZero();
@@ -164,6 +171,7 @@ class ChapterLocationConsolidationServiceTest {
                 aliases,
                 "settlement",
                 "Eriador",
+                null,
                 null,
                 UUID.randomUUID(),
                 chapterId,

@@ -3,6 +3,7 @@ package com.lorevault.api.ingestion.infrastructure;
 import com.lorevault.api.content.mention.LocationMention;
 import com.lorevault.api.content.mention.LocationMentionGraphRepository;
 import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ public class LocationPersistenceService {
 
     @Transactional
     public void persistExtractedLocations(
+            StageExecutionContext ctx,
             List<Scene> persistedScenes,
             List<TriadAnalysisModels.SceneLocationExtraction> sceneExtractions
     ) {
@@ -58,6 +60,7 @@ public class LocationPersistenceService {
                         extracted.kind(),
                         extracted.region(),
                         extracted.description(),
+                        ctx.stageId(),
                         sceneId,
                         chapterId,
                         null,

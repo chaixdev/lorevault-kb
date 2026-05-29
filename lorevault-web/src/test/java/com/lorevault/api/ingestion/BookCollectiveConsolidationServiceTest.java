@@ -9,6 +9,8 @@ import static org.mockito.Mockito.when;
 import com.lorevault.api.content.association.BookCollective;
 import com.lorevault.api.content.association.ChapterCollective;
 import com.lorevault.api.content.association.ChapterCollectiveGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.resolution.collective.BookCollectivePersistenceService;
 import com.lorevault.api.ingestion.resolution.collective.BookCollectiveConsolidationService;
 import com.lorevault.api.ingestion.resolution.collective.BookCollectiveConsolidationResult;
@@ -40,6 +42,10 @@ class BookCollectiveConsolidationServiceTest {
 
     @Mock
     private BookCollectivePersistenceService bookCollectivePersistenceService;
+
+    private static final StageExecutionContext CTX = new StageExecutionContext(
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            StageKey.BOOK_COLLECTIVE_CONSOLIDATION);
 
     @InjectMocks
     private BookCollectiveConsolidationService service;
@@ -105,7 +111,7 @@ class BookCollectiveConsolidationServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(1));
         when(bookCollectivePersistenceService.countByBookId(bookId)).thenReturn(2L);
 
-        BookCollectiveConsolidationResult response = service.consolidateBook(bookId);
+        BookCollectiveConsolidationResult response = service.consolidateBook(CTX, bookId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.chapterCollectivesProcessed()).isEqualTo(3);
@@ -153,7 +159,7 @@ class BookCollectiveConsolidationServiceTest {
         UUID bookId = UUID.randomUUID();
         when(chapterCollectiveRepository.findByBookId(bookId)).thenReturn(List.of());
 
-        BookCollectiveConsolidationResult response = service.consolidateBook(bookId);
+        BookCollectiveConsolidationResult response = service.consolidateBook(CTX, bookId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.chapterCollectivesProcessed()).isZero();
@@ -165,7 +171,7 @@ class BookCollectiveConsolidationServiceTest {
     @Test
     @DisplayName("Retries transient Neo4j lock conflicts at the consolidation boundary")
     void retriesTransientNeo4jLockConflictsAtConsolidationBoundary() throws NoSuchMethodException {
-        Retryable retryable = MergedAnnotations.from(BookCollectiveConsolidationService.class.getMethod("consolidateBook", UUID.class))
+        Retryable retryable = MergedAnnotations.from(BookCollectiveConsolidationService.class.getMethod("consolidateBook", StageExecutionContext.class, UUID.class))
                 .get(Retryable.class)
                 .synthesize();
 
@@ -187,6 +193,7 @@ class BookCollectiveConsolidationServiceTest {
         return new ChapterCollective(
                 id,
                 chapterId,
+                UUID.randomUUID(),
                 displayName,
                 normalizedName,
                 aliases,

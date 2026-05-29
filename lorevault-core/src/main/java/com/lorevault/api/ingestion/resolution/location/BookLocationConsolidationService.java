@@ -2,6 +2,7 @@ package com.lorevault.api.ingestion.resolution.location;
 
 import com.lorevault.api.content.association.BookLocation;
 import com.lorevault.api.content.association.BookLocationGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.library.book.BookGraphRepository;
 import com.lorevault.api.content.association.ChapterLocation;
 import com.lorevault.api.content.association.ChapterLocationGraphRepository;
@@ -51,7 +52,7 @@ public class BookLocationConsolidationService {
             maxAttempts = 3,
             backoff = @Backoff(delay = 200, multiplier = 2.0, maxDelay = 2_000)
     )
-    public BookLocationConsolidationResult consolidateBook(UUID bookId) {
+    public BookLocationConsolidationResult consolidateBook(StageExecutionContext ctx, UUID bookId) {
         if (bookId == null) {
             return new BookLocationConsolidationResult(null, false, 0, 0, "Book ID is required");
         }
@@ -67,10 +68,10 @@ public class BookLocationConsolidationService {
             bookLocationPersistenceService.replaceBookLocations(bookId, List.of(), List.of());
             return new BookLocationConsolidationResult(bookId, true, 0, 0, "No chapter locations found for book");
         }
-        return consolidateBook(bookId, chapterLocations);
+        return consolidateBook(ctx, bookId, chapterLocations);
     }
 
-    BookLocationConsolidationResult consolidateBook(UUID bookId, List<ChapterLocation> chapterLocations) {
+    BookLocationConsolidationResult consolidateBook(StageExecutionContext ctx, UUID bookId, List<ChapterLocation> chapterLocations) {
 
         List<LocationCluster> clusters = clusterLocations(chapterLocations);
         if (clusters.isEmpty()) {
@@ -82,6 +83,7 @@ public class BookLocationConsolidationService {
             bookLocations.add(new BookLocation(
                     UUID.randomUUID(),
                     bookId,
+                    ctx.stageId(),
                     cluster.displayName(),
                     cluster.normalizedName(),
                     List.copyOf(cluster.aliases()),

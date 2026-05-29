@@ -36,7 +36,7 @@ public class ChapterObjectConsolidationHandler implements ChapterObjectConsolida
                     chapterId
             );
 
-            ChapterObjectConsolidationResult response = chapterObjectConsolidationService.consolidateChapter(chapterId);
+            ChapterObjectConsolidationResult response = chapterObjectConsolidationService.consolidateChapter(ctx, chapterId);
 
             if (response.success()) {
                 log.info(

@@ -1,7 +1,7 @@
 # Stage Execution Context & Domain Provenance
 
 **Date:** May 29, 2026
-**Status:** Design — implementation pending
+**Status:** Phases 1–2 shipped (commit `bb9f196`). Domain node tagging deferred — see `2026-05-29T1200_domain-node-tagging.md`.
 **Category:** Architecture / Observability / Ingestion Pipeline
 
 ## Problem

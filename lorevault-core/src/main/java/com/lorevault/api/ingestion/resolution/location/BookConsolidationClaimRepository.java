@@ -5,6 +5,7 @@ import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Repository for {@link BookConsolidationClaim} nodes.
@@ -36,7 +37,8 @@ public interface BookConsolidationClaimRepository extends Neo4jRepository<BookCo
                           c.lane = $lane,
                           c.claimedAt = $claimedAt,
                           c.workerId = $workerId,
-                          c.acquiredToken = $acquiredToken
+                          c.acquiredToken = $acquiredToken,
+                          c.stageId = $stageId
             RETURN c.acquiredToken = $acquiredToken AS acquired
             """)
     boolean tryAcquireClaim(
@@ -45,7 +47,8 @@ public interface BookConsolidationClaimRepository extends Neo4jRepository<BookCo
             @Param("lane") String lane,
             @Param("claimedAt") LocalDateTime claimedAt,
             @Param("workerId") String workerId,
-            @Param("acquiredToken") String acquiredToken
+            @Param("acquiredToken") String acquiredToken,
+            @Param("stageId") UUID stageId
     );
 
     /**

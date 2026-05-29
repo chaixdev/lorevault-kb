@@ -93,6 +93,7 @@ class ChapterEventEmbeddingServiceTest {
         return new ChapterEvent(
                 UUID.randomUUID(),
                 chapterId,
+                UUID.randomUUID(),
                 "component",
                 "Duel begins",
                 "duel begins",

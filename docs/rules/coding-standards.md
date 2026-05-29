@@ -129,6 +129,63 @@ them via canonical constructor, matching parameters to Cypher column names. Proj
 interfaces are safe only on repositories extending the base `Repository<Entity, ID>` (not
 `Neo4jRepository`), which doesn't trigger entity-aware mapping.
 
+**Stage provenance on domain nodes.**
+
+Every `@Node` entity created during pipeline execution must carry a `stageId` property for provenance, cleanup, and replay:
+
+```java
+// Record entity — stageId as record component, placed after the scope ID
+public record ChapterIndividual(
+        @Id UUID id,
+        UUID chapterId,
+        @Property("stageId") UUID stageId,  // after scope ID, before business fields
+        String displayName,
+        String normalizedName,
+        // ...
+) {}
+
+// @Data entity — stageId as field with setter, NOT in @PersistenceCreator
+@Data
+@Node("Scene")
+public class Scene {
+    @Property("stageId")
+    private UUID stageId;  // set via scene.setStageId(ctx.stageId())
+    // ...
+}
+```
+
+Placement convention: `stageId` goes after the scope ID (`chapterId` for chapter entities, `bookId` for book entities, `sceneId` for mention entities) and before business fields.
+
+For records, `stageId` is a record component that must be passed at every construction site. For `@Data` classes with `@PersistenceCreator`, use a field + setter to avoid adding a 16th parameter to the persistence constructor.
+
+Services that create domain nodes must accept `StageExecutionContext ctx` as their first parameter and pass `ctx.stageId()` to entity constructors:
+
+```java
+// Required — ctx threaded through
+public void persistExtractedIndividuals(StageExecutionContext ctx, ...) {
+    individualMentionRepository.save(new IndividualMention(
+            UUID.randomUUID(), SOURCE, displayName, ...,
+            ctx.stageId(),  // stageId after scope IDs
+            sceneId, chapterId, ...));
+}
+
+// Wrong — no ctx, no stageId
+public void persistExtractedIndividuals(...) {
+    individualMentionRepository.save(new IndividualMention(
+            UUID.randomUUID(), SOURCE, displayName, ...,
+            sceneId, chapterId, ...));  // missing stageId
+}
+```
+
+Stage-scoped cleanup uses `deleteDataByStageId(stageId)`:
+```cypher
+MATCH (n {stageId: $stageId}) DETACH DELETE n
+```
+
+This removes all nodes and their relationships created by a specific stage execution, enabling safe replay.
+
+See ADR-014 (explicit parameter threading) and ADR-015 (stage node provenance).
+
 ---
 
 ## @Transactional Discipline

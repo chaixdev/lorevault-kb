@@ -4,6 +4,8 @@ import com.lorevault.api.ingestion.infrastructure.*;
 import com.lorevault.api.content.mention.EventMention;
 import com.lorevault.api.content.mention.EventMentionGraphRepository;
 import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import java.util.List;
 import java.util.UUID;
@@ -32,6 +34,9 @@ class EventPersistenceServiceTest {
     @InjectMocks
     private EventPersistenceService service;
 
+    private static final StageExecutionContext CTX =
+            new StageExecutionContext(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), StageKey.SCENE_SEGMENTATION);
+
     @Test
     @DisplayName("Persists one EventMention per extracted block and links mention by sceneIndex")
     void persistsEventsAndLinksMentions() {
@@ -52,7 +57,7 @@ class EventPersistenceServiceTest {
 
         when(eventMentionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.persistExtractedEvents(List.of(persistedScene), List.of(byScene));
+        service.persistExtractedEvents(CTX, List.of(persistedScene), List.of(byScene));
 
         ArgumentCaptor<EventMention> savedCaptor = ArgumentCaptor.forClass(EventMention.class);
         verify(eventMentionRepository).save(savedCaptor.capture());
@@ -90,6 +95,7 @@ class EventPersistenceServiceTest {
                 );
 
         service.persistExtractedEvents(
+                CTX,
                 List.of(persistedScene),
                 List.of(new TriadAnalysisModels.SceneEventExtraction(0, List.of(invalid)))
         );

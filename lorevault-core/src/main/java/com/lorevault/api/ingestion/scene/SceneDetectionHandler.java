@@ -117,7 +117,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             }
 
             // Detect and persist new scenes
-            List<Scene> scenes = detectAndPersistScenes(jobId, chapter);
+            List<Scene> scenes = detectAndPersistScenes(ctx, jobId, chapter);
 
             if (scenes.isEmpty()) {
                 log.warn("[SCENE_DETECTION] No scenes detected for chapter {}", chapterId);
@@ -162,12 +162,12 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             );
 
             if (! scenes.isEmpty()) {
-                individualPersistenceService.persistExtractedIndividuals(scenes, sceneRelationshipOutcome.sceneIndividualExtractions());
-                collectivePersistenceService.persistExtractedCollectives(scenes, sceneRelationshipOutcome.sceneCollectiveExtractions());
-                objectPersistenceService.persistExtractedObjects(scenes, sceneRelationshipOutcome.sceneObjectExtractions());
-                locationPersistenceService.persistExtractedLocations(scenes, sceneRelationshipOutcome.sceneLocationExtractions());
-                eventPersistenceService.persistExtractedEvents(scenes, sceneRelationshipOutcome.sceneEventExtractions());
-                relationClaimPersistenceService.persistExtractedRelationClaims(scenes, sceneRelationshipOutcome.sceneRelationClaimExtractions());
+                individualPersistenceService.persistExtractedIndividuals(ctx, scenes, sceneRelationshipOutcome.sceneIndividualExtractions());
+                collectivePersistenceService.persistExtractedCollectives(ctx, scenes, sceneRelationshipOutcome.sceneCollectiveExtractions());
+                objectPersistenceService.persistExtractedObjects(ctx, scenes, sceneRelationshipOutcome.sceneObjectExtractions());
+                locationPersistenceService.persistExtractedLocations(ctx, scenes, sceneRelationshipOutcome.sceneLocationExtractions());
+                eventPersistenceService.persistExtractedEvents(ctx, scenes, sceneRelationshipOutcome.sceneEventExtractions());
+                relationClaimPersistenceService.persistExtractedRelationClaims(ctx, scenes, sceneRelationshipOutcome.sceneRelationClaimExtractions());
             }
 
             // Note: ScenesDetectedEvent is emitted by the caller (handleChapterIngestion
@@ -192,7 +192,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
         }
     }
 
-    private List<Scene> detectAndPersistScenes(UUID jobId, Chapter chapter) {
+    private List<Scene> detectAndPersistScenes(StageExecutionContext ctx, UUID jobId, Chapter chapter) {
         UUID chapterId = chapter.getId();
         log.info("[SCENE_DETECTION] Detecting scenes for chapter {}", chapterId);
 
@@ -206,7 +206,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
         }
 
         // Persist detected scenes
-        return sceneProcessingService.persistDetectedScenes(chapterId, scenesWithCoords);
+        return sceneProcessingService.persistDetectedScenes(ctx, chapterId, scenesWithCoords);
     }
 
     private boolean isRetryableError(Exception e) {

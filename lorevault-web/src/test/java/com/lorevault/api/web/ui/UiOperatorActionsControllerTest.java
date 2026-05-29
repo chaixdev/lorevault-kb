@@ -1,5 +1,6 @@
 package com.lorevault.api.web.ui;
 
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualConsolidationResult;
 import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualConsolidationService;
 import com.lorevault.api.ingestion.resolution.location.BookLocationConsolidationService;
@@ -15,6 +16,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -39,7 +42,7 @@ class UiOperatorActionsControllerTest {
     @Test
     void chapterIndividualActionReturnsToast() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        when(chapterIndividualConsolidationService.consolidateChapter(chapterId))
+        when(chapterIndividualConsolidationService.consolidateChapter(any(StageExecutionContext.class), eq(chapterId)))
                 .thenReturn(new ChapterIndividualConsolidationResult(chapterId, true, 3, 2, "Resolved chapter individuals"));
 
         mockMvc.perform(post("/ui/actions/chapters/" + chapterId + "/chapter-consolidate-individuals"))
@@ -50,7 +53,7 @@ class UiOperatorActionsControllerTest {
     @Test
     void chapterLocationActionReturnsToast() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        when(chapterLocationConsolidationService.consolidateChapter(chapterId))
+        when(chapterLocationConsolidationService.consolidateChapter(any(StageExecutionContext.class), eq(chapterId)))
                 .thenReturn(new ChapterLocationConsolidationResult(chapterId, true, 2, 1, "Resolved chapter locations"));
 
         mockMvc.perform(post("/ui/actions/chapters/" + chapterId + "/chapter-consolidate-locations"))
@@ -61,7 +64,7 @@ class UiOperatorActionsControllerTest {
     @Test
     void bookLocationActionReturnsToast() throws Exception {
         UUID bookId = UUID.randomUUID();
-        when(bookLocationConsolidationService.consolidateBook(bookId))
+        when(bookLocationConsolidationService.consolidateBook(any(StageExecutionContext.class), eq(bookId)))
                 .thenReturn(new BookLocationConsolidationResult(bookId, true, 4, 2, "Resolved book-level locations"));
 
         mockMvc.perform(post("/ui/actions/books/" + bookId + "/chapter-consolidate-locations"))

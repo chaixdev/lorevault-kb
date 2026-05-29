@@ -80,7 +80,7 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
 
         log.info("[LANE:EVENT] [EVENT_CANDIDATE_GENERATION] Started: jobId={}, bookId={}", jobId, bookId);
 
-        if (!bookConsolidationClaimService.tryAcquireClaim(bookId, CLAIM_LANE)) {
+        if (!bookConsolidationClaimService.tryAcquireClaim(bookId, CLAIM_LANE, ctx.stageId())) {
             long elapsed = System.currentTimeMillis() - start;
             log.info("[EVENT_CANDIDATE_GENERATION] Claim contention for bookId={}", bookId);
             return StepResult.retryableFailure(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
@@ -168,7 +168,7 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
             List<ChapterEvent> allEventList = new ArrayList<>(allEventsById.values());
             BookEventConsolidationService.BookEventConsolidationResult reductionResult =
                     bookEventConsolidationService.reduceAndPersist(
-                            jobId, chapterId, bookId, allEventList, mergeDecisions);
+                            ctx, jobId, chapterId, bookId, allEventList, mergeDecisions);
 
             long elapsed = System.currentTimeMillis() - start;
 

@@ -4,6 +4,7 @@ import com.lorevault.api.content.scene.Scene;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.scene.SceneGraphRepository;
 import com.lorevault.api.ingestion.job.IngestionFailure;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -81,7 +82,7 @@ public class SceneProcessingService {
      * @return List of persisted Scene entities
      */
     @Transactional
-    public List<Scene> persistDetectedScenes(UUID chapterId, List<SceneWithCoordinates> scenesWithCoords) {
+    public List<Scene> persistDetectedScenes(StageExecutionContext ctx, UUID chapterId, List<SceneWithCoordinates> scenesWithCoords) {
         log.debug("Persisting {} scenes for chapter {}", scenesWithCoords.size(), chapterId);
 
         if (scenesWithCoords.isEmpty()) {
@@ -151,6 +152,7 @@ public class SceneProcessingService {
                     }
                 })
                 .collect(Collectors.toList());
+        toSave.forEach(scene -> scene.setStageId(ctx.stageId()));
         List<Scene> savedScenes = sceneRepo.saveAll(toSave);
         for (Scene savedScene : savedScenes) {
             if (savedScene.getId() != null) {

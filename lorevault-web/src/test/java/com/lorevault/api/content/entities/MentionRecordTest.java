@@ -42,6 +42,7 @@ class MentionRecordTest {
         assertThat(mention.activity()).isEqualTo("protecting");
         assertThat(mention.age()).isEqualTo("young adult");
         assertThat(mention.physicalProperties()).isEqualTo("scarred");
+        assertThat(mention.stageId()).isNull();
         assertThat(mention.sceneId()).isEqualTo(SCENE_ID);
         assertThat(mention.chapterId()).isEqualTo(CHAPTER_ID);
         assertThat(mention.bookId()).isEqualTo(BOOK_ID);
@@ -66,6 +67,7 @@ class MentionRecordTest {
         assertThat(mention.material()).isEqualTo("black metal");
         assertThat(mention.purpose()).isEqualTo("destroy evil");
         assertThat(mention.description()).isEqualTo("A dangerous awakened blade");
+        assertThat(mention.stageId()).isNull();
         assertThat(mention.sceneId()).isEqualTo(SCENE_ID);
         assertThat(mention.chapterId()).isEqualTo(CHAPTER_ID);
         assertThat(mention.bookId()).isEqualTo(BOOK_ID);
@@ -98,6 +100,7 @@ class MentionRecordTest {
         assertThat(mention.aliases()).isNull();
         assertThat(mention.displayName()).isEqualTo("The Duel");
         assertThat(mention.normalizedName()).isEqualTo("the_duel");
+        assertThat(mention.stageId()).isNull();
         assertThat(mention.sceneId()).isEqualTo(SCENE_ID);
         assertThat(mention.chapterId()).isEqualTo(CHAPTER_ID);
         assertThat(mention.bookId()).isEqualTo(BOOK_ID);
@@ -155,6 +158,7 @@ class MentionRecordTest {
                 "military",
                 "Explicit",
                 "Bridge Four forms up around Kaladin",
+                null,
                 SCENE_ID,
                 CHAPTER_ID,
                 BOOK_ID,
@@ -183,6 +187,7 @@ class MentionRecordTest {
                 "protecting",
                 "young adult",
                 "scarred",
+                null,
                 SCENE_ID,
                 CHAPTER_ID,
                 BOOK_ID,
@@ -203,6 +208,7 @@ class MentionRecordTest {
                 "city",
                 "Roshar",
                 "Ancient tower city",
+                null,
                 SCENE_ID,
                 CHAPTER_ID,
                 BOOK_ID,
@@ -224,6 +230,7 @@ class MentionRecordTest {
                 "black metal",
                 "destroy evil",
                 "A dangerous awakened blade",
+                null,
                 SCENE_ID,
                 CHAPTER_ID,
                 BOOK_ID,
@@ -246,6 +253,7 @@ class MentionRecordTest {
                 "during",
                 "high",
                 "Two champions face off",
+                null,
                 SCENE_ID,
                 CHAPTER_ID,
                 BOOK_ID,

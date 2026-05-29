@@ -14,6 +14,8 @@ import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.mention.CollectiveMention;
 import com.lorevault.api.content.mention.CollectiveMentionGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.resolution.collective.ChapterCollectiveConsolidationResult;
 import com.lorevault.api.ingestion.resolution.collective.ChapterCollectiveConsolidationService;
 import java.util.List;
@@ -39,6 +41,10 @@ class ChapterCollectiveConsolidationServiceTest {
 
     @Mock
     private CollectiveMentionGraphRepository collectiveMentionRepository;
+
+    private static final StageExecutionContext CTX = new StageExecutionContext(
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION);
 
     @InjectMocks
     private ChapterCollectiveConsolidationService service;
@@ -102,7 +108,7 @@ class ChapterCollectiveConsolidationServiceTest {
         when(chapterCollectiveRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(chapterCollectiveRepository.countChapterCollectivesByChapterId(chapterId)).thenReturn(2L);
 
-        ChapterCollectiveConsolidationResult response = service.consolidateChapter(chapterId);
+        ChapterCollectiveConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.rawCollectivesProcessed()).isEqualTo(3);
@@ -155,7 +161,7 @@ class ChapterCollectiveConsolidationServiceTest {
         UUID chapterId = UUID.randomUUID();
         when(chapterCollectiveRepository.countMentionsByChapterId(chapterId)).thenReturn(0L);
 
-        ChapterCollectiveConsolidationResult response = service.consolidateChapter(chapterId);
+        ChapterCollectiveConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.rawCollectivesProcessed()).isZero();
@@ -185,6 +191,7 @@ class ChapterCollectiveConsolidationServiceTest {
                 collectiveType,
                 certainty,
                 evidence,
+                null,
                 UUID.randomUUID(),
                 chapterId,
                 UUID.randomUUID(),

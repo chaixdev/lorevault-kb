@@ -30,7 +30,7 @@ public class ChapterLocationConsolidationHandler implements ChapterLocationConso
         UUID chapterId = ctx.chapterId();
         long start = System.currentTimeMillis();
         try {
-            ChapterLocationConsolidationResult response = chapterLocationConsolidationService.consolidateChapter(chapterId);
+            ChapterLocationConsolidationResult response = chapterLocationConsolidationService.consolidateChapter(ctx, chapterId);
 
             if (response.success()) {
                 log.info(

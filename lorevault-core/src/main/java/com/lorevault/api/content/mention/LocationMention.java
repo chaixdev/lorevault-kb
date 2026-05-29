@@ -8,6 +8,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Property;
 
 @Node(primaryLabel = "LocationMention", labels = "Mention")
 public record LocationMention(
@@ -19,6 +20,7 @@ public record LocationMention(
         String kind,
         String region,
         String description,
+        @Property("stageId") UUID stageId,
         UUID sceneId,
         UUID chapterId,
         UUID bookId,

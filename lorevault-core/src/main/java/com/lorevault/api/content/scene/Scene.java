@@ -48,6 +48,9 @@ public class Scene {
 
     private UUID chapterId;
 
+    @Property("stageId")
+    private UUID stageId;
+
     /**
      * The sequential index of the scene within the chapter (0-based, matching AI output)
      */

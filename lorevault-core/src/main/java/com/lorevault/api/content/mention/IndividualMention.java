@@ -8,6 +8,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Property;
 
 @Node(primaryLabel = "IndividualMention", labels = "Mention")
 public record IndividualMention(
@@ -19,6 +20,7 @@ public record IndividualMention(
         String activity,
         String age,
         String physicalProperties,
+        @Property("stageId") UUID stageId,
         UUID sceneId,
         UUID chapterId,
         UUID bookId,

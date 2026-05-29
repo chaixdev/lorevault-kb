@@ -157,6 +157,7 @@ public class ChapterEventEmbeddingService {
             ChapterEvent embedded = new ChapterEvent(
                     original.id(),
                     original.chapterId(),
+                    original.stageId(),
                     original.componentId(),
                     original.displayName(),
                     original.normalizedName(),

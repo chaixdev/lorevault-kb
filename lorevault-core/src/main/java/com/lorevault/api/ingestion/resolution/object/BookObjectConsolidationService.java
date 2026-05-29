@@ -3,6 +3,7 @@ package com.lorevault.api.ingestion.resolution.object;
 import com.lorevault.api.content.association.BookObject;
 import com.lorevault.api.content.association.ChapterObject;
 import com.lorevault.api.content.association.ChapterObjectGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.library.book.BookGraphRepository;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -43,7 +44,7 @@ public class BookObjectConsolidationService {
             maxAttempts = 3,
             backoff = @Backoff(delay = 200, multiplier = 2.0, maxDelay = 2_000)
     )
-    public BookObjectConsolidationResult consolidateBook(UUID bookId) {
+    public BookObjectConsolidationResult consolidateBook(StageExecutionContext ctx, UUID bookId) {
         if (bookId == null) {
             return new BookObjectConsolidationResult(null, false, 0, 0, "Book ID is required");
         }
@@ -62,10 +63,10 @@ public class BookObjectConsolidationService {
             return new BookObjectConsolidationResult(bookId, true, 0, 0, "No chapter objects found for book");
         }
 
-        return consolidateBook(bookId, chapterObjects);
+        return consolidateBook(ctx, bookId, chapterObjects);
     }
 
-    BookObjectConsolidationResult consolidateBook(UUID bookId, List<ChapterObject> chapterObjects) {
+    BookObjectConsolidationResult consolidateBook(StageExecutionContext ctx, UUID bookId, List<ChapterObject> chapterObjects) {
         List<ObjectCluster> clusters = clusterObjects(chapterObjects);
         if (clusters.isEmpty()) {
             return new BookObjectConsolidationResult(bookId, false, chapterObjects.size(), 0, "No resolvable chapter objects found for book");
@@ -75,6 +76,7 @@ public class BookObjectConsolidationService {
                 .map(cluster -> new BookObject(
                         UUID.randomUUID(),
                         bookId,
+                        ctx.stageId(),
                         cluster.displayName(),
                         cluster.normalizedName(),
                         List.copyOf(cluster.aliases()),

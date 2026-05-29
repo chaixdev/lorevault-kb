@@ -5,6 +5,7 @@ import com.lorevault.api.content.association.ChapterCollectiveGraphRepository;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.mention.CollectiveMention;
 import com.lorevault.api.content.mention.CollectiveMentionGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -38,7 +39,7 @@ public class ChapterCollectiveConsolidationService {
     }
 
     @Transactional
-    public ChapterCollectiveConsolidationResult consolidateChapter(UUID chapterId) {
+    public ChapterCollectiveConsolidationResult consolidateChapter(StageExecutionContext ctx, UUID chapterId) {
         if (chapterId == null) {
             return new ChapterCollectiveConsolidationResult(null, false, 0, 0, "Chapter ID is required");
         }
@@ -76,6 +77,7 @@ public class ChapterCollectiveConsolidationService {
                 .map(cluster -> new ChapterCollective(
                         UUID.randomUUID(),
                         chapterId,
+                        ctx.stageId(),
                         cluster.displayName(),
                         cluster.normalizedName(),
                         List.copyOf(cluster.aliases()),

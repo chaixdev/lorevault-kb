@@ -31,7 +31,7 @@ public class ChapterIndividualConsolidationHandler implements ChapterIndividualC
         UUID chapterId = ctx.chapterId();
         long start = System.currentTimeMillis();
         try {
-            ChapterIndividualConsolidationResult response = chapterIndividualConsolidationService.consolidateChapter(chapterId);
+            ChapterIndividualConsolidationResult response = chapterIndividualConsolidationService.consolidateChapter(ctx, chapterId);
 
             if (response.success()) {
                 log.info(

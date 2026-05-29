@@ -4,6 +4,8 @@ import com.lorevault.api.ingestion.infrastructure.*;
 import com.lorevault.api.content.mention.LocationMention;
 import com.lorevault.api.content.mention.LocationMentionGraphRepository;
 import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +30,9 @@ class LocationPersistenceServiceTest {
     @InjectMocks
     private LocationPersistenceService service;
 
+    private static final StageExecutionContext CTX =
+            new StageExecutionContext(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), StageKey.SCENE_SEGMENTATION);
+
     @Test
     @DisplayName("Persists one LocationMention per extracted block and links mention by sceneIndex")
     void persistsLocationsAndLinksMentions() {
@@ -47,7 +52,7 @@ class LocationPersistenceServiceTest {
 
         when(locationMentionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.persistExtractedLocations(List.of(persistedScene), List.of(byScene));
+        service.persistExtractedLocations(CTX, List.of(persistedScene), List.of(byScene));
 
         ArgumentCaptor<LocationMention> savedCaptor = ArgumentCaptor.forClass(LocationMention.class);
         verify(locationMentionRepository).save(savedCaptor.capture());
@@ -84,6 +89,7 @@ class LocationPersistenceServiceTest {
         when(locationMentionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.persistExtractedLocations(
+                CTX,
                 List.of(persistedScene),
                 List.of(new TriadAnalysisModels.SceneLocationExtraction(0, List.of(extracted)))
         );

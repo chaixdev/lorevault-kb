@@ -5,6 +5,7 @@ import com.lorevault.api.content.association.ChapterEventGraphRepository;
 import com.lorevault.api.content.mention.EventMention;
 import com.lorevault.api.content.mention.EventMentionComponentLookup;
 import com.lorevault.api.content.mention.EventMentionGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -41,7 +42,7 @@ public class ChapterEventConsolidationService {
     private final EventMentionComponentLookup componentLookup;
 
     @Transactional
-    public ChapterEventConsolidationResult consolidateChapter(UUID chapterId) {
+    public ChapterEventConsolidationResult consolidateChapter(StageExecutionContext ctx, UUID chapterId) {
         if (chapterId == null) {
             return new ChapterEventConsolidationResult(null, false, 0, 0, 0, "Chapter ID is required");
         }
@@ -93,7 +94,7 @@ public class ChapterEventConsolidationService {
                 continue;
             }
 
-            ChapterEvent chapterEvent = buildChapterEvent(chapterId, componentId, componentMentions);
+            ChapterEvent chapterEvent = buildChapterEvent(ctx, chapterId, componentId, componentMentions);
             chapterEvents.add(chapterEvent);
         }
 
@@ -148,7 +149,7 @@ public class ChapterEventConsolidationService {
      *
      * @param componentId the stable co-reference component representative ID (used as lookup key post-save)
      */
-    private ChapterEvent buildChapterEvent(UUID chapterId, String componentId, List<EventMention> mentions) {
+    private ChapterEvent buildChapterEvent(StageExecutionContext ctx, UUID chapterId, String componentId, List<EventMention> mentions) {
         String displayName = mostFrequent(mentions.stream()
                 .map(EventMention::displayName)
                 .filter(Objects::nonNull)
@@ -187,6 +188,7 @@ public class ChapterEventConsolidationService {
         return new ChapterEvent(
                 UUID.randomUUID(),
                 chapterId,
+                ctx.stageId(),
                 componentId,
                 displayName,
                 normalizedName,

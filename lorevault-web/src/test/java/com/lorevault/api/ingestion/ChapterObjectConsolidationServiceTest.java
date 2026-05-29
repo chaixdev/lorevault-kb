@@ -12,6 +12,8 @@ import com.lorevault.api.content.association.ChapterObjectGraphRepository;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.mention.ObjectMention;
 import com.lorevault.api.content.mention.ObjectMentionGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.resolution.object.ChapterObjectConsolidationResult;
 import com.lorevault.api.ingestion.resolution.object.ChapterObjectConsolidationService;
 import java.util.List;
@@ -39,6 +41,10 @@ class ChapterObjectConsolidationServiceTest {
     @Mock
     private ObjectMentionGraphRepository objectMentionRepository;
 
+    private static final StageExecutionContext CTX = new StageExecutionContext(
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            StageKey.CHAPTER_OBJECT_CONSOLIDATION);
+
     @InjectMocks
     private ChapterObjectConsolidationService service;
 
@@ -59,7 +65,7 @@ class ChapterObjectConsolidationServiceTest {
         when(chapterObjectRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(chapterObjectRepository.countChapterObjectsByChapterId(chapterId)).thenReturn(2L);
 
-        ChapterObjectConsolidationResult response = service.consolidateChapter(chapterId);
+        ChapterObjectConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.rawObjectsProcessed()).isEqualTo(3);
@@ -109,7 +115,7 @@ class ChapterObjectConsolidationServiceTest {
         UUID chapterId = UUID.randomUUID();
         when(chapterObjectRepository.countMentionsByChapterId(chapterId)).thenReturn(0L);
 
-        ChapterObjectConsolidationResult response = service.consolidateChapter(chapterId);
+        ChapterObjectConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.rawObjectsProcessed()).isZero();
@@ -134,7 +140,7 @@ class ChapterObjectConsolidationServiceTest {
         when(chapterObjectRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(chapterObjectRepository.countChapterObjectsByChapterId(chapterId)).thenReturn(2L);
 
-        ChapterObjectConsolidationResult response = service.consolidateChapter(chapterId);
+        ChapterObjectConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.chapterObjectsCreated()).isEqualTo(2);
@@ -161,7 +167,7 @@ class ChapterObjectConsolidationServiceTest {
         when(chapterObjectRepository.countMentionsByChapterId(chapterId)).thenReturn(1L);
         when(objectMentionRepository.findByChapterId(chapterId)).thenReturn(List.of(blank));
 
-        ChapterObjectConsolidationResult response = service.consolidateChapter(chapterId);
+        ChapterObjectConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
         assertThat(response.success()).isFalse();
         assertThat(response.rawObjectsProcessed()).isEqualTo(1);
@@ -195,6 +201,7 @@ class ChapterObjectConsolidationServiceTest {
                 material,
                 purpose,
                 description,
+                null,
                 UUID.randomUUID(),
                 chapterId,
                 UUID.randomUUID(),

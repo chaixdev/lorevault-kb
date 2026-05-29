@@ -8,6 +8,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Property;
 
 @Node(primaryLabel = "ObjectMention", labels = "Mention")
 public record ObjectMention(
@@ -20,6 +21,7 @@ public record ObjectMention(
         String material,
         String purpose,
         String description,
+        @Property("stageId") UUID stageId,
         UUID sceneId,
         UUID chapterId,
         UUID bookId,

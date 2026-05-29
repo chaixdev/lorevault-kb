@@ -5,6 +5,7 @@ import com.lorevault.api.content.association.ChapterLocationGraphRepository;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
 import com.lorevault.api.content.mention.LocationMention;
 import com.lorevault.api.content.mention.LocationMentionGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -42,7 +43,7 @@ public class ChapterLocationConsolidationService {
     }
 
     @Transactional
-    public ChapterLocationConsolidationResult consolidateChapter(UUID chapterId) {
+    public ChapterLocationConsolidationResult consolidateChapter(StageExecutionContext ctx, UUID chapterId) {
         if (chapterId == null) {
             return new ChapterLocationConsolidationResult(null, false, 0, 0, "Chapter ID is required");
         }
@@ -78,6 +79,7 @@ public class ChapterLocationConsolidationService {
             chapterLocations.add(new ChapterLocation(
                     UUID.randomUUID(),
                     chapterId,
+                    ctx.stageId(),
                     cluster.displayName(),
                     cluster.normalizedName(),
                     List.copyOf(cluster.aliases()),

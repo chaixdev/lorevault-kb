@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
-**Last Updated:** May 29, 2026
-**Status:** Active — Phases 1+2+4 complete, Phases 3a+3b+3c complete, terminology alignment complete. StageExecutionContext + provenance designed (pending implementation). 463 tests, 0 failures.
+**Last Updated:** May 30, 2026
+**Status:** Active — Phases 1+2+4 complete, Phases 3a+3b+3c complete, terminology alignment complete. StageExecutionContext Phases 1–2 shipped. Domain node tagging shipped (18 @Node entities tagged with stageId, ctx threaded through all services). 463 tests, 0 failures.
 **Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state. Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
@@ -119,12 +119,10 @@ Near-term execution slices before pivoting to AWS/n8n:
    - Done. ~50 files renamed, 18 enum values updated (StageKey + StepKey), all endpoint paths changed to `consolidate-*`, Neo4j constraints renamed, 13 test files renamed. `BookConsolidationRedirectController` provides redirects from both legacy `resolve-*` and `reduce-*` URLs. 463 tests green.
    - See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md`
 
-5. **StageExecutionContext & domain provenance**
-   - Replace `DispatchContext` with `StageExecutionContext` record carrying `stageId` — the Neo4j Stage node ID
-   - Flow through handlers → services → repositories; every domain node/edge tagged with `stageId`
-   - Closes smoke test issue #1 (triad provenance), implements `deleteDataByStageId` (rerun cleanup), eliminates `StageOutput` (redundant with `Stage.status`)
-   - Aligns with three-tier observability model (logging, graph audit, metrics)
-   - See: `docs/planning/2026-05-29T0000_stage-execution-context-and-provenance.md`
+5. **StageExecutionContext & domain provenance** — Phases 1–2 shipped ✅
+    - `DispatchContext` → `StageExecutionContext` with `stageId` field; `StageOutput` deleted; provenance unstubbed; `deleteDataByStageId` implemented
+    - **Remaining:** Domain node tagging — add `stageId` property to 18 `@Node` entity classes, thread `StageExecutionContext` through ~24 domain services, update 1 explicit Cypher query. Enables `deleteDataByStageId` to actually clean up domain data on rerun.
+    - See: `docs/planning/2026-05-29T0000_stage-execution-context-and-provenance.md`, `docs/planning/2026-05-29T1200_domain-node-tagging.md`
 
 5. **Relation edge projection** — now covered by item #3 above
 

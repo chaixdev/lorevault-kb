@@ -38,7 +38,7 @@ public class BookCollectiveConsolidationHandler implements BookCollectiveConsoli
         UUID bookId = ctx.bookId();
         long start = System.currentTimeMillis();
 
-        if (!bookConsolidationClaimService.tryAcquireClaim(bookId, CLAIM_LANE)) {
+        if (!bookConsolidationClaimService.tryAcquireClaim(bookId, CLAIM_LANE, ctx.stageId())) {
             long elapsed = System.currentTimeMillis() - start;
             log.warn("[BOOK_COLLECTIVE_CONSOLIDATION] Claim contention for bookId={}", bookId);
             return StepResult.retryableFailure(StageKey.BOOK_COLLECTIVE_CONSOLIDATION,
@@ -46,7 +46,7 @@ public class BookCollectiveConsolidationHandler implements BookCollectiveConsoli
         }
 
         try {
-            BookCollectiveConsolidationResult response = bookCollectiveConsolidationService.consolidateBook(bookId);
+            BookCollectiveConsolidationResult response = bookCollectiveConsolidationService.consolidateBook(ctx, bookId);
 
             long elapsed = System.currentTimeMillis() - start;
 

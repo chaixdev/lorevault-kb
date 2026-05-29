@@ -3,6 +3,8 @@ package com.lorevault.api.ingestion;
 import com.lorevault.api.content.mention.ObjectMention;
 import com.lorevault.api.content.mention.ObjectMentionGraphRepository;
 import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import com.lorevault.api.ingestion.infrastructure.ObjectPersistenceService;
 import java.util.List;
@@ -32,6 +34,9 @@ class ObjectPersistenceServiceTest {
     @InjectMocks
     private ObjectPersistenceService service;
 
+    private static final StageExecutionContext CTX =
+            new StageExecutionContext(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), StageKey.SCENE_SEGMENTATION);
+
     @Test
     @DisplayName("Persists one ObjectMention per extracted block and links mention by sceneIndex")
     void persistsObjectsAndLinksMentions() {
@@ -51,7 +56,7 @@ class ObjectPersistenceServiceTest {
 
         when(objectMentionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.persistExtractedObjects(List.of(persistedScene), List.of(byScene));
+        service.persistExtractedObjects(CTX, List.of(persistedScene), List.of(byScene));
 
         ArgumentCaptor<ObjectMention> savedCaptor = ArgumentCaptor.forClass(ObjectMention.class);
         verify(objectMentionRepository).save(savedCaptor.capture());
@@ -89,6 +94,7 @@ class ObjectPersistenceServiceTest {
         when(objectMentionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.persistExtractedObjects(
+                CTX,
                 List.of(persistedScene),
                 List.of(new TriadAnalysisModels.SceneObjectExtraction(0, List.of(extracted)))
         );
@@ -113,6 +119,7 @@ class ObjectPersistenceServiceTest {
                 );
 
         service.persistExtractedObjects(
+                CTX,
                 List.of(persistedScene),
                 List.of(new TriadAnalysisModels.SceneObjectExtraction(0, List.of(invalid)))
         );

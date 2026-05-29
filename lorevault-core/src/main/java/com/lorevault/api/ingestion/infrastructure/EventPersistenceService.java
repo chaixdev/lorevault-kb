@@ -3,6 +3,7 @@ package com.lorevault.api.ingestion.infrastructure;
 import com.lorevault.api.content.mention.EventMention;
 import com.lorevault.api.content.mention.EventMentionGraphRepository;
 import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ public class EventPersistenceService {
 
     @Transactional
     public void persistExtractedEvents(
+            StageExecutionContext ctx,
             List<Scene> persistedScenes,
             List<TriadAnalysisModels.SceneEventExtraction> sceneExtractions
     ) {
@@ -60,6 +62,7 @@ public class EventPersistenceService {
                         normalizeText(extracted.temporalType()),
                         normalizeText(extracted.certainty()),
                         normalizeText(extracted.evidence()),
+                        ctx.stageId(),
                         sceneId,
                         chapterId,
                         null,

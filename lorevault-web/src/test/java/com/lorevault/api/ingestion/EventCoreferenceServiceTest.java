@@ -399,6 +399,7 @@ class EventCoreferenceServiceTest {
                 "during",
                 "0.9",
                 evidence,
+                UUID.randomUUID(),
                 sceneId,
                 chapterId,
                 UUID.randomUUID(),

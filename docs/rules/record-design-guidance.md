@@ -51,4 +51,60 @@ A record that exists only to carry data three lines to a constructor is scaffold
 
 Before creating a record, answer: what caller will use this type as a coherent value? If the answer is "it's just an intermediate carrier," don't create it.
 
+## Provenance Fields on `@Node` Entities
+
+Domain nodes created during pipeline execution carry a `stageId` provenance property. The pattern differs between records and `@Data` classes:
+
+### Records: `stageId` as a record component
+
+For `@Node` records, add `stageId` as a record component with `@Property("stageId")`. Place it after the scope ID and before business fields:
+
+```java
+public record ChapterIndividual(
+        @Id UUID id,
+        UUID chapterId,
+        @Property("stageId") UUID stageId,  // after scope ID
+        String displayName,
+        String normalizedName,
+        Integer mentionCount,
+        @CreatedDate LocalDateTime createdAt,
+        @LastModifiedDate LocalDateTime updatedAt
+) {}
+```
+
+This breaks all construction sites — every `new ChapterIndividual(...)` call must add `ctx.stageId()` (or `null` for pre-existing data). The trade-off is explicit: records have no setters, so the field must be a component.
+
+### `@Data` classes: `stageId` as a field with setter
+
+For `@Data` classes with `@PersistenceCreator` (Scene, Chunk), add `stageId` as a field with `@Property("stageId")` and a Lombok-generated setter. Do **not** add it to the `@PersistenceCreator` constructor — these classes already have 15+ parameters:
+
+```java
+@Data
+@Node("Scene")
+public class Scene {
+    @Property("stageId")
+    private UUID stageId;  // set via scene.setStageId(ctx.stageId())
+
+    // ... existing fields ...
+}
+```
+
+Set `stageId` after construction, before persistence:
+
+```java
+List<Scene> toSave = scenesWithCoords.stream()
+        .map(swc -> {
+            Scene scene = new Scene(...);
+            scene.setStageId(ctx.stageId());
+            return scene;
+        }).toList();
+sceneRepo.saveAll(toSave);
+```
+
+### Why the split?
+
+Records are immutable — the only way to set a field is via the canonical constructor. `@Data` classes with `@PersistenceCreator` already have a large constructor; adding a 16th parameter increases error risk. The setter approach is safer for `@Data` classes while the record approach is the only option for records.
+
+See ADR-015 (stage node provenance over StageOutput nodes).
+
 When reviewing existing code, the same questions apply in reverse: if a record existed for a coherent reason that has since disappeared (caller refactored away, unused fields accumulated), eliminate it.

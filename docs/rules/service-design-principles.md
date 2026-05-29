@@ -32,6 +32,45 @@ The scope of a method signature must match the domain scope of the concept it mo
 
 **Heuristic:** If a method needs asymmetric cross-boundary helpers to model its domain correctly, the boundary is wrong.
 
+## StageExecutionContext Threading
+
+Services that create or persist domain nodes must accept `StageExecutionContext ctx` as their first parameter. This context carries `(stageId, jobId, chapterId, bookId, stage)` and flows explicitly from the handler through the service to the repository.
+
+```java
+// Required — ctx threaded through
+public ChapterIndividualConsolidationResult consolidateChapter(
+        StageExecutionContext ctx, UUID chapterId) {
+    // ...
+    chapterIndividuals.add(new ChapterIndividual(
+            UUID.randomUUID(), chapterId, ctx.stageId(), ...));
+}
+
+// Wrong — ctx available in handler but not passed to service
+public ChapterIndividualConsolidationResult consolidateChapter(UUID chapterId) {
+    // no stageId on created entities — cleanup and replay will fail
+}
+```
+
+### Why explicit threading, not ThreadLocal?
+
+`StageExecutionContext` is an explicit method parameter, not a `ThreadLocal`. This makes the dependency visible in the method signature, testable without thread setup, and safe across async boundaries. See ADR-014.
+
+### Why `ctx` as the first parameter?
+
+Placing `StageExecutionContext ctx` as the first parameter makes it easy to spot missing threading during code review. If a service method creates domain nodes but doesn't have `ctx` as its first parameter, it's missing provenance.
+
+### Handler → Service → Repository flow
+
+```
+StageDispatcher.dispatch(event)
+  → handler.execute(ctx)
+    → service.consolidateChapter(ctx, chapterId)
+      → new ChapterIndividual(UUID.randomUUID(), chapterId, ctx.stageId(), ...)
+        → repository.save(entity)
+```
+
+The `stageId` ends up as a `@Property("stageId")` on the Neo4j node, enabling `deleteDataByStageId(stageId)` for cleanup and replay.
+
 ---
 
 ## Additional Heuristics

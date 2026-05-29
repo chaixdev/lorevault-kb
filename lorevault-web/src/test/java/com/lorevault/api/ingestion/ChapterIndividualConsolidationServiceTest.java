@@ -3,6 +3,8 @@ package com.lorevault.api.ingestion;
 import com.lorevault.api.content.association.ChapterIndividual;
 import com.lorevault.api.content.association.ChapterIndividualCandidate;
 import com.lorevault.api.content.association.ChapterIndividualGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualConsolidationResult;
 import java.util.List;
 import java.util.UUID;
@@ -27,6 +29,10 @@ class ChapterIndividualConsolidationServiceTest {
     @Mock
     private ChapterIndividualGraphRepository chapterIndividualRepository;
 
+    private static final StageExecutionContext CTX = new StageExecutionContext(
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION);
+
     @InjectMocks
     private ChapterIndividualConsolidationService service;
 
@@ -42,7 +48,7 @@ class ChapterIndividualConsolidationServiceTest {
         when(chapterIndividualRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(chapterIndividualRepository.countChapterIndividualsByChapterId(chapterId)).thenReturn(2L);
 
-        ChapterIndividualConsolidationResult response = service.consolidateChapter(chapterId);
+        ChapterIndividualConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.rawIndividualsProcessed()).isEqualTo(3);
@@ -80,7 +86,7 @@ class ChapterIndividualConsolidationServiceTest {
         when(chapterIndividualRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
         when(chapterIndividualRepository.findResolutionCandidates(chapterId)).thenReturn(List.of());
 
-        ChapterIndividualConsolidationResult response = service.consolidateChapter(chapterId);
+        ChapterIndividualConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
         assertThat(response.success()).isFalse();
         assertThat(response.rawIndividualsProcessed()).isEqualTo(2);
@@ -100,13 +106,15 @@ class ChapterIndividualConsolidationServiceTest {
         when(chapterIndividualRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
         when(chapterIndividualRepository.findResolutionCandidates(chapterId)).thenReturn(List.of(blank));
 
-        ChapterIndividualConsolidationResult response = service.consolidateChapter(chapterId);
+        ChapterIndividualConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
         assertThat(response.success()).isFalse();
         assertThat(response.rawIndividualsProcessed()).isEqualTo(2);
+        assertThat(response.chapterIndividualsCreated()).isZero();
 
         verify(chapterIndividualRepository).deleteByChapterId(chapterId);
         verify(chapterIndividualRepository, never()).saveAll(any());
+        verify(chapterIndividualRepository, never()).linkChapterToIndividual(any(), any());
         verify(chapterIndividualRepository, never()).linkMentionsToChapterIndividual(any(), any(), any(), any());
     }
 
@@ -116,7 +124,7 @@ class ChapterIndividualConsolidationServiceTest {
         UUID chapterId = UUID.randomUUID();
         when(chapterIndividualRepository.countMentionsByChapterId(chapterId)).thenReturn(0L);
 
-        ChapterIndividualConsolidationResult response = service.consolidateChapter(chapterId);
+        ChapterIndividualConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
         assertThat(response.success()).isFalse();
         assertThat(response.rawIndividualsProcessed()).isZero();

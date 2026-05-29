@@ -9,6 +9,8 @@ import static org.mockito.Mockito.when;
 import com.lorevault.api.content.association.BookObject;
 import com.lorevault.api.content.association.ChapterObject;
 import com.lorevault.api.content.association.ChapterObjectGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.resolution.object.BookObjectPersistenceService;
 import com.lorevault.api.ingestion.resolution.object.BookObjectConsolidationService;
 import com.lorevault.api.ingestion.resolution.object.BookObjectConsolidationResult;
@@ -39,6 +41,10 @@ class BookObjectConsolidationServiceTest {
     @Mock
     private BookObjectPersistenceService bookObjectPersistenceService;
 
+    private static final StageExecutionContext CTX = new StageExecutionContext(
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            StageKey.BOOK_OBJECT_CONSOLIDATION);
+
     @InjectMocks
     private BookObjectConsolidationService service;
 
@@ -61,7 +67,7 @@ class BookObjectConsolidationServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(1));
         when(bookObjectPersistenceService.countByBookId(bookId)).thenReturn(2L);
 
-        BookObjectConsolidationResult response = service.consolidateBook(bookId);
+        BookObjectConsolidationResult response = service.consolidateBook(CTX, bookId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.chapterObjectsProcessed()).isEqualTo(3);
@@ -106,7 +112,7 @@ class BookObjectConsolidationServiceTest {
         UUID bookId = UUID.randomUUID();
         when(chapterObjectRepository.findByBookId(bookId)).thenReturn(List.of());
 
-        BookObjectConsolidationResult response = service.consolidateBook(bookId);
+        BookObjectConsolidationResult response = service.consolidateBook(CTX, bookId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.chapterObjectsProcessed()).isZero();
@@ -118,7 +124,7 @@ class BookObjectConsolidationServiceTest {
     @Test
     @DisplayName("Retries transient Neo4j lock conflicts at the consolidation boundary")
     void retriesTransientNeo4jLockConflictsAtConsolidationBoundary() throws NoSuchMethodException {
-        Retryable retryable = MergedAnnotations.from(BookObjectConsolidationService.class.getMethod("consolidateBook", UUID.class))
+        Retryable retryable = MergedAnnotations.from(BookObjectConsolidationService.class.getMethod("consolidateBook", StageExecutionContext.class, UUID.class))
                 .get(Retryable.class)
                 .synthesize();
 
@@ -143,7 +149,7 @@ class BookObjectConsolidationServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(1));
         when(bookObjectPersistenceService.countByBookId(bookId)).thenReturn(2L);
 
-        BookObjectConsolidationResult response = service.consolidateBook(bookId);
+        BookObjectConsolidationResult response = service.consolidateBook(CTX, bookId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.bookObjectsCreated()).isEqualTo(2);
@@ -172,6 +178,6 @@ class BookObjectConsolidationServiceTest {
             String description,
             int mentionCount
     ) {
-        return new ChapterObject(id, chapterId, displayName, normalizedName, aliases, type, material, purpose, description, mentionCount, null, null);
+        return new ChapterObject(id, chapterId, null, displayName, normalizedName, aliases, type, material, purpose, description, mentionCount, null, null);
     }
 }

@@ -7,37 +7,40 @@ LoreVault ingests narrative chapter text through a staged, event-driven pipeline
 
 Stages communicate asynchronously through Spring application events, which isolates failures and preserves partial progress. If chunking fails during a run, the scene detection results from the previous stage survive. This decoupling allows the system to scale specific parts of the pipeline independently and provides a natural boundary for transactional integrity.
 
-The pipeline uses `@Async` event listeners to ensure stages run in separate threads after the publishing transaction commits. A shared `PipelineStageSupport` class provides consistent failure handling across all stages. It manages failure events, updates job statuses, and classifies errors as retryable or terminal. The scene stage remains the most computationally expensive portion of this flow because it includes LLM segmentation/localization, scene persistence, and post-persistence triad analysis.
+The pipeline uses a centralized `StageDispatcher` that routes `StageTriggeredEvent` to the correct `StageOperation` handler via `@ForStage` annotation. Each handler receives a `StageExecutionContext` carrying `(stageId, jobId, chapterId, bookId, stage)`. The dispatcher sets MDC fields (`stage`, `jobId`, `stageId`) before execution and clears them after. The scene stage remains the most computationally expensive portion of this flow because it includes LLM segmentation/localization, scene persistence, and post-persistence triad analysis.
 
 ### Component Map
 ```mermaid
 graph LR
-    IngestionService["IngestionService"] -->|"ChapterIngestionEvent"| SceneDetectionHandler["SceneDetectionHandler"]
-    SceneDetectionHandler -->|"ScenesDetectedEvent"| ChunkingHandler["ChunkingHandler"]
-    SceneDetectionHandler -->|"ScenesDetectedEvent"| ChapterIndividualResolutionHandler["ChapterIndividualResolutionHandler"]
-    SceneDetectionHandler -->|"ScenesDetectedEvent"| ChapterLocationResolutionHandler["ChapterLocationResolutionHandler"]
-    SceneDetectionHandler -->|"ScenesDetectedEvent"| ChapterObjectResolutionHandler["ChapterObjectResolutionHandler"]
-    SceneDetectionHandler -->|"ScenesDetectedEvent"| ChapterCollectiveResolutionHandler["ChapterCollectiveResolutionHandler"]
-    SceneDetectionHandler -->|"ScenesDetectedEvent"| ChapterEventResolutionHandler["ChapterEventResolutionHandler"]
-    ChunkingHandler -->|"ChunksCreatedEvent"| EmbeddingHandler["EmbeddingHandler"]
-    EmbeddingHandler -->|"EmbeddingsCompletedEvent"| Completion["IngestionCompletionCoordinator"]
-    ChapterIndividualResolutionHandler -->|"ChapterIndividualsResolvedEvent"| BookIndividualReductionHandler["BookIndividualReductionHandler"]
-    BookIndividualReductionHandler -->|"BookIndividualsReducedEvent"| Completion
-    ChapterLocationResolutionHandler -->|"ChapterLocationsResolvedEvent"| BookLocationReductionHandler["BookLocationReductionHandler"]
-    BookLocationReductionHandler -->|"BookLocationsReducedEvent"| Completion
-    ChapterObjectResolutionHandler -->|"ChapterObjectsResolvedEvent"| BookObjectReductionHandler["BookObjectReductionHandler"]
-    BookObjectReductionHandler -->|"BookObjectsReducedEvent"| Completion
-    ChapterCollectiveResolutionHandler -->|"ChapterCollectivesResolvedEvent"| BookCollectiveReductionHandler["BookCollectiveReductionHandler"]
-    BookCollectiveReductionHandler -->|"BookCollectivesReducedEvent"| Completion
-    ChapterEventResolutionHandler -->|"ChapterEventsResolvedEvent"| ChapterEventEmbeddingHandler["ChapterEventEmbeddingHandler"]
-    ChapterEventEmbeddingHandler -->|"BookEventCandidatesGeneratedEvent"| Completion
-    Completion -->|"IngestionCompletedEvent"| Done["Pipeline Complete"]
-    
-    SceneDetectionHandler -.->|"IngestionFailedEvent"| PipelineStageSupport["PipelineStageSupport"]
-    ChunkingHandler -.->|"IngestionFailedEvent"| PipelineStageSupport
-    EmbeddingHandler -.->|"IngestionFailedEvent"| PipelineStageSupport
-    ChapterEventResolutionHandler -.->|"IngestionFailedEvent"| PipelineStageSupport
-    ChapterEventEmbeddingHandler -.->|"IngestionFailedEvent"| PipelineStageSupport
+    IngestionService["IngestionService"] -->|"ChapterIngestionEvent"| StageDispatcher["StageDispatcher"]
+    StageDispatcher -->|"dispatches"| SceneDetectionHandler["SceneDetectionHandler"]
+    SceneDetectionHandler -->|"ScenesDetectedEvent"| StageDispatcher
+    StageDispatcher -->|"dispatches"| ChunkingHandler["ChunkingHandler"]
+    StageDispatcher -->|"dispatches"| ChapterIndividualResolutionHandler["ChapterIndividualResolutionHandler"]
+    StageDispatcher -->|"dispatches"| ChapterLocationResolutionHandler["ChapterLocationResolutionHandler"]
+    StageDispatcher -->|"dispatches"| ChapterObjectResolutionHandler["ChapterObjectResolutionHandler"]
+    StageDispatcher -->|"dispatches"| ChapterCollectiveResolutionHandler["ChapterCollectiveResolutionHandler"]
+    StageDispatcher -->|"dispatches"| ChapterEventResolutionHandler["ChapterEventResolutionHandler"]
+    ChunkingHandler -->|"ChunksCreatedEvent"| StageDispatcher
+    StageDispatcher -->|"dispatches"| EmbeddingHandler["EmbeddingHandler"]
+    EmbeddingHandler -->|"EmbeddingsCompletedEvent"| StageDispatcher
+    ChapterIndividualResolutionHandler -->|"ChapterIndividualsResolvedEvent"| StageDispatcher
+    StageDispatcher -->|"dispatches"| BookIndividualReductionHandler["BookIndividualReductionHandler"]
+    BookIndividualReductionHandler -->|"BookIndividualsReducedEvent"| StageDispatcher
+    ChapterLocationResolutionHandler -->|"ChapterLocationsResolvedEvent"| StageDispatcher
+    StageDispatcher -->|"dispatches"| BookLocationReductionHandler["BookLocationReductionHandler"]
+    BookLocationReductionHandler -->|"BookLocationsReducedEvent"| StageDispatcher
+    ChapterObjectResolutionHandler -->|"ChapterObjectsResolvedEvent"| StageDispatcher
+    StageDispatcher -->|"dispatches"| BookObjectReductionHandler["BookObjectReductionHandler"]
+    BookObjectReductionHandler -->|"BookObjectsReducedEvent"| StageDispatcher
+    ChapterCollectiveResolutionHandler -->|"ChapterCollectivesResolvedEvent"| StageDispatcher
+    StageDispatcher -->|"dispatches"| BookCollectiveReductionHandler["BookCollectiveReductionHandler"]
+    BookCollectiveReductionHandler -->|"BookCollectivesReducedEvent"| StageDispatcher
+    ChapterEventResolutionHandler -->|"ChapterEventsResolvedEvent"| StageDispatcher
+    StageDispatcher -->|"dispatches"| ChapterEventEmbeddingHandler["ChapterEventEmbeddingHandler"]
+    ChapterEventEmbeddingHandler -->|"BookEventCandidatesGeneratedEvent"| StageDispatcher
+    StageDispatcher -->|"dispatches"| IngestionCompletionCoordinator["IngestionCompletionCoordinator"]
+    IngestionCompletionCoordinator -->|"IngestionCompletedEvent"| Done["Pipeline Complete"]
     
     SceneDetectionHandler --- SceneDetectionService["SceneDetectionService"]
     ChunkingHandler --- TextChunkingService["TextChunkingService"]
@@ -48,6 +51,8 @@ graph LR
 ```
 
 ### Sequence Diagram: Full Pipeline Happy Path
+> **Note:** This diagram shows the logical event flow between participants. The actual dispatch mechanism is `StageDispatcher` → `StageOperation.execute(ctx)`. Handler methods now receive `StageExecutionContext ctx` instead of plain event payloads.
+
 ```mermaid
 sequenceDiagram
     participant Client as "Client"
@@ -242,7 +247,7 @@ This means the pipeline is not a single long-running transaction and not a sched
 | Chapter event co-reference and chapter event aggregation (`ChapterEventResolutionHandler`) | `ChapterEventsResolvedEvent` | Event embedding and ANN candidate generation (`ChapterEventEmbeddingHandler`) |
 | Event embedding and ANN candidate generation (`ChapterEventEmbeddingHandler`) | `BookEventCandidatesGeneratedEvent` | Completion coordination state update (`IngestionCompletionCoordinator`) |
 | Completion preconditions satisfied for the job/chapter (`IngestionCompletionCoordinator`) | `IngestionCompletedEvent` | Terminal success notification / downstream consumers |
-| Any stage fails (`PipelineStageSupport`) | `IngestionFailedEvent` | Terminal failure notification / downstream consumers |
+| Any stage fails (`StageDispatcher`) | `IngestionFailedEvent` | Terminal failure notification / downstream consumers |
 
 ### Event Semantics By Boundary
 
@@ -284,7 +289,8 @@ The important contract is not just that an event was emitted, but what downstrea
 
 ### Failure Semantics
 
-- `PipelineStageSupport` treats typed workflow failures carrying structured `IngestionFailure` payloads as first-class stage outcomes.
+- `StageDispatcher` wraps handler execution in an error boundary, catches unchecked exceptions, and converts them to `StepResult.failure()` or `StepResult.retryableFailure()`.
+- Typed workflow failures carrying structured `IngestionFailure` payloads are treated as first-class stage outcomes.
 - Known business failures are preserved into status/failure events instead of being flattened into generic runtime errors or false-success counters.
 - This is especially important for chapter submission, scene detection/localization, and embedding generation, where the current implementation now fails closed for ambiguous or malformed outcomes.
 
@@ -379,7 +385,7 @@ This document describes the orchestration contract, not every internal sub-step.
 The goal of this document is to make the causal event graph legible: which task runs, which event it emits, and which downstream tasks that event unlocks.
 
 ### Failure Handling
-The `PipelineStageSupport.runStage()` utility wraps every stage in a try-catch block to provide uniform error management. When a failure occurs, the system emits an `IngestionFailedEvent` and updates the job status to `FAILED`. This update includes a structured `IngestionFailure` object containing the error type, message, and diagnostic properties.
+The `StageDispatcher.dispatch()` method wraps handler execution in an error boundary that performs: (1) atomic `TRIGGERED→RUNNING` guard, (2) idempotency check (`isAlreadyCompleted`), (3) handler execution with error boundary, (4) `StageCompletedEvent` emission. When a failure occurs, the dispatcher converts the exception to `StepResult.failure()` or `StepResult.retryableFailure()`, emits an `IngestionFailedEvent`, and updates the job status to `FAILED`. This update includes a structured `IngestionFailure` object containing the error type, message, and diagnostic properties.
 
 Each handler defines its own retryability logic. For instance, LLM provider errors are marked as retryable, while a missing chapter entity is treated as a terminal state. The system specifically unwraps `TriadAnalysisException` to preserve granular details about which part of the temporal analysis failed. To prevent cascading failures in the event-driven loop, exceptions are recorded and swallowed by the handler rather than being rethrown.
 
@@ -391,6 +397,19 @@ The pipeline standard is therefore retry safety: a handler owns a defined projec
 
 State checks such as existing-scene or existing-chunk lookups are useful guards, but they are not the whole contract. When a handler replaces or invalidates owned output, downstream projections that depend on that output must be rebuilt, marked stale, or otherwise prevented from being treated as current. See [Handler Retry-Safety](handler-retry-safety.md) and [Handler Design Contract](../../rules/handler-design-contract.md).
 
+### Stage Provenance and Cleanup
+
+Every domain node created during pipeline execution carries `stageId` as a `@Property("stageId")` on the node. The `StageExecutionContext` flows as an explicit method parameter from handler → service → repository.
+
+The `deleteDataByStageId(stageId)` method cleans up all nodes and relationships created by a stage:
+
+```cypher
+MATCH (n {stageId: $stageId}) DETACH DELETE n
+MATCH ()-[r {stageId: $stageId}]->() DELETE r
+```
+
+This enables safe stage replay: delete the previous stage's output, then re-run. See ADR-014 (explicit parameter threading) and ADR-015 (stage node provenance).
+
 ### Boundaries
 - **Triad analysis details** — The internal logic for temporal triad classification is documented in the Triad Analysis Pattern.
 - **Observability model** — The tracking of job statuses and LLM call records is handled by the Observability Pattern.
@@ -401,6 +420,10 @@ State checks such as existing-scene or existing-chunk lookups are useful guards,
 
 ### Primary References
 - `../../adr/004-keep-the-event-driven-ingestion-pipeline.md`
+- `../../adr/013-stage-dispatcher-architecture.md`
+- `../../adr/014-explicit-context-parameter-threading.md`
+- `../../adr/015-stage-node-provenance.md`
+- `../../adr/016-event-driven-pipeline-boundary.md`
 
 ---
 
@@ -408,21 +431,26 @@ State checks such as existing-scene or existing-chunk lookups are useful guards,
 
 ### Executor Binding
 
-All ingestion pipeline handlers must use `@Async("ingestionTaskExecutor")`.
+Executor binding is managed by `StageDispatcher`, which routes `SCENE_SEGMENTATION`
+to `sceneDetectionTaskExecutor` and all other stages to `ingestionLaneTaskExecutor`.
+Individual handlers use `@ForStage(StageKey.X)` instead of `@Async @EventListener`.
 
 ```java
-// Required
-@Async("ingestionTaskExecutor")
-@EventListener
-public void onScenesDetected(ScenesDetectedEvent event) { ... }
+// Required — handler registration
+@ForStage(StageKey.SCENE_SEGMENTATION)
+@Component
+public class SceneDetectionHandler implements StageOperation {
+    @Override
+    public StepResult execute(StageExecutionContext ctx) { ... }
+}
 
-// Wrong — silently falls back to default executor
-@Async
+// Wrong — old pattern, no longer used
+@Async("ingestionLaneTaskExecutor")
 @EventListener
 public void onScenesDetected(ScenesDetectedEvent event) { ... }
 ```
 
-`ingestionTaskExecutor` is the named bean defined in `IngestionTaskExecutorConfig`.
+`ingestionLaneTaskExecutor` is the named bean defined in `IngestionTaskExecutorConfig`.
 Do not use bare `@Async` in any class in the `ingestion` package.
 
 ### Correlation Fields
@@ -454,19 +482,24 @@ or work that did not reach a coherent terminal state.
 
 ### Transactional Event Scoping
 
-`SceneDetectionHandler` is the only pipeline handler that uses
-`@TransactionalEventListener(AFTER_COMMIT)`. Do not change it to `@EventListener`.
+`SceneDetectionHandler` is invoked by `StageDispatcher` via `StageOperation.execute(ctx)`,
+which routes the `StageTriggeredEvent` to the handler through the appropriate executor.
+The `AFTER_COMMIT` scoping is handled by the event publication mechanism, not by individual
+handler annotations.
 
 All downstream handlers (`ChunkingHandler`, `EmbeddingHandler`,
 `ChapterLocationResolutionHandler`, `ChapterIndividualResolutionHandler`,
 `ChapterObjectResolutionHandler`, `ChapterCollectiveResolutionHandler`,
-`ChapterEventResolutionHandler`, `ChapterEventEmbeddingHandler`) use
-plain `@EventListener + @Async("ingestionTaskExecutor")`.
+`ChapterEventResolutionHandler`, `ChapterEventEmbeddingHandler`) are registered
+with `@ForStage` and invoked through `StageDispatcher`, which manages executor
+binding centrally.
 
-**Why:** `@TransactionalEventListener(AFTER_COMMIT)` prevents scene detection from
-firing if the chapter ingestion transaction rolls back. Downstream handlers process
-work that is already durably committed — they do not need the publication-side
-transaction guarantee. Do not propagate `AFTER_COMMIT` further downstream.
+**Why:** The `@TransactionalEventListener(AFTER_COMMIT)` prevents scene detection from
+firing if the chapter ingestion transaction rolls back. This scoping is now enforced
+by the event publication mechanism rather than individual handler annotations.
+Downstream handlers process work that is already durably committed — they do not need
+the publication-side transaction guarantee. Do not propagate `AFTER_COMMIT` further
+downstream.
 
 ### Fan-In Coordinator
 

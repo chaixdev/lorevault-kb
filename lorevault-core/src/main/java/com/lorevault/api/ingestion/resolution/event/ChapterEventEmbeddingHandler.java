@@ -110,6 +110,7 @@ public class ChapterEventEmbeddingHandler implements StageOperation {
             );
             BookEventConsolidationService.BookEventConsolidationResult reductionResult =
                     bookEventConsolidationService.reduceAndPersist(
+                            ctx,
                             jobId,
                             chapterId,
                             bookId,

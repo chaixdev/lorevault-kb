@@ -4,6 +4,7 @@ import com.lorevault.api.content.association.ChapterIndividual;
 import com.lorevault.api.content.association.ChapterIndividualCandidate;
 import com.lorevault.api.content.association.ChapterIndividualGraphRepository;
 import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +28,7 @@ public class ChapterIndividualConsolidationService {
     }
 
     @Transactional
-    public ChapterIndividualConsolidationResult consolidateChapter(UUID chapterId) {
+    public ChapterIndividualConsolidationResult consolidateChapter(StageExecutionContext ctx, UUID chapterId) {
         if (chapterId == null) {
             return new ChapterIndividualConsolidationResult(null, false, 0, 0, "Chapter ID is required");
         }
@@ -65,6 +66,7 @@ public class ChapterIndividualConsolidationService {
             chapterIndividuals.add(new ChapterIndividual(
                     UUID.randomUUID(),
                     chapterId,
+                    ctx.stageId(),
                     candidate.getDisplayName(),
                     candidate.getNormalizedName(),
                     safeMentionCount(candidate.getMentionCount()),

@@ -9,6 +9,7 @@ import com.lorevault.api.ingestion.scene.SceneDetectionResult;
 import com.lorevault.api.ingestion.scene.SceneDetectionService;
 import com.lorevault.api.ingestion.scene.SceneProcessingService;
 import com.lorevault.api.ingestion.scene.SceneWithCoordinates;
+import com.lorevault.api.ai.llm.LlmRetryStrategy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +36,8 @@ class SceneDetectionServiceTest {
     private LlmClient llmClient;
     @Mock
     private SceneProcessingService sceneProcessingService;
+    @Mock
+    private LlmRetryStrategy llmRetryStrategy;
     @InjectMocks
     private SceneDetectionService sceneDetectionService;
 

@@ -5,6 +5,8 @@ import com.lorevault.api.content.association.ChapterEventGraphRepository;
 import com.lorevault.api.content.mention.EventMention;
 import com.lorevault.api.content.mention.EventMentionComponentLookup;
 import com.lorevault.api.content.mention.EventMentionGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.resolution.event.ChapterEventConsolidationService;
 import com.lorevault.api.ingestion.resolution.event.ChapterEventConsolidationResult;
 
@@ -38,6 +40,10 @@ class ChapterEventConsolidationServiceTest {
     @Mock
     private EventMentionComponentLookup componentLookup;
 
+    private static final StageExecutionContext CTX = new StageExecutionContext(
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            StageKey.CHAPTER_EVENT_CONSOLIDATION);
+
     @InjectMocks
     private ChapterEventConsolidationService service;
 
@@ -57,7 +63,7 @@ class ChapterEventConsolidationServiceTest {
     private EventMention mention(UUID id, String displayName, String normalizedName, List<String> aliases,
                                  String eventType, String relation, String evidence, UUID chapterId) {
         return new EventMention(id, null, displayName, normalizedName, aliases,
-                eventType, displayName + " description", relation, null, evidence, null, chapterId, null, null, null, null, null);
+                eventType, displayName + " description", relation, null, evidence, UUID.randomUUID(), null, chapterId, null, null, null, null, null);
     }
 
     private List<ChapterEvent> captureAllSaved() {
@@ -87,7 +93,7 @@ class ChapterEventConsolidationServiceTest {
         UUID chapterId = UUID.randomUUID();
         when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(0L);
 
-        ChapterEventConsolidationResult result = service.consolidateChapter(chapterId);
+        ChapterEventConsolidationResult result = service.consolidateChapter(CTX, chapterId);
 
         assertThat(result.success()).isFalse();
         assertThat(result.rawMentionsProcessed()).isZero();
@@ -120,7 +126,7 @@ class ChapterEventConsolidationServiceTest {
         when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
         when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(2L);
 
-        ChapterEventConsolidationResult result = service.consolidateChapter(chapterId);
+        ChapterEventConsolidationResult result = service.consolidateChapter(CTX, chapterId);
 
         assertThat(result.success()).isTrue();
         assertThat(result.rawMentionsProcessed()).isEqualTo(3);
@@ -161,7 +167,7 @@ class ChapterEventConsolidationServiceTest {
         when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
         when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(1L);
 
-        service.consolidateChapter(chapterId);
+        service.consolidateChapter(CTX, chapterId);
 
         List<ChapterEvent> saved = captureAllSaved();
         assertThat(saved).hasSize(1);
@@ -188,7 +194,7 @@ class ChapterEventConsolidationServiceTest {
         when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
         when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(1L);
 
-        service.consolidateChapter(chapterId);
+        service.consolidateChapter(CTX, chapterId);
 
         List<ChapterEvent> saved = captureAllSaved();
         ChapterEvent savedEvent = saved.getFirst();
@@ -216,7 +222,7 @@ class ChapterEventConsolidationServiceTest {
         when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
         when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(1L);
 
-        service.consolidateChapter(chapterId);
+        service.consolidateChapter(CTX, chapterId);
 
         List<ChapterEvent> saved = captureAllSaved();
         ChapterEvent savedEvent = saved.get(0);
@@ -253,14 +259,14 @@ class ChapterEventConsolidationServiceTest {
         ));
         when(mentionRepository.findByChapterIdOrdered(chapterId)).thenReturn(List.of(
                 new EventMention(m1, null, "The Accord", "the accord", Arrays.asList("Zeta", "", null, "Alpha", "Alpha"),
-                        "TREATY", "The Accord description", "PRECEDES", null, "", null, chapterId, null, null, null, null, null),
+                        "TREATY", "The Accord description", "PRECEDES", null, "", UUID.randomUUID(), null, chapterId, null, null, null, null, null),
                 new EventMention(m2, null, "The Accord", "the accord", List.of("Beta", "Alpha"),
-                        "", "The Accord description", null, null, null, null, chapterId, null, null, null, null, null)
+                        "", "The Accord description", null, null, null, UUID.randomUUID(), null, chapterId, null, null, null, null, null)
         ));
         when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
         when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(1L);
 
-        service.consolidateChapter(chapterId);
+        service.consolidateChapter(CTX, chapterId);
 
         ChapterEvent savedEvent = captureAllSaved().getFirst();
         assertThat(recordStringList(savedEvent, "supportedAliases")).containsExactly("Alpha", "Beta", "The Accord", "Zeta", "the accord");
@@ -277,7 +283,7 @@ class ChapterEventConsolidationServiceTest {
         when(chapterEventRepository.countMentionsByChapterId(chapterId)).thenReturn(2L);
         when(componentLookup.findSameEventComponents(chapterId)).thenReturn(List.of());
 
-        ChapterEventConsolidationResult result = service.consolidateChapter(chapterId);
+        ChapterEventConsolidationResult result = service.consolidateChapter(CTX, chapterId);
 
         assertThat(result.success()).isFalse();
         assertThat(result.failedCorefWindowCount()).isZero();
@@ -305,7 +311,7 @@ class ChapterEventConsolidationServiceTest {
         when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
         when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(1L);
 
-        service.consolidateChapter(chapterId);
+        service.consolidateChapter(CTX, chapterId);
 
         List<ChapterEvent> saved = captureAllSaved();
         assertThat(saved).hasSize(1);
@@ -337,7 +343,7 @@ class ChapterEventConsolidationServiceTest {
         when(chapterEventRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
         when(chapterEventRepository.countChapterEventsByChapterId(chapterId)).thenReturn(2L);
 
-        service.consolidateChapter(chapterId);
+        service.consolidateChapter(CTX, chapterId);
 
         List<ChapterEvent> saved = captureAllSaved();
         assertThat(saved).hasSize(2);

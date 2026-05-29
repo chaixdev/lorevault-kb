@@ -2,6 +2,7 @@ package com.lorevault.api.ingestion.resolution.individual;
 
 import com.lorevault.api.content.association.BookIndividual;
 import com.lorevault.api.content.association.BookIndividualGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.library.book.BookGraphRepository;
 
 import java.util.ArrayList;
@@ -47,7 +48,7 @@ public class BookIndividualConsolidationService {
             maxAttempts = 3,
             backoff = @Backoff(delay = 200, multiplier = 2.0, maxDelay = 2_000)
     )
-    public BookIndividualConsolidationResult consolidateBook(UUID bookId) {
+    public BookIndividualConsolidationResult consolidateBook(StageExecutionContext ctx, UUID bookId) {
         if (bookId == null) {
             return new BookIndividualConsolidationResult(null, false, 0, 0, "Book ID is required");
         }
@@ -57,10 +58,10 @@ public class BookIndividualConsolidationService {
             bookIndividualPersistenceService.replaceBookIndividuals(bookId, List.of());
             return new BookIndividualConsolidationResult(bookId, true, 0, 0, "No chapter individuals found for book");
         }
-        return consolidateBook(bookId, candidates);
+        return consolidateBook(ctx, bookId, candidates);
     }
 
-    BookIndividualConsolidationResult consolidateBook(UUID bookId, List<BookConsolidationCandidate> candidates) {
+    BookIndividualConsolidationResult consolidateBook(StageExecutionContext ctx, UUID bookId, List<BookConsolidationCandidate> candidates) {
 
         List<BookIndividual> bookIndividuals = new ArrayList<>();
         for (BookConsolidationCandidate candidate : candidates) {
@@ -70,6 +71,7 @@ public class BookIndividualConsolidationService {
             bookIndividuals.add(new BookIndividual(
                     UUID.randomUUID(),
                     bookId,
+                    ctx.stageId(),
                     candidate.displayName(),
                     candidate.normalizedName(),
                     safeCount(bookIndividualRepository.countChapterIndividualsForBookAndName(bookId, candidate.normalizedName())),

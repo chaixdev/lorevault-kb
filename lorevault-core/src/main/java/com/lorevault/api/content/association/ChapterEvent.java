@@ -7,11 +7,13 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Property;
 
 @Node(primaryLabel = "ChapterEvent", labels = "ChapterEntity")
 public record ChapterEvent(
         @Id UUID id,
         UUID chapterId,
+        @Property("stageId") UUID stageId,
         /**
          * The co-reference component representative ID (lexicographically smallest member UUID string).
          * Used as a stable lookup key after {@code saveAll} — positional correlation is not reliable.

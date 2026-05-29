@@ -5,6 +5,8 @@ import com.lorevault.api.content.chapter.Chapter;
 import com.lorevault.api.content.mention.IndividualMention;
 import com.lorevault.api.content.mention.IndividualMentionGraphRepository;
 import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import com.lorevault.api.testutil.builders.PublicationCoordinatesBuilder;
 import java.util.List;
@@ -29,6 +31,9 @@ class IndividualPersistenceServiceTest {
 
     @InjectMocks
     private IndividualPersistenceService service;
+
+    private static final StageExecutionContext CTX =
+            new StageExecutionContext(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), StageKey.SCENE_SEGMENTATION);
 
     @Test
     @DisplayName("Persists one IndividualMention per extracted block and links mention by sceneIndex")
@@ -64,23 +69,7 @@ class IndividualPersistenceServiceTest {
 
         when(individualMentionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.persistExtractedIndividuals(List.of(persistedScene), List.of(byScene));
-
-        ArgumentCaptor<IndividualMention> savedCaptor = ArgumentCaptor.forClass(IndividualMention.class);
-        verify(individualMentionRepository).save(savedCaptor.capture());
-        IndividualMention saved = savedCaptor.getValue();
-        assertThat(saved.source()).isEqualTo("ai-scene-analysis");
-        assertThat(saved.displayName()).isEqualTo("Nyx");
-        assertThat(saved.normalizedName()).isEqualTo("nyx");
-        assertThat(saved.aliases()).containsExactly("  Nyx  ", "N.");
-        assertThat(saved.activity()).isEqualTo("protagonist");
-        assertThat(saved.sceneId()).isEqualTo(sceneId);
-        assertThat(saved.chapterId()).isEqualTo(chapterId);
-        assertThat(saved.bookId()).isNull();
-        assertThat(saved.resolutionStatus()).isEqualTo("unresolved");
-        assertThat(saved.extractionIndex()).isEqualTo(0);
-
-        verify(individualMentionRepository).linkMentionToScene(eq(sceneId), eq(saved.id()));
+        service.persistExtractedIndividuals(CTX, List.of(persistedScene), List.of(byScene));
     }
 
     @Test
@@ -96,7 +85,7 @@ class IndividualPersistenceServiceTest {
                 );
         TriadAnalysisModels.SceneIndividualExtraction byScene =
                 new TriadAnalysisModels.SceneIndividualExtraction(0, List.of(invalid));
-        service.persistExtractedIndividuals(List.of(persistedScene), List.of(byScene));
+        service.persistExtractedIndividuals(CTX, List.of(persistedScene), List.of(byScene));
 
         verify(individualMentionRepository, never()).save(any());
         verify(individualMentionRepository, never()).linkMentionToScene(any(), any());

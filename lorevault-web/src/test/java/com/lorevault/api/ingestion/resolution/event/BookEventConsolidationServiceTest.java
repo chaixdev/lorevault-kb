@@ -3,6 +3,8 @@ package com.lorevault.api.ingestion.resolution.event;
 import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.content.association.ChapterEvent;
 import com.lorevault.api.content.association.ChapterEventGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -26,6 +28,10 @@ class BookEventConsolidationServiceTest {
     @Mock private BookEventPersistenceService persistenceService;
     @Mock private ChapterEventGraphRepository chapterEventRepository;
 
+    private static final StageExecutionContext CTX = new StageExecutionContext(
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            StageKey.BOOK_EVENT_CANDIDATE_GENERATION);
+
     @Test
     @DisplayName("Reduces only the expanded rewrite scope and preserves current chapter triggers")
     void reducesExpandedRewriteScope() {
@@ -46,6 +52,7 @@ class BookEventConsolidationServiceTest {
 
         BookEventConsolidationService service = new BookEventConsolidationService(persistenceService, chapterEventRepository);
         BookEventConsolidationService.BookEventConsolidationResult result = service.reduceAndPersist(
+                CTX,
                 jobId,
                 chapterId,
                 bookId,
@@ -79,6 +86,7 @@ class BookEventConsolidationServiceTest {
 
         BookEventConsolidationService service = new BookEventConsolidationService(persistenceService, chapterEventRepository);
         BookEventConsolidationService.BookEventConsolidationResult result = service.reduceAndPersist(
+                CTX,
                 jobId,
                 chapterId,
                 bookId,
@@ -102,6 +110,7 @@ class BookEventConsolidationServiceTest {
         return new ChapterEvent(
                 id,
                 chapterId,
+                null,
                 null,
                 normalizedName,
                 normalizedName,

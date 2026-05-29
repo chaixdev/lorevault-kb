@@ -1,5 +1,6 @@
 package com.lorevault.api.ingestion.resolution.location;
 
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -73,9 +74,9 @@ public class BookConsolidationClaimService {
      * @param retryDelayMs milliseconds to sleep between retries
      * @return {@code true} if the claim was acquired within the attempt budget
      */
-    public boolean tryAcquireClaimWithRetry(UUID bookId, String lane, int maxAttempts, long retryDelayMs) {
+    public boolean tryAcquireClaimWithRetry(UUID bookId, String lane, UUID stageId, int maxAttempts, long retryDelayMs) {
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-            if (tryAcquireClaim(bookId, lane)) {
+            if (tryAcquireClaim(bookId, lane, stageId)) {
                 return true;
             }
             if (attempt < maxAttempts) {
@@ -94,8 +95,8 @@ public class BookConsolidationClaimService {
         return false;
     }
 
-    public boolean tryAcquireClaimWithRetry(UUID bookId, int maxAttempts, long retryDelayMs) {
-        return tryAcquireClaimWithRetry(bookId, "BOOK_REDUCTION", maxAttempts, retryDelayMs);
+    public boolean tryAcquireClaimWithRetry(UUID bookId, UUID stageId, int maxAttempts, long retryDelayMs) {
+        return tryAcquireClaimWithRetry(bookId, "BOOK_REDUCTION", stageId, maxAttempts, retryDelayMs);
     }
 
     /**
@@ -108,7 +109,7 @@ public class BookConsolidationClaimService {
      * @return {@code true} if this call acquired the claim; {@code false} if another
      *         worker already holds it
      */
-    public boolean tryAcquireClaim(UUID bookId, String lane) {
+    public boolean tryAcquireClaim(UUID bookId, String lane, UUID stageId) {
         return Boolean.TRUE.equals(requiresNewTransactionTemplate.execute(status -> {
             String workerId = workerId();
             String acquiredToken = UUID.randomUUID().toString();
@@ -118,7 +119,8 @@ public class BookConsolidationClaimService {
                     lane,
                     LocalDateTime.now(),
                     workerId,
-                    acquiredToken
+                    acquiredToken,
+                    stageId
             );
             if (acquired) {
                 heldClaimTokens.put(claimId(bookId, lane), acquiredToken);
@@ -130,8 +132,8 @@ public class BookConsolidationClaimService {
         }));
     }
 
-    public boolean tryAcquireClaim(UUID bookId) {
-        return tryAcquireClaim(bookId, "BOOK_REDUCTION");
+    public boolean tryAcquireClaim(UUID bookId, UUID stageId) {
+        return tryAcquireClaim(bookId, "BOOK_REDUCTION", stageId);
     }
 
     /**

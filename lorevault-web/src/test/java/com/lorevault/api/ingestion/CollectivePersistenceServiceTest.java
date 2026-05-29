@@ -11,6 +11,8 @@ import com.lorevault.api.content.mention.CollectiveMention;
 import com.lorevault.api.content.mention.CollectiveMentionGraphRepository;
 import com.lorevault.api.content.scene.Scene;
 import com.lorevault.api.ingestion.infrastructure.CollectivePersistenceService;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import java.util.List;
 import java.util.UUID;
@@ -32,6 +34,9 @@ class CollectivePersistenceServiceTest {
     @InjectMocks
     private CollectivePersistenceService service;
 
+    private static final StageExecutionContext CTX =
+            new StageExecutionContext(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), StageKey.SCENE_SEGMENTATION);
+
     @Test
     @DisplayName("Persists one CollectiveMention per extracted block and links mention by sceneIndex")
     void persistsCollectivesAndLinksMentions() {
@@ -50,7 +55,7 @@ class CollectivePersistenceServiceTest {
 
         when(collectiveMentionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.persistExtractedCollectives(List.of(persistedScene), List.of(byScene));
+        service.persistExtractedCollectives(CTX, List.of(persistedScene), List.of(byScene));
 
         ArgumentCaptor<CollectiveMention> savedCaptor = ArgumentCaptor.forClass(CollectiveMention.class);
         verify(collectiveMentionRepository).save(savedCaptor.capture());
@@ -84,6 +89,7 @@ class CollectivePersistenceServiceTest {
                 );
 
         service.persistExtractedCollectives(
+                CTX,
                 List.of(persistedScene),
                 List.of(new TriadAnalysisModels.SceneCollectiveExtraction(0, List.of(invalid)))
         );

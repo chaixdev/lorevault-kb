@@ -36,7 +36,7 @@ public class ChapterCollectiveConsolidationHandler implements ChapterCollectiveC
                     chapterId
             );
 
-            ChapterCollectiveConsolidationResult response = chapterCollectiveConsolidationService.consolidateChapter(chapterId);
+            ChapterCollectiveConsolidationResult response = chapterCollectiveConsolidationService.consolidateChapter(ctx, chapterId);
 
             if (response.success()) {
                 log.info(

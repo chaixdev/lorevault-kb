@@ -4,6 +4,8 @@ import com.lorevault.api.ingestion.infrastructure.*;
 import com.lorevault.api.content.relation.RelationClaim;
 import com.lorevault.api.content.relation.RelationClaimGraphRepository;
 import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import com.lorevault.catalog.RelationCatalogDefinition;
 import com.lorevault.catalog.RelationCatalogId;
@@ -36,6 +38,9 @@ class RelationClaimPersistenceServiceTest {
     @InjectMocks
     private RelationClaimPersistenceService service;
 
+    private static final StageExecutionContext CTX =
+            new StageExecutionContext(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), StageKey.SCENE_SEGMENTATION);
+
     // -----------------------------------------------------------------------
     // Null / empty input guards
     // -----------------------------------------------------------------------
@@ -50,7 +55,7 @@ class RelationClaimPersistenceServiceTest {
         TriadAnalysisModels.SceneRelationClaimExtraction extraction =
                 new TriadAnalysisModels.SceneRelationClaimExtraction(0, List.of(claim));
 
-        service.persistExtractedRelationClaims(null, List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, null, List.of(extraction));
 
         verifyNoInteractions(relationClaimRepository, catalogService);
     }
@@ -65,7 +70,7 @@ class RelationClaimPersistenceServiceTest {
         TriadAnalysisModels.SceneRelationClaimExtraction extraction =
                 new TriadAnalysisModels.SceneRelationClaimExtraction(0, List.of(claim));
 
-        service.persistExtractedRelationClaims(List.of(), List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, List.of(), List.of(extraction));
 
         verifyNoInteractions(relationClaimRepository, catalogService);
     }
@@ -76,7 +81,7 @@ class RelationClaimPersistenceServiceTest {
         Scene scene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text",
                 UUID.randomUUID(), null, null, null, null, null);
 
-        service.persistExtractedRelationClaims(List.of(scene), null);
+        service.persistExtractedRelationClaims(CTX, List.of(scene), null);
 
         verifyNoInteractions(relationClaimRepository, catalogService);
     }
@@ -87,7 +92,7 @@ class RelationClaimPersistenceServiceTest {
         Scene scene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text",
                 UUID.randomUUID(), null, null, null, null, null);
 
-        service.persistExtractedRelationClaims(List.of(scene), List.of());
+        service.persistExtractedRelationClaims(CTX, List.of(scene), List.of());
 
         verifyNoInteractions(relationClaimRepository, catalogService);
     }
@@ -130,7 +135,7 @@ class RelationClaimPersistenceServiceTest {
         TriadAnalysisModels.SceneRelationClaimExtraction extraction =
                 new TriadAnalysisModels.SceneRelationClaimExtraction(0, List.of(claim1, claim2));
 
-        service.persistExtractedRelationClaims(List.of(persistedScene), List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, List.of(persistedScene), List.of(extraction));
 
         ArgumentCaptor<RelationClaim> savedCaptor = ArgumentCaptor.forClass(RelationClaim.class);
         verify(relationClaimRepository, times(2)).save(savedCaptor.capture());
@@ -196,7 +201,7 @@ class RelationClaimPersistenceServiceTest {
         when(catalogService.resolve(any())).thenThrow(new UnsupportedOperationException("Catalog module is disabled"));
         when(relationClaimRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.persistExtractedRelationClaims(List.of(persistedScene), List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, List.of(persistedScene), List.of(extraction));
 
         ArgumentCaptor<RelationClaim> savedCaptor = ArgumentCaptor.forClass(RelationClaim.class);
         verify(relationClaimRepository).save(savedCaptor.capture());
@@ -230,7 +235,7 @@ class RelationClaimPersistenceServiceTest {
         when(relationClaimRepository.countBySceneIdAndContentIdentity(
                 sceneId, "Kaladin", "leads", "Bridge Four")).thenReturn(1L);
 
-        service.persistExtractedRelationClaims(List.of(persistedScene), List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, List.of(persistedScene), List.of(extraction));
 
         verify(relationClaimRepository, never()).save(any());
         verify(relationClaimRepository, never()).linkClaimToScene(any(), any());
@@ -257,7 +262,7 @@ class RelationClaimPersistenceServiceTest {
         TriadAnalysisModels.SceneRelationClaimExtraction extraction =
                 new TriadAnalysisModels.SceneRelationClaimExtraction(99, List.of(claim));
 
-        service.persistExtractedRelationClaims(List.of(persistedScene), List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, List.of(persistedScene), List.of(extraction));
 
         verify(relationClaimRepository, never()).save(any());
         verify(relationClaimRepository, never()).linkClaimToScene(any(), any());
@@ -277,7 +282,7 @@ class RelationClaimPersistenceServiceTest {
         TriadAnalysisModels.SceneRelationClaimExtraction extraction =
                 new TriadAnalysisModels.SceneRelationClaimExtraction(0, List.of(claim));
 
-        service.persistExtractedRelationClaims(List.of(invalidScene), List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, List.of(invalidScene), List.of(extraction));
 
         verify(relationClaimRepository, never()).save(any());
         verify(relationClaimRepository, never()).linkClaimToScene(any(), any());

@@ -7,6 +7,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Property;
 
 @Node(primaryLabel = "CollectiveMention", labels = "Mention")
 public record CollectiveMention(
@@ -18,6 +19,7 @@ public record CollectiveMention(
         String collectiveType,
         String certainty,
         String evidence,
+        @Property("stageId") UUID stageId,
         UUID sceneId,
         UUID chapterId,
         UUID bookId,

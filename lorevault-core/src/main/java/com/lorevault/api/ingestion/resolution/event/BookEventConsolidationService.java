@@ -4,6 +4,7 @@ import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.content.association.BookEvent;
 import com.lorevault.api.content.association.ChapterEvent;
 import com.lorevault.api.content.association.ChapterEventGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -33,6 +34,7 @@ public class BookEventConsolidationService {
     }
 
     public BookEventConsolidationResult reduceAndPersist(
+            StageExecutionContext ctx,
             UUID jobId,
             UUID chapterId,
             UUID bookId,
@@ -105,6 +107,7 @@ public class BookEventConsolidationService {
             bookEventsToCreate.add(new BookEvent(
                     UUID.randomUUID(),
                     bookId,
+                    ctx.stageId(),
                     representative.displayName(),
                     representative.normalizedName(),
                     representative.representativeEventType(),

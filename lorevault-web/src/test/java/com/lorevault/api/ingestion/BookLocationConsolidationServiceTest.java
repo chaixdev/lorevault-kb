@@ -3,6 +3,8 @@ package com.lorevault.api.ingestion;
 import com.lorevault.api.content.association.BookLocation;
 import com.lorevault.api.content.association.ChapterLocation;
 import com.lorevault.api.content.association.ChapterLocationGraphRepository;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
+import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.resolution.location.BookLocationPersistenceService;
 import com.lorevault.api.ingestion.resolution.location.BookLocationConsolidationService;
 import com.lorevault.api.ingestion.resolution.location.BookLocationConsolidationResult;
@@ -35,6 +37,10 @@ class BookLocationConsolidationServiceTest {
     @Mock
     private BookLocationPersistenceService bookLocationPersistenceService;
 
+    private static final StageExecutionContext CTX = new StageExecutionContext(
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            StageKey.BOOK_LOCATION_CONSOLIDATION);
+
     @InjectMocks
     private BookLocationConsolidationService service;
 
@@ -60,7 +66,7 @@ class BookLocationConsolidationServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(1));
         when(bookLocationPersistenceService.countByBookId(bookId)).thenReturn(2L);
 
-        BookLocationConsolidationResult response = service.consolidateBook(bookId);
+        BookLocationConsolidationResult response = service.consolidateBook(CTX, bookId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.chapterLocationsProcessed()).isEqualTo(4);
@@ -111,6 +117,7 @@ class BookLocationConsolidationServiceTest {
         ChapterLocation blank = new ChapterLocation(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
+                null,
                 " ",
                 " ",
                 List.of(" "),
@@ -121,7 +128,7 @@ class BookLocationConsolidationServiceTest {
 
         when(chapterLocationRepository.findByBookId(bookId)).thenReturn(List.of(blank));
 
-        BookLocationConsolidationResult response = service.consolidateBook(bookId);
+        BookLocationConsolidationResult response = service.consolidateBook(CTX, bookId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.chapterLocationsProcessed()).isZero();
@@ -136,7 +143,7 @@ class BookLocationConsolidationServiceTest {
         UUID bookId = UUID.randomUUID();
         when(chapterLocationRepository.findByBookId(bookId)).thenReturn(List.of());
 
-        BookLocationConsolidationResult response = service.consolidateBook(bookId);
+        BookLocationConsolidationResult response = service.consolidateBook(CTX, bookId);
 
         assertThat(response.success()).isTrue();
         assertThat(response.chapterLocationsProcessed()).isZero();
@@ -148,7 +155,7 @@ class BookLocationConsolidationServiceTest {
     @Test
     @DisplayName("Retries transient Neo4j lock conflicts at the consolidation boundary")
     void retriesTransientNeo4jLockConflictsAtConsolidationBoundary() throws NoSuchMethodException {
-        Retryable retryable = MergedAnnotations.from(BookLocationConsolidationService.class.getMethod("consolidateBook", UUID.class))
+        Retryable retryable = MergedAnnotations.from(BookLocationConsolidationService.class.getMethod("consolidateBook", StageExecutionContext.class, UUID.class))
                 .get(Retryable.class)
                 .synthesize();
 
@@ -164,6 +171,6 @@ class BookLocationConsolidationServiceTest {
             List<String> aliases,
             int mentionCount
     ) {
-        return new ChapterLocation(id, chapterId, displayName, normalizedName, aliases, mentionCount, null, null);
+        return new ChapterLocation(id, chapterId, null, displayName, normalizedName, aliases, mentionCount, null, null);
     }
 }

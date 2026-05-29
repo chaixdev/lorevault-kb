@@ -70,7 +70,7 @@ public class ChapterEventConsolidationHandler implements ChapterEventConsolidati
 
             // Stage 3: deterministic aggregation from SAME_EVENT chains → ChapterEvent nodes
             ChapterEventConsolidationResult aggregationResult =
-                    chapterEventConsolidationService.consolidateChapter(chapterId);
+                    chapterEventConsolidationService.consolidateChapter(ctx, chapterId);
 
             long elapsed = System.currentTimeMillis() - start;
             return StepResult.success(StageKey.CHAPTER_EVENT_CONSOLIDATION,

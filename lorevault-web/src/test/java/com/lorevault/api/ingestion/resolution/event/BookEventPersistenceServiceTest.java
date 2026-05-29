@@ -30,7 +30,7 @@ class BookEventPersistenceServiceTest {
         UUID bookId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         UUID jobId = UUID.randomUUID();
-        BookEvent bookEvent = new BookEvent(UUID.randomUUID(), bookId, "Duel", "duel", "ACTION", null, null);
+        BookEvent bookEvent = new BookEvent(UUID.randomUUID(), bookId, UUID.randomUUID(), "Duel", "duel", "ACTION", null, null);
         when(bookEventRepository.saveAll(List.of(bookEvent))).thenReturn(List.of(bookEvent));
 
         BookEventPersistenceService service = new BookEventPersistenceService(bookEventRepository, neo4jClient);

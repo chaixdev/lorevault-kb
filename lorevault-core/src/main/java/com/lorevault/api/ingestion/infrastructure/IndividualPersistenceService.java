@@ -3,6 +3,7 @@ package com.lorevault.api.ingestion.infrastructure;
 import com.lorevault.api.content.mention.IndividualMention;
 import com.lorevault.api.content.mention.IndividualMentionGraphRepository;
 import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ public class IndividualPersistenceService {
 
     @Transactional
     public void persistExtractedIndividuals(
+            StageExecutionContext ctx,
             List<Scene> persistedScenes,
             List<TriadAnalysisModels.SceneIndividualExtraction> sceneExtractions
     ) {
@@ -58,6 +60,7 @@ public class IndividualPersistenceService {
                         extracted.activity(),
                         extracted.age(),
                         extracted.physicalProperties(),
+                        ctx.stageId(),
                         sceneId,
                         chapterId,
                         null,
