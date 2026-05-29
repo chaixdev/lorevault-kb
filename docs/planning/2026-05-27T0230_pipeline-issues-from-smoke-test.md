@@ -16,13 +16,15 @@
 
 **Current mitigation:** Placeholder returns `null` stageId/llmCallId in `TemporalEdgeProvenance`. Temporal edges are written without proper provenance metadata.
 
-**Phase 3c progress:** Per-scene `buildTriad(sceneId)` now uses graph-based prev/next resolution (May 29). The analysis-side blocker is removed. However, the DAG still has one `SCENE_SEGMENTATION` stage per chapter — per-scene Stage granularity is needed before a scene→Stage lookup is meaningful.
+**Phase 3c progress:** Per-scene `buildTriad(sceneId)` now uses graph-based prev/next resolution (May 29). The analysis-side blocker is removed.
 
-**Proper fix:** Add per-scene Stage granularity to the DAG (one Stage node per scene within SCENE_SEGMENTATION), then update `GraphTriadAnalysisArtifactLookup` to query the per-scene Stage and `TriadTemporalEdgeRequestFactory` to use it.
+**Design (May 29):** The fix is `StageExecutionContext` — a first-class execution identity record that flows `stageId` from dispatcher through handlers → services → repositories into every domain node/edge. Provenance lives on the data itself; no per-scene Stage DAG nodes needed. Also eliminates `StageOutput`, implements `deleteDataByStageId`, and aligns with the three-tier observability model.
 
-**Effort:** Medium. Requires DAG model extension for per-scene stages + lookup implementation.
+**Proper fix:** `StageExecutionContext` — a first-class execution identity record (`stageId`, `jobId`, `chapterId`, `bookId`, `stage`) that flows from `StageDispatcher` through handlers → services → repositories into every domain node/edge as a `stageId` property. Provenance lives on the data itself; no lookup needed. Also eliminates `StageOutput` (redundant with `Stage.status`), implements `deleteDataByStageId` for rerun cleanup, and aligns with the project's three-tier observability model.
 
-**Planning doc reference:** `docs/planning/2026-05-22T2300_durable-ingestion-orchestration.md` deviation #3.
+**Effort:** ~100 files, mostly mechanical (rename `DispatchContext` → `StageExecutionContext`, add `stageId` to domain CREATE queries, delete `StageOutput`).
+
+**Planning doc:** `docs/planning/2026-05-29T0000_stage-execution-context-and-provenance.md`
 
 ---
 
@@ -136,7 +138,7 @@ Cannot coerce DATE_TIME to LocalDateTime; Error code 'N/A'
 
 | Priority | Issue | Effort | Status |
 |----------|-------|--------|--------|
-| 1 | #1 Proper triad provenance fix | 1-2d | Deferred (Phase 3c unblocked analysis side; needs per-scene Stage granularity in DAG) |
+| 1 | #1 Proper triad provenance fix | ~100 files (mechanical) | Design ready — see `StageExecutionContext` plan. Pending implementation. |
 | 2 | #2 Orchestrator fires resolution before scene detection | Resolved by #3 fix | ✅ Fixed May 27 |
 | 3 | #7 Book-level reductions skip (bookId=null) | ~few hours | ✅ Fixed May 27 |
 | 4 | #3 Concurrent scene detection workers | ~few hours | ✅ Fixed May 27 |

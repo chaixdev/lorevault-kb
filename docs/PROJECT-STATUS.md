@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
 **Last Updated:** May 29, 2026
-**Status:** Active — Phases 1+2+4 complete, Phase 3a+3b+3c complete. 463 tests, 0 failures. ArchUnit passing.
+**Status:** Active — Phases 1+2+4 complete, Phases 3a+3b+3c complete, terminology alignment complete. StageExecutionContext + provenance designed (pending implementation). 463 tests, 0 failures.
 **Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state. Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
@@ -119,6 +119,13 @@ Near-term execution slices before pivoting to AWS/n8n:
    - Done. ~50 files renamed, 18 enum values updated (StageKey + StepKey), all endpoint paths changed to `consolidate-*`, Neo4j constraints renamed, 13 test files renamed. `BookConsolidationRedirectController` provides redirects from both legacy `resolve-*` and `reduce-*` URLs. 463 tests green.
    - See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md`
 
+5. **StageExecutionContext & domain provenance**
+   - Replace `DispatchContext` with `StageExecutionContext` record carrying `stageId` — the Neo4j Stage node ID
+   - Flow through handlers → services → repositories; every domain node/edge tagged with `stageId`
+   - Closes smoke test issue #1 (triad provenance), implements `deleteDataByStageId` (rerun cleanup), eliminates `StageOutput` (redundant with `Stage.status`)
+   - Aligns with three-tier observability model (logging, graph audit, metrics)
+   - See: `docs/planning/2026-05-29T0000_stage-execution-context-and-provenance.md`
+
 5. **Relation edge projection** — now covered by item #3 above
 
 ### Phase B: AWS cloud-native foundation
@@ -205,6 +212,7 @@ The code walkthrough continues until the full pipeline is reviewed. Pipeline har
 - [n8n Ingestion-Retrieval Boundary Strategy](brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md) — strategic n8n enhancement plan
 - [AWS Cloud-Native Learning Path](brainstorm/aws-cloud-native/2026-05-11T2027_aws-cloud-native-learning-path.md) — AWS deployment strategy
 - [Entity Pipeline Terminology Alignment](planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md) — resolution → reduction terminology proposal
+- [Stage Execution Context & Domain Provenance](planning/2026-05-29T0000_stage-execution-context-and-provenance.md) — PipelineExecution record design, provenance tagging, rerun cleanup
 - [Micrometer Stage Timing](planning/2026-05-23T1700_micrometer-stage-timing.md) — replace manual `System.currentTimeMillis()` with Micrometer `Timer.Sample` (learning goal, prerequisite for AWS observability)
 
 ## Historical / Transitional Notes

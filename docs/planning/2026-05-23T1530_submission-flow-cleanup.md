@@ -384,7 +384,7 @@ Items #13, #16, and #21 benefit from the full pipeline walkthrough (tracked in [
 | Issue | Item | Notes |
 |-------|------|-------|
 | **#7/#20** | StageDispatcher extraction | Extracted to [StageDispatcher doc](2026-05-24T0000_stagedispatcher-extraction.md). Highest value, highest risk. Standalone PR. |
-| **#14** | `buildTriadsForChapter` → per-scene `buildTriad` | Changes core triad logic. **Verify LLM call count impact before executing.** |
+| **#14** | `buildTriadsForChapter` → per-scene `buildTriad` | ✅ Done (Phase 3c). Graph-based prev/next via NEXT_IN_READING_ORDER edges. |
 | #10b | `ChapterEventAnnRerunService` migration through coordinator | Design discussion needed. Documented known-gap. |
 
 ### Parked / Skipped
