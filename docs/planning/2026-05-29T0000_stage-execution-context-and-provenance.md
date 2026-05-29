@@ -180,3 +180,87 @@ The provenance is on the edge itself: `MATCH ()-[r:BEFORE]->() WHERE r.stageId =
 
 - **Index on `stageId`?** Not needed for `deleteDataByStageId` (uses label-agnostic property scan). But if queries ever need to find all artifacts from a stage (e.g., operator dashboard), a composite index on `(stageId, :Label)` would help. Deferred — add when the query exists.
 - **`TemporalEdgeProvenance` simplification:** Currently a 4-field record (`jobId`, `chapterId`, `statusRecordId`, `llmCallRecordId`). With `stageId` on edges, `statusRecordId` is redundant. `llmCallRecordId` could also move to the edge. Simplify to `(jobId, chapterId, stageId, llmCallRecordId)` or remove entirely and rely on the edge's `stageId` property.
+
+## Implementation Notes
+
+**Status:** Partially implemented (May 29, 2026). Commit `bb9f196`.
+
+### What shipped
+
+**Phase 1 — Foundation (complete):**
+- `DispatchContext` → `StageExecutionContext` with `stageId` field added
+- `StageGraphRepository.setRunningConditionally()` returns `Optional<UUID>` (stage ID) instead of `boolean`
+- `StageDispatcher` rewritten: resolves stageId, includes in context, switches idempotency to `Stage.status == COMPLETED`
+- `StageOutput` + `StageOutputGraphRepository` deleted (293 lines removed)
+- `IngestionPipelineCoordinator` updated: removed StageOutput writes, implemented `deleteDataByStageId` with generic Cypher
+- All 15 handlers updated to use `StageExecutionContext` (mechanical rename)
+
+**Phase 2 — Provenance + Tests (complete):**
+- `TemporalEdgeProvenance.statusRecordId` → `stageId` (field rename)
+- `TriadTemporalEdgeRequestFactory` unstubbed: accepts `stageId` parameter, constructs provenance directly
+- Deleted `resolveRequiredProvenance()`, `findRequiredTriadStageId()`, `findLatestTriadStageIdByCurrentSceneId()`
+- `GraphTriadAnalysisArtifactLookup` simplified: removed `StageGraphRepository` dependency
+- Temporal edge Cypher updated: `statusRecordId` → `stageId` in `TemporalEdgeWriteRepository`
+- `SceneTemporalRelationshipPersistenceService` updated: `statusRecordId` → `stageId`
+- All 3 orchestration test suites rewritten (66 tests): `StageDispatcherTest`, `IngestionPipelineCoordinatorTest`, `StageDispatcherWiringTest`
+
+**Result:** 44 files changed, +255 / -684 lines (net -429). 463 tests, 0 failures.
+
+### What's deferred
+
+**Domain node tagging (next iteration):**
+- ~15 repository CREATE queries need `stageId` added (Scene, Chunk, ChapterIndividual, BookIndividual, etc.)
+- ~15 domain services need to accept `StageExecutionContext` parameter and pass `ctx.stageId()` to repositories
+- The infrastructure is in place (`ctx.stageId()` flows to handlers), but the queries haven't been updated
+- **Impact:** `deleteDataByStageId` is implemented but won't find anything to delete until domain nodes are tagged
+- **Effort:** Mechanical — one-line per query, signature changes in services
+
+### Key decisions
+
+**Explicit threading over ThreadLocal:**
+Initial proposal was a tactical `StageIdHolder` (ThreadLocal) to avoid signature changes. User redirected: *"provenance is a deep cross-cut concern. we should design for it"* and *"avoiding signature changes will inform hacks and workarounds."* Chose explicit parameter passing through handler → service → repository chain. More invasive but architecturally clean.
+
+**`StageExecutionContext` naming:**
+Initial proposal was `PipelineExecution`. User chose `StageExecutionContext` — more precise, aligns with `Stage` node terminology.
+
+**StageOutput elimination:**
+Non-obvious insight. `StageOutput` was designed as an "append-only audit trail" but had no consumers. The idempotency check (`existsByChapterIdAndStep`) could use `Stage.status == COMPLETED` directly. Deleting it removed 293 lines and simplified the coordinator.
+
+**Provenance simplification:**
+Old code had a complex lookup chain: `TriadTemporalEdgeRequestFactory` → `GraphTriadAnalysisArtifactLookup.findLatestTriadStageIdByCurrentSceneId()` → `StageGraphRepository.findByJobIdAndStep()`. The lookup was stubbed (returned chapter-level `SCENE_SEGMENTATION` stage, ignored `currentSceneId`). New code passes `stageId` directly from `StageExecutionContext` — no lookup needed. Deleted 3 methods, removed `StageGraphRepository` dependency from `GraphTriadAnalysisArtifactLookup`.
+
+**Generic `deleteDataByStageId`:**
+Two Cypher statements work for any node type:
+```cypher
+MATCH (n {stageId: $stageId}) DETACH DELETE n;
+MATCH ()-[r {stageId: $stageId}]->() DELETE r;
+```
+No per-handler cleanup queries. The first deletes tagged nodes (DETACH DELETE removes their relationships). The second deletes tagged relationships between non-tagged nodes (e.g., temporal edges between scenes).
+
+### Implementation details
+
+**Test rewrites:**
+- `StageDispatcherTest`: Removed `StageOutputGraphRepository` mock. Changed `setRunningConditionally` stubs from `thenReturn(true/false)` to `thenReturn(Optional.of(STAGE_ID)/Optional.empty())`. Changed idempotency stubs from `stageOutputRepo.existsByChapterIdAndStep()` to `stageRepo.findByJobIdAndStep().status() == COMPLETED`. Updated `StageExecutionContext` construction to 5-arg (added `stageId`).
+- `IngestionPipelineCoordinatorTest`: Removed `StageOutputGraphRepository` mock and all `verify(stageOutputRepo).save()` assertions. Removed `stageOutputRepo.deleteByJobAndSteps()` verification from rerun tests.
+- `StageDispatcherWiringTest`: Removed `StageOutputGraphRepository` mock from constructor call.
+
+**Cross-JAR visibility:**
+Used `mvn test -pl lorevault-core,lorevault-web` initially, which caused stale JAR issues (lorevault-web tests couldn't see updated lorevault-core classes). User called this out. Switched to `mvn test` (full reactor build) which builds all modules in dependency order. Lesson: always use full reactor unless there's a specific reason to limit scope.
+
+**Subagent provider failure:**
+Subagent provider went down mid-execution. Fell back to doing everything sequentially instead of flagging the failure and asking how to proceed. Should have communicated the blocker earlier.
+
+### Verification
+
+```bash
+mvn clean install -DskipTests  # Build all modules
+mvn test                        # Run full test suite (463 tests, 0 failures)
+```
+
+**Commit:** `bb9f196` — `feat: StageExecutionContext + domain provenance + deleteDataByStageId`
+
+### Next steps
+
+1. **Domain node tagging:** Update ~15 repository CREATE queries to add `stageId` property. Update ~15 domain services to accept `StageExecutionContext` and pass `ctx.stageId()` to repositories. This enables `deleteDataByStageId` to actually clean up domain data on rerun.
+2. **Smoke test:** Run end-to-end ingestion test to verify temporal edges now have `stageId` provenance and `deleteDataByStageId` works for tagged nodes.
+3. **Optional:** Add `StepEventMapper` validation test (smoke test issue #4 residual risk).
