@@ -129,7 +129,6 @@ class StageDispatcherWiringTest {
                 new StageDispatcher(
                         handlerMap,
                         mock(StageGraphRepository.class),
-                        mock(StageOutputGraphRepository.class),
                         mock(org.springframework.context.ApplicationEventPublisher.class),
                         mock(org.springframework.core.task.TaskExecutor.class),
                         mock(org.springframework.core.task.TaskExecutor.class)

@@ -22,7 +22,8 @@ public class TriadTemporalEdgeRequestFactory {
 
     public List<TemporalEdgeWriteRequest> buildRequests(UUID chapterId,
                                                         List<TriadAnalysisModels.SceneRelationshipAnalysis> analyses,
-                                                        Map<Integer, UUID> sceneIndexToPersistedId) {
+                                                        Map<Integer, UUID> sceneIndexToPersistedId,
+                                                        UUID stageId) {
         if (analyses == null || analyses.isEmpty()) {
             return List.of();
         }
@@ -35,12 +36,8 @@ public class TriadTemporalEdgeRequestFactory {
                     analysis.currentSceneIndex(),
                     sceneIndexToPersistedId
             );
-            TemporalEdgeProvenance provenance = resolveRequiredProvenance(
-                    jobId,
-                    chapterId,
-                    currentScenePersistedId,
-                    analysis.currentSceneIndex()
-            );
+            TemporalEdgeProvenance provenance = new TemporalEdgeProvenance(
+                    jobId, chapterId, stageId, null);
 
             if (analysis.previousSceneIndex() != null
                     && analysis.currentSceneIndex() != null
@@ -115,75 +112,5 @@ public class TriadTemporalEdgeRequestFactory {
             return null;
         }
         return sceneIndexToPersistedId.get(sceneIndex);
-    }
-
-    private TemporalEdgeProvenance resolveRequiredProvenance(UUID jobId,
-                                                              UUID chapterId,
-                                                              UUID currentSceneId,
-                                                              Integer currentSceneIndex) {
-        // PLACEHOLDER (pre-#14 buildTriad refactoring):
-        // Per-scene triad Stage correlation is not yet implemented — the StatusRecord-based
-        // lookup was removed during Stage model migration. Returns a provenance record with
-        // null stage/llmCall IDs so temporal edges are still written. Proper provenance will
-        // be restored when buildTriadsForChapter is refactored to per-scene buildTriad (#14).
-        return new TemporalEdgeProvenance(jobId, chapterId, null, null);
-    }
-
-    private UUID findRequiredTriadStageId(UUID jobId,
-                                           UUID currentSceneId,
-                                           Integer currentSceneIndex) {
-        if (jobId == null || currentSceneId == null) {
-            throw triadArtifactFailure(
-                    "TRIAD_STATUS_MISSING",
-                    "Unable to resolve triad status record due to missing job or current scene id",
-                    currentSceneIndex,
-                    null,
-                    null
-            );
-        }
-
-        return triadAnalysisArtifactLookup.findLatestTriadStageIdByCurrentSceneId(jobId, currentSceneId)
-                .orElseThrow(() -> triadArtifactFailure(
-                        "TRIAD_STATUS_MISSING",
-                        "Missing SCENE_TRIAD_ANALYSIS status for current scene id " + currentSceneId,
-                        currentSceneIndex,
-                        null,
-                        null
-                ));
-    }
-
-    private LlmCallRecord findRequiredTriadCall(UUID jobId, UUID stageId) {
-        if (jobId == null || stageId == null) {
-            throw triadArtifactFailure(
-                    "TRIAD_ARTIFACT_MISSING",
-                    "Missing triad call linkage metadata",
-                    null,
-                    null,
-                    null
-            );
-        }
-
-        return triadAnalysisArtifactLookup.findLatestTriadCallRecord(jobId, stageId)
-                .orElseThrow(() -> triadArtifactFailure(
-                        "TRIAD_ARTIFACT_MISSING",
-                        "Missing scene-analysis LlmCallRecord for stage " + stageId,
-                        null,
-                        null,
-                        null
-                ));
-    }
-
-    private TriadAnalysisException triadArtifactFailure(String code,
-                                                         String message,
-                                                         Integer currentSceneIndex,
-                                                         UUID stageId,
-                                                         LlmCallRecord callRecord) {
-        IngestionFailure.Builder builder = IngestionFailure.builder(code, message)
-                .exceptionType(TriadAnalysisException.class.getSimpleName())
-                .stage("SCENE_TRIAD_ANALYSIS")
-                .detail("currentSceneIndex", currentSceneIndex)
-                .detail("stageId", stageId != null ? stageId.toString() : null)
-                .detail("llmCallRecordId", callRecord != null ? callRecord.getId().toString() : null);
-        return new TriadAnalysisException(builder.build());
     }
 }

@@ -1,6 +1,6 @@
 package com.lorevault.api.ingestion.resolution.collective;
 
-import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.pipeline.ForStage;
 import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
@@ -33,7 +33,7 @@ public class BookCollectiveConsolidationHandler implements BookCollectiveConsoli
     }
 
     @Override
-    public StepResult execute(DispatchContext ctx) {
+    public StepResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         UUID bookId = ctx.bookId();
         long start = System.currentTimeMillis();

@@ -4,8 +4,6 @@ import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ingestion.triad.TriadAnalysisArtifactLookup;
 import com.lorevault.api.ingestion.resolution.event.LlmCallRecord;
 import com.lorevault.api.ingestion.job.ChapterIngestionJobGraphRepository;
-import com.lorevault.api.ingestion.orchestration.StageGraphRepository;
-import com.lorevault.api.ingestion.pipeline.StageKey;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -16,15 +14,12 @@ public class GraphTriadAnalysisArtifactLookup implements TriadAnalysisArtifactLo
 
     private final ChapterIngestionJobGraphRepository jobRepo;
     private final LlmCallRecordGraphRepository llmCallRepo;
-    private final StageGraphRepository stageRepo;
 
     public GraphTriadAnalysisArtifactLookup(
             ChapterIngestionJobGraphRepository jobRepo,
-            LlmCallRecordGraphRepository llmCallRepo,
-            StageGraphRepository stageRepo) {
+            LlmCallRecordGraphRepository llmCallRepo) {
         this.jobRepo = jobRepo;
         this.llmCallRepo = llmCallRepo;
-        this.stageRepo = stageRepo;
     }
 
     @Override
@@ -33,22 +28,6 @@ public class GraphTriadAnalysisArtifactLookup implements TriadAnalysisArtifactLo
             return Optional.empty();
         }
         return jobRepo.findLatestJobIdByChapterId(chapterId);
-    }
-
-    /**
-     * Find the SCENE_SEGMENTATION stage for the given job.
-     * Temporal edges produced by triad analysis are attributed to the
-     * chapter's scene segmentation stage (per-chapter granularity).
-     * Full per-scene provenance will be available after per-scene buildTriad is
-     * adopted progressively in SceneDetectionHandler.
-     */
-    @Override
-    public Optional<UUID> findLatestTriadStageIdByCurrentSceneId(UUID jobId, UUID currentSceneId) {
-        if (jobId == null) {
-            return Optional.empty();
-        }
-        return stageRepo.findByJobIdAndStep(jobId, StageKey.SCENE_SEGMENTATION)
-                .map(stage -> stage.getId());
     }
 
     @Override

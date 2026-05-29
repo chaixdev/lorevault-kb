@@ -1,6 +1,6 @@
 package com.lorevault.api.ingestion.orchestration;
 
-import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.pipeline.ForStage;
 import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StageOperation;
@@ -16,7 +16,7 @@ import java.util.UUID;
 public class IngestionCompleteHandler implements StageOperation {
 
     @Override
-    public StepResult execute(DispatchContext ctx) {
+    public StepResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         log.info("[ORCHESTRATION] Ingestion complete: jobId={}", jobId);
         return StepResult.success(StageKey.INGESTION_COMPLETE, "Ingestion pipeline completed", 0L);

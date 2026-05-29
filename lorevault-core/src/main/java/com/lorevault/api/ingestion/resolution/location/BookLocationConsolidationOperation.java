@@ -1,6 +1,6 @@
 package com.lorevault.api.ingestion.resolution.location;
 
-import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StageOperation;
 import com.lorevault.api.ingestion.pipeline.StepResult;
@@ -27,6 +27,6 @@ public interface BookLocationConsolidationOperation extends StageOperation {
      * @return result summarising what happened
      */
     default StepResult execute(UUID jobId, UUID bookId) {
-        return execute(new DispatchContext(jobId, null, bookId, StageKey.BOOK_LOCATION_CONSOLIDATION));
+        return execute(new StageExecutionContext(null, jobId, null, bookId, StageKey.BOOK_LOCATION_CONSOLIDATION));
     }
 }

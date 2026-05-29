@@ -68,7 +68,7 @@ public class SceneTemporalRelationshipPersistenceService {
                     request.evidence(),
                     asString(provenance != null ? provenance.jobId() : null),
                     asString(provenance != null ? provenance.chapterId() : null),
-                    asString(provenance != null ? provenance.statusRecordId() : null),
+                    asString(provenance != null ? provenance.stageId() : null),
                     asString(provenance != null ? provenance.llmCallRecordId() : null)
             );
             return;
@@ -99,7 +99,7 @@ public class SceneTemporalRelationshipPersistenceService {
                     request.evidence(),
                     asString(provenance != null ? provenance.jobId() : null),
                     asString(provenance != null ? provenance.chapterId() : null),
-                    asString(provenance != null ? provenance.statusRecordId() : null),
+                    asString(provenance != null ? provenance.stageId() : null),
                     asString(provenance != null ? provenance.llmCallRecordId() : null)
             );
             return;
@@ -149,12 +149,12 @@ public class SceneTemporalRelationshipPersistenceService {
             }
             sb.append("timelineMarker=").append(timelineMarker);
         }
-        UUID statusRecordId = provenance == null ? null : provenance.statusRecordId();
-        if (statusRecordId != null) {
+        UUID stageId = provenance == null ? null : provenance.stageId();
+        if (stageId != null) {
             if (!sb.isEmpty()) {
                 sb.append(" | ");
             }
-            sb.append("statusRecordId=").append(statusRecordId);
+            sb.append("stageId=").append(stageId);
         }
         UUID llmCallRecordId = provenance == null ? null : provenance.llmCallRecordId();
         if (llmCallRecordId != null) {
@@ -182,7 +182,7 @@ public class SceneTemporalRelationshipPersistenceService {
         payload.put("incomingCertainty", incomingCertainty);
         payload.put("evidence", evidence);
         payload.put("timelineMarker", timelineMarker);
-        payload.put("statusRecordId", provenance != null ? provenance.statusRecordId() : null);
+        payload.put("stageId", provenance != null ? provenance.stageId() : null);
         payload.put("llmCallRecordId", provenance != null ? provenance.llmCallRecordId() : null);
         return payload.toString();
     }

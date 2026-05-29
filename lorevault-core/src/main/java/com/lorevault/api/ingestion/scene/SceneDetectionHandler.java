@@ -1,6 +1,6 @@
 package com.lorevault.api.ingestion.scene;
 
-import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.pipeline.ForStage;
 import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StepResult;
@@ -90,7 +90,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
     }
 
     @Override
-    public StepResult execute(DispatchContext ctx) {
+    public StepResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         UUID chapterId = ctx.chapterId();
         long start = System.currentTimeMillis();
@@ -156,7 +156,8 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                     triadTemporalEdgeRequestFactory.buildRequests(
                             chapterId,
                             sceneRelationshipOutcome.triadAnalyses(),
-                            sceneIndexToId
+                            sceneIndexToId,
+                            ctx.stageId()
                     )
             );
 

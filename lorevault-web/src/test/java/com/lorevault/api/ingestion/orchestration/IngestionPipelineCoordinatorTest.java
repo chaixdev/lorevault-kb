@@ -57,9 +57,6 @@ class IngestionPipelineCoordinatorTest {
     private StageGraphRepository stageRepo;
 
     @Mock
-    private StageOutputGraphRepository stageOutputRepo;
-
-    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     @Mock
@@ -79,7 +76,7 @@ class IngestionPipelineCoordinatorTest {
     @BeforeEach
     void setUp() {
         coordinator = new IngestionPipelineCoordinator(
-                stageRepo, stageOutputRepo, eventPublisher, neo4jClient,
+                stageRepo, eventPublisher, neo4jClient,
                 STALE_TRIGGER_GRACE, STALE_RUNNING_THRESHOLD, MAX_STAGE_ATTEMPTS);
 
         // Build the Neo4jClient fluent chain mocks once so we can quickly
@@ -182,7 +179,6 @@ class IngestionPipelineCoordinatorTest {
     class OnStageCompletedSuccess {
 
         @Test
-        @DisplayName("creates chapter-level StageOutput and triggers downstream children")
         void createsChapterOutputAndTriggersDownstream() {
             // CHAPTER_INDIVIDUAL_CONSOLIDATION → BOOK_INDIVIDUAL_CONSOLIDATION (book-level child)
             // Since bookId is null and child is book-level, resolveBookId calls findBookId.
@@ -198,14 +194,6 @@ class IngestionPipelineCoordinatorTest {
             // Stage marked completed
             verify(stageRepo).setCompleted(JOB_ID, stage);
 
-            // Chapter-level StageOutput saved
-            ArgumentCaptor<StageOutput> outputCaptor = ArgumentCaptor.forClass(StageOutput.class);
-            verify(stageOutputRepo).save(outputCaptor.capture());
-            StageOutput saved = outputCaptor.getValue();
-            assertThat(saved.getChapterId()).isEqualTo(CHAPTER_ID);
-            assertThat(saved.getBookId()).isNull();
-            assertThat(saved.getStep()).isEqualTo(stage);
-            assertThat(saved.getCompletedAt()).isNotNull();
 
             // Downstream child triggered with resolved bookId
             ArgumentCaptor<StageTriggeredEvent> eventCaptor = ArgumentCaptor.forClass(StageTriggeredEvent.class);
@@ -235,9 +223,6 @@ class IngestionPipelineCoordinatorTest {
 
             verify(stageRepo).setCompleted(JOB_ID, stage);
 
-            ArgumentCaptor<StageOutput> outputCaptor = ArgumentCaptor.forClass(StageOutput.class);
-            verify(stageOutputRepo).save(outputCaptor.capture());
-            assertThat(outputCaptor.getValue().getChapterId()).isEqualTo(CHAPTER_ID);
 
             // 6 events published — one per child
             verify(eventPublisher, times(6)).publishEvent(any(StageTriggeredEvent.class));
@@ -271,7 +256,6 @@ class IngestionPipelineCoordinatorTest {
         }
 
         @Test
-        @DisplayName("creates book-level StageOutput when bookId is provided")
         void createsBookLevelOutput() {
             stubNeo4jQueryLenient();
 
@@ -282,12 +266,6 @@ class IngestionPipelineCoordinatorTest {
 
             verify(stageRepo).setCompleted(JOB_ID, stage);
 
-            ArgumentCaptor<StageOutput> outputCaptor = ArgumentCaptor.forClass(StageOutput.class);
-            verify(stageOutputRepo).save(outputCaptor.capture());
-            StageOutput saved = outputCaptor.getValue();
-            assertThat(saved.getBookId()).isEqualTo(BOOK_ID);
-            assertThat(saved.getChapterId()).isNull();
-            assertThat(saved.getStep()).isEqualTo(stage);
         }
 
         @Test
@@ -376,7 +354,6 @@ class IngestionPipelineCoordinatorTest {
     class OnStageCompletedFailure {
 
         @Test
-        @DisplayName("marks stage as failed and does not create StageOutput or trigger children")
         void marksFailedAndSkipsDownstream() {
             stubNeo4jQueryLenient();
 
@@ -387,7 +364,6 @@ class IngestionPipelineCoordinatorTest {
             coordinator.onStageCompleted(event);
 
             verify(stageRepo).setFailed(JOB_ID, stage, "Something went wrong", false);
-            verify(stageOutputRepo, never()).save(any());
             verify(eventPublisher, never()).publishEvent(any());
         }
 
@@ -403,7 +379,6 @@ class IngestionPipelineCoordinatorTest {
             coordinator.onStageCompleted(event);
 
             verify(stageRepo).setFailed(JOB_ID, stage, "Transient error", true);
-            verify(stageOutputRepo, never()).save(any());
             verify(eventPublisher, never()).publishEvent(any());
         }
 
@@ -721,7 +696,6 @@ class IngestionPipelineCoordinatorTest {
             // Core interactions verified
             verify(stageRepo).findStageIdsByJobAndSteps(JOB_ID, invalidated);
             verify(stageRepo, times(byDepth.size())).findStageId(eq(JOB_ID), any(StageKey.class));
-            verify(stageOutputRepo).deleteByJobAndSteps(JOB_ID, BOOK_ID, invalidated);
             verify(stageRepo).deleteByJobIdAndStepIn(JOB_ID, invalidated);
             verify(stageRepo, times(invalidated.size())).create(eq(JOB_ID), any(StageKey.class), eq(StageStatus.PENDING));
             verify(stageRepo).rewireEdges(eq(JOB_ID), any(Map.class), eq(coordinator.dag()));

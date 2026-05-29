@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -44,7 +43,6 @@ public class IngestionPipelineCoordinator {
 
     private final StageDag dag;
     private final StageGraphRepository stageRepo;
-    private final StageOutputGraphRepository stageOutputRepo;
     private final ApplicationEventPublisher eventPublisher;
     private final Neo4jClient neo4jClient;
 
@@ -60,12 +58,10 @@ public class IngestionPipelineCoordinator {
     @Autowired
     public IngestionPipelineCoordinator(
             StageGraphRepository stageRepo,
-            StageOutputGraphRepository stageOutputRepo,
             ApplicationEventPublisher eventPublisher,
             Neo4jClient neo4jClient) {
         this.dag = new StageDag();
         this.stageRepo = stageRepo;
-        this.stageOutputRepo = stageOutputRepo;
         this.eventPublisher = eventPublisher;
         this.neo4jClient = neo4jClient;
     }
@@ -75,7 +71,6 @@ public class IngestionPipelineCoordinator {
      */
     IngestionPipelineCoordinator(
             StageGraphRepository stageRepo,
-            StageOutputGraphRepository stageOutputRepo,
             ApplicationEventPublisher eventPublisher,
             Neo4jClient neo4jClient,
             long staleTriggerGraceSeconds,
@@ -83,7 +78,6 @@ public class IngestionPipelineCoordinator {
             int maxStageAttempts) {
         this.dag = new StageDag();
         this.stageRepo = stageRepo;
-        this.stageOutputRepo = stageOutputRepo;
         this.eventPublisher = eventPublisher;
         this.neo4jClient = neo4jClient;
         this.staleTriggerGraceSeconds = staleTriggerGraceSeconds;
@@ -108,14 +102,6 @@ public class IngestionPipelineCoordinator {
 
         if (result.success()) {
             stageRepo.setCompleted(jobId, stage);
-
-            StageOutput output;
-            if (bookId != null) {
-                output = StageOutput.forBook(bookId, stage, LocalDateTime.now());
-            } else {
-                output = StageOutput.forChapter(chapterId, stage, LocalDateTime.now());
-            }
-            stageOutputRepo.save(output);
 
             log.info("[ORCHESTRATION] Stage completed: jobId={} chapterId={} stage={} summary={} counts={}",
                     jobId, chapterId, stage, result.summary(), result.counts());
@@ -249,10 +235,7 @@ public class IngestionPipelineCoordinator {
             }
         }
 
-        // 4. Delete stale StageOutputs for the invalidated path (prevents false SKIP)
-        stageOutputRepo.deleteByJobAndSteps(jobId, bookId, invalidated);
-
-        // 5. Delete stale Stage nodes
+        // 4. Delete stale Stage nodes
         stageRepo.deleteByJobIdAndStepIn(jobId, invalidated);
 
         // 6. Create fresh PENDING stages for the rerun path
@@ -276,15 +259,36 @@ public class IngestionPipelineCoordinator {
 
     /**
      * Delete all graph data tagged with a specific stageId.
-     * Handlers write {@code stageId} on every node/edge they create —
-     * this method removes those artifacts during cascade invalidation.
+     *
+     * <p>Domain nodes and relationships created during a stage execution
+     * carry a {@code stageId} property. This method removes all such
+     * artifacts during cascade invalidation, ensuring the rerun starts
+     * from clean state.
+     *
+     * <p>Two Cypher statements:
+     * <ol>
+     *   <li>Delete tagged nodes (DETACH DELETE also removes their relationships)</li>
+     *   <li>Delete tagged relationships between non-tagged nodes</li>
+     * </ol>
      */
     private void deleteDataByStageId(UUID stageId) {
-        // Data cleanup is stage-specific per lane. Handlers will register
-        // their cleanup queries. For now, a generic pattern: delete nodes
-        // with matching stageId property and their outgoing relationships.
-        // Specific cleanup is added as handlers adopt stageId tagging.
-        log.debug("[ORCHESTRATION] Deleting data for stageId={} — handler-specific cleanup not yet wired", stageId);
+        // Delete tagged nodes and their relationships
+        neo4jClient.query("""
+                MATCH (n {stageId: $stageId})
+                DETACH DELETE n
+                """)
+                .bind(stageId.toString()).to("stageId")
+                .run();
+
+        // Delete tagged relationships between non-tagged nodes
+        neo4jClient.query("""
+                MATCH ()-[r {stageId: $stageId}]->()
+                DELETE r
+                """)
+                .bind(stageId.toString()).to("stageId")
+                .run();
+
+        log.debug("[ORCHESTRATION] Deleted domain data for stageId={}", stageId);
     }
 
     // ── Helpers ─────────────────────────────────────────────────────

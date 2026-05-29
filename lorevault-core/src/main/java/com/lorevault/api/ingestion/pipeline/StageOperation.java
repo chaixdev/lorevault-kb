@@ -5,7 +5,7 @@ package com.lorevault.api.ingestion.pipeline;
  *
  * <p>Replaces the {@code @Async @EventListener onTrigger} boilerplate that
  * was duplicated across 15 handlers. The {@code StageDispatcher} invokes
- * {@link #execute(DispatchContext)} after handling guard, idempotency, and
+ * {@link #execute(StageExecutionContext)} after handling guard, idempotency, and
  * error-boundary concerns. Handlers contain pure domain logic — no
  * orchestration fields, no Spring event annotations.
  *
@@ -16,7 +16,7 @@ package com.lorevault.api.ingestion.pipeline;
  *
  * @see StageKey
  * @see StageDispatcher
- * @see DispatchContext
+ * @see StageExecutionContext
  */
 @FunctionalInterface
 public interface StageOperation {
@@ -24,8 +24,8 @@ public interface StageOperation {
     /**
      * Execute the stage's domain logic.
      *
-     * @param ctx execution context carrying jobId, chapterId, bookId, and stage
+     * @param ctx execution context carrying stageId, jobId, chapterId, bookId, and stage
      * @return result summarising success/failure, counts, and elapsed time
      */
-    StepResult execute(DispatchContext ctx);
+    StepResult execute(StageExecutionContext ctx);
 }

@@ -3,7 +3,7 @@ package com.lorevault.api.ingestion.resolution.individual;
 import java.util.Map;
 import java.util.UUID;
 
-import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.pipeline.ForStage;
 import lombok.extern.slf4j.Slf4j;
 import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
@@ -26,7 +26,7 @@ public class ChapterIndividualConsolidationHandler implements ChapterIndividualC
     }
 
     @Override
-    public StepResult execute(DispatchContext ctx) {
+    public StepResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         UUID chapterId = ctx.chapterId();
         long start = System.currentTimeMillis();

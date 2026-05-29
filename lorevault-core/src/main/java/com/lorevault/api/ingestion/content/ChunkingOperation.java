@@ -1,6 +1,6 @@
 package com.lorevault.api.ingestion.content;
 
-import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StageOperation;
 import com.lorevault.api.ingestion.pipeline.StepResult;
@@ -24,6 +24,6 @@ public interface ChunkingOperation extends StageOperation {
      * @return result summarising what happened
      */
     default StepResult execute(UUID jobId, UUID chapterId) {
-        return execute(new DispatchContext(jobId, chapterId, null, StageKey.CHUNKING));
+        return execute(new StageExecutionContext(null, jobId, chapterId, null, StageKey.CHUNKING));
     }
 }

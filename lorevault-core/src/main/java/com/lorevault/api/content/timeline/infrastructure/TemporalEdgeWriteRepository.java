@@ -194,7 +194,7 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
             r.evidenceSnippet = coalesce($evidenceSnippet, ''),
             r.jobId = coalesce($jobId, ''),
             r.chapterId = coalesce($chapterId, ''),
-            r.statusRecordId = coalesce($statusRecordId, ''),
+            r.stageId = coalesce($stageId, ''),
             r.llmCallRecordId = coalesce($llmCallRecordId, ''),
             r.updatedAt = timestamp()
         RETURN id(r)
@@ -207,7 +207,7 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
             @Param("evidenceSnippet") String evidenceSnippet,
             @Param("jobId") String jobId,
             @Param("chapterId") String chapterId,
-            @Param("statusRecordId") String statusRecordId,
+            @Param("stageId") String stageId,
             @Param("llmCallRecordId") String llmCallRecordId
     );
 }

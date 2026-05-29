@@ -5,7 +5,7 @@ import com.lorevault.api.content.association.ChapterEvent;
 import com.lorevault.api.ai.embedding.EmbeddingGenerationException;
 import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
-import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.pipeline.ForStage;
 import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StageOperation;
@@ -52,7 +52,7 @@ public class ChapterEventEmbeddingHandler implements StageOperation {
     }
 
     @Override
-    public StepResult execute(DispatchContext ctx) {
+    public StepResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         UUID chapterId = ctx.chapterId();
         UUID bookId = ctx.bookId();

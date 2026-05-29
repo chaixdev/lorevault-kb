@@ -1,6 +1,6 @@
 package com.lorevault.api.ingestion.scene;
 
-import com.lorevault.api.ingestion.pipeline.DispatchContext;
+import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
 import com.lorevault.api.ingestion.pipeline.StageKey;
 import com.lorevault.api.ingestion.pipeline.StageOperation;
 import com.lorevault.api.ingestion.pipeline.StepResult;
@@ -27,6 +27,6 @@ public interface SceneDetectionOperation extends StageOperation {
      * @return result summarising what happened
      */
     default StepResult execute(UUID jobId, UUID chapterId) {
-        return execute(new DispatchContext(jobId, chapterId, null, StageKey.SCENE_SEGMENTATION));
+        return execute(new StageExecutionContext(null, jobId, chapterId, null, StageKey.SCENE_SEGMENTATION));
     }
 }

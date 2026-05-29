@@ -129,9 +129,9 @@ public class StageGraphRepository {
 
     /**
      * Atomic CAS: set status to RUNNING only if currently TRIGGERED.
-     * Returns true if the transition succeeded.
+     * Returns the Stage node ID if the transition succeeded, empty otherwise.
      */
-    public boolean setRunningConditionally(UUID jobId, StageKey step) {
+    public Optional<UUID> setRunningConditionally(UUID jobId, StageKey step) {
         return neo4jClient.query("""
                 MATCH (s:Stage {jobId: $jobId, step: $step})
                 WHERE s.status = 'TRIGGERED'
@@ -142,8 +142,7 @@ public class StageGraphRepository {
                 .bind(step.name()).to("step")
                 .fetchAs(UUID.class)
                 .mappedBy((typeSystem, record) -> UUID.fromString(record.get("s.id").asString()))
-                .one()
-                .isPresent();
+                .one();
     }
 
     public void setCompleted(UUID jobId, StageKey step) {
