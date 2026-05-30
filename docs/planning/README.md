@@ -117,5 +117,4 @@ At minimum, each planning item should include:
 - [Entity Pipeline Terminology Alignment](2026-05-20T1536_entity-pipeline-terminology-alignment.md)
 - [Unified Entity Consolidation Algorithm](2026-05-27T0015_unified-entity-consolidation.md)
 - [Pipeline Issues from Smoke Test](2026-05-27T0230_pipeline-issues-from-smoke-test.md)
-- [Stage Execution Context & Domain Provenance](2026-05-29T0000_stage-execution-context-and-provenance.md)
-- [Domain Node Tagging — stageId Provenance](2026-05-29T1200_domain-node-tagging.md)
+- [Code Walkthrough Issues](2026-05-29T2308_code-walkthrough-issues.md)

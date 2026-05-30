@@ -119,9 +119,9 @@ Near-term execution slices before pivoting to AWS/n8n:
    - Done. ~50 files renamed, 18 enum values updated (StageKey + StepKey), all endpoint paths changed to `consolidate-*`, Neo4j constraints renamed, 13 test files renamed. `BookConsolidationRedirectController` provides redirects from both legacy `resolve-*` and `reduce-*` URLs. 463 tests green.
    - See: `docs/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md`
 
-5. **StageExecutionContext & domain provenance** — Phases 1–2 shipped ✅
+5. **StageExecutionContext & domain provenance** — All phases shipped ✅
     - `DispatchContext` → `StageExecutionContext` with `stageId` field; `StageOutput` deleted; provenance unstubbed; `deleteDataByStageId` implemented
-    - **Remaining:** Domain node tagging — add `stageId` property to 18 `@Node` entity classes, thread `StageExecutionContext` through ~24 domain services, update 1 explicit Cypher query. Enables `deleteDataByStageId` to actually clean up domain data on rerun.
+    - Domain node tagging — `@Property("stageId") UUID stageId` on all 18 `@Node` entity classes, `StageExecutionContext ctx` threaded through ~24 domain services + 1 Cypher query (`BookConsolidationClaim`). `deleteDataByStageId` now cleans up all domain data on rerun. 463 tests green.
     - See: `docs/planning/2026-05-29T0000_stage-execution-context-and-provenance.md`, `docs/planning/2026-05-29T1200_domain-node-tagging.md`
 
 5. **Relation edge projection** — now covered by item #3 above
