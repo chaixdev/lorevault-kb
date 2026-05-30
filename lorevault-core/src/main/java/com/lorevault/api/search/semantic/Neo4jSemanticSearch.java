@@ -1,10 +1,10 @@
 package com.lorevault.api.search.semantic;
-import com.lorevault.api.content.chunk.Chunk;
+import com.lorevault.api.library.chunk.Chunk;
 import com.lorevault.api.search.model.SpoilerVisibility;
 import com.lorevault.api.search.model.UnconfiguredSeriesPolicy;
 import com.lorevault.api.search.model.SeriesProgress;
 import com.lorevault.api.search.model.SemanticSearchException;
-import com.lorevault.api.ingestion.job.IngestionFailure;
+import com.lorevault.api.orchestration.job.IngestionFailure;
 import org.neo4j.driver.exceptions.Neo4jException;
 import org.springframework.dao.DataAccessException;
 

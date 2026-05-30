@@ -90,7 +90,7 @@ Recent audit findings also indicate:
 
 The most likely reorganization candidates identified so far are:
 
-- `com.lorevault.api.ingestion` as the largest mixed-responsibility package
+- `com.lorevault.api.orchestration` as the largest mixed-responsibility package
 - `com.lorevault.api.support` as a catch-all shared package containing DTOs, utilities, and policy-like types
 - `com.lorevault.api.web.ui` where controllers, forms, and view data structures are all part of the same UI area
 - `com.lorevault.api.web.command.ingestion` where controllers, validation, extraction, builders, and response shaping all participate in the same command area
@@ -436,7 +436,7 @@ At that point, cleanup becomes less likely to be undone by later architectural m
 
 #### Stage 3 progress notes (current)
 
-- ✅ Pass 1 complete: all ingestion pipeline event classes now live in `com.lorevault.api.ingestion.events`.
+- ✅ Pass 1 complete: all ingestion pipeline event classes now live in `com.lorevault.api.orchestration.signals`.
 - ✅ Core pipeline listeners/coordinators/support classes now import events from `ingestion.events`.
 - ✅ Web broadcaster and related tests were updated to consume `ingestion.events` types.
 - ✅ Stage 2 module extraction and transitional scaffolding cleanup are complete: the parent reactor only includes `lorevault-core` and `lorevault-web`, module POMs read their own `src/main/**` trees directly, and the obsolete `lorevault-api/pom.xml` stub is gone.

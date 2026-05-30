@@ -1,8 +1,8 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.pipeline.StepKey;
-import com.lorevault.api.ingestion.pipeline.StepResult;
-import com.lorevault.api.ingestion.resolution.collective.BookCollectiveConsolidationOperation;
+import com.lorevault.api.orchestration.pipeline.StepKey;
+import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.graph.collective.consolidation.book.BookCollectiveConsolidationOperation;
 import com.lorevault.api.library.book.BookGraphRepository;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;

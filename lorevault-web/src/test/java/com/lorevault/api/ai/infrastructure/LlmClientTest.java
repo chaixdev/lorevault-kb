@@ -1,12 +1,11 @@
 package com.lorevault.api.ai.infrastructure;
 
-import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.llm.LlmCallLogger;
 import com.lorevault.api.ai.llm.EventCorefModels;
 import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.ai.llm.LlmClient;
-import com.lorevault.api.ingestion.pipeline.StageKey;
-import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
+import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.triad.SceneRelationshipAnalysisService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.config.LoreVaultModelsProperties;

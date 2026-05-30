@@ -1,6 +1,6 @@
 package com.lorevault.api.ai.llm;
 
-import com.lorevault.api.ingestion.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageKey;
 import java.util.UUID;
 
 public interface LlmCallLogger {

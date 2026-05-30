@@ -1,14 +1,14 @@
 package com.lorevault.api.ai.application;
 import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.llm.LlmClient;
-import com.lorevault.api.ingestion.triad.TriadAnalysisException;
+import com.lorevault.api.orchestration.triad.TriadAnalysisException;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 
-import com.lorevault.api.content.chapter.Chapter;
-import com.lorevault.api.content.scene.Scene;
-import com.lorevault.api.ingestion.triad.TriadAnalysisModels;
-import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
-import com.lorevault.api.ingestion.triad.TriadBuilderService;
+import com.lorevault.api.library.chapter.Chapter;
+import com.lorevault.api.graph.event.scene.Scene;
+import com.lorevault.api.orchestration.triad.TriadAnalysisModels;
+import com.lorevault.api.orchestration.triad.SceneRelationshipAnalysisService;
+import com.lorevault.api.orchestration.triad.TriadBuilderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

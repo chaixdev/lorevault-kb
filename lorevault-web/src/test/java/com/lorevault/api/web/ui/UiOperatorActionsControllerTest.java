@@ -1,12 +1,12 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.ingestion.pipeline.StageExecutionContext;
-import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualConsolidationResult;
-import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualConsolidationService;
-import com.lorevault.api.ingestion.resolution.location.BookLocationConsolidationService;
-import com.lorevault.api.ingestion.resolution.location.BookLocationConsolidationResult;
-import com.lorevault.api.ingestion.resolution.location.ChapterLocationConsolidationResult;
-import com.lorevault.api.ingestion.resolution.location.ChapterLocationConsolidationService;
+import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
+import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationResult;
+import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationService;
+import com.lorevault.api.graph.location.consolidation.book.BookLocationConsolidationService;
+import com.lorevault.api.graph.location.consolidation.book.BookLocationConsolidationResult;
+import com.lorevault.api.graph.location.consolidation.chapter.ChapterLocationConsolidationResult;
+import com.lorevault.api.graph.location.consolidation.chapter.ChapterLocationConsolidationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

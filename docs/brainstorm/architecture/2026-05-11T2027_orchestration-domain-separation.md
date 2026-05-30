@@ -154,8 +154,8 @@ The previous version of this brainstorm recommended Option C only, treating Modu
 | Modulith module | Package | Boundary | Rationale |
 |---|---|---|---|
 | `catalog` | `com.lorevault.api.catalog` | **Closed** from day one | Greenfield, clear contract, different access pattern — see planning doc for design details |
-| `ingestion` | `com.lorevault.api.ingestion` | Open initially | Orchestration concern — close when `PipelineEventPublisher` and `JobStateStore` seams are settled |
-| `content` | `com.lorevault.api.content` | Open initially | Core domain — close when `ChapterContentStore` seam is settled |
+| `ingestion` | `com.lorevault.api.orchestration` | Open initially | Orchestration concern — close when `PipelineEventPublisher` and `JobStateStore` seams are settled |
+| `content` | `com.lorevault.api.graph` | Open initially | Core domain — close when `ChapterContentStore` seam is settled |
 | `library` | `com.lorevault.api.library` | Open initially | Core domain — low cross-contamination risk |
 | `search` | `com.lorevault.api.search` | Open initially | Retrieval concern — close when API boundary is tighter |
 | `ai` | `com.lorevault.api.ai` | Open initially | Infrastructure concern — close when LLM abstraction is stable |

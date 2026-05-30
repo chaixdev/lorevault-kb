@@ -1,9 +1,9 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
-import com.lorevault.api.ingestion.pipeline.StepKey;
-import com.lorevault.api.ingestion.pipeline.StepResult;
-import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualConsolidationOperation;
+import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.orchestration.pipeline.StepKey;
+import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationOperation;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;

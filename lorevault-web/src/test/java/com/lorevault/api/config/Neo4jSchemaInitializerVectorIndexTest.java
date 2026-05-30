@@ -13,8 +13,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import com.lorevault.api.testing.TestImages;
 
-import com.lorevault.api.content.association.ChapterEvent;
-import com.lorevault.api.content.chunk.Chunk;
+import com.lorevault.api.graph.event.persistence.ChapterEvent;
+import com.lorevault.api.library.chunk.Chunk;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 

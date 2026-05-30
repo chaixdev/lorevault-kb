@@ -1,6 +1,6 @@
 package com.lorevault.api.ai.application;
 
-import com.lorevault.api.ai.chunking.TextChunkingService;
+import com.lorevault.api.library.chunk.TextChunkingService;
 import com.lorevault.api.config.LoreVaultContentProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;

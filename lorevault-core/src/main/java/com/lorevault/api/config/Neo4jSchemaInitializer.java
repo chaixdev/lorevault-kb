@@ -1,7 +1,7 @@
 package com.lorevault.api.config;
 
-import com.lorevault.api.content.association.ChapterEvent;
-import com.lorevault.api.content.chunk.Chunk;
+import com.lorevault.api.graph.event.persistence.ChapterEvent;
+import com.lorevault.api.library.chunk.Chunk;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Neo4j implementation of GraphSchemaInitializer.
@@ -63,6 +62,14 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     // No (chapterId, normalizedName) scope-unique constraint — that would bake lexical sameness into storage.
     private static final String EVENT_MENTION_ID_UNIQUE =
             "CREATE CONSTRAINT event_mention_id_unique IF NOT EXISTS FOR (m:EventMention) REQUIRE m.id IS UNIQUE";
+    private static final String INDIVIDUAL_MENTION_ID_UNIQUE =
+            "CREATE CONSTRAINT individual_mention_id_unique IF NOT EXISTS FOR (m:IndividualMention) REQUIRE m.id IS UNIQUE";
+    private static final String LOCATION_MENTION_ID_UNIQUE =
+            "CREATE CONSTRAINT location_mention_id_unique IF NOT EXISTS FOR (m:LocationMention) REQUIRE m.id IS UNIQUE";
+    private static final String OBJECT_MENTION_ID_UNIQUE =
+            "CREATE CONSTRAINT object_mention_id_unique IF NOT EXISTS FOR (m:ObjectMention) REQUIRE m.id IS UNIQUE";
+    private static final String COLLECTIVE_MENTION_ID_UNIQUE =
+            "CREATE CONSTRAINT collective_mention_id_unique IF NOT EXISTS FOR (m:CollectiveMention) REQUIRE m.id IS UNIQUE";
     private static final String CHAPTER_LOCATION_ID_UNIQUE =
             "CREATE CONSTRAINT chapter_location_id_unique IF NOT EXISTS FOR (cl:ChapterLocation) REQUIRE cl.id IS UNIQUE";
     private static final String CHAPTER_LOCATION_SCOPE_UNIQUE =
@@ -200,6 +207,10 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(CHAPTER_EVENT_ID_UNIQUE, "ChapterEvent.id unique"));
         results.add(executeConstraint(BOOK_EVENT_ID_UNIQUE, "BookEvent.id unique"));
         results.add(executeConstraint(EVENT_MENTION_ID_UNIQUE, "EventMention.id unique"));
+        results.add(executeConstraint(INDIVIDUAL_MENTION_ID_UNIQUE, "IndividualMention.id unique"));
+        results.add(executeConstraint(LOCATION_MENTION_ID_UNIQUE, "LocationMention.id unique"));
+        results.add(executeConstraint(OBJECT_MENTION_ID_UNIQUE, "ObjectMention.id unique"));
+        results.add(executeConstraint(COLLECTIVE_MENTION_ID_UNIQUE, "CollectiveMention.id unique"));
         results.add(executeConstraint(CHAPTER_LOCATION_ID_UNIQUE, "ChapterLocation.id unique"));
         results.add(executeConstraint(CHAPTER_LOCATION_SCOPE_UNIQUE, "ChapterLocation(chapterId, normalizedName) unique"));
         results.add(executeConstraint(BOOK_LOCATION_ID_UNIQUE, "BookLocation.id unique"));

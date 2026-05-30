@@ -1,6 +1,6 @@
 package com.lorevault.api.integration;
 
-import com.lorevault.api.ingestion.scene.SceneDetectionService;
+import com.lorevault.api.graph.event.scene.Scene;
 import org.mockito.Mockito;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -41,7 +41,7 @@ public class TestConfig {
      */
     @Bean
     @Primary
-    public SceneDetectionService sceneDetectionService() {
-        return Mockito.mock(SceneDetectionService.class);
+    public Scene.SceneDetectionService sceneDetectionService() {
+        return Mockito.mock(Scene.SceneDetectionService.class);
     }
 }

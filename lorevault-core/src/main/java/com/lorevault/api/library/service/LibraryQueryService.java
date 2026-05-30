@@ -1,11 +1,11 @@
 package com.lorevault.api.library.service;
 
 import com.lorevault.api.library.book.Book;
-import com.lorevault.api.content.chapter.Chapter;
+import com.lorevault.api.library.chapter.Chapter;
 import com.lorevault.api.library.series.Series;
 import com.lorevault.api.library.universe.Universe;
 import com.lorevault.api.library.book.BookGraphRepository;
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
+import com.lorevault.api.library.chapter.ChapterGraphRepository;
 import com.lorevault.api.library.series.SeriesGraphRepository;
 import com.lorevault.api.library.universe.UniverseGraphRepository;
 import lombok.RequiredArgsConstructor;

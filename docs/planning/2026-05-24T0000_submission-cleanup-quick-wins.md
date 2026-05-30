@@ -177,7 +177,7 @@ Three `var` usages where the type isn't obvious from the RHS:
 
 **Problem:** `PipelineStageSupport.sanitizeExceptionMessage()` is a static, pure-function utility with 14 call sites. It's trapped in a class destined for deletion.
 
-**Fix:** Create `ExceptionSanitizer` utility class in `com.lorevault.api.ingestion.infrastructure`:
+**Fix:** Create `ExceptionSanitizer` utility class in `com.lorevault.api.orchestration.infrastructure`:
 
 ```java
 public final class ExceptionSanitizer {

@@ -1,6 +1,6 @@
 package com.lorevault.api.web.query.job;
 
-import com.lorevault.api.ingestion.events.StageCompletedEvent;
+import com.lorevault.api.orchestration.signals.StageCompletedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;

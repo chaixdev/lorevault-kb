@@ -118,3 +118,5 @@ At minimum, each planning item should include:
 - [Unified Entity Consolidation Algorithm](2026-05-27T0015_unified-entity-consolidation.md)
 - [Pipeline Issues from Smoke Test](2026-05-27T0230_pipeline-issues-from-smoke-test.md)
 - [Code Walkthrough Issues](2026-05-29T2308_code-walkthrough-issues.md)
+- [Model Catalog & A/B Testing](2026-05-30T0930_model-catalog-and-ab-testing.md)
+- [Incremental Book Consolidation](2026-05-30T1750_incremental-book-consolidation.md)

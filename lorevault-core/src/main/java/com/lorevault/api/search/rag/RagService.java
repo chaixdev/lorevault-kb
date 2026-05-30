@@ -1,7 +1,7 @@
 package com.lorevault.api.search.rag;
 
-import com.lorevault.api.content.chapter.Chapter;
-import com.lorevault.api.content.chunk.Chunk;
+import com.lorevault.api.library.chapter.Chapter;
+import com.lorevault.api.library.chunk.Chunk;
 import com.lorevault.api.library.book.PublicationCoordinates;
 import com.lorevault.api.search.model.EntityLookupException;
 import com.lorevault.api.search.model.SemanticSearchException;
@@ -19,8 +19,8 @@ import com.lorevault.api.search.extraction.QuestionIntentClassifier;
 import com.lorevault.api.search.semantic.SemanticSearchService;
 import com.lorevault.api.search.extraction.QuestionIntent;
 import com.lorevault.api.search.semantic.CypherTemplateRegistry;
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
-import com.lorevault.api.content.chunk.ChunkGraphRepository;
+import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.library.chunk.ChunkGraphRepository;
 import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import lombok.RequiredArgsConstructor;

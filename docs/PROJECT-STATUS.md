@@ -80,7 +80,7 @@ Three items, ordered by layering (services below handlers, buildTriad independen
 
 | Order | Item | Impact | Design doc |
 |---|---|---|---|
-| **3a** ✅ | Unified entity consolidation | Done. Shared `ConsolidationEngine` + `NameKeys` + `PickFirstNonBlank` + `ChapterEntityGuardService` in `consolidation/`. 8 services refactored, ~1,280 lines of duplicated clustering removed. Object/Collective gain alias-aware merging, Individual gains aliases and ID-based linking. 44 tests green. Smoke-tested on Deathworlders ch 001 (68→68 entities resolved). | [Unified Entity Consolidation](planning/2026-05-27T0015_unified-entity-consolidation.md) |
+| **3a** ✅ | Unified entity consolidation | Done. Shared `ConsolidationEngine` + `NameKeys` + `PickFirstNonBlank` + `ChapterEntityGuardService` in `consolidation/`. 8 services refactored, ~1,280 lines of duplicated clustering removed. Object/Collective gain alias-aware merging, Individual gains aliases and ID-based linking. 453 tests green. **Restored May 30** after regression in commit `94e3072` removed the engine — all 8 services now use alias-aware connected-components clustering again. | [Unified Entity Consolidation](planning/2026-05-27T0015_unified-entity-consolidation.md) |
 | **3b** ✅ | StageDispatcher extraction (#7/#20) | Done. 15 handlers refactored to pure `StageOperation` beans — `execute(DispatchContext ctx)` only. Centralized `StageDispatcher` handles `@EventListener`, executor routing, guard, idempotency, error boundary, MDC. 66 new orchestration tests (StageDispatcherTest 30, IngestionPipelineCoordinatorTest 29, StageDispatcherWiringTest 7). `AsyncConfig` bean return types fixed (`Executor` → `TaskExecutor`). `@Autowired` disambiguation on production constructors. contextLoads integration test added. 463 tests green. | [StageDispatcher Extraction](planning/2026-05-24T0000_stagedispatcher-extraction.md) |
 | **3c** ✅ | per-scene `buildTriad` (#14) | Done. `SceneRelationshipAnalysisService.analyzeChapterTriads()` now calls graph-based `triadBuilder.buildTriad(sceneId)` instead of manual prev/next resolution. Last scene of chapter now gets `next` from next chapter via NEXT_IN_READING_ORDER edges (was always `null`). Removed dead `enrichCrossChapterTemporalEdges()` from SceneDetectionHandler (54 lines). 10 tests updated. 463 tests green. | (in master cleanup plan) |
 
@@ -124,7 +124,9 @@ Near-term execution slices before pivoting to AWS/n8n:
     - Domain node tagging — `@Property("stageId") UUID stageId` on all 18 `@Node` entity classes, `StageExecutionContext ctx` threaded through ~24 domain services + 1 Cypher query (`BookConsolidationClaim`). `deleteDataByStageId` now cleans up all domain data on rerun. 463 tests green.
     - See: `docs/planning/2026-05-29T0000_stage-execution-context-and-provenance.md`, `docs/planning/2026-05-29T1200_domain-node-tagging.md`
 
-5. **Relation edge projection** — now covered by item #3 above
+6. **ConsolidationEngine restoration** — Regressed in commit `94e3072` (removed alias-aware connected-components), restored May 30. All 8 consolidation services now use shared `ConsolidationEngine` + `NameKeys` for alias-aware identity resolution. Individual services switched from Cypher pushdown to in-memory clustering with ID-based linking. `ChapterIndividual` and `BookIndividual` records now carry `aliases` field. 453 tests green.
+
+7. **Relation edge projection** — now covered by item #3 above
 
 ### Phase B: AWS cloud-native foundation
 

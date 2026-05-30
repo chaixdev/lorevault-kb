@@ -1,15 +1,15 @@
 package com.lorevault.api.testutil.fakes;
 
 import com.lorevault.api.library.book.Book;
-import com.lorevault.api.content.chapter.Chapter;
-import com.lorevault.api.content.chunk.Chunk;
-import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.library.chapter.Chapter;
+import com.lorevault.api.library.chunk.Chunk;
+import com.lorevault.api.graph.event.scene.Scene;
 import com.lorevault.api.library.series.Series;
 import com.lorevault.api.library.universe.Universe;
 import com.lorevault.api.library.book.BookGraphRepository;
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
-import com.lorevault.api.content.chunk.ChunkGraphRepository;
-import com.lorevault.api.content.scene.SceneGraphRepository;
+import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.library.chunk.ChunkGraphRepository;
+import com.lorevault.api.graph.event.scene.SceneGraphRepository;
 import com.lorevault.api.library.series.SeriesGraphRepository;
 import com.lorevault.api.library.universe.UniverseGraphRepository;
 import org.springframework.data.domain.Example;

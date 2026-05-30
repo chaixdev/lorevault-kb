@@ -1,7 +1,7 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.pipeline.StepKey;
-import com.lorevault.api.ingestion.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StepKey;
+import com.lorevault.api.orchestration.pipeline.StepResult;
 
 import java.util.Map;
 

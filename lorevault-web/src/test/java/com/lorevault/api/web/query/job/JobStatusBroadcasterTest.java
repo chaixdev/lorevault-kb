@@ -1,8 +1,8 @@
 package com.lorevault.api.web.query.job;
 
-import com.lorevault.api.ingestion.events.StageCompletedEvent;
-import com.lorevault.api.ingestion.pipeline.StageKey;
-import com.lorevault.api.ingestion.pipeline.StepResult;
+import com.lorevault.api.orchestration.signals.StageCompletedEvent;
+import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StepResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

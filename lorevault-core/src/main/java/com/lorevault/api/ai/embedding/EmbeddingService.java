@@ -1,6 +1,6 @@
 package com.lorevault.api.ai.embedding;
 
-import com.lorevault.api.content.chunk.Chunk;
+import com.lorevault.api.library.chunk.Chunk;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingRequest;

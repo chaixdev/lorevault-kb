@@ -1,15 +1,15 @@
 package com.lorevault.api.search;
-import com.lorevault.api.content.chapter.Chapter;
-import com.lorevault.api.ingestion.job.IngestionFailure;
+import com.lorevault.api.library.chapter.Chapter;
+import com.lorevault.api.orchestration.job.IngestionFailure;
 import com.lorevault.api.search.extraction.QuestionIntent;
 import com.lorevault.api.search.extraction.QuestionIntentClassifier;
 import com.lorevault.api.search.model.CoreSearchRecords;
 import com.lorevault.api.search.model.CoreSearchRecords.*;
 
-import com.lorevault.api.content.chunk.Chunk;
+import com.lorevault.api.library.chunk.Chunk;
 
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
-import com.lorevault.api.content.chunk.ChunkGraphRepository;
+import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.library.chunk.ChunkGraphRepository;
 import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.search.semantic.CypherTemplateRegistry;

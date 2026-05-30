@@ -1,7 +1,7 @@
 package com.lorevault.api.web.query.step;
 
-import com.lorevault.api.ingestion.pipeline.StepCatalog;
-import com.lorevault.api.ingestion.pipeline.StepDefinition;
+import com.lorevault.api.orchestration.pipeline.StepCatalog;
+import com.lorevault.api.orchestration.pipeline.StepDefinition;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

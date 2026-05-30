@@ -1,8 +1,8 @@
 package com.lorevault.api.search;
 import com.lorevault.api.config.Neo4jSchemaInitializer;
 
-import com.lorevault.api.content.chunk.Chunk;
-import com.lorevault.api.content.chunk.ChunkGraphRepository;
+import com.lorevault.api.library.chunk.Chunk;
+import com.lorevault.api.library.chunk.ChunkGraphRepository;
 import com.lorevault.api.search.semantic.Neo4jSemanticSearch;
 import com.lorevault.api.search.semantic.Neo4jSemanticSearch.SearchFilters;
 import com.lorevault.api.search.semantic.Neo4jSemanticSearch.SearchResult;

@@ -99,7 +99,7 @@ The codebase contains **two different ErrorResponse classes**:
 
 ## 4. IngestionStatus dependency note
 
-`JobStatusResponse` and `JobListResponse` both reference `com.lorevault.api.ingestion.IngestionStatus` — a domain enum from the `ingestion` package. This creates a dependency from shared DTOs into a core domain type, which is the exact pattern the parent plan warns about: *"transport DTOs reuse domain enums directly."*
+`JobStatusResponse` and `JobListResponse` both reference `com.lorevault.api.orchestration.IngestionStatus` — a domain enum from the `ingestion` package. This creates a dependency from shared DTOs into a core domain type, which is the exact pattern the parent plan warns about: *"transport DTOs reuse domain enums directly."*
 
 This is acceptable for now because:
 - `IngestionStatus` is a stable enum, not a mutable domain object.

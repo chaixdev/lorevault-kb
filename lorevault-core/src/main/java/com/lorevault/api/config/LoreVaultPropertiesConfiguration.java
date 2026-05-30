@@ -1,6 +1,6 @@
 package com.lorevault.api.config;
 
-import com.lorevault.api.ingestion.resolution.event.BookEventAnnProperties;
+import com.lorevault.api.graph.event.consolidation.book.BookEventAnnProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 

@@ -1,7 +1,7 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.resolution.event.ChapterEventAnnRerunResult;
-import com.lorevault.api.ingestion.resolution.event.ChapterEventAnnRerunService;
+import com.lorevault.api.graph.event.consolidation.chapter.ChapterEventAnnRerunResult;
+import com.lorevault.api.graph.event.consolidation.chapter.ChapterEventAnnRerunService;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;

@@ -1,9 +1,9 @@
 package com.lorevault.api.timeline;
 
-import com.lorevault.api.ingestion.resolution.event.SceneTemporalRelationshipPersistenceService;
-import com.lorevault.api.ingestion.resolution.event.TemporalEdgeProvenance;
-import com.lorevault.api.ingestion.resolution.event.TemporalEdgeWriteRequest;
-import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
+import com.lorevault.api.graph.timeline.SceneTemporalRelationshipPersistenceService;
+import com.lorevault.api.graph.timeline.TemporalEdgeProvenance;
+import com.lorevault.api.graph.timeline.TemporalEdgeWriteRequest;
+import com.lorevault.api.graph.timeline.infrastructure.TemporalEdgeWriteRepository;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;

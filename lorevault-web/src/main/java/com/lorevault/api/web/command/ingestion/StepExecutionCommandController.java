@@ -1,12 +1,12 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
-import com.lorevault.api.ingestion.content.ChunkingOperation;
-import com.lorevault.api.ingestion.content.EmbeddingOperation;
-import com.lorevault.api.ingestion.pipeline.StepKey;
-import com.lorevault.api.ingestion.pipeline.StepResult;
-import com.lorevault.api.ingestion.resolution.event.ChapterEventConsolidationOperation;
-import com.lorevault.api.ingestion.scene.SceneDetectionOperation;
+import com.lorevault.api.graph.event.scene.Scene;
+import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.library.chunk.ChunkingOperation;
+import com.lorevault.api.ai.embedding.EmbeddingOperation;
+import com.lorevault.api.orchestration.pipeline.StepKey;
+import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.graph.event.consolidation.chapter.ChapterEventConsolidationOperation;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class StepExecutionCommandController {
 
     private final ChapterGraphRepository chapterGraphRepository;
-    private final SceneDetectionOperation sceneDetectionOperation;
+    private final Scene.SceneDetectionOperation sceneDetectionOperation;
     private final ChunkingOperation chunkingOperation;
     private final EmbeddingOperation embeddingOperation;
     private final ChapterEventConsolidationOperation chapterEventResolutionOperation;

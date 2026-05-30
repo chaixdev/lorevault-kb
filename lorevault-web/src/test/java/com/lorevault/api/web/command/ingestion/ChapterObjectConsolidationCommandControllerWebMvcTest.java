@@ -1,10 +1,10 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.content.chapter.Chapter;
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
-import com.lorevault.api.ingestion.pipeline.StageKey;
-import com.lorevault.api.ingestion.pipeline.StepResult;
-import com.lorevault.api.ingestion.resolution.object.ChapterObjectConsolidationOperation;
+import com.lorevault.api.library.chapter.Chapter;
+import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.graph.object.consolidation.chapter.ChapterObjectConsolidationOperation;
 
 import java.util.Map;
 import java.util.Optional;

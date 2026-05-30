@@ -1,10 +1,10 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.events.StageCompletedEvent;
-import com.lorevault.api.ingestion.events.StageTriggeredEvent;
-import com.lorevault.api.ingestion.pipeline.StageKey;
-import com.lorevault.api.ingestion.pipeline.StepKey;
-import com.lorevault.api.ingestion.pipeline.StepResult;
+import com.lorevault.api.orchestration.signals.StageCompletedEvent;
+import com.lorevault.api.orchestration.signals.StageTriggeredEvent;
+import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StepKey;
+import com.lorevault.api.orchestration.pipeline.StepResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;

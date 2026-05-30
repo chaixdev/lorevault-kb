@@ -65,7 +65,7 @@ The implementation in `ingestion.infrastructure` wires together the two reposito
 
 **The consumer** (`TriadTemporalEdgeRequestFactory` in `ingestion.triad`) injects the interface and never imports `ingestion.infrastructure`. The cycle is gone.
 
-**Verification:** `mvn test -P architecture-tests` confirms zero cycle violations across these packages. A grep for `import com.lorevault.api.ingestion.infrastructure` inside `content/timeline/` returns nothing.
+**Verification:** `mvn test -P architecture-tests` confirms zero cycle violations across these packages. A grep for `import com.lorevault.api.orchestration.infrastructure` inside `content/timeline/` returns nothing.
 
 ## Rules
 

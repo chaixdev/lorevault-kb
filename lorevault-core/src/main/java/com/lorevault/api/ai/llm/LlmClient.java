@@ -17,7 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import com.lorevault.api.ingestion.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageKey;
 import java.util.Map;
 import java.util.UUID;
 

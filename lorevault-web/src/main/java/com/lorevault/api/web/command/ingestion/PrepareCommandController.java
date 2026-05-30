@@ -1,7 +1,7 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.submission.IngestionService;
-import com.lorevault.api.ingestion.submission.IngestionSubmissionResult;
+import com.lorevault.api.orchestration.submission.IngestionService;
+import com.lorevault.api.orchestration.submission.IngestionSubmissionResult;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

@@ -1,8 +1,8 @@
 package com.lorevault.api.timeline;
 
-import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeService;
-import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeCreationResult;
-import com.lorevault.api.content.timeline.infrastructure.TemporalGraphRepository;
+import com.lorevault.api.graph.timeline.DefaultTemporalEdgeService;
+import com.lorevault.api.graph.timeline.DefaultTemporalEdgeCreationResult;
+import com.lorevault.api.graph.timeline.infrastructure.TemporalGraphRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
