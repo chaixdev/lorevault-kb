@@ -121,3 +121,4 @@ At minimum, each planning item should include:
 - [SSE Event Migration](2026-05-24T0000_sse-event-migration.md)
 - [Scene Detection Handler Decomposition](2026-05-23T1600_scene-detection-handler-decomposition.md) — parked
 - [Micrometer Stage Timing](2026-05-23T1700_micrometer-stage-timing.md) — parked
+- [Claim-Entity Linking](2026-05-31T1509_claim-entity-linking.md)
