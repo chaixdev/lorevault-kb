@@ -139,13 +139,13 @@ class MentionRecordTest {
     }
 
     @Test
-    @DisplayName("should map all mention records with specific primary labels and shared Mention label")
+    @DisplayName("should map all mention records with EntityMention + entity-type labels")
     void shouldMapAllMentionRecordsWithSpecificPrimaryLabelsAndSharedMentionLabel() {
-        assertNodeLabels(IndividualMention.class, "IndividualMention", "Mention");
-        assertNodeLabels(CollectiveMention.class, "CollectiveMention", "Mention");
-        assertNodeLabels(ObjectMention.class, "ObjectMention", "Mention");
-        assertNodeLabels(LocationMention.class, "LocationMention", "Mention");
-        assertNodeLabels(EventMention.class, "EventMention", "Mention");
+        assertNodeLabels(IndividualMention.class, "IndividualMention", "EntityMention", "IndividualNode");
+        assertNodeLabels(CollectiveMention.class, "CollectiveMention", "EntityMention", "CollectiveNode");
+        assertNodeLabels(ObjectMention.class, "ObjectMention", "EntityMention", "ObjectNode");
+        assertNodeLabels(LocationMention.class, "LocationMention", "EntityMention", "LocationNode");
+        assertNodeLabels(EventMention.class, "EventMention", "EntityMention", "EventNode");
     }
 
     private static CollectiveMention collectiveMention(UUID id, List<String> aliases, String resolutionStatus) {
@@ -169,12 +169,12 @@ class MentionRecordTest {
         );
     }
 
-    private static void assertNodeLabels(Class<?> entityType, String primaryLabel, String additionalLabel) {
+    private static void assertNodeLabels(Class<?> entityType, String primaryLabel, String... additionalLabels) {
         Node node = entityType.getAnnotation(Node.class);
 
         assertThat(node).isNotNull();
         assertThat(node.primaryLabel()).isEqualTo(primaryLabel);
-        assertThat(node.labels()).containsExactly(additionalLabel);
+        assertThat(node.labels()).containsExactlyInAnyOrder(additionalLabels);
     }
 
     private static IndividualMention individualMention(UUID id, List<String> aliases, String resolutionStatus) {

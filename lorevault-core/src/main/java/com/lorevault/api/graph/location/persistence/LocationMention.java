@@ -11,7 +11,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Property;
 
-@Node(primaryLabel = "LocationMention", labels = "Mention")
+@Node(primaryLabel = "LocationMention", labels = {"EntityMention", "LocationNode"})
 public record LocationMention(
         @Id UUID id,
         String source,

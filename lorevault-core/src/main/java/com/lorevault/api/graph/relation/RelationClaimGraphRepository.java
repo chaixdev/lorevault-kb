@@ -22,7 +22,7 @@ public interface RelationClaimGraphRepository extends Neo4jRepository<RelationCl
     @Query("""
             MATCH (rc:RelationClaim {id: $claimId})
             WITH rc
-            MATCH (m:Mention {id: $subjectMentionId})
+            MATCH (m:EntityMention {id: $subjectMentionId})
             MERGE (rc)-[:RELATES_SUBJECT]->(m)
             """)
     void linkSubjectMention(UUID claimId, UUID subjectMentionId);
@@ -34,7 +34,7 @@ public interface RelationClaimGraphRepository extends Neo4jRepository<RelationCl
     @Query("""
             MATCH (rc:RelationClaim {id: $claimId})
             WITH rc
-            MATCH (m:Mention {id: $objectMentionId})
+            MATCH (m:EntityMention {id: $objectMentionId})
             MERGE (rc)-[:RELATES_OBJECT]->(m)
             """)
     void linkObjectMention(UUID claimId, UUID objectMentionId);

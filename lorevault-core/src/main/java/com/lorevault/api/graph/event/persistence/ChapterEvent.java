@@ -9,7 +9,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Property;
 
-@Node(primaryLabel = "ChapterEvent", labels = "ChapterEntity")
+@Node(primaryLabel = "ChapterEvent", labels = {"ChapterEntity", "EventNode"})
 public record ChapterEvent(
         @Id UUID id,
         UUID chapterId,

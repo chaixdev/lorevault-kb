@@ -173,23 +173,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     private static final String EVENT_PER_CHAPTER_SCENE_INDEX =
             "CREATE INDEX event_per_chapter_scene_idx IF NOT EXISTS FOR (e:Event) ON (e.chapterId, e.sceneIndex)";
 
-    private static final List<String> AGGREGATE_LABEL_BACKFILLS = List.of(
-            "MATCH (m:IndividualMention) SET m:Mention",
-            "MATCH (m:LocationMention) SET m:Mention",
-            "MATCH (m:ObjectMention) SET m:Mention",
-            "MATCH (m:CollectiveMention) SET m:Mention",
-            "MATCH (m:EventMention) SET m:Mention",
-            "MATCH (ce:ChapterEvent) SET ce:ChapterEntity",
-            "MATCH (ci:ChapterIndividual) SET ci:ChapterEntity",
-            "MATCH (cl:ChapterLocation) SET cl:ChapterEntity",
-            "MATCH (co:ChapterObject) SET co:ChapterEntity",
-            "MATCH (cc:ChapterCollective) SET cc:ChapterEntity",
-            "MATCH (be:BookEvent) SET be:BookEntity",
-            "MATCH (bi:BookIndividual) SET bi:BookEntity",
-            "MATCH (bl:BookLocation) SET bl:BookEntity",
-            "MATCH (bo:BookObject) SET bo:BookEntity",
-            "MATCH (bc:BookCollective) SET bc:BookEntity"
-    );
+
 
     @Override
     public void ensureMinimalSchema() {
@@ -271,10 +255,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         // Event per-chapter ordering index
         results.add(executeIndex(EVENT_PER_CHAPTER_SCENE_INDEX, "Event(chapterId, sceneIndex)"));
 
-        // Backfill aggregate labels for existing nodes; new writes get these from @Node metadata.
-        // RelationClaim no longer carries the Mention label — remove it from any existing nodes.
-        AGGREGATE_LABEL_BACKFILLS.forEach(cypher -> results.add(executeLabelBackfill(cypher)));
-        results.add(executeLabelBackfill("MATCH (rc:RelationClaim) REMOVE rc:Mention"));
+
         
         // Create vector search indexes
         results.add(ensureChunkVectorIndex());
@@ -320,16 +301,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         }
     }
 
-    private String executeLabelBackfill(String cypher) {
-        try {
-            neo4jClient.query(cypher).run();
-            log.debug("Ensured aggregate label backfill: {}", cypher);
-            return "ensured: " + cypher;
-        } catch (Exception e) {
-            log.error("Failed aggregate label backfill {}: {}", cypher, e.getMessage());
-            return "failed: " + cypher;
-        }
-    }
+
 
     private String ensureChunkVectorIndex() {
         String description = "Chunk embedding vector index";

@@ -8,7 +8,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Property;
 
-@Node(primaryLabel = "BookEvent", labels = "BookEntity")
+@Node(primaryLabel = "BookEvent", labels = {"BookEntity", "EventNode"})
 public record BookEvent(
         @Id UUID id,
         UUID bookId,
