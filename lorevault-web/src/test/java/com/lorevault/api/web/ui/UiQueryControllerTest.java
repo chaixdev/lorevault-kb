@@ -1,6 +1,6 @@
 package com.lorevault.api.web.ui;
 import com.lorevault.api.orchestration.job.IngestionFailure;
-import com.lorevault.api.library.service.LibraryQueryService;
+import com.lorevault.api.library.LibraryQueryService;
 import com.lorevault.api.search.model.CoreSearchRecords.*;
 
 import com.lorevault.api.search.rag.RagService;

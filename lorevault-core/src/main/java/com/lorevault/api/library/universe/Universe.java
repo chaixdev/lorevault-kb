@@ -1,6 +1,6 @@
 package com.lorevault.api.library.universe;
 
-import static com.lorevault.api.library.StringSanitizer.toSnakeCase;
+import static com.lorevault.api.common.StringSanitizer.toSnakeCase;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

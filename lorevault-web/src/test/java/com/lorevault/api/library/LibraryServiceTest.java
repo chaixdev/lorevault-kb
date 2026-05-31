@@ -1,7 +1,5 @@
 package com.lorevault.api.library;
 
-import com.lorevault.api.library.service.LibraryResult;
-import com.lorevault.api.library.service.LibraryService;
 import com.lorevault.api.library.universe.Universe;
 import com.lorevault.api.library.series.Series;
 import com.lorevault.api.library.book.Book;

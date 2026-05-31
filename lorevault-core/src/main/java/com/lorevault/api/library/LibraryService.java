@@ -1,4 +1,4 @@
-package com.lorevault.api.library.service;
+package com.lorevault.api.library;
 
 import com.lorevault.api.library.universe.Universe;
 import com.lorevault.api.library.series.Series;
