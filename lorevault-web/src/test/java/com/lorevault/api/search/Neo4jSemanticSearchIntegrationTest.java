@@ -50,7 +50,7 @@ class Neo4jSemanticSearchIntegrationTest {
         registry.add("spring.neo4j.authentication.password", () -> "testpassword");
         // Enable Neo4j-backed semantic search
         registry.add("lorevault.search.provider", () -> "neo4j");
-        registry.add("lorevault.embedding.model.dimensions", () -> "3");
+        registry.add("lorevault.embedding.dimensions", () -> "3");
     }
 
     @Autowired

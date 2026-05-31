@@ -1,4 +1,4 @@
-package com.lorevault.api.config;
+package com.lorevault.api.ai;
 
 /**
  * Type-safe LLM model slot identifiers.

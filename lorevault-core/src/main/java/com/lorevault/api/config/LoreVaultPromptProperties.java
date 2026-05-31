@@ -1,6 +1,6 @@
 package com.lorevault.api.config;
 
-import com.lorevault.api.config.ModelSlot;
+import com.lorevault.api.ai.ModelSlot;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 

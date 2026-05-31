@@ -6,7 +6,7 @@ import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.config.LoreVaultPromptProperties;
 import com.lorevault.api.config.LoreVaultModelsProperties;
-import com.lorevault.api.config.ModelSlot;
+import com.lorevault.api.ai.ModelSlot;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiChatOptions;

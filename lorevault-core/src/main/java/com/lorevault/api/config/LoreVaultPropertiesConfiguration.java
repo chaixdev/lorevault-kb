@@ -11,11 +11,15 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @EnableConfigurationProperties({
-    LoreVaultLlmProperties.class,
-    LoreVaultLlmLoggingProperties.class,
-    LoreVaultEmbeddingProperties.class,
+    LoreVaultAsyncProperties.class,
     LoreVaultContentProperties.class,
-    LoreVaultSlotsProperties.class,
+    LoreVaultEmbeddingProperties.class,
+    LoreVaultLlmLoggingProperties.class,
+    LoreVaultModelsProperties.class,
+    LoreVaultPromptProperties.class,
+    LoreVaultRetryProperties.class,
+    LoreVaultWebMultipartProperties.class,
+    SchemaConfigurationProperties.class,
     BookEventAnnProperties.class
 })
 public class LoreVaultPropertiesConfiguration {

@@ -68,9 +68,7 @@ class TextChunkingServiceTest {
                         targetSize,
                         overlapPercentage,
                         minChunkSize,
-                        maxChunkSize,
-                        "sentence-aware",
-                        new LoreVaultContentProperties.SentenceSplitterProperties(300, true)
+                        maxChunkSize
                 );
         LoreVaultContentProperties properties = new LoreVaultContentProperties(chunkingProperties);
         return new TextChunkingService(properties);

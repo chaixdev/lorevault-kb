@@ -1,6 +1,6 @@
 package com.lorevault.api.web.query.health;
 
-import com.lorevault.api.config.ModelSlot;
+import com.lorevault.api.ai.ModelSlot;
 import com.lorevault.api.health.SystemHealthService;
 import com.lorevault.api.health.HealthMetricsCollector;
 import org.junit.jupiter.api.AfterEach;

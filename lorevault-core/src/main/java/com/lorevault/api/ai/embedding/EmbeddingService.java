@@ -31,7 +31,7 @@ public class EmbeddingService {
     private final EmbeddingTransactionSupport txSupport;
     private final EmbeddingModel embeddingModel;
 
-    @Value("${lorevault.embedding.model.dimensions:1536}")
+    @Value("${lorevault.embedding.dimensions:1536}")
     private int embeddingDim = 1536; // default for non-Spring unit tests
 
     @Value("${lorevault.embedding.model.batch-size:32}")

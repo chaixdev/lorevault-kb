@@ -19,9 +19,7 @@ class TextChunkingServiceConfigurationTest {
                             800,
                             25,
                             400,
-                            1200,
-                            "sentence-aware",
-                            new LoreVaultContentProperties.SentenceSplitterProperties(300, true)
+                            1200
                     )
             )
     );

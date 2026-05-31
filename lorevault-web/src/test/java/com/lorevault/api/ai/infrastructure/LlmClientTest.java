@@ -10,7 +10,7 @@ import com.lorevault.api.orchestration.triad.SceneRelationshipAnalysisService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.config.LoreVaultModelsProperties;
 import com.lorevault.api.config.LoreVaultPromptProperties;
-import com.lorevault.api.config.ModelSlot;
+import com.lorevault.api.ai.ModelSlot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

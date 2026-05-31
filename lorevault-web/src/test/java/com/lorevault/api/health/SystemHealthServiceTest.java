@@ -1,7 +1,7 @@
 package com.lorevault.api.health;
 
 import com.lorevault.api.config.LoreVaultModelsProperties;
-import com.lorevault.api.config.ModelSlot;
+import com.lorevault.api.ai.ModelSlot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

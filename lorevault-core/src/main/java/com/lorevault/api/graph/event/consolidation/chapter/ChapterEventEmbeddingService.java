@@ -40,7 +40,7 @@ public class ChapterEventEmbeddingService {
     private final ChapterEventEmbeddingTransactionSupport txSupport;
     private final EmbeddingModel embeddingModel;
 
-    @Value("${lorevault.embedding.model.dimensions:1536}")
+    @Value("${lorevault.embedding.dimensions:1536}")
     private int embeddingDim = 1536;
 
     @Value("${lorevault.embedding.model.batch-size:32}")

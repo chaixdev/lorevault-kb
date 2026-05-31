@@ -24,48 +24,14 @@ public record LoreVaultContentProperties(
         Integer targetSize,
         Integer overlapPercentage,
         Integer minChunkSize,
-        Integer maxChunkSize,
-        String strategy,
-        SentenceSplitterProperties sentenceSplitter
+        Integer maxChunkSize
     ) {
         public ChunkingProperties {
-            // Apply defaults
-            if (decisionThreshold == null) {
-                decisionThreshold = 1500;
-            }
-            if (targetSize == null) {
-                targetSize = 800;
-            }
-            if (overlapPercentage == null) {
-                overlapPercentage = 25;
-            }
-            if (minChunkSize == null) {
-                minChunkSize = 400;
-            }
-            if (maxChunkSize == null) {
-                maxChunkSize = 1200;
-            }
-            if (strategy == null) {
-                strategy = "sentence-aware";
-            }
-        }
-    }
-    
-    /**
-     * Configuration for sentence splitting within chunks.
-     */
-    public record SentenceSplitterProperties(
-        Integer maxSentenceLength,
-        Boolean preserveDialogue
-    ) {
-        public SentenceSplitterProperties {
-            // Apply defaults
-            if (maxSentenceLength == null) {
-                maxSentenceLength = 300;
-            }
-            if (preserveDialogue == null) {
-                preserveDialogue = true;
-            }
+            if (decisionThreshold == null) decisionThreshold = 1500;
+            if (targetSize == null)         targetSize = 800;
+            if (overlapPercentage == null)  overlapPercentage = 25;
+            if (minChunkSize == null)       minChunkSize = 400;
+            if (maxChunkSize == null)       maxChunkSize = 1200;
         }
     }
 }

@@ -35,7 +35,7 @@ public record BookEventAnnProperties(
         int maxCandidatesPerEvent,
 
         /**
-         * Expected embedding vector dimension.  Must match {@code lorevault.embedding.model.dimensions}.
+         * Expected embedding vector dimension.  Must match {@code lorevault.embedding.dimensions}.
          * Source vectors that do not match this dimension are skipped rather than sent to the vector
          * index, preventing dimension-mismatch errors from the Neo4j ANN call.
          */

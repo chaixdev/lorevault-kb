@@ -307,7 +307,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         String description = "Chunk embedding vector index";
         try {
             Integer existingDimensions = existingChunkVectorDimensions();
-            int expectedDimensions = embeddingProperties.model().dimensions();
+            int expectedDimensions = embeddingProperties.dimensions();
 
             if (existingDimensions != null && existingDimensions != expectedDimensions) {
                 log.warn(
@@ -354,7 +354,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         String description = "ChapterEvent embedding vector index";
         try {
             Integer existingDimensions = existingChapterEventVectorDimensions();
-            int expectedDimensions = embeddingProperties.model().dimensions();
+            int expectedDimensions = embeddingProperties.dimensions();
 
             if (existingDimensions != null && existingDimensions != expectedDimensions) {
                 log.warn(

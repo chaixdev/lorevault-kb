@@ -1,10 +1,7 @@
 package com.lorevault.api.health;
 
 import com.lorevault.api.config.LoreVaultModelsProperties;
-import com.lorevault.api.config.ModelSlot;
-import com.lorevault.api.health.HealthMetricsCollector;
-import com.lorevault.api.health.RetryableHealthChecker;
-import com.lorevault.api.health.ModelHealthValidator;
+import com.lorevault.api.ai.ModelSlot;
 import org.neo4j.driver.Driver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -9,7 +9,6 @@ import org.springframework.ai.openai.OpenAiEmbeddingModel;
 import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -29,7 +28,6 @@ import java.time.Duration;
  */
 @Configuration
 @Profile("!test")
-@EnableConfigurationProperties(LoreVaultModelsProperties.class)
 public class SpringAiConfig {
 
     /** HTTP timeout for all LLM and embedding API calls. */
@@ -136,7 +134,7 @@ var openAiApi = OpenAiApi.builder()
                 .build();
         OpenAiEmbeddingOptions options = OpenAiEmbeddingOptions.builder()
                 .model(cfg.model())
-                .dimensions(embeddingProperties.model().dimensions())
+                .dimensions(embeddingProperties.dimensions())
                 .build();
         return new OpenAiEmbeddingModel(openAiApi, org.springframework.ai.document.MetadataMode.EMBED, options);
     }

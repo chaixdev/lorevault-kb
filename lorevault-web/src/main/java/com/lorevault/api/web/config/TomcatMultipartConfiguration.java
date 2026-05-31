@@ -1,19 +1,20 @@
-package com.lorevault.api.config;
+package com.lorevault.api.web.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.lorevault.api.config.LoreVaultWebMultipartProperties;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
 import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration(proxyBeanMethods = false)
+@RequiredArgsConstructor
 public class TomcatMultipartConfiguration implements WebServerFactoryCustomizer<TomcatServletWebServerFactory> {
 
-    @Value("${lorevault.web.multipart.max-part-count:200}")
-    private int maxPartCount;
+    private final LoreVaultWebMultipartProperties multipartProperties;
 
     @Override
     public void customize(TomcatServletWebServerFactory factory) {
         factory.addConnectorCustomizers(connector ->
-                connector.setProperty("maxPartCount", Integer.toString(maxPartCount)));
+                connector.setProperty("maxPartCount", Integer.toString(multipartProperties.maxPartCount())));
     }
 }

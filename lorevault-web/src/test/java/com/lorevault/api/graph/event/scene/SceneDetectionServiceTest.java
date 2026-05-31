@@ -1,5 +1,5 @@
 package com.lorevault.api.graph.event.scene;
-import com.lorevault.api.config.ModelSlot;
+import com.lorevault.api.ai.ModelSlot;
 import com.lorevault.api.ai.llm.LlmClient;
 
 import com.lorevault.api.orchestration.job.IngestionFailure;
