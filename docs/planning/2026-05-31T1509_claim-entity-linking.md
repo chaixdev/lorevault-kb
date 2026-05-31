@@ -1,7 +1,7 @@
 # Claim-Entity Linking
 
-**Status:** PHASE 1 IMPLEMENTED  
-**Last revised:** 2026-06-01 — Phase 1 (prompt restructuring + Layer 1 edges + bookId) implemented. Core builds (441 tests, 0 failures). Web module has pre-existing compilation errors (unrelated).
+**Status:** PHASE 1 IMPLEMENTED, PHASE 2 REVISED  
+**Last revised:** 2026-06-01 — Phase 2/3 revised. Original 3-layer edge model (`HAS_CHAPTER_SUBJECT`, `HAS_BOOK_SUBJECT`) dropped. Replaced with: add `EntityNode` secondary label to all entity nodes. Existing `RELATES_SUBJECT` + `REFERS_TO` ladder already provides full queryability via `IndividualNode`/`CollectiveNode`/etc. polymorphic labels. No new edge types needed.
 
 ## Summary
 
@@ -278,66 +278,47 @@ Both `rc.subjectName` and `m.normalizedName` are stored in normalized form (lowe
 
 Monitor: ratio of linked claims to total claims. Target: >95% after prompt restructuring.
 
-### Phase 2: Layer 2 — Chapter-level edges (Individual only)
+### Phase 2: EntityNode label (replaces original Layer 2/3)
 
-**Goal:** During chapter consolidation, recreate `HAS_CHAPTER_SUBJECT`/`HAS_CHAPTER_OBJECT` edges from RelationClaim to ChapterIndividual nodes.
+**Goal:** Add `EntityNode` as a secondary label to all entity nodes at every ladder level, so that `(a:IndividualNode)-[:RELATES_SUBJECT]-(rc)-[:RELATES_OBJECT]->(b:EntityNode)` returns every entity kind a character relates to.
 
-**Why delete-and-rebuild works here:** Chapter consolidation is scoped to a single chapter. It owns all the ChapterIndividual nodes for that chapter, so `DETACH DELETE` + re-link is safe — no cross-chapter data is destroyed.
+**Why no new edges needed:** The existing Phase 1 edges (`RELATES_SUBJECT`/`RELATES_OBJECT` → `EntityMention`) combined with the `REFERS_TO` ladder (`EntityMention → ChapterEntity → BookEntity`) already connect every entity level. The existing polymorphic kind labels (`IndividualNode`, `CollectiveNode`, `ObjectNode`, `LocationNode`, `EventNode`) unify the subject side. Adding `EntityNode` unifies the object side — so claims can be traversed from any entity kind without per-kind query branching.
 
-**Changes:**
-
-| File | Change |
-|---|---|
-| `ChapterIndividualConsolidationService` | After the mention→individual linking loop (after line 109), add a batched Cypher query that re-links claims |
-| `ChapterIndividualGraphRepository` | Add `linkClaimsToChapterSubjects(UUID chapterId)` and `linkClaimsToChapterObjects(UUID chapterId)` — batched Cypher methods |
-
-**Batched Cypher for Layer 2:**
-
+**Target query:**
 ```cypher
-MATCH (rc:RelationClaim {chapterId: $chapterId})-[:RELATES_SUBJECT]->(m:EntityMention)
-MATCH (m)-[:REFERS_TO]->(ci:ChapterEntity {chapterId: $chapterId})
-MERGE (rc)-[:HAS_CHAPTER_SUBJECT]->(ci)
+MATCH (a:IndividualNode {normalizedName: "jenkins"})
+      <-[:RELATES_SUBJECT|RELATES_OBJECT]-(rc:RelationClaim)
+      -[:RELATES_SUBJECT|RELATES_OBJECT]->(b:EntityNode)
+WHERE a <> b
+RETURN a.normalizedName, rc.relationName, b.normalizedName, labels(b)[0] AS bKind
 ```
 
-One query per chapter. `ChapterEntity` is polymorphic across all entity kinds — one query works for Individual, Location, Object, and Collective in Phase 4. Pure graph traversal, no string matching.
+**Current labels → revised:**
+| Node type | Current secondary labels | Add |
+|---|---|---|
+| IndividualMention | EntityMention, IndividualNode | EntityNode |
+| CollectiveMention | EntityMention, CollectiveNode | EntityNode |
+| ObjectMention | EntityMention, ObjectNode | EntityNode |
+| LocationMention | EntityMention, LocationNode | EntityNode |
+| EventMention | EntityMention, EventNode | EntityNode |
+| ChapterIndividual | ChapterEntity, IndividualNode | EntityNode |
+| ChapterCollective | ChapterEntity, CollectiveNode | EntityNode |
+| ChapterObject | ChapterEntity, ObjectNode | EntityNode |
+| ChapterLocation | ChapterEntity, LocationNode | EntityNode |
+| ChapterEvent | ChapterEntity, EventNode | EntityNode |
+| BookIndividual | BookEntity, IndividualNode | EntityNode |
+| BookCollective | BookEntity, CollectiveNode | EntityNode |
+| BookObject | BookEntity, ObjectNode | EntityNode |
+| BookLocation | BookEntity, LocationNode | EntityNode |
+| BookEvent | BookEntity, EventNode | EntityNode |
 
-**Blocker:** Phase 2a targets Individual only. Phase 2b extends to Location, Object, Collective after verifying their consolidation services follow the same hook-point pattern.
+**Implementation:** Either Neo4j schema initializer (centralized) or per-entity `@Node(labels = {...})` annotations. The labels are already configured in `@Node` annotations — add `EntityNode` to each.
 
-### Phase 3: Layer 3 — Book-level edges
+**Note:** Event lane deferred. Add `EntityNode` to event nodes but don't create RELATES edges for event claims until Phase 4.
 
-**Goal:** Create `HAS_BOOK_SUBJECT`/`HAS_BOOK_OBJECT` edges from RelationClaim to BookIndividual nodes.
+### Phase 3: Dropped
 
-**Blocked on incremental book consolidation** (`2026-05-30T1750_incremental-book-consolidation.md`). Book scope spans multiple chapters — `DETACH DELETE` on BookIndividual nodes would destroy edges from claims across all chapters. Also depends on Layer 2 edges existing (traversal: claim → chapter entity → book entity). The DAG enforces this sequencing.
-
-**Changes (after incremental consolidation is implemented):**
-
-| File | Change |
-|---|---|
-| `BookIndividualConsolidationService` | After `replaceBookIndividuals()` (or its incremental equivalent), add a batched Cypher query |
-| `BookIndividualGraphRepository` | Add `linkClaimsToBookSubjects(UUID bookId)` and `linkClaimsToBookObjects(UUID bookId)` |
-
-**Batched Cypher for Layer 3:**
-
-```cypher
-MATCH (rc:RelationClaim)-[:HAS_CHAPTER_SUBJECT]->(ci:ChapterEntity)
-MATCH (ci)-[:REFERS_TO]->(bi:BookEntity {bookId: $bookId})
-MERGE (rc)-[:HAS_BOOK_SUBJECT]->(bi)
-```
-
-Pure graph traversal from claim → chapter entity → book entity. No string matching.
-
-**Admin rebuild:** The existing `replaceBookIndividuals()` path (full delete+rebuild) must also re-link all claims for the book. This is the fallback for schema migrations and algorithm changes.
-
-### Phase 4: Extend to all entity kinds (except Events)
-
-**Goal:** Apply Layer 1–3 linking to Location, Object, and Collective kinds.
-
-**Changes:** Each entity kind needs the same 3-layer linking. After Individual is verified in Phase 2a:
-- Layer 1: The mention-ID return pattern already covers all kinds — each persistence service returns its own map. The claim service's `switch(subjectKind)` routes to the correct map. No per-kind changes needed.
-- Layer 2: Add re-linking Cypher to `ChapterLocationConsolidationService`, `ChapterObjectConsolidationService`, `ChapterCollectiveConsolidationService` — same batched traversal pattern.
-- Layer 3: Add re-linking Cypher to the equivalent book-level services, after incremental consolidation is implemented.
-
-**Events deferred.** Events use a different pipeline path (event-specific consolidation, embeddings, ANN). Closer inspection needed before extending claim-entity linking to events. During Phases 1–3, claims with `subjectKind=Event` will not receive Layer 1 edges.
+Original Phase 2 (`HAS_CHAPTER_SUBJECT`) and Phase 3 (`HAS_BOOK_SUBJECT`) are unnecessary. The existing Phase 1 edges + `EntityNode` label provide equivalent query power without materializing redundant edge types.
 
 ## Open Questions
 
@@ -345,17 +326,11 @@ Pure graph traversal from claim → chapter entity → book entity. No string ma
 
 2. **Cross-kind claims.** The LLM might label a subject as `Individual` when the matching mention is `Collective` (e.g., "The Knights Radiant"). The in-memory map approach enforces strict kind matching: `subjectKind` routes to a specific map (`"Individual" → individualIds`). If the kind mismatches the extraction, the lookup returns null, no edge is created, and a warning is logged. This is acceptable — cross-kind mismatches should be rare with prompt restructuring, and the warning surfaces extraction quality issues worth surfacing.
 
-3. ~~**Normalization consistency.**~~ **Resolved.** Extract `normalizeName()` (`trim().replaceAll("\\s+", " ").toLowerCase()`) from the persistence services into a shared utility (e.g., `NameNormalizer` in `common/`). Both entity persistence and claim persistence use the same function. The mention-ID map keys and the claim lookup key are computed identically.
+3. **`EntityNode` label placement.** Should `EntityNode` be added via `@Node(labels = {...})` on each entity class, or via the `Neo4jSchemaInitializer`? Per-class annotations are self-documenting but spread across 15+ files. Schema initializer centralizes the change but decouples the label from the class definition. Prefer annotations for discoverability.
 
-4. ~~**Claim dedup on rerun.**~~ **Resolved.** The idempotency guard skips duplicate claims — their edges from the first successful run persist. New claims get linked via fresh mention-ID maps. `linkSubjectMention()`/`linkObjectMention()` use MERGE, making retry safe.
+4. **Polymorphic query performance.** The `RELATES_SUBJECT|RELATES_OBJECT` multi-type match and `EntityNode` label filter should leverage existing indexes. Verify no full scans on the Deathworlders data set after Phase 2.
 
-5. **Existing repo methods.** `linkSubjectMention()`/`linkObjectMention()` already exist in `RelationClaimGraphRepository` with MERGE semantics. Phase 1d calls them directly — no batched Cypher needed for Layer 1. Retain as-is.
-
-6. **Performance of batched Cypher for Layer 2.** Chapter consolidation adds one batched Cypher query per role per chapter. For a chapter with 100 claims: two queries (subject + object) of ~100 MERGE operations each — negligible. 10K claims across 100 chapters: ~100 claims per chapter consolidation — still negligible. No per-claim N+1 queries.
-
-7. **Layer 3 adapts to incremental consolidation.** The Cypher traversal pattern (`RelationClaim → ChapterEntity → BookEntity`) is stable regardless of whether book consolidation uses delete-and-rebuild or incremental merge. The hook point and query are pre-designed; the service name may change when incremental consolidation lands.
-
-8. **Prompt drift monitoring.** The Layer 1 approach depends on LLM compliance. Log `unlinkedClaims / totalClaims` per extraction (in `persistExtractedRelationClaims()`). If the unlinked rate exceeds 10%, surface as a warning. The >95% match rate is a floor — sustained drops below it indicate prompt drift from model updates and should trigger re-tuning.
+5. **`bookId` population.** Already resolved — passed from `chapter.getBookId()` via handler to claim service. All 22 Deathworlders claims have populated bookId in smoke test.
 
 ## Success Criteria
 
@@ -364,12 +339,10 @@ Pure graph traversal from claim → chapter entity → book entity. No string ma
 - [x] All 5 entity persistence services return `Map<String, UUID>` (normalizedName → mentionId)
 - [x] Every RelationClaim has `RELATES_SUBJECT` and `RELATES_OBJECT` edges
 - [x] Every RelationClaim has a populated `bookId`
-- [ ] Layer 1 subjectName-to-mentionName match rate ≥ 95% (needs integration test with real LLM output)
-- [ ] Chapter consolidation recreates `HAS_CHAPTER_SUBJECT`/`HAS_CHAPTER_OBJECT` edges (Individual lane)
-- [ ] Book consolidation recreates `HAS_BOOK_SUBJECT`/`HAS_BOOK_OBJECT` edges (Individual lane, after incremental consolidation)
-- [ ] Layer 2 extended to Location, Object, Collective lanes (Phase 4)
-- [ ] Cypher query `MATCH (ci:ChapterIndividual {chapterId: $id})<-[:HAS_CHAPTER_SUBJECT]-(rc:RelationClaim) RETURN rc` returns correct results
-- [ ] Existing consolidation cycles (chapter and book) remain correct after adding claim re-linking
+- [ ] Layer 1 subjectName-to-mentionName match rate ≥ 95% (smoke test: 93.2% — close)
+- [ ] `EntityNode` secondary label on all 15 entity node types (Phase 2)
+- [ ] Query `(a:IndividualNode)<-[r:RELATES_SUBJECT\|RELATES_OBJECT]-(rc)-[r2:RELATES_SUBJECT\|RELATES_OBJECT]->(b:EntityNode)` returns cross-kind relationships
+- [ ] Existing consolidation cycles remain correct
 - [ ] No performance regression on consolidation cycle time (<5% increase)
 
 ## Links
@@ -428,5 +401,10 @@ Pure graph traversal from claim → chapter entity → book entity. No string ma
 - Integration test with real LLM output to measure match rate
 - Prompt tuning if match rate < 95%
 
-### Next: Phase 2 — Layer 2 (Chapter-level edges)
-Blocked on nothing — can proceed independently. Requires `ChapterIndividualConsolidationService` batched Cypher + repository method.
+### Next: Phase 2 — Add `EntityNode` secondary label
+
+**Revised (2026-06-01):** Original Phase 2/3 (HAS_CHAPTER_SUBJECT, HAS_BOOK_SUBJECT edges) dropped as unnecessary. The existing `RELATES_SUBJECT`/`RELATES_OBJECT` edges (Phase 1) + `REFERS_TO` ladder + polymorphic kind labels (`IndividualNode`, etc.) already connect claims to entities at every resolution level. 
+
+Phase 2 is now: add `EntityNode` as a secondary label to all entity nodes at every ladder level (Mention, Chapter, Book, all 5 kinds). This unifies the query surface — `(a:IndividualNode)-[:RELATES_SUBJECT]-(rc)-[:RELATES_OBJECT]->(b:EntityNode)` returns cross-kind relationships without per-kind branching.
+
+Implementation: update `@Node(labels = {...})` annotations or schema initializer. 15 node types × 1 label addition. No new edges, no Cypher, no consolidation hook points.
