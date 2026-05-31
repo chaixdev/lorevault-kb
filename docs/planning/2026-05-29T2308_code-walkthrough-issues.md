@@ -1,6 +1,6 @@
 # Code Walkthrough Issues
 
-**Status:** Open — collecting issues during manual code walkthrough
+**Status:** RESOLVED — All issues (#1–#8) fixed, deferred, or superseded. Issue #6 (book consolidation claim contention) is tracked in `incremental-book-consolidation.md`. Issue #8 (entity-type packages) shipped as package restructure (`1ce6fe9`).
 
 ## Summary
 

@@ -2,7 +2,7 @@
 
 **Date:** May 23, 2026
 **Reviewed by:** Oracle (deep implementation review) + author pushback reclassification
-**Plan document:** `docs/planning/2026-05-22T2300_durable-ingestion-orchestration.md`
+**Plan document:** `docs/archive/planning/2026-05-22T2300_durable-ingestion-orchestration.md`
 **Branch:** `feature/durable-ingestion-orchestration`
 **Files:** 13 created, 21 modified, 3 deleted
 **Review scope:** All new files, spot-checked 7 modified files, cross-referenced all 18 success criteria

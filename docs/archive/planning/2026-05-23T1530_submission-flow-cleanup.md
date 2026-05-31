@@ -1,7 +1,7 @@
 # Submission Flow Code Quality Cleanup
 
 **Date:** May 23, 2026 (updated May 24, 2026)
-**Status:** Active — Phases 1+2 complete (9/9 each). Phase 4 complete (7/7 done: P4-1 through P4-8, P4-7/P4-9 resolved). ArchUnit green. 397 tests pass. Phase 3 structural changes next.
+**Status:** COMPLETED — All 4 phases shipped. Phase 3 (package restructure to graph/orchestration/library) completed May 31, 2026.
 **Discovered:** Code walkthrough post durable-ingestion-orchestration implementation
 **Walkthrough progress:** Traced from chapter upload → `bootstrapJob` → `SceneDetectionHandler`. Remaining data flow (chunking, embedding, resolution lanes, book reductions, INGESTION_COMPLETE) to be analyzed in a future session (#18).
 **Design note:** Walkthrough surfaced a paradigm tension between service-oriented (LLM default) and richer domain model design. Captured in [Service-Oriented vs Rich Domain Model](../concepts/service-oriented-vs-domain-model.md).

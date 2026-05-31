@@ -166,7 +166,7 @@ This is the existing `replaceBookIndividuals()` path, exposed only via admin API
 ## Related
 
 - `docs/planning/2026-05-29T2308_code-walkthrough-issues.md` — ConsolidationEngine restoration (completed)
-- `docs/planning/2026-05-27T0015_unified-entity-consolidation.md` — Original consolidation design
+- `docs/archive/planning/2026-05-27T0015_unified-entity-consolidation.md` — Original consolidation design
 - `lorevault-core/src/main/java/com/lorevault/api/ingestion/resolution/individual/BookIndividualPersistenceService.java` — Current full rebuild (`deleteByBookId + saveAll`)
 - `lorevault-core/src/main/java/com/lorevault/api/ingestion/resolution/location/BookConsolidationClaimService.java` — Claim mutex to be obsoleted by batching
 - `lorevault-core/src/main/java/com/lorevault/api/ingestion/orchestration/StageDag.java` — Per-job DAG containing book-level stages (to be extracted)

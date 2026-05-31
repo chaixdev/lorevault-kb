@@ -2,7 +2,7 @@
 
 **Date:** May 24, 2026
 **Status:** Ready to execute (bug fix, not structural cleanup)
-**Parent:** [Submission Flow Code Quality Cleanup](2026-05-23T1530_submission-flow-cleanup.md) (issue #10a)
+**Parent:** [Submission Flow Code Quality Cleanup](../archive/planning/2026-05-23T1530_submission-flow-cleanup.md) (issue #10a)
 **Oracle reviewed:** May 24, 2026 — confirmed live bug, not just cleanup.
 
 The SSE job status streaming (`JobStatusBroadcaster`) is silently broken: it listens for `IngestionEvent` but all handler-published events are now `StageCompletedEvent`. Fixing this and deleting the 12 dead event classes that go with it.

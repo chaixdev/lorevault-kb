@@ -1,6 +1,6 @@
 # Entity Pipeline Terminology Alignment
 
-**Status:** DECIDED — consolidation selected as canonical term
+**Status:** IMPLEMENTED — consolidation is the canonical term across all code and docs
 **Last Updated:** May 20, 2026
 
 ## Summary

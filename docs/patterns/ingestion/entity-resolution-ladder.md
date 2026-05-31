@@ -50,7 +50,7 @@ The implemented scene-local evidence lanes are:
 
 The evidence layer is written before any entity consolidation happens.
 
-All regular entity lanes use the shared `ConsolidationEngine<S>` (in `orchestration/consolidation/`) for entity clustering. The engine uses connected-components algorithm with alias-aware identity key extraction via `NameKeys`. Individual `EntityMerger<S,T>` lambdas handle type-specific field collapsing. See [Unified Entity Consolidation](../../planning/2026-05-27T0015_unified-entity-consolidation.md).
+All regular entity lanes use the shared `ConsolidationEngine<S>` (in `orchestration/consolidation/`) for entity clustering. The engine uses connected-components algorithm with alias-aware identity key extraction via `NameKeys`. Individual `EntityMerger<S,T>` lambdas handle type-specific field collapsing. See [Unified Entity Consolidation](../../archive/planning/2026-05-27T0015_unified-entity-consolidation.md).
 
 ### 2) `ScenesDetectedEvent` fans out into sibling branches
 
