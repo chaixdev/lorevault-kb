@@ -1,8 +1,8 @@
 # Claim-Entity Linking Proposal — May 2026
 
 **Date:** May 2026
-**Status:** Brainstorm — conceptual design for linking RelationClaim nodes to entity nodes in the resolution ladder
-**Purpose:** Fill the gap left by Phase 0's "best-effort" deferral of subject/object entity linking, and define a pattern that survives the book reduction delete-and-rebuild cycle
+**Status:** Brainstorm — conceptual design for linking RelationClaim nodes to entity nodes in the consolidation ladder
+**Purpose:** Fill the gap left by Phase 0's "best-effort" deferral of subject/object entity linking, and define a pattern that survives the book consolidation delete-and-rebuild cycle
 
 ---
 
@@ -34,11 +34,11 @@ This follows the project's established evidence-vs-interpretation layering:
 - **Evidence layer** (scene-local): `*Mention` nodes, `RelationClaim` nodes — ephemeral, per-extraction, never merged away
 - **Interpretation layer** (canonical): `Chapter*`, `Book*` nodes — aggregated, rebuilt on re-ingestion
 
-RelationClaim belongs in the evidence layer. It stays anchored to its Scene. What changes as reduction happens is **which entity nodes its edges point to**, not the claim itself.
+RelationClaim belongs in the evidence layer. It stays anchored to its Scene. What changes as consolidation happens is **which entity nodes its edges point to**, not the claim itself.
 
 ### The delete-and-rebuild cycle is a feature, not a bug
 
-Book reduction (and chapter resolution) use a delete-and-rebuild pattern:
+Book consolidation (and chapter consolidation) use a delete-and-rebuild pattern:
 
 ```cypher
 -- BookIndividualGraphRepository.deleteByBookId()
@@ -49,9 +49,9 @@ OPTIONAL MATCH (bi:BookIndividual {bookId: bookId})
 DETACH DELETE bi
 ```
 
-`DETACH DELETE` destroys **all** incoming edges to the deleted nodes. If RelationClaim had `HAS_SUBJECT → BookIndividual` edges, they would be silently severed on every book reduction cycle.
+`DETACH DELETE` destroys **all** incoming edges to the deleted nodes. If RelationClaim had `HAS_SUBJECT → BookIndividual` edges, they would be silently severed on every book consolidation cycle.
 
-This means any edge pattern that points to Chapter* or Book* nodes must be **rebuilt** during the reduction cycle — just like `REFERS_TO` edges from Mention→ChapterIndividual and ChapterIndividual→BookIndividual are already rebuilt.
+This means any edge pattern that points to Chapter* or Book* nodes must be **rebuilt** during the consolidation cycle — just like `REFERS_TO` edges from Mention→ChapterIndividual and ChapterIndividual→BookIndividual are already rebuilt.
 
 ---
 
@@ -82,21 +82,21 @@ graph TD
 
 These edges connect the claim to the scene-local evidence nodes. Mention nodes are never deleted (they're evidence), so these edges are stable.
 
-### Layer 2: Chapter shortcuts (rebuilt during chapter resolution)
+### Layer 2: Chapter shortcuts (rebuilt during chapter consolidation)
 
 | Edge | From | To | Lifecycle |
 |------|------|----|-----------|
-| `HAS_CHAPTER_SUBJECT` | RelationClaim | Chapter* (ChapterIndividual, ChapterLocation, etc.) | Recreated during chapter resolution |
+| `HAS_CHAPTER_SUBJECT` | RelationClaim | Chapter* (ChapterIndividual, ChapterLocation, etc.) | Recreated during chapter consolidation |
 
-These edges are shortcuts for chapter-scoped queries. They are destroyed by `DETACH DELETE` during chapter resolution and must be rebuilt alongside the Chapter* nodes.
+These edges are shortcuts for chapter-scoped queries. They are destroyed by `DETACH DELETE` during chapter consolidation and must be rebuilt alongside the Chapter* nodes.
 
-### Layer 3: Book shortcuts (rebuilt during book reduction)
+### Layer 3: Book shortcuts (rebuilt during book consolidation)
 
 | Edge | From | To | Lifecycle |
 |------|------|----|-----------|
-| `HAS_BOOK_SUBJECT` | RelationClaim | Book* (BookIndividual, BookLocation, etc.) | Recreated during book reduction |
+| `HAS_BOOK_SUBJECT` | RelationClaim | Book* (BookIndividual, BookLocation, etc.) | Recreated during book consolidation |
 
-These edges are shortcuts for book-scoped queries. They are destroyed by `DETACH DELETE` during book reduction and must be rebuilt alongside the Book* nodes.
+These edges are shortcuts for book-scoped queries. They are destroyed by `DETACH DELETE` during book consolidation and must be rebuilt alongside the Book* nodes.
 
 ### Why distinct relationship type names
 
@@ -114,11 +114,11 @@ RETURN rc.relationName, rc.subjectName, rc.objectName
 
 ### Why not Option A (replace edges on promotion)
 
-Option A would retarget `HAS_SUBJECT` from ChapterIndividual → BookIndividual during book reduction. This loses the chapter-scope link. A chapter-scoped query would no longer find the claim's chapter-level entity reference.
+Option A would retarget `HAS_SUBJECT` from ChapterIndividual → BookIndividual during book consolidation. This loses the chapter-scope link. A chapter-scoped query would no longer find the claim's chapter-level entity reference.
 
 ### Why not Option B (add parallel edges, one-time)
 
-Option B would add `HAS_SUBJECT → BookIndividual` edges once during book reduction, but the delete-and-rebuild cycle would destroy them on the next reduction. They would never be recreated, silently severing the claim-to-entity link.
+Option B would add `HAS_SUBJECT → BookIndividual` edges once during book consolidation, but the delete-and-rebuild cycle would destroy them on the next consolidation. They would never be recreated, silently severing the claim-to-entity link.
 
 ---
 
@@ -158,9 +158,9 @@ At claim creation time, the LLM provides `subjectKind` + `subjectName` and `obje
 
 The normalization function should match the one used in `IndividualPersistenceService` (trim, lowercase, collapse whitespace).
 
-### Layer 2: Claim → Chapter* matching (rebuilt during chapter resolution)
+### Layer 2: Claim → Chapter* matching (rebuilt during chapter consolidation)
 
-After chapter resolution creates new ChapterIndividual (etc.) nodes and `REFERS_TO` edges from Mentions:
+After chapter consolidation creates new ChapterIndividual (etc.) nodes and `REFERS_TO` edges from Mentions:
 
 ```cypher
 -- Re-link chapter-level subject edges for a chapter
@@ -169,11 +169,11 @@ MATCH (m)-[:REFERS_TO]->(ce) WHERE ce:ChapterEntity AND ce.chapterId = $chapterI
 MERGE (rc)-[:HAS_CHAPTER_SUBJECT]->(ce)
 ```
 
-This must run after `linkMentionsToChapterIndividual()` (or equivalent for each entity kind) in the chapter resolution pipeline.
+This must run after the chapter consolidation service creates Chapter* nodes and links Mentions to them (e.g., `ChapterIndividualConsolidationService`).
 
-### Layer 3: Claim → Book* matching (rebuilt during book reduction)
+### Layer 3: Claim → Book* matching (rebuilt during book consolidation)
 
-After book reduction creates new BookIndividual (etc.) nodes and `REFERS_TO` edges from Chapter*:
+After book consolidation creates new BookIndividual (etc.) nodes and `REFERS_TO` edges from Chapter*:
 
 ```cypher
 -- Re-link book-level subject edges for a book
@@ -182,7 +182,7 @@ MATCH (ci)-[:REFERS_TO]->(bi:BookIndividual {bookId: $bookId})
 MERGE (rc)-[:HAS_BOOK_SUBJECT]->(bi)
 ```
 
-This must run after `linkChapterIndividualsForBookAndNameToBookIndividual()` in the book reduction pipeline.
+This must run after the book consolidation service creates Book* nodes and links Chapter* entities to them (e.g., `BookIndividualConsolidationService`).
 
 ---
 
@@ -221,7 +221,7 @@ RETURN bc.displayName, rc.evidenceText
 The `REL` edge would be a **derived denormalization** — collapsing a two-hop path through RelationClaim into a single edge. With claim-entity linking, it's not a prerequisite for traversal anymore. It's a query convenience optimization at best.
 
 And it comes with costs:
-- Another projection to maintain (rebuild when claims change, when book reduction runs)
+- Another projection to maintain (rebuild when claims change, when book consolidation runs)
 - Loss of provenance — a `REL` edge between two BookIndividuals doesn't tell you *which scene* or *which claim* established the relation
 - Aggregation semantics are ambiguous — if 3 claims say "Kaladin is a member of the Knights Radiant", do you get 3 `REL` edges or 1? What about conflicting certainty levels?
 
@@ -244,7 +244,7 @@ Claim-entity linking (this proposal, Axis 2) is **orthogonal** to the catalog mo
 | **Question answered** | What *type* of relation is this? | *Which* entities does this claim connect? |
 | **Storage** | PostgreSQL (catalog definitions) | Neo4j (graph edges) |
 | **Current state** | M0+M1 shipped | Deferred, repo methods exist but unused |
-| **Depends on** | Nothing (standalone module) | Entity resolution ladder (Mention → Chapter → Book) |
+| **Depends on** | Nothing (standalone module) | Entity consolidation ladder (Mention → Chapter → Book) |
 | **Unblocks** | Typed relation identity for queries | Graph traversal from claims to entities |
 
 The two axes converge at query time: a useful relation query needs both *what type* (catalog) and *which entities* (edges). But they can be built and shipped independently.
@@ -275,23 +275,23 @@ The two axes converge at query time: a useful relation query needs both *what ty
 
 **Prerequisite:** None.
 
-### Step 3: Add chapter-level shortcuts during chapter resolution (Layer 2)
+### Step 3: Add chapter-level shortcuts during chapter consolidation (Layer 2)
 
-**Scope:** Moderate. Touches chapter resolution pipeline for each entity kind.
+**Scope:** Moderate. Touches chapter consolidation pipeline for each entity kind.
 
 **Changes:**
-- After each entity persistence service creates Chapter* nodes and `REFERS_TO` edges, add a Cypher query to re-link `HAS_CHAPTER_SUBJECT`/`HAS_CHAPTER_OBJECT` edges from RelationClaim to the new Chapter* nodes
-- This follows the same pattern as the existing `linkMentionsToChapterIndividual()` calls
+- After each entity consolidation service creates Chapter* nodes and `REFERS_TO` edges, add a Cypher query to re-link `HAS_CHAPTER_SUBJECT`/`HAS_CHAPTER_OBJECT` edges from RelationClaim to the new Chapter* nodes
+- This follows the same pattern as the existing chapter consolidation services (e.g., `ChapterIndividualConsolidationService`)
 
 **Prerequisite:** Step 1 (need `RELATES_SUBJECT`/`RELATES_OBJECT` edges to traverse from claim to mention to chapter entity).
 
-### Step 4: Add book-level shortcuts during book reduction (Layer 3)
+### Step 4: Add book-level shortcuts during book consolidation (Layer 3)
 
-**Scope:** Moderate. Touches book reduction pipeline for each entity kind.
+**Scope:** Moderate. Touches book consolidation pipeline for each entity kind.
 
 **Changes:**
-- After each book reduction service creates Book* nodes and `REFERS_TO` edges, add a Cypher query to re-link `HAS_BOOK_SUBJECT`/`HAS_BOOK_OBJECT` edges from RelationClaim to the new Book* nodes
-- This follows the same pattern as the existing `linkChapterIndividualsForBookAndNameToBookIndividual()` calls
+- After each book consolidation service creates Book* nodes and `REFERS_TO` edges, add a Cypher query to re-link `HAS_BOOK_SUBJECT`/`HAS_BOOK_OBJECT` edges from RelationClaim to the new Book* nodes
+- This follows the same pattern as the existing book consolidation services (e.g., `BookIndividualConsolidationService`)
 
 **Prerequisite:** Step 2 (need `bookId` on RelationClaim for efficient queries) and Step 3 (need `HAS_CHAPTER_SUBJECT` edges to traverse from claim to chapter entity to book entity).
 
@@ -301,8 +301,8 @@ The two axes converge at query time: a useful relation query needs both *what ty
 
 **Each kind needs:**
 - Matching logic in `RelationClaimPersistenceService` for the kind-specific Mention type
-- Re-link Cypher in chapter resolution for the kind-specific Chapter* type
-- Re-link Cypher in book reduction for the kind-specific Book* type
+- Re-link Cypher in chapter consolidation for the kind-specific Chapter* type
+- Re-link Cypher in book consolidation for the kind-specific Book* type
 
 ---
 
@@ -331,7 +331,7 @@ After Step 1, M2/M3 and Steps 2-4 can proceed in parallel if desired.
 When `UniverseIndividual` (etc.) nodes are eventually added to the ladder, the same pattern extends naturally:
 
 - Add `HAS_UNIVERSE_SUBJECT` / `HAS_UNIVERSE_OBJECT` edges
-- Rebuild them during universe reduction
+- Rebuild them during universe consolidation
 - Same delete-and-rebuild pattern, same layered materialization
 
 No architectural change needed. The pattern scales by adding layers, not by restructuring existing ones.
