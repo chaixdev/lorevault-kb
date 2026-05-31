@@ -14,7 +14,7 @@ This means:
 
 1. **No graph traversal from claims to entities.** You cannot ask "which individuals does this claim connect?" without string matching against `normalizedName`.
 2. **No graph traversal from entities to claims.** You cannot ask "what relations involve Kaladin?" without scanning all RelationClaim nodes and filtering by `subjectName`/`objectName`.
-3. **The flat strings are denormalized and fragile.** They reflect the LLM's raw extraction, not the canonical entity identity. "Kaladin" and "kaladin" and "Kaladin Stormblessed" may all appear as `subjectName` for the same entity.
+3. **The flat strings are denormalized and fragile.** They reflect the LLM's raw extraction, not the consolidated entity identity. "Kaladin" and "kaladin" and "Kaladin Stormblessed" may all appear as `subjectName` for the same entity.
 4. **M4 (REL edge projection) was previously seen as the path to entity-connected relations.** With claim-entity linking in place, M4's core value proposition — enabling graph traversal between entities via typed relations — is already achieved. M4 becomes a query optimization layer at best, and potentially unnecessary.
 
 The original Phase 0 plan acknowledged this gap:
@@ -32,7 +32,7 @@ But it left the design unspecified. This proposal fills that gap.
 This follows the project's established evidence-vs-interpretation layering:
 
 - **Evidence layer** (scene-local): `*Mention` nodes, `RelationClaim` nodes — ephemeral, per-extraction, never merged away
-- **Interpretation layer** (canonical): `Chapter*`, `Book*` nodes — aggregated, rebuilt on re-ingestion
+- **Interpretation layer** (consolidated): `Chapter*`, `Book*` nodes — aggregated, rebuilt on re-ingestion
 
 RelationClaim belongs in the evidence layer. It stays anchored to its Scene. What changes as consolidation happens is **which entity nodes its edges point to**, not the claim itself.
 
@@ -203,7 +203,7 @@ This is a prerequisite for Layer 3 but also useful independently for book-scoped
 
 ## Impact on M4 (REL Edge Projection)
 
-The original catalog roadmap included M4: project `REL` edges between canonical entities:
+The original catalog roadmap included M4: project `REL` edges between consolidated entities:
 
 ```cypher
 (:BookIndividual)-[:REL {definitionKey: 'R:is_a_member_of'}]->(:BookCollective)
@@ -225,7 +225,7 @@ And it comes with costs:
 - Loss of provenance — a `REL` edge between two BookIndividuals doesn't tell you *which scene* or *which claim* established the relation
 - Aggregation semantics are ambiguous — if 3 claims say "Kaladin is a member of the Knights Radiant", do you get 3 `REL` edges or 1? What about conflicting certainty levels?
 
-**Assessment:** M4 as originally conceived (project `REL` edges between canonical entities) is largely superseded by claim-entity linking. The graph is already traversable. What M4 might become instead:
+**Assessment:** M4 as originally conceived (project `REL` edges between consolidated entities) is largely superseded by claim-entity linking. The graph is already traversable. What M4 might become instead:
 
 - A **query optimization layer** — materialized views for common traversal patterns, but explicitly derived and rebuildable
 - A **spoiler-gating surface** — if you want to gate at the entity-relation level rather than the claim level
