@@ -13,7 +13,6 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties({
     LoreVaultAsyncProperties.class,
     LoreVaultContentProperties.class,
-    LoreVaultEmbeddingProperties.class,
     LoreVaultLlmLoggingProperties.class,
     LoreVaultModelsProperties.class,
     LoreVaultPromptProperties.class,

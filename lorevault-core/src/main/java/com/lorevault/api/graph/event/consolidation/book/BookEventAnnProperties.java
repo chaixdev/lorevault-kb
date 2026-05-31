@@ -1,5 +1,6 @@
 package com.lorevault.api.graph.event.consolidation.book;
 
+import com.lorevault.api.config.LoreVaultEmbeddingProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -7,6 +8,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * <p>All thresholds are externally configurable via {@code lorevault.event-ann.*}.
  * Defaults match the values agreed in the Stage 4 design review.
+ *
+ * <p>The embedding dimension is a shared constant
+ * ({@link LoreVaultEmbeddingProperties#DIMENSIONS}), not an independently
+ * configurable field — it must match the deployed embedding model and vector index.
  */
 @ConfigurationProperties(prefix = "lorevault.event-ann")
 public record BookEventAnnProperties(
@@ -32,20 +37,12 @@ public record BookEventAnnProperties(
          * Maximum number of candidate neighbours retained per source event after dedup.
          * Prevents a single event with many near-duplicates from dominating Stage 5.
          */
-        int maxCandidatesPerEvent,
-
-        /**
-         * Expected embedding vector dimension.  Must match {@code lorevault.embedding.dimensions}.
-         * Source vectors that do not match this dimension are skipped rather than sent to the vector
-         * index, preventing dimension-mismatch errors from the Neo4j ANN call.
-         */
-        int embeddingDimension
+        int maxCandidatesPerEvent
 ) {
     public BookEventAnnProperties {
         if (topK <= 0) throw new IllegalArgumentException("topK must be positive");
         if (oversampleFactor <= 0) throw new IllegalArgumentException("oversampleFactor must be positive");
         if (annFloor < 0.0 || annFloor > 1.0) throw new IllegalArgumentException("annFloor must be in [0, 1]");
         if (maxCandidatesPerEvent <= 0) throw new IllegalArgumentException("maxCandidatesPerEvent must be positive");
-        if (embeddingDimension <= 0) throw new IllegalArgumentException("embeddingDimension must be positive");
     }
 }

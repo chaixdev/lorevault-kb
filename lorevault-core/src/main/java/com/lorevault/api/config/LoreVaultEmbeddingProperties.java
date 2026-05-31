@@ -1,17 +1,15 @@
 package com.lorevault.api.config;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.validation.annotation.Validated;
-
 /**
- * Configuration properties for embedding operations.
+ * Embedding configuration constants.
+ *
+ * <p>The embedding dimension is a design-time decision tied to the chosen
+ * embedding model. Changing it at runtime would break all vector indexes and
+ * semantic search — it is not a tunable property.
  */
-@ConfigurationProperties(prefix = "lorevault.embedding")
-@Validated
-public record LoreVaultEmbeddingProperties(
-    Integer dimensions
-) {
-    public LoreVaultEmbeddingProperties {
-        if (dimensions == null) dimensions = 1536;
-    }
+public final class LoreVaultEmbeddingProperties {
+    /** Expected embedding vector dimension. Must match the deployed embedding model. */
+    public static final int DIMENSIONS = 1536;
+
+    private LoreVaultEmbeddingProperties() {}
 }

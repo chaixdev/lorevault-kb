@@ -1,5 +1,6 @@
 package com.lorevault.api.graph.event.consolidation.book;
 
+import com.lorevault.api.config.LoreVaultEmbeddingProperties;
 import com.lorevault.api.graph.event.persistence.ChapterEvent;
 import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
@@ -84,10 +85,10 @@ public class BookEventAnnCandidateService {
 
         // Guard: reject source vectors whose dimension does not match the configured index dimension.
         // A mismatch would cause Neo4j to throw a dimension error on the ANN call.
-        if (source.embedding().length != annProperties.embeddingDimension()) {
+        if (source.embedding().length != LoreVaultEmbeddingProperties.DIMENSIONS) {
             log.warn(
                     "[EventAnn] Skipping source event with wrong embedding dimension: source={} chapter={} actual={} expected={}",
-                    source.id(), chapterId, source.embedding().length, annProperties.embeddingDimension()
+                    source.id(), chapterId, source.embedding().length, LoreVaultEmbeddingProperties.DIMENSIONS
             );
             return List.of();
         }

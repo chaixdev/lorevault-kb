@@ -84,7 +84,6 @@ lorevault:
     oversample-factor: 3
     ann-floor: 0.70
     max-candidates-per-event: 3
-    embedding-dimension: ${lorevault.embedding.dimensions:1536}
 
   search:
     provider: neo4j

@@ -75,9 +75,9 @@ class SystemHealthServiceTest {
         
         // Mock basic model properties - only when needed
         var nlpSmallProps = new LoreVaultModelsProperties.ModelProperties(
-            "openai", "http://localhost", "/chat/completions", "key", "gemma-3-4b-it", 0.3, 1.0, 128000);
+            "openai", "http://localhost", "key", "gemma-3-4b-it", 128000);
         var nlpBigProps = new LoreVaultModelsProperties.ModelProperties(
-            "openai", "http://localhost", "/chat/completions", "key", TEST_MODEL_ID, 0.3, 1.0, 128000);
+            "openai", "http://localhost", "key", TEST_MODEL_ID, 128000);
             
         // Use lenient() to avoid unnecessary stubbing issues when not all mocks are used in every test
         lenient().when(modelsProperties.nlpSmall()).thenReturn(nlpSmallProps);

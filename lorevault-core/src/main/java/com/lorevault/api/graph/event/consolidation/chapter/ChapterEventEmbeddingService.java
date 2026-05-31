@@ -2,6 +2,7 @@ package com.lorevault.api.graph.event.consolidation.chapter;
 
 import com.lorevault.api.ai.embedding.EmbeddingFailure;
 import com.lorevault.api.ai.embedding.EmbeddingGenerationException;
+import com.lorevault.api.config.LoreVaultEmbeddingProperties;
 import com.lorevault.api.graph.event.persistence.ChapterEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +41,7 @@ public class ChapterEventEmbeddingService {
     private final ChapterEventEmbeddingTransactionSupport txSupport;
     private final EmbeddingModel embeddingModel;
 
-    @Value("${lorevault.embedding.dimensions:1536}")
+    private final int dimensions = LoreVaultEmbeddingProperties.DIMENSIONS;
     private int embeddingDim = 1536;
 
     @Value("${lorevault.embedding.model.batch-size:32}")

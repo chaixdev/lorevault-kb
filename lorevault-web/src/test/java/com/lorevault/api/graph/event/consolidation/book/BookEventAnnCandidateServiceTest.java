@@ -4,7 +4,9 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.lorevault.api.config.LoreVaultEmbeddingProperties;
 import com.lorevault.api.graph.event.persistence.ChapterEvent;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -44,9 +46,18 @@ class BookEventAnnCandidateServiceTest {
 
     private ListAppender<ILoggingEvent> logAppender;
 
-    /** embeddingDimension=3 matches the small test vectors used throughout this suite. */
+    /** Dimension matches {@link LoreVaultEmbeddingProperties#DIMENSIONS}. */
     private static final BookEventAnnProperties TEST_PROPS =
-            new BookEventAnnProperties(8, 3, 0.82, 3, 3);
+            new BookEventAnnProperties(8, 3, 0.82, 3);
+
+    private static double[] testEmbedding(double... values) {
+        double[] vec = new double[LoreVaultEmbeddingProperties.DIMENSIONS];
+        Arrays.fill(vec, 0.01);
+        for (int i = 0; i < values.length && i < vec.length; i++) {
+            vec[i] = values[i];
+        }
+        return vec;
+    }
 
     @Test
     @DisplayName("Queries book-wide candidates, allows same-chapter candidates, and propagates ANN failures")
@@ -55,7 +66,7 @@ class BookEventAnnCandidateServiceTest {
                 neo4jClient, TEST_PROPS
         );
         UUID chapterId = UUID.randomUUID();
-        ChapterEvent source = chapterEvent(chapterId, new double[] {0.1, 0.2, 0.3});
+        ChapterEvent source = chapterEvent(chapterId, testEmbedding(0.1, 0.2, 0.3));
 
         when(neo4jClient.query(anyString())).thenThrow(new IllegalStateException("index missing"));
 
@@ -76,7 +87,7 @@ class BookEventAnnCandidateServiceTest {
     @DisplayName("Skips source event whose embedding dimension does not match configured dimension")
     void skipsSourceEventWithWrongEmbeddingDimension() {
         BookEventAnnCandidateService service = new BookEventAnnCandidateService(
-                neo4jClient, TEST_PROPS // expects dim=3
+                neo4jClient, TEST_PROPS
         );
         UUID chapterId = UUID.randomUUID();
         // 2-element embedding — wrong dimension
@@ -95,7 +106,7 @@ class BookEventAnnCandidateServiceTest {
         StubNeo4jClient stubClient = new StubNeo4jClient();
         BookEventAnnCandidateService service = new BookEventAnnCandidateService(stubClient, TEST_PROPS);
         UUID chapterId = UUID.randomUUID();
-        ChapterEvent source = chapterEvent(chapterId, new double[] {0.1, 0.2, 0.3});
+        ChapterEvent source = chapterEvent(chapterId, testEmbedding(0.1, 0.2, 0.3));
 
         List<BookEventCandidatePair> result = service.generateCandidates(List.of(source), chapterId);
 

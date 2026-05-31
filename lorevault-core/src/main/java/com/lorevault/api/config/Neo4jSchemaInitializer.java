@@ -20,11 +20,9 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     private static final Logger log = LoggerFactory.getLogger(Neo4jSchemaInitializer.class);
 
     private final Neo4jClient neo4jClient;
-    private final LoreVaultEmbeddingProperties embeddingProperties;
 
-    public Neo4jSchemaInitializer(Neo4jClient neo4jClient, LoreVaultEmbeddingProperties embeddingProperties) {
+    public Neo4jSchemaInitializer(Neo4jClient neo4jClient) {
         this.neo4jClient = neo4jClient;
-        this.embeddingProperties = embeddingProperties;
     }
 
     // Unique constraints on business IDs
@@ -307,7 +305,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         String description = "Chunk embedding vector index";
         try {
             Integer existingDimensions = existingChunkVectorDimensions();
-            int expectedDimensions = embeddingProperties.dimensions();
+            int expectedDimensions = LoreVaultEmbeddingProperties.DIMENSIONS;
 
             if (existingDimensions != null && existingDimensions != expectedDimensions) {
                 log.warn(
@@ -354,7 +352,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         String description = "ChapterEvent embedding vector index";
         try {
             Integer existingDimensions = existingChapterEventVectorDimensions();
-            int expectedDimensions = embeddingProperties.dimensions();
+            int expectedDimensions = LoreVaultEmbeddingProperties.DIMENSIONS;
 
             if (existingDimensions != null && existingDimensions != expectedDimensions) {
                 log.warn(

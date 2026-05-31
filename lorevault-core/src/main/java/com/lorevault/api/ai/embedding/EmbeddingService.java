@@ -1,5 +1,6 @@
 package com.lorevault.api.ai.embedding;
 
+import com.lorevault.api.config.LoreVaultEmbeddingProperties;
 import com.lorevault.api.library.chunk.Chunk;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +32,7 @@ public class EmbeddingService {
     private final EmbeddingTransactionSupport txSupport;
     private final EmbeddingModel embeddingModel;
 
-    @Value("${lorevault.embedding.dimensions:1536}")
+    private final int dimensions = LoreVaultEmbeddingProperties.DIMENSIONS;
     private int embeddingDim = 1536; // default for non-Spring unit tests
 
     @Value("${lorevault.embedding.model.batch-size:32}")
