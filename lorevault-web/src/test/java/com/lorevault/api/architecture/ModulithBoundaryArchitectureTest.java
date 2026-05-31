@@ -20,10 +20,11 @@ class ModulithBoundaryArchitectureTest {
             .that().resideInAPackage("com.lorevault.api..")
             .and().resideOutsideOfPackages(
                     "com.lorevault.api.ai..",
+                    "com.lorevault.api.common..",
                     "com.lorevault.api.config..",
-                    "com.lorevault.api.content..",
+                    "com.lorevault.api.graph..",
                     "com.lorevault.api.health..",
-                    "com.lorevault.api.ingestion..",
+                    "com.lorevault.api.orchestration..",
                     "com.lorevault.api.library..",
                     "com.lorevault.api.search..",
                     "com.lorevault.api.web..",
@@ -36,19 +37,20 @@ class ModulithBoundaryArchitectureTest {
     static final ArchRule core_packages_must_not_depend_on_web = noClasses()
             .that().resideInAnyPackage(
                     "com.lorevault.api.ai..",
+                    "com.lorevault.api.common..",
                     "com.lorevault.api.config..",
-                    "com.lorevault.api.content..",
+                    "com.lorevault.api.graph..",
                     "com.lorevault.api.health..",
-                    "com.lorevault.api.ingestion..",
+                    "com.lorevault.api.orchestration..",
                     "com.lorevault.api.library..",
                     "com.lorevault.api.search..")
             .should().dependOnClassesThat().resideInAnyPackage("com.lorevault.api.web..");
 
     @ArchTest
-    static final ArchRule catalog_must_not_depend_on_ingestion_or_web = noClasses()
+    static final ArchRule catalog_must_not_depend_on_core_packages = noClasses()
             .that().resideInAnyPackage("com.lorevault.catalog..")
             .should().dependOnClassesThat().resideInAnyPackage(
-                    "com.lorevault.api.ingestion..",
+                    "com.lorevault.api.orchestration..",
                     "com.lorevault.api.web..",
                     "com.lorevault.api.search..")
             .allowEmptyShould(true);

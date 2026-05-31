@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Configuration;
 public class CatalogEmbeddingConfig {
 
     @Bean
+    @Qualifier("catalogEmbeddingFunction")
     public EmbeddingFunction embeddingFunction(
             @Qualifier("embeddingModel") EmbeddingModel embeddingModel) {
         return embeddingModel::embed;

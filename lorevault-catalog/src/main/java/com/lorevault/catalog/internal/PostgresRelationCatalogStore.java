@@ -46,6 +46,7 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
     private static final int TOP_MATCH_LIMIT = 3;
     private static final double NEAR_MISS_RATIO = 1.10d;
     private static final long EMBEDDING_CACHE_TTL_MILLIS = 5 * 60 * 1000L;
+    private static final int MAX_CACHE_SIZE = 1024;
 
     private static final RowMapper<RelationCatalogDefinition> DEFINITION_ROW_MAPPER = (rs, rowNum) ->
             new RelationCatalogDefinition(
@@ -87,6 +88,7 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
 
     @Override
     public Optional<RelationCatalogDefinition> findByDefinitionKey(String definitionKey) {
+        LOG.debug("[RELATION_CATALOG] findByDefinitionKey={}", definitionKey);
         try {
             var def = jdbcTemplate.queryForObject(
                     """
@@ -108,6 +110,7 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
 
     @Override
     public Optional<RelationCatalogDefinition> findById(RelationCatalogId id) {
+        LOG.debug("[RELATION_CATALOG] findById={}", id);
         try {
             var def = jdbcTemplate.queryForObject(
                     """
@@ -126,6 +129,7 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
 
     @Override
     public Optional<RelationCatalogDefinition> findBestMatch(RelationQuery query) {
+        LOG.debug("[RELATION_CATALOG] findBestMatch definitionKey={}", query.definitionKey());
         String searchText = buildEmbeddingText(query);
         float[] queryVector = embeddingFor(searchText);
 
@@ -159,6 +163,7 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
 
     @Override
     public RelationCatalogDefinition create(RelationQuery query) {
+        LOG.info("[RELATION_CATALOG] Creating definitionKey={}", query.definitionKey());
         UUID id = UUID.randomUUID();
         Instant now = Instant.now();
         String displayName = query.rawName() != null ? query.rawName() : query.definitionKey();
@@ -185,10 +190,16 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
         );
 
         if (inserted == 0) {
+            // ON CONFLICT DO NOTHING means another transaction inserted this key first.
+            // The re-read below must succeed — if it doesn't, the unique constraint
+            // invariant is violated, indicating a data integrity bug or race condition
+            // that the application cannot recover from.
             return findByDefinitionKey(query.definitionKey())
                     .orElseThrow(() -> new IllegalStateException(
                             "Definition key '" + query.definitionKey() + "' not found after ON CONFLICT DO NOTHING"));
         }
+
+        LOG.info("[RELATION_CATALOG] Created definitionKey={} catalogId={}", query.definitionKey(), id);
 
         // Add signature and variant rows
         if (query.subjectKind() != null && query.objectKind() != null) {
@@ -251,6 +262,17 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
 
     private float[] embeddingFor(String searchText) {
         long now = System.currentTimeMillis();
+        if (embeddingCache.size() > MAX_CACHE_SIZE) {
+            // Evict expired entries first; if still over limit, clear entirely.
+            embeddingCache.keySet().removeIf(key -> {
+                CachedEmbedding cached = embeddingCache.get(key);
+                return cached != null && now - cached.createdAtMillis() > EMBEDDING_CACHE_TTL_MILLIS;
+            });
+            if (embeddingCache.size() > MAX_CACHE_SIZE) {
+                LOG.debug("[RELATION_CATALOG] Embedding cache exceeded max size, clearing");
+                embeddingCache.clear();
+            }
+        }
         CachedEmbedding cached = embeddingCache.get(searchText);
         if (cached != null && now - cached.createdAtMillis() <= EMBEDDING_CACHE_TTL_MILLIS) {
             return Arrays.copyOf(cached.vector(), cached.vector().length);
@@ -316,11 +338,18 @@ class PostgresRelationCatalogStore implements RelationCatalogStore {
     /**
      * Touch the last_seen timestamp so staleness/eviction features
      * can distinguish active vs. dormant definitions.
+     *
+     * <p>Uses JVM time ({@link Instant#now()}) rather than PostgreSQL {@code NOW()}
+     * to stay consistent with {@link #create}, which returns the JVM timestamp
+     * to callers.</p>
      */
     private void touch(UUID id) {
+        Instant now = Instant.now();
         jdbcTemplate.update(
-                "UPDATE catalog_definition SET last_seen = NOW() WHERE id = :id",
-                new MapSqlParameterSource("id", id)
+                "UPDATE catalog_definition SET last_seen = :now WHERE id = :id",
+                new MapSqlParameterSource()
+                        .addValue("id", id)
+                        .addValue("now", OffsetDateTime.ofInstant(now, ZoneOffset.UTC))
         );
     }
 

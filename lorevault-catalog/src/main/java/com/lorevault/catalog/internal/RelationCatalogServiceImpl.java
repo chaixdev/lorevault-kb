@@ -7,6 +7,8 @@ import com.lorevault.catalog.RelationQuery;
 
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 @ConditionalOnProperty(name = "lorevault.catalog.enabled", havingValue = "true")
 public class RelationCatalogServiceImpl implements RelationCatalogService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(RelationCatalogServiceImpl.class);
     private static final String TX_MANAGER = "catalogTransactionManager";
 
     private final RelationCatalogStore store;
@@ -35,20 +38,25 @@ public class RelationCatalogServiceImpl implements RelationCatalogService {
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW, transactionManager = TX_MANAGER)
     public RelationCatalogDefinition resolve(RelationQuery query) {
-        return store.findByDefinitionKey(query.definitionKey())
+        LOG.info("[RELATION_CATALOG] Resolving definitionKey={}", query.definitionKey());
+        RelationCatalogDefinition result = store.findByDefinitionKey(query.definitionKey())
             .or(() -> store.findBestMatch(query))
             .orElseGet(() -> store.create(query));
+        LOG.info("[RELATION_CATALOG] Resolved definitionKey={} -> catalogId={}", query.definitionKey(), result.id());
+        return result;
     }
 
     @Override
     @Transactional(readOnly = true, propagation = Propagation.SUPPORTS, transactionManager = TX_MANAGER)
     public Optional<RelationCatalogDefinition> findByKey(RelationCatalogId id) {
+        LOG.debug("[RELATION_CATALOG] Looking up catalogId={}", id);
         return store.findById(id);
     }
 
     @Override
     @Transactional(readOnly = true, propagation = Propagation.SUPPORTS, transactionManager = TX_MANAGER)
     public Optional<RelationCatalogDefinition> findByDefinitionKey(String definitionKey) {
+        LOG.debug("[RELATION_CATALOG] Looking up definitionKey={}", definitionKey);
         return store.findByDefinitionKey(definitionKey);
     }
 }
