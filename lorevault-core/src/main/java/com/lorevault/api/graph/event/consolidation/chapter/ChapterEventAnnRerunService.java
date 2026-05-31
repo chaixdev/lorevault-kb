@@ -1,9 +1,7 @@
 package com.lorevault.api.graph.event.consolidation.chapter;
 
-import com.lorevault.api.graph.event.persistence.ChapterEventGraphRepository;
 import com.lorevault.api.library.chapter.Chapter;
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
-import com.lorevault.api.orchestration.signals.ChapterEventsConsolidatedEvent;
 import com.lorevault.api.library.book.Book;
 import com.lorevault.api.library.book.BookGraphRepository;
 import com.lorevault.api.library.universe.UniverseGraphRepository;
@@ -12,7 +10,6 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,21 +19,14 @@ public class ChapterEventAnnRerunService {
     private final UniverseGraphRepository universeGraphRepository;
     private final BookGraphRepository bookGraphRepository;
     private final ChapterGraphRepository chapterGraphRepository;
-    private final ChapterEventGraphRepository chapterEventGraphRepository;
-    private final ApplicationEventPublisher eventPublisher;
-
     public ChapterEventAnnRerunService(
             UniverseGraphRepository universeGraphRepository,
             BookGraphRepository bookGraphRepository,
-            ChapterGraphRepository chapterGraphRepository,
-            ChapterEventGraphRepository chapterEventGraphRepository,
-            ApplicationEventPublisher eventPublisher
+            ChapterGraphRepository chapterGraphRepository
     ) {
         this.universeGraphRepository = universeGraphRepository;
         this.bookGraphRepository = bookGraphRepository;
         this.chapterGraphRepository = chapterGraphRepository;
-        this.chapterEventGraphRepository = chapterEventGraphRepository;
-        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -46,24 +36,6 @@ public class ChapterEventAnnRerunService {
 
         ScopeSelection scopeSelection = resolveScope(universeId, bookId, chapterId);
         List<ScopedChapter> selectedChapters = scopeSelection.selectedChapters();
-
-        for (ScopedChapter selectedChapter : selectedChapters) {
-            Chapter chapter = selectedChapter.chapter();
-            UUID resolvedChapterId = chapter.getId();
-            UUID resolvedBookId = selectedChapter.bookId();
-
-            eventPublisher.publishEvent(new ChapterEventsConsolidatedEvent(
-                    this,
-                    jobId,
-                    correlationId,
-                    resolvedChapterId,
-                    resolvedBookId,
-                    true,
-                    Math.toIntExact(chapterEventGraphRepository.countMentionsByChapterId(resolvedChapterId)),
-                    Math.toIntExact(chapterEventGraphRepository.countChapterEventsByChapterId(resolvedChapterId)),
-                    0
-            ));
-        }
 
         return new ChapterEventAnnRerunResult(
                 true,
