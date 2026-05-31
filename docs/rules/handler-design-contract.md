@@ -24,7 +24,7 @@ A handler may replace or invalidate only its owned output. It must not casually 
 
 A success-shaped event must mean downstream handlers can safely start from the emitted state.
 
-For example, a `Book*ReducedEvent` must mean the relevant book-level projection is coherent for that lane. It must not mean merely that the handler woke up, observed contention, skipped work, or exhausted a retry budget.
+For example, a `Book*ConsolidatedEvent` must mean the relevant book-level projection is coherent for that lane. It must not mean merely that the handler woke up, observed contention, skipped work, or exhausted a retry budget.
 
 ### 3. Failure is not alternate success
 
@@ -147,14 +147,14 @@ Every `StageOperation` handler receives `StageExecutionContext ctx` in its `exec
 ```java
 // Required — thread ctx through to services
 @Override
-public StepResult execute(StageExecutionContext ctx) {
+public StageResult execute(StageExecutionContext ctx) {
     chapterIndividualConsolidationService.consolidateChapter(ctx, chapterId);
     // ...
 }
 
 // Wrong — ctx available but not passed
 @Override
-public StepResult execute(StageExecutionContext ctx) {
+public StageResult execute(StageExecutionContext ctx) {
     chapterIndividualConsolidationService.consolidateChapter(chapterId); // no ctx
 }
 ```
@@ -207,7 +207,7 @@ Every handler must be annotated with `@ForStage(StageKey.X)` and implement `Stag
 @Component
 public class ChapterIndividualConsolidationHandler implements StageOperation {
     @Override
-    public StepResult execute(StageExecutionContext ctx) { ... }
+    public StageResult execute(StageExecutionContext ctx) { ... }
 }
 ```
 

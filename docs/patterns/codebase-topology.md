@@ -20,24 +20,26 @@ lorevault-web → lorevault-core → lorevault-catalog
 - `lorevault-core` depends on `lorevault-catalog` (public API only).
 - `lorevault-catalog` depends on **nothing** in LoreVault — only Spring Boot, JDBC, Flyway, PostgreSQL.
 
-`lorevault-core` uses seven top-level feature packages under `com.lorevault.api`:
+`lorevault-core` uses eight top-level feature packages under `com.lorevault.api`:
 
 - `ai`
+- `common`
 - `config`
-- `content`
+- `graph`
 - `health`
-- `ingestion`
 - `library`
+- `orchestration`
 - `search`
 
 Representative current internal package map:
 
 | Top-level package | Current internal shape |
-|---|---|
-| `ai` | `chunking`, `embedding`, `llm`, `infrastructure` |
-| `content` | `association`, `chapter`, `chunk`, `mention`, `scene`, `timeline` |
-| `ingestion` | `completion`, `content`, `events`, `job`, `pipeline`, `resolution/{event,individual,location}`, `scene`, `submission`, `triad`, `infrastructure` |
-| `library` | `book`, `series`, `service`, `universe` |
+|---|---|---|
+| `ai` | `embedding`, `infrastructure`, `llm`, `telemetry` |
+| `common` | `error` |
+| `graph` | `collective`, `event`, `individual`, `location`, `mention`, `object`, `relation`, `timeline` |
+| `library` | `book`, `chapter`, `chunk`, `series`, `service`, `universe` |
+| `orchestration` | `consolidation`, `job`, `pipeline`, `signals`, `submission`, `triad` |
 | `search` | `extraction`, `model`, `rag`, `semantic` |
 
 `lorevault-catalog` uses a single top-level package under `com.lorevault.catalog`:
@@ -62,7 +64,7 @@ canonical topology once empty.
 These bidirectional couplings exist within `lorevault-core` and are tracked as
 technical debt:
 
-- `library ↔ content` — the library management and content management packages reference
+- `library ↔ graph` — the library management and graph packages reference
   each other.
 
 These are known constraints, not patterns to follow or extend.
@@ -104,7 +106,7 @@ not a precedent for new shared types.
 Any dependency in the reverse direction is a build cycle and a defect.
 
 **Do not deepen known couplings** — Do not add new cross-package method calls between
-known coupled areas such as `library ↔ content`. Keep `ai` narrow to generic LLM
+known coupled areas such as `library ↔ graph`. Keep `ai` narrow to generic LLM
 infrastructure rather than feature-owned ingestion workflow. If new coordination is
 needed, introduce an event instead.
 

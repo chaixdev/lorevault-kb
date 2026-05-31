@@ -34,12 +34,12 @@ rename them to drop the `api` segment.
 
 ## Known Coupling Risks and Shared Model Constraints
 
-The current topology — including bidirectional coupling between `library ↔ content`
+The current topology — including bidirectional coupling between `library ↔ graph`
 and the `Chapter`/`Scene`/`Chunk` shared model constraint — is documented with context
 in [codebase-topology.md](../patterns/codebase-topology.md).
 
 Do not add new cross-package method calls between the known coupled packages.
-Do not re-expand `ai` into feature-owned ingestion workflow; keep it focused on
+Do not re-expand `ai` into feature-owned orchestration workflow; keep it focused on
 generic LLM infrastructure.
 Do not add new shared domain models. See the topology doc for the current state
 and rationale.
@@ -56,10 +56,10 @@ Within `lorevault-core`, the default internal package shape is capability-orient
 
 Scoped exceptions are acceptable when they remain semantically tight:
 
-- `content/timeline` keeps its local layered substructure because it is already a dense,
+- `graph/timeline` keeps its local layered substructure because it is already a dense,
   self-contained mechanism with clear internal roles.
-- shared support seams such as `ai/infrastructure`, `ingestion/infrastructure`,
-  `ingestion/events`, `ingestion/pipeline`, or `search/model` are acceptable when they
+- shared support seams such as `ai/infrastructure`, `orchestration/signals`,
+  `orchestration/pipeline`, or `search/model` are acceptable when they
   prevent false ownership or avoid back-edge cycles between capability packages.
 
 Remove empty legacy package directories after semantic moves so the source tree does not

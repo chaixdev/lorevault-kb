@@ -50,6 +50,8 @@ The implemented scene-local evidence lanes are:
 
 The evidence layer is written before any entity consolidation happens.
 
+All regular entity lanes use the shared `ConsolidationEngine<S>` (in `orchestration/consolidation/`) for entity clustering. The engine uses connected-components algorithm with alias-aware identity key extraction via `NameKeys`. Individual `EntityMerger<S,T>` lambdas handle type-specific field collapsing. See [Unified Entity Consolidation](../../planning/2026-05-27T0015_unified-entity-consolidation.md).
+
 ### 2) `ScenesDetectedEvent` fans out into sibling branches
 
 Once scene persistence and scene-local evidence persistence are complete, `SceneDetectionHandler` publishes `ScenesDetectedEvent`.
@@ -67,7 +69,7 @@ Entity lanes are sibling branches, not sub-steps of each other or of the content
 
 ### 3) Chapter-level resolution groups mentions and creates chapter entities
 
-Each regular entity lane has a `Chapter*ResolutionHandler` that listens to `ScenesDetectedEvent` and calls its `Chapter*ResolutionService.resolveChapter(chapterId)`.
+Each regular entity lane has a `Chapter*ConsolidationHandler` that listens to `ScenesDetectedEvent` and calls its `Chapter*ConsolidationService.resolveChapter(chapterId)`.
 
 Shared behavior across lanes:
 
@@ -82,7 +84,7 @@ Chapter aggregate nodes are derived projections. They may be rebuilt by their ow
 
 ### 4) Book-level reduction groups chapter entities upward
 
-Each regular entity lane has a `Book*ReductionHandler` that listens to its lane's `Chapter*ResolvedEvent` and calls its `Book*ReductionService.resolveBook(bookId)`.
+Each regular entity lane has a `Book*ConsolidationHandler` that listens to its lane's `Chapter*ConsolidatedEvent` and calls its `Book*ConsolidationService.resolveBook(bookId)`.
 
 Shared behavior across lanes:
 
@@ -93,7 +95,7 @@ Shared behavior across lanes:
 - `Chapter* -[:REFERS_TO]-> Book*` links are recreated
 - empty candidate sets are valid terminal empty replacements and still emit book-reduced events
 
-Book reducers must not publish `Book*ReducedEvent` for claim contention, retry exhaustion, or work that did not reach a coherent terminal state. Claim contention is represented as retryable stage failure rather than alternate success.
+Book reducers must not publish `Book*ConsolidatedEvent` for claim contention, retry exhaustion, or work that did not reach a coherent terminal state. Claim contention is represented as retryable stage failure rather than alternate success.
 
 `Book*` nodes are deliberately thin continuity structures for retrieval and navigation, not rich aggregate fact models.
 
@@ -105,11 +107,11 @@ Book reducers must not publish `Book*ReducedEvent` for claim contention, retry e
 
 **Evidence fields:** `displayName`, `normalizedName`, `aliases`, `activity`, `age`, `physicalProperties`, scope IDs, `resolutionStatus`, and `extractionIndex`.
 
-**Grouping:** mentions and chapter aggregates are grouped by `normalizedName` only.
+**Grouping:** mentions and chapter aggregates are grouped by `normalizedName` and aliases via shared `ConsolidationEngine` with connected-components clustering
 
 **Aggregate state:** `ChapterIndividual` carries display/name/count state; `BookIndividual` carries display/name/count plus representative chapter individual and first-seen chapter IDs.
 
-**Key components:** `IndividualPersistenceService`, `ChapterIndividualResolutionHandler`, `ChapterIndividualResolutionService`, `BookIndividualReductionHandler`, `BookIndividualReductionService`, `ChapterIndividualsResolvedEvent`, `BookIndividualsReducedEvent`.
+**Key components:** `IndividualPersistenceService`, `ChapterIndividualConsolidationHandler`, `ChapterIndividualConsolidationService`, `BookIndividualConsolidationHandler`, `BookIndividualConsolidationService`, `ChapterIndividualsConsolidatedEvent`, `BookIndividualsConsolidatedEvent`.
 
 ### Location Lane
 
@@ -117,11 +119,11 @@ Book reducers must not publish `Book*ReducedEvent` for claim contention, retry e
 
 **Evidence fields:** `displayName`, `normalizedName`, `aliases`, `kind`, `region`, `description`, scope IDs, `resolutionStatus`, and `extractionIndex`.
 
-**Grouping:** mentions are grouped by exact normalized primary/display name and exact normalized aliases. Alias overlap bridges multiple exact-match groups transitively.
+**Grouping:** mentions are grouped by exact normalized primary/display name and exact normalized aliases via shared `ConsolidationEngine`
 
 **Aggregate state:** `ChapterLocation` and `BookLocation` preserve aliases in addition to display/name/count and representative IDs.
 
-**Key components:** `LocationPersistenceService`, `ChapterLocationResolutionHandler`, `ChapterLocationResolutionService`, `BookLocationReductionHandler`, `BookLocationReductionService`, `ChapterLocationsResolvedEvent`, `BookLocationsReducedEvent`.
+**Key components:** `LocationPersistenceService`, `ChapterLocationConsolidationHandler`, `ChapterLocationConsolidationService`, `BookLocationConsolidationHandler`, `BookLocationConsolidationService`, `ChapterLocationsConsolidatedEvent`, `BookLocationsConsolidatedEvent`.
 
 ### Object Lane
 
@@ -129,11 +131,11 @@ Book reducers must not publish `Book*ReducedEvent` for claim contention, retry e
 
 **Evidence fields:** `displayName`, `normalizedName`, `aliases`, `type`, `material`, `purpose`, `description`, scope IDs, `resolutionStatus`, and `extractionIndex`.
 
-**Grouping:** Object v1 groups strictly by `normalizedName`. Aliases and descriptive fields are carried forward as representative metadata, not merge authority. This avoids over-merging generic object language such as “sword”, “door”, “key”, or “ship”.
+**Grouping:** Object v1 groups by `normalizedName` and aliases via shared `ConsolidationEngine` with connected-components clustering. Aliases and descriptive fields are carried forward as representative metadata, not merge authority. This avoids over-merging generic object language such as “sword”, “door”, “key”, or “ship”.
 
 **Aggregate state:** `ChapterObject` and `BookObject` preserve aliases plus representative `type`, `material`, `purpose`, and `description` metadata.
 
-**Key components:** `ObjectPersistenceService`, `ChapterObjectResolutionHandler`, `ChapterObjectResolutionService`, `BookObjectReductionHandler`, `BookObjectReductionService`, `ChapterObjectsResolvedEvent`, `BookObjectsReducedEvent`.
+**Key components:** `ObjectPersistenceService`, `ChapterObjectConsolidationHandler`, `ChapterObjectConsolidationService`, `BookObjectConsolidationHandler`, `BookObjectConsolidationService`, `ChapterObjectsConsolidatedEvent`, `BookObjectsConsolidatedEvent`.
 
 ### Collective Lane
 
@@ -141,11 +143,11 @@ Book reducers must not publish `Book*ReducedEvent` for claim contention, retry e
 
 **Evidence fields:** `displayName`, `normalizedName`, `aliases`, `collectiveType`, `certainty`, `evidence`, scope IDs, `resolutionStatus`, and `extractionIndex`.
 
-**Grouping:** Collective v1 groups strictly by `normalizedName`. Aliases, type, certainty, and evidence are retained as representative metadata rather than transitive merge keys.
+**Grouping:** Collective v1 groups by `normalizedName` and aliases via shared `ConsolidationEngine` with connected-components clustering. Aliases, type, certainty, and evidence are retained as representative metadata rather than transitive merge keys.
 
 **Aggregate state:** `ChapterCollective` and `BookCollective` preserve aliases plus representative `collectiveType`, `certainty`, and `evidence` metadata.
 
-**Key components:** `CollectivePersistenceService`, `ChapterCollectiveResolutionHandler`, `ChapterCollectiveResolutionService`, `BookCollectiveReductionHandler`, `BookCollectiveReductionService`, `ChapterCollectivesResolvedEvent`, `BookCollectivesReducedEvent`.
+**Key components:** `CollectivePersistenceService`, `ChapterCollectiveConsolidationHandler`, `ChapterCollectiveConsolidationService`, `BookCollectiveConsolidationHandler`, `BookCollectiveConsolidationService`, `ChapterCollectivesConsolidatedEvent`, `BookCollectivesConsolidatedEvent`.
 
 ## Event Chain
 
@@ -160,32 +162,32 @@ graph LR
     ChunksEvt --> Embedding["EmbeddingHandler"]
     Embedding --> EmbeddingsDone["EmbeddingsCompletedEvent"]
 
-    ScenesEvt --> ChapterResolveInd["ChapterIndividualResolutionHandler"]
-    ChapterResolveInd --> ChapterResolvedInd["ChapterIndividualsResolvedEvent"]
-    ChapterResolvedInd --> BookReduceInd["BookIndividualReductionHandler"]
-    BookReduceInd --> BookReducedInd["BookIndividualsReducedEvent"]
+    ScenesEvt --> ChapterResolveInd["ChapterIndividualConsolidationHandler"]
+    ChapterResolveInd --> ChapterResolvedInd["ChapterIndividualsConsolidatedEvent"]
+    ChapterResolvedInd --> BookReduceInd["BookIndividualConsolidationHandler"]
+    BookReduceInd --> BookReducedInd["BookIndividualsConsolidatedEvent"]
 
-    ScenesEvt --> ChapterResolveLoc["ChapterLocationResolutionHandler"]
-    ChapterResolveLoc --> ChapterResolvedLoc["ChapterLocationsResolvedEvent"]
-    ChapterResolvedLoc --> BookReduceLoc["BookLocationReductionHandler"]
-    BookReduceLoc --> BookReducedLoc["BookLocationsReducedEvent"]
+    ScenesEvt --> ChapterResolveLoc["ChapterLocationConsolidationHandler"]
+    ChapterResolveLoc --> ChapterResolvedLoc["ChapterLocationsConsolidatedEvent"]
+    ChapterResolvedLoc --> BookReduceLoc["BookLocationConsolidationHandler"]
+    BookReduceLoc --> BookReducedLoc["BookLocationsConsolidatedEvent"]
 
-    ScenesEvt --> ChapterResolveObj["ChapterObjectResolutionHandler"]
-    ChapterResolveObj --> ChapterResolvedObj["ChapterObjectsResolvedEvent"]
-    ChapterResolvedObj --> BookReduceObj["BookObjectReductionHandler"]
-    BookReduceObj --> BookReducedObj["BookObjectsReducedEvent"]
+    ScenesEvt --> ChapterResolveObj["ChapterObjectConsolidationHandler"]
+    ChapterResolveObj --> ChapterResolvedObj["ChapterObjectsConsolidatedEvent"]
+    ChapterResolvedObj --> BookReduceObj["BookObjectConsolidationHandler"]
+    BookReduceObj --> BookReducedObj["BookObjectsConsolidatedEvent"]
 
-    ScenesEvt --> ChapterResolveCol["ChapterCollectiveResolutionHandler"]
-    ChapterResolveCol --> ChapterResolvedCol["ChapterCollectivesResolvedEvent"]
-    ChapterResolvedCol --> BookReduceCol["BookCollectiveReductionHandler"]
-    BookReduceCol --> BookReducedCol["BookCollectivesReducedEvent"]
+    ScenesEvt --> ChapterResolveCol["ChapterCollectiveConsolidationHandler"]
+    ChapterResolveCol --> ChapterResolvedCol["ChapterCollectivesConsolidatedEvent"]
+    ChapterResolvedCol --> BookReduceCol["BookCollectiveConsolidationHandler"]
+    BookReduceCol --> BookReducedCol["BookCollectivesConsolidatedEvent"]
 
-    ScenesEvt --> ChapterResolveEvt["ChapterEventResolutionHandler"]
-    ChapterResolveEvt --> ChapterResolvedEvt["ChapterEventsResolvedEvent"]
+    ScenesEvt --> ChapterResolveEvt["ChapterEventConsolidationHandler"]
+    ChapterResolveEvt --> ChapterResolvedEvt["ChapterEventsConsolidatedEvent"]
     ChapterResolvedEvt --> EventEmbedding["ChapterEventEmbeddingHandler"]
     EventEmbedding --> BookEventCandidates["BookEventCandidatesGeneratedEvent"]
 
-    EmbeddingsDone --> Complete["IngestionCompletionCoordinator"]
+    EmbeddingsDone --> Complete["IngestionPipelineCoordinator"]
     BookReducedInd --> Complete
     BookReducedLoc --> Complete
     BookReducedObj --> Complete
@@ -199,14 +201,14 @@ graph LR
 
 `IngestionCompletedEvent` is terminal for chapter ingestion.
 
-`IngestionCompletionCoordinator` waits for all required completion-barrier events for the same `(jobId, chapterId)` before publishing `IngestionCompletedEvent`:
+`IngestionPipelineCoordinator` waits for all required completion-barrier events for the same `(jobId, chapterId)` before publishing `IngestionCompletedEvent`:
 
 - `EmbeddingsCompletedEvent` (content branch)
-- `BookIndividualsReducedEvent` (Individual lane)
-- `BookLocationsReducedEvent` (Location lane)
-- `BookObjectsReducedEvent` (Object lane)
-- `BookCollectivesReducedEvent` (Collective lane)
-- `ChapterEventsResolvedEvent` (event-resolution path)
+- `BookIndividualsConsolidatedEvent` (Individual lane)
+- `BookLocationsConsolidatedEvent` (Location lane)
+- `BookObjectsConsolidatedEvent` (Object lane)
+- `BookCollectivesConsolidatedEvent` (Collective lane)
+- `ChapterEventsConsolidatedEvent` (event-resolution path)
 - `BookEventCandidatesGeneratedEvent` (event embedding and ANN candidate path)
 
 Entity lanes and the event path are part of the completion contract, not optional post-processing.
@@ -247,12 +249,12 @@ This pattern does **not** cover:
 
 ## Key Code References
 
-**Individual lane:** `IndividualPersistenceService`, `ChapterIndividualResolutionHandler`, `ChapterIndividualResolutionService`, `BookIndividualReductionHandler`, `BookIndividualReductionService`, `IndividualMention`, `ChapterIndividual`, `BookIndividual`.
+**Individual lane:** `IndividualPersistenceService`, `ChapterIndividualConsolidationHandler`, `ChapterIndividualConsolidationService`, `BookIndividualConsolidationHandler`, `BookIndividualConsolidationService`, `IndividualMention`, `ChapterIndividual`, `BookIndividual`.
 
-**Location lane:** `LocationPersistenceService`, `ChapterLocationResolutionHandler`, `ChapterLocationResolutionService`, `BookLocationReductionHandler`, `BookLocationReductionService`, `LocationMention`, `ChapterLocation`, `BookLocation`.
+**Location lane:** `LocationPersistenceService`, `ChapterLocationConsolidationHandler`, `ChapterLocationConsolidationService`, `BookLocationConsolidationHandler`, `BookLocationConsolidationService`, `LocationMention`, `ChapterLocation`, `BookLocation`.
 
-**Object lane:** `ObjectPersistenceService`, `ChapterObjectResolutionHandler`, `ChapterObjectResolutionService`, `BookObjectReductionHandler`, `BookObjectReductionService`, `ObjectMention`, `ChapterObject`, `BookObject`.
+**Object lane:** `ObjectPersistenceService`, `ChapterObjectConsolidationHandler`, `ChapterObjectConsolidationService`, `BookObjectConsolidationHandler`, `BookObjectConsolidationService`, `ObjectMention`, `ChapterObject`, `BookObject`.
 
-**Collective lane:** `CollectivePersistenceService`, `ChapterCollectiveResolutionHandler`, `ChapterCollectiveResolutionService`, `BookCollectiveReductionHandler`, `BookCollectiveReductionService`, `CollectiveMention`, `ChapterCollective`, `BookCollective`.
+**Collective lane:** `CollectivePersistenceService`, `ChapterCollectiveConsolidationHandler`, `ChapterCollectiveConsolidationService`, `BookCollectiveConsolidationHandler`, `BookCollectiveConsolidationService`, `CollectiveMention`, `ChapterCollective`, `BookCollective`.
 
-**Shared:** `SceneDetectionHandler`, `SceneRelationshipAnalysisService`, `TriadAnalysisModels`, `IngestionCompletionCoordinator`, `BookReductionClaimService`.
+**Shared:** `SceneDetectionHandler`, `SceneRelationshipAnalysisService`, `TriadAnalysisModels`, `IngestionPipelineCoordinator`, `BookConsolidationClaimService`.

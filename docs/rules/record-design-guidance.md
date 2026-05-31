@@ -22,13 +22,13 @@ public List<Boundary> createAllDefaults(UUID bookId) { ... }
 
 ### 2. Does the type carry information callers don't already have?
 
-If nine records share `(UUID id, boolean success, int processed, int created, String message)` and differ only by entity-type name (`ChapterIndividualResolutionResult`, `BookObjectResolutionResult`, etc.), the type tag carries no information. The caller knows it called `individualResolutionService` — it doesn't need the return type to remind it.
+If nine records share `(UUID id, boolean success, int processed, int created, String message)` and differ only by entity-type name (`ChapterIndividualConsolidationResult`, `BookObjectConsolidationResult`, etc.), the type tag carries no information. The caller knows it called `individualConsolidationService` — it doesn't need the return type to remind it.
 
-The test: if you renamed all nine records to `ResolutionResult`, would any caller behavior change? If no, the type tags are noise.
+The test: if you renamed all nine records to `ConsolidationResult`, would any caller behavior change? If no, the type tags are noise.
 
 ### 3. Is the type consumed by more than one caller?
 
-If a record is created by service A, consumed exactly once by handler B, and immediately repackaged into another type (like `StepResult`), cut the record. Have the service return `StepResult` directly, or return the payload directly.
+If a record is created by service A, consumed exactly once by handler B, and immediately repackaged into another type (like `StageResult`), cut the record. Have the service return `StageResult` directly, or return the payload directly.
 
 A record that exists only to carry data three lines to a constructor is scaffolding — not a domain type.
 

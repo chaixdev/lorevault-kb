@@ -16,36 +16,36 @@ graph LR
     StageDispatcher -->|"dispatches"| SceneDetectionHandler["SceneDetectionHandler"]
     SceneDetectionHandler -->|"ScenesDetectedEvent"| StageDispatcher
     StageDispatcher -->|"dispatches"| ChunkingHandler["ChunkingHandler"]
-    StageDispatcher -->|"dispatches"| ChapterIndividualResolutionHandler["ChapterIndividualResolutionHandler"]
-    StageDispatcher -->|"dispatches"| ChapterLocationResolutionHandler["ChapterLocationResolutionHandler"]
-    StageDispatcher -->|"dispatches"| ChapterObjectResolutionHandler["ChapterObjectResolutionHandler"]
-    StageDispatcher -->|"dispatches"| ChapterCollectiveResolutionHandler["ChapterCollectiveResolutionHandler"]
-    StageDispatcher -->|"dispatches"| ChapterEventResolutionHandler["ChapterEventResolutionHandler"]
+    StageDispatcher -->|"dispatches"| ChapterIndividualConsolidationHandler["ChapterIndividualConsolidationHandler"]
+    StageDispatcher -->|"dispatches"| ChapterLocationConsolidationHandler["ChapterLocationConsolidationHandler"]
+    StageDispatcher -->|"dispatches"| ChapterObjectConsolidationHandler["ChapterObjectConsolidationHandler"]
+    StageDispatcher -->|"dispatches"| ChapterCollectiveConsolidationHandler["ChapterCollectiveConsolidationHandler"]
+    StageDispatcher -->|"dispatches"| ChapterEventConsolidationHandler["ChapterEventConsolidationHandler"]
     ChunkingHandler -->|"ChunksCreatedEvent"| StageDispatcher
     StageDispatcher -->|"dispatches"| EmbeddingHandler["EmbeddingHandler"]
     EmbeddingHandler -->|"EmbeddingsCompletedEvent"| StageDispatcher
-    ChapterIndividualResolutionHandler -->|"ChapterIndividualsResolvedEvent"| StageDispatcher
-    StageDispatcher -->|"dispatches"| BookIndividualReductionHandler["BookIndividualReductionHandler"]
-    BookIndividualReductionHandler -->|"BookIndividualsReducedEvent"| StageDispatcher
-    ChapterLocationResolutionHandler -->|"ChapterLocationsResolvedEvent"| StageDispatcher
-    StageDispatcher -->|"dispatches"| BookLocationReductionHandler["BookLocationReductionHandler"]
-    BookLocationReductionHandler -->|"BookLocationsReducedEvent"| StageDispatcher
-    ChapterObjectResolutionHandler -->|"ChapterObjectsResolvedEvent"| StageDispatcher
-    StageDispatcher -->|"dispatches"| BookObjectReductionHandler["BookObjectReductionHandler"]
-    BookObjectReductionHandler -->|"BookObjectsReducedEvent"| StageDispatcher
-    ChapterCollectiveResolutionHandler -->|"ChapterCollectivesResolvedEvent"| StageDispatcher
-    StageDispatcher -->|"dispatches"| BookCollectiveReductionHandler["BookCollectiveReductionHandler"]
-    BookCollectiveReductionHandler -->|"BookCollectivesReducedEvent"| StageDispatcher
-    ChapterEventResolutionHandler -->|"ChapterEventsResolvedEvent"| StageDispatcher
+    ChapterIndividualConsolidationHandler -->|"ChapterIndividualsConsolidatedEvent"| StageDispatcher
+    StageDispatcher -->|"dispatches"| BookIndividualConsolidationHandler["BookIndividualConsolidationHandler"]
+    BookIndividualConsolidationHandler -->|"BookIndividualsConsolidatedEvent"| StageDispatcher
+    ChapterLocationConsolidationHandler -->|"ChapterLocationsConsolidatedEvent"| StageDispatcher
+    StageDispatcher -->|"dispatches"| BookLocationConsolidationHandler["BookLocationConsolidationHandler"]
+    BookLocationConsolidationHandler -->|"BookLocationsConsolidatedEvent"| StageDispatcher
+    ChapterObjectConsolidationHandler -->|"ChapterObjectsConsolidatedEvent"| StageDispatcher
+    StageDispatcher -->|"dispatches"| BookObjectConsolidationHandler["BookObjectConsolidationHandler"]
+    BookObjectConsolidationHandler -->|"BookObjectsConsolidatedEvent"| StageDispatcher
+    ChapterCollectiveConsolidationHandler -->|"ChapterCollectivesConsolidatedEvent"| StageDispatcher
+    StageDispatcher -->|"dispatches"| BookCollectiveConsolidationHandler["BookCollectiveConsolidationHandler"]
+    BookCollectiveConsolidationHandler -->|"BookCollectivesConsolidatedEvent"| StageDispatcher
+    ChapterEventConsolidationHandler -->|"ChapterEventsConsolidatedEvent"| StageDispatcher
     StageDispatcher -->|"dispatches"| ChapterEventEmbeddingHandler["ChapterEventEmbeddingHandler"]
     ChapterEventEmbeddingHandler -->|"BookEventCandidatesGeneratedEvent"| StageDispatcher
-    StageDispatcher -->|"dispatches"| IngestionCompletionCoordinator["IngestionCompletionCoordinator"]
-    IngestionCompletionCoordinator -->|"IngestionCompletedEvent"| Done["Pipeline Complete"]
+    StageDispatcher -->|"dispatches"| IngestionPipelineCoordinator["IngestionPipelineCoordinator"]
+    IngestionPipelineCoordinator -->|"IngestionCompletedEvent"| Done["Pipeline Complete"]
     
     SceneDetectionHandler --- SceneDetectionService["SceneDetectionService"]
     ChunkingHandler --- TextChunkingService["TextChunkingService"]
     EmbeddingHandler --- EmbeddingService["EmbeddingService"]
-    ChapterEventResolutionHandler --- ChapterEventResolutionService["ChapterEventResolutionService"]
+    ChapterEventConsolidationHandler --- ChapterEventConsolidationService["ChapterEventConsolidationService"]
     ChapterEventEmbeddingHandler --- ChapterEventEmbeddingService["ChapterEventEmbeddingService"]
     ChapterEventEmbeddingHandler --- BookEventAnnCandidateService["BookEventAnnCandidateService"]
 ```
@@ -64,28 +64,28 @@ sequenceDiagram
     participant TCS as "TextChunkingService"
     participant EH as "EmbeddingHandler"
     participant ES as "EmbeddingService"
-    participant CIRH as "ChapterIndividualResolutionHandler"
-    participant CIRS as "ChapterIndividualResolutionService"
-    participant BIRH as "BookIndividualReductionHandler"
-    participant BIRS as "BookIndividualReductionService"
-    participant CLRH as "ChapterLocationResolutionHandler"
-    participant CLRS as "ChapterLocationResolutionService"
-    participant BLRH as "BookLocationReductionHandler"
-    participant BLRS as "BookLocationReductionService"
-    participant CORH as "ChapterObjectResolutionHandler"
-    participant CORS as "ChapterObjectResolutionService"
-    participant BORH as "BookObjectReductionHandler"
-    participant BORS as "BookObjectReductionService"
-    participant CCRH as "ChapterCollectiveResolutionHandler"
-    participant CCRS as "ChapterCollectiveResolutionService"
-    participant BCRH as "BookCollectiveReductionHandler"
-    participant BCRS as "BookCollectiveReductionService"
-    participant CERH as "ChapterEventResolutionHandler"
-    participant CERS as "ChapterEventResolutionService"
+    participant CIRH as "ChapterIndividualConsolidationHandler"
+    participant CIRS as "ChapterIndividualConsolidationService"
+    participant BIRH as "BookIndividualConsolidationHandler"
+    participant BIRS as "BookIndividualConsolidationService"
+    participant CLRH as "ChapterLocationConsolidationHandler"
+    participant CLRS as "ChapterLocationConsolidationService"
+    participant BLRH as "BookLocationConsolidationHandler"
+    participant BLRS as "BookLocationConsolidationService"
+    participant CORH as "ChapterObjectConsolidationHandler"
+    participant CORS as "ChapterObjectConsolidationService"
+    participant BORH as "BookObjectConsolidationHandler"
+    participant BORS as "BookObjectConsolidationService"
+    participant CCRH as "ChapterCollectiveConsolidationHandler"
+    participant CCRS as "ChapterCollectiveConsolidationService"
+    participant BCRH as "BookCollectiveConsolidationHandler"
+    participant BCRS as "BookCollectiveConsolidationService"
+    participant CERH as "ChapterEventConsolidationHandler"
+    participant CERS as "ChapterEventConsolidationService"
     participant CEEH as "ChapterEventEmbeddingHandler"
     participant CEES as "ChapterEventEmbeddingService"
     participant ANNS as "BookEventAnnCandidateService"
-    participant ICC as "IngestionCompletionCoordinator"
+    participant ICC as "IngestionPipelineCoordinator"
 
     Client->>Controller : "POST /api/ingest"
     Controller->>Service : "submitChapter(request)"
@@ -117,35 +117,35 @@ sequenceDiagram
 
     CIRH->>CIRS : "resolveChapter(chapterId)"
     CIRS-->>CIRH : "return chapter result"
-    CIRH->>BIRH : "publish ChapterIndividualsResolvedEvent"
+    CIRH->>BIRH : "publish ChapterIndividualsConsolidatedEvent"
     BIRH->>BIRS : "resolveBook(bookId)"
     BIRS-->>BIRH : "return book result"
-    BIRH->>ICC : "publish BookIndividualsReducedEvent"
+    BIRH->>ICC : "publish BookIndividualsConsolidatedEvent"
 
     CLRH->>CLRS : "resolveChapter(chapterId)"
     CLRS-->>CLRH : "return chapter result"
-    CLRH->>BLRH : "publish ChapterLocationsResolvedEvent"
+    CLRH->>BLRH : "publish ChapterLocationsConsolidatedEvent"
     BLRH->>BLRS : "resolveBook(bookId)"
     BLRS-->>BLRH : "return book result"
-    BLRH->>ICC : "publish BookLocationsReducedEvent"
+    BLRH->>ICC : "publish BookLocationsConsolidatedEvent"
 
     CORH->>CORS : "resolveChapter(chapterId)"
     CORS-->>CORH : "return chapter result"
-    CORH->>BORH : "publish ChapterObjectsResolvedEvent"
+    CORH->>BORH : "publish ChapterObjectsConsolidatedEvent"
     BORH->>BORS : "resolveBook(bookId)"
     BORS-->>BORH : "return book result"
-    BORH->>ICC : "publish BookObjectsReducedEvent"
+    BORH->>ICC : "publish BookObjectsConsolidatedEvent"
 
     CCRH->>CCRS : "resolveChapter(chapterId)"
     CCRS-->>CCRH : "return chapter result"
-    CCRH->>BCRH : "publish ChapterCollectivesResolvedEvent"
+    CCRH->>BCRH : "publish ChapterCollectivesConsolidatedEvent"
     BCRH->>BCRS : "resolveBook(bookId)"
     BCRS-->>BCRH : "return book result"
-    BCRH->>ICC : "publish BookCollectivesReducedEvent"
+    BCRH->>ICC : "publish BookCollectivesConsolidatedEvent"
 
     CERH->>CERS : "resolveChapter(chapterId)"
     CERS-->>CERH : "return chapter event result"
-    CERH->>CEEH : "publish ChapterEventsResolvedEvent"
+    CERH->>CEEH : "publish ChapterEventsConsolidatedEvent"
     CEEH->>CEES : "embed chapter events"
     CEES-->>CEEH : "return event vectors"
     CEEH->>ANNS : "generate book event ANN candidates"
@@ -189,30 +189,30 @@ sequenceDiagram
 - Publishes `EmbeddingsCompletedEvent` with the final scene/chunk/embedding counts and processed chapter length.
 - Handles retries for external API failures or network-related connection errors.
 
-**Stage 5: Entity and event resolution branches** (`ChapterIndividualResolutionHandler`, `BookIndividualReductionHandler`, `ChapterLocationResolutionHandler`, `BookLocationReductionHandler`, `ChapterObjectResolutionHandler`, `BookObjectReductionHandler`, `ChapterCollectiveResolutionHandler`, `BookCollectiveReductionHandler`, `ChapterEventResolutionHandler`)
+**Stage 5: Entity and event resolution branches** (`ChapterIndividualConsolidationHandler`, `BookIndividualConsolidationHandler`, `ChapterLocationConsolidationHandler`, `BookLocationConsolidationHandler`, `ChapterObjectConsolidationHandler`, `BookObjectConsolidationHandler`, `ChapterCollectiveConsolidationHandler`, `BookCollectiveConsolidationHandler`, `ChapterEventConsolidationHandler`)
 - `ScenesDetectedEvent` triggers sibling Entity branches after scene persistence.
 - Individual flow resolves `IndividualMention -> ChapterIndividual -> BookIndividual`.
 - Location flow resolves `LocationMention -> ChapterLocation -> BookLocation`.
 - Object flow resolves `ObjectMention -> ChapterObject -> BookObject`.
 - Collective flow resolves `CollectiveMention -> ChapterCollective -> BookCollective`.
-- Event flow resolves scene-local event evidence into chapter-scoped event structures and emits `ChapterEventsResolvedEvent` for event embedding/ANN work.
+- Event flow resolves scene-local event evidence into chapter-scoped event structures and emits `ChapterEventsConsolidatedEvent` for event embedding/ANN work.
 - Regular entity flows use scoped replacement semantics for their derived projections. Chapter reducers replace chapter-scoped aggregates inside the chapter-resolution transaction. Book reducers serialize by book claim and publish reduced events only after coherent terminal replacement succeeds.
 
 **Stage 6: Event embedding and ANN candidate generation** (`ChapterEventEmbeddingHandler`)
-- Listens for `ChapterEventsResolvedEvent` after chapter event resolution finishes.
+- Listens for `ChapterEventsConsolidatedEvent` after chapter event resolution finishes.
 - Generates embeddings for chapter events using the configured event embedding model dimension.
 - Generates same-book ANN candidate pairs for event co-reference while excluding events from the current chapter.
 - Publishes `BookEventCandidatesGeneratedEvent`, which is the final completion-barrier signal for the chapter event path.
 
-**Stage 7: Coordinated completion** (`IngestionCompletionCoordinator`)
+**Stage 7: Coordinated completion** (`IngestionPipelineCoordinator`)
 - Waits for all required post-scene branches for the same `(jobId, chapterId)`.
 - Current completion contract requires:
   - `EmbeddingsCompletedEvent`
-  - `BookIndividualsReducedEvent`
-  - `BookLocationsReducedEvent`
-  - `BookObjectsReducedEvent`
-  - `BookCollectivesReducedEvent`
-  - `ChapterEventsResolvedEvent`
+  - `BookIndividualsConsolidatedEvent`
+  - `BookLocationsConsolidatedEvent`
+  - `BookObjectsConsolidatedEvent`
+  - `BookCollectivesConsolidatedEvent`
+  - `ChapterEventsConsolidatedEvent`
   - `BookEventCandidatesGeneratedEvent`
 - Only then is the job marked complete and `IngestionCompletedEvent` emitted.
 - On `IngestionFailedEvent`, the coordinator now removes retained fan-in state for that `(jobId, chapterId)` and treats the key as terminal-failed so late success-branch events cannot recreate stale completion state after a failure.
@@ -233,20 +233,20 @@ This means the pipeline is not a single long-running transaction and not a sched
 | Completed task | Success event emitted | Downstream task(s) triggered |
 |---|---|---|
 | Chapter submission and job creation (`IngestionService`) | `ChapterIngestionEvent` | Scene detection (`SceneDetectionHandler`) |
-| Scene detection, scene persistence, temporal-edge materialization, scene-local evidence persistence (`SceneDetectionHandler`) | `ScenesDetectedEvent` | Chunk creation (`ChunkingHandler`), chapter individual resolution (`ChapterIndividualResolutionHandler`), chapter location resolution (`ChapterLocationResolutionHandler`), chapter object resolution (`ChapterObjectResolutionHandler`), chapter collective resolution (`ChapterCollectiveResolutionHandler`), chapter event resolution (`ChapterEventResolutionHandler`) |
+| Scene detection, scene persistence, temporal-edge materialization, scene-local evidence persistence (`SceneDetectionHandler`) | `ScenesDetectedEvent` | Chunk creation (`ChunkingHandler`), chapter individual resolution (`ChapterIndividualConsolidationHandler`), chapter location resolution (`ChapterLocationConsolidationHandler`), chapter object resolution (`ChapterObjectConsolidationHandler`), chapter collective resolution (`ChapterCollectiveConsolidationHandler`), chapter event resolution (`ChapterEventConsolidationHandler`) |
 | Chunk creation and persistence (`ChunkingHandler`) | `ChunksCreatedEvent` | Embedding generation (`EmbeddingHandler`) |
-| Embedding generation (`EmbeddingHandler`) | `EmbeddingsCompletedEvent` | Completion coordination state update (`IngestionCompletionCoordinator`) |
-| Chapter-level individual resolution (`ChapterIndividualResolutionHandler`) | `ChapterIndividualsResolvedEvent` | Book-level individual reduction (`BookIndividualReductionHandler`) |
-| Book-level individual reduction (`BookIndividualReductionHandler`) | `BookIndividualsReducedEvent` | Completion coordination state update (`IngestionCompletionCoordinator`) |
-| Chapter-level location resolution (`ChapterLocationResolutionHandler`) | `ChapterLocationsResolvedEvent` | Book-level location reduction (`BookLocationReductionHandler`) |
-| Book-level location reduction (`BookLocationReductionHandler`) | `BookLocationsReducedEvent` | Completion coordination state update (`IngestionCompletionCoordinator`) |
-| Chapter-level object resolution (`ChapterObjectResolutionHandler`) | `ChapterObjectsResolvedEvent` | Book-level object reduction (`BookObjectReductionHandler`) |
-| Book-level object reduction (`BookObjectReductionHandler`) | `BookObjectsReducedEvent` | Completion coordination state update (`IngestionCompletionCoordinator`) |
-| Chapter-level collective resolution (`ChapterCollectiveResolutionHandler`) | `ChapterCollectivesResolvedEvent` | Book-level collective reduction (`BookCollectiveReductionHandler`) |
-| Book-level collective reduction (`BookCollectiveReductionHandler`) | `BookCollectivesReducedEvent` | Completion coordination state update (`IngestionCompletionCoordinator`) |
-| Chapter event co-reference and chapter event aggregation (`ChapterEventResolutionHandler`) | `ChapterEventsResolvedEvent` | Event embedding and ANN candidate generation (`ChapterEventEmbeddingHandler`) |
-| Event embedding and ANN candidate generation (`ChapterEventEmbeddingHandler`) | `BookEventCandidatesGeneratedEvent` | Completion coordination state update (`IngestionCompletionCoordinator`) |
-| Completion preconditions satisfied for the job/chapter (`IngestionCompletionCoordinator`) | `IngestionCompletedEvent` | Terminal success notification / downstream consumers |
+| Embedding generation (`EmbeddingHandler`) | `EmbeddingsCompletedEvent` | Completion coordination state update (`IngestionPipelineCoordinator`) |
+| Chapter-level individual resolution (`ChapterIndividualConsolidationHandler`) | `ChapterIndividualsConsolidatedEvent` | Book-level individual reduction (`BookIndividualConsolidationHandler`) |
+| Book-level individual reduction (`BookIndividualConsolidationHandler`) | `BookIndividualsConsolidatedEvent` | Completion coordination state update (`IngestionPipelineCoordinator`) |
+| Chapter-level location resolution (`ChapterLocationConsolidationHandler`) | `ChapterLocationsConsolidatedEvent` | Book-level location reduction (`BookLocationConsolidationHandler`) |
+| Book-level location reduction (`BookLocationConsolidationHandler`) | `BookLocationsConsolidatedEvent` | Completion coordination state update (`IngestionPipelineCoordinator`) |
+| Chapter-level object resolution (`ChapterObjectConsolidationHandler`) | `ChapterObjectsConsolidatedEvent` | Book-level object reduction (`BookObjectConsolidationHandler`) |
+| Book-level object reduction (`BookObjectConsolidationHandler`) | `BookObjectsConsolidatedEvent` | Completion coordination state update (`IngestionPipelineCoordinator`) |
+| Chapter-level collective resolution (`ChapterCollectiveConsolidationHandler`) | `ChapterCollectivesConsolidatedEvent` | Book-level collective reduction (`BookCollectiveConsolidationHandler`) |
+| Book-level collective reduction (`BookCollectiveConsolidationHandler`) | `BookCollectivesConsolidatedEvent` | Completion coordination state update (`IngestionPipelineCoordinator`) |
+| Chapter event co-reference and chapter event aggregation (`ChapterEventConsolidationHandler`) | `ChapterEventsConsolidatedEvent` | Event embedding and ANN candidate generation (`ChapterEventEmbeddingHandler`) |
+| Event embedding and ANN candidate generation (`ChapterEventEmbeddingHandler`) | `BookEventCandidatesGeneratedEvent` | Completion coordination state update (`IngestionPipelineCoordinator`) |
+| Completion preconditions satisfied for the job/chapter (`IngestionPipelineCoordinator`) | `IngestionCompletedEvent` | Terminal success notification / downstream consumers |
 | Any stage fails (`StageDispatcher`) | `IngestionFailedEvent` | Terminal failure notification / downstream consumers |
 
 ### Event Semantics By Boundary
@@ -266,19 +266,19 @@ The important contract is not just that an event was emitted, but what downstrea
 - Means chunk nodes and scene-to-chunk links exist.
 - Allows embedding generation to treat chunk persistence as complete for that chapter.
 
-**`ChapterIndividualsResolvedEvent` / `ChapterLocationsResolvedEvent` / `ChapterObjectsResolvedEvent` / `ChapterCollectivesResolvedEvent`**
+**`ChapterIndividualsConsolidatedEvent` / `ChapterLocationsConsolidatedEvent` / `ChapterObjectsConsolidatedEvent` / `ChapterCollectivesConsolidatedEvent`**
 - Mean the chapter-scoped reduction pass is complete for that evidence type.
 - Allow the corresponding book-scoped reduction step to rebuild the book-level aggregate.
 
-**`ChapterEventsResolvedEvent`**
+**`ChapterEventsConsolidatedEvent`**
 - Means chapter-scoped event resolution is complete.
 - Allows event embedding and ANN candidate generation to begin.
 - Also contributes to the completion barrier so the coordinator can observe the event-resolution stage separately from downstream candidate generation.
 
-**`BookIndividualsReducedEvent` / `BookLocationsReducedEvent` / `BookObjectsReducedEvent` / `BookCollectivesReducedEvent` / `EmbeddingsCompletedEvent` / `BookEventCandidatesGeneratedEvent`**
+**`BookIndividualsConsolidatedEvent` / `BookLocationsConsolidatedEvent` / `BookObjectsConsolidatedEvent` / `BookCollectivesConsolidatedEvent` / `EmbeddingsCompletedEvent` / `BookEventCandidatesGeneratedEvent`**
 - Mean one of the required post-scene branches has finished.
 - Do not individually complete the ingestion job.
-- Instead, they contribute to the completion barrier tracked by `IngestionCompletionCoordinator`.
+- Instead, they contribute to the completion barrier tracked by `IngestionPipelineCoordinator`.
 
 **`IngestionCompletedEvent`**
 - Means all required branches for the chapter have finished and the job can be treated as terminally successful.
@@ -289,7 +289,7 @@ The important contract is not just that an event was emitted, but what downstrea
 
 ### Failure Semantics
 
-- `StageDispatcher` wraps handler execution in an error boundary, catches unchecked exceptions, and converts them to `StepResult.failure()` or `StepResult.retryableFailure()`.
+- `StageDispatcher` wraps handler execution in an error boundary, catches unchecked exceptions, and converts them to `StageResult.failure()` or `StageResult.retryableFailure()`.
 - Typed workflow failures carrying structured `IngestionFailure` payloads are treated as first-class stage outcomes.
 - Known business failures are preserved into status/failure events instead of being flattened into generic runtime errors or false-success counters.
 - This is especially important for chapter submission, scene detection/localization, and embedding generation, where the current implementation now fails closed for ambiguous or malformed outcomes.
@@ -307,7 +307,7 @@ The runtime shape is:
    - object resolution branch
    - collective resolution branch
    - chapter event resolution branch, followed by event embedding and ANN candidate generation
-4. **Join** inside `IngestionCompletionCoordinator`, which waits for the required completion-barrier events.
+4. **Join** inside `IngestionPipelineCoordinator`, which waits for the required completion-barrier events.
 5. **Single terminal outcome**, either `IngestionCompletedEvent` or `IngestionFailedEvent`.
 
 This join is intentionally event-based rather than call-stack-based. No branch directly calls another branch's service to declare the whole job complete.
@@ -385,7 +385,7 @@ This document describes the orchestration contract, not every internal sub-step.
 The goal of this document is to make the causal event graph legible: which task runs, which event it emits, and which downstream tasks that event unlocks.
 
 ### Failure Handling
-The `StageDispatcher.dispatch()` method wraps handler execution in an error boundary that performs: (1) atomic `TRIGGERED→RUNNING` guard, (2) idempotency check (`isAlreadyCompleted`), (3) handler execution with error boundary, (4) `StageCompletedEvent` emission. When a failure occurs, the dispatcher converts the exception to `StepResult.failure()` or `StepResult.retryableFailure()`, emits an `IngestionFailedEvent`, and updates the job status to `FAILED`. This update includes a structured `IngestionFailure` object containing the error type, message, and diagnostic properties.
+The `StageDispatcher.dispatch()` method wraps handler execution in an error boundary that performs: (1) atomic `TRIGGERED→RUNNING` guard, (2) idempotency check (`isAlreadyCompleted`), (3) handler execution with error boundary, (4) `StageCompletedEvent` emission. When a failure occurs, the dispatcher converts the exception to `StageResult.failure()` or `StageResult.retryableFailure()`, emits an `IngestionFailedEvent`, and updates the job status to `FAILED`. This update includes a structured `IngestionFailure` object containing the error type, message, and diagnostic properties.
 
 Each handler defines its own retryability logic. For instance, LLM provider errors are marked as retryable, while a missing chapter entity is treated as a terminal state. The system specifically unwraps `TriadAnalysisException` to preserve granular details about which part of the temporal analysis failed. To prevent cascading failures in the event-driven loop, exceptions are recorded and swallowed by the handler rather than being rethrown.
 
@@ -441,7 +441,7 @@ Individual handlers use `@ForStage(StageKey.X)` instead of `@Async @EventListene
 @Component
 public class SceneDetectionHandler implements StageOperation {
     @Override
-    public StepResult execute(StageExecutionContext ctx) { ... }
+    public StageResult execute(StageExecutionContext ctx) { ... }
 }
 
 // Wrong — old pattern, no longer used
@@ -488,9 +488,9 @@ The `AFTER_COMMIT` scoping is handled by the event publication mechanism, not by
 handler annotations.
 
 All downstream handlers (`ChunkingHandler`, `EmbeddingHandler`,
-`ChapterLocationResolutionHandler`, `ChapterIndividualResolutionHandler`,
-`ChapterObjectResolutionHandler`, `ChapterCollectiveResolutionHandler`,
-`ChapterEventResolutionHandler`, `ChapterEventEmbeddingHandler`) are registered
+`ChapterLocationConsolidationHandler`, `ChapterIndividualConsolidationHandler`,
+`ChapterObjectConsolidationHandler`, `ChapterCollectiveConsolidationHandler`,
+`ChapterEventConsolidationHandler`, `ChapterEventEmbeddingHandler`) are registered
 with `@ForStage` and invoked through `StageDispatcher`, which manages executor
 binding centrally.
 
@@ -503,18 +503,18 @@ downstream.
 
 ### Fan-In Coordinator
 
-`IngestionCompletionCoordinator` expects exactly seven completion-barrier events before
+`IngestionPipelineCoordinator` expects exactly seven completion-barrier events before
 firing `IngestionCompletedEvent`:
 
 1. Embedding path: `ChunkingHandler → EmbeddingHandler`
-2. Location path: `ChapterLocationResolutionHandler → BookLocationReductionHandler`
-3. Individual path: `ChapterIndividualResolutionHandler → BookIndividualReductionHandler`
-4. Object path: `ChapterObjectResolutionHandler → BookObjectReductionHandler`
-5. Collective path: `ChapterCollectiveResolutionHandler → BookCollectiveReductionHandler`
-6. Chapter event resolution: `ChapterEventResolutionHandler`
+2. Location path: `ChapterLocationConsolidationHandler → BookLocationConsolidationHandler`
+3. Individual path: `ChapterIndividualConsolidationHandler → BookIndividualConsolidationHandler`
+4. Object path: `ChapterObjectConsolidationHandler → BookObjectConsolidationHandler`
+5. Collective path: `ChapterCollectiveConsolidationHandler → BookCollectiveConsolidationHandler`
+6. Chapter event resolution: `ChapterEventConsolidationHandler`
 7. Chapter event embedding and ANN candidate generation: `ChapterEventEmbeddingHandler`
 
-The chapter event path has two completion-barrier events. `ChapterEventsResolvedEvent`
+The chapter event path has two completion-barrier events. `ChapterEventsConsolidatedEvent`
 records that chapter event resolution finished and unlocks event embedding/ANN work.
 `BookEventCandidatesGeneratedEvent` records that event vectors and same-book ANN
 candidate pairs are ready.

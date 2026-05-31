@@ -1,7 +1,7 @@
 # LoreVault Project Status
 
-**Last Updated:** May 30, 2026
-**Status:** Active — Phases 1+2+4 complete, Phases 3a+3b+3c complete, terminology alignment complete. StageExecutionContext Phases 1–2 shipped. Domain node tagging shipped (18 @Node entities tagged with stageId, ctx threaded through all services). 463 tests, 0 failures.
+**Last Updated:** May 31, 2026
+**Status:** Active — Phases 1+2+4 complete, Phases 3a+3b+3c complete, terminology alignment complete. StageExecutionContext Phases 1–2 shipped. Domain node tagging shipped (18 @Node entities tagged with stageId). Package restructure shipped (content/ + ingestion/ → graph/ + orchestration/ + library/). StageDispatcher extraction shipped. StepKey retired → StageKey. Unified consolidation engine shipped. 456 tests, 0 failures.
 **Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state. Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
@@ -16,10 +16,10 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - All domain content entities annotated `@Node` directly (no mirror Node classes)
 - Internal indirection layers removed — services inject concrete beans/repositories directly
 - Maven structure: `lorevault-core` contains the feature-oriented core packages, `lorevault-web` contains the HTTP/UI edge, and `lorevault-catalog` is a standalone closed module with its own PostgreSQL database
-- Core package structure: 7 top-level feature-oriented packages under `com.lorevault.api` in `lorevault-core` (`ai/`, `config/`, `content/`, `health/`, `ingestion/`, `library/`, `search/`)
+- Core package structure: 8 top-level feature-oriented packages under `com.lorevault.api` in `lorevault-core` (`ai/`, `common/`, `config/`, `graph/`, `health/`, `library/`, `orchestration/`, `search/`)
 - Catalog package structure: `com.lorevault.catalog` (no `api` segment) with public API surface and `internal` package enforced by `@ApplicationModule(CLOSED)` and ArchUnit rules
 - Edge package structure: `com.lorevault.api.web/**` lives in `lorevault-web`, with `web.command/`, `web.query/`, and `web.ui/` as the canonical edge shape
-- `lorevault-core` now uses capability-oriented internal packages instead of the old per-context `application/domain/infrastructure` split: `content/{association,chapter,chunk,mention,scene,timeline}`, `ingestion/{completion,content,events,job,pipeline,resolution,scene,submission,triad}`, `library/{book,series,service,universe}`, `search/{extraction,model,rag,semantic}`, and `ai/{chunking,embedding,llm}` plus shared local support packages where they remain semantically justified
+- `lorevault-core` uses capability-oriented internal packages: `graph/{collective,event,individual,location,mention,object,relation,timeline}`, `orchestration/{consolidation,job,pipeline,signals,submission,triad}`, `library/{book,chapter,chunk,series,service,universe}`, `search/{extraction,model,rag,semantic}`, `ai/{embedding,infrastructure,llm,telemetry}`, and `common/{error}`
 - Scene detection now enforces context-budget checks and deterministic segmented fallback for oversized chapters
 - Individual mentions are persisted from scene detection output, with normalized-name and resolution metadata
 - Scoped regular entity resolution is now active for four lanes:
@@ -37,7 +37,7 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - Async ingestion handlers have been realigned with transaction guidance, and recent status/LLM-call persistence fixes reduced mismatch risk between pipeline progress and durable records
 - Architecture boundaries between `ai`, `content`, and `ingestion` are now enforced more explicitly in code, with follow-up test alignment on the current ingestion/triad flow
 - Neo4j semantic-search test wiring and related book-reduction claim persistence paths have received another stabilization pass
-- SSE job streaming is live at `/api/query/jobs/stream`, with keepalives and normalized status-update payloads for ingestion lifecycle events
+- SSE job streaming is live at `/api/query/jobs/stream`, with keepalives and normalized status-update payloads for stage lifecycle events via `StageCompletedEvent`
 - A basic operator UI is present under the Thymeleaf `ui/` surface: hierarchical library selection, batch chapter upload, live job visibility, operator actions, a query panel, and retrieval-mode selection
 
 ## What Is Done
@@ -56,23 +56,25 @@ LoreVault is a lore-ingestion and retrieval system for fictional universes. It i
 - **Stage 4 event path shipped** — chapter events now continue beyond extraction into vector embedding and same-book ANN candidate generation, and ingestion completion now explicitly waits on the event branch alongside the regular entity lanes
 - **Stages 5–6 event path shipped** — LLM semantic merge verification (Stage 5) evaluates each ANN candidate pair and decides MERGE / KEEP_SEPARATE / UNRESOLVED; BookEvent write path (Stage 6) clusters MERGE decisions and writes thin `BookEvent` nodes plus `ChapterEvent -[:REFERS_TO]-> BookEvent` edges; the event entity resolution pipeline is now end-to-end from EventMention through BookEvent
 - **Post-split architecture and ingestion hardening continued** — recent follow-up commits enforced architecture boundaries across `ai`, `content`, and `ingestion`; aligned async ingestion handlers with transaction rules; tightened LLM-call/status persistence and book-reduction claim handling; stabilized semantic-search test wiring; refreshed individual-resolution coverage to match the current triad-analysis flow; and codified retry-safe handler ownership guidance
-- **Step execution API surface shipped** — controllers, DTOs, event mapper, query endpoint, StepKey/StepDefinition/StepCatalog, *Operation interfaces, curl-driven skill, and supporting docs/rules; enables agentic step-by-step pipeline execution for iterative development
+- **Stage execution API surface shipped** — controllers, DTOs, event mapper, query endpoint, StageKey/StageOperation, curl-driven skill, and supporting docs/rules; enables agentic step-by-step pipeline execution for iterative development
 - **Durable ingestion orchestration shipped** — replaced in-memory `IngestionCompletionCoordinator` and `StatusRecord` with Neo4j-backed `Stage`/`StageOutput`/`StageDag` orchestrator. 15-stage pipeline DAG with fan-in barrier evaluation via conditional Cypher, stale trigger/RUNNING recovery (`@Scheduled`), cascade invalidation for rerun, idempotency via `StageOutput` nodes, `StageTriggeredEvent`/`StageCompletedEvent` universal lifecycle events. Deleted `IngestionJob`/`StatusRecord`/`IngestionCompletionCoordinator`. 13 handlers unified on `onTrigger` → guard → idempotency → execute → emit pattern. 4 commits on `feature/durable-ingestion-orchestration`, smoke-tested end-to-end. See: `docs/planning/2026-05-22T2300_durable-ingestion-orchestration.md`, `docs/reviews/2026-05-23T1200_durable-ingestion-orchestration-implementation-review.md`
 - **StageDispatcher extraction shipped (Phase 3b)** — centralized orchestration dispatcher replaces per-handler `@Async`/`@EventListener`/`onTrigger` boilerplate across all 15 ingestion handlers. Handlers are now pure `StageOperation` beans implementing only `execute(DispatchContext ctx)`. `StageDispatcher` owns event listening, executor routing (scene detection vs ingestion lane), guard/idempotency/error boundary/MDC. `@ForStage` annotation enables startup-validated handler discovery. `StageKey` enum gained `isChapterStage()`/`isBookLevel()` classification. 66 new tests across 5 test suites (StageDagTest, StageKeyTest, StepResultTest in lorevault-core; StageDispatcherTest, IngestionPipelineCoordinatorTest, StageDispatcherWiringTest in lorevault-web). `AsyncConfig` executor beans fixed to return `TaskExecutor` for proper Spring type resolution. `LoreVaultApiApplicationTest` contextLoads integration test added.
 - **Per-scene buildTriad shipped (Phase 3c)** — `SceneRelationshipAnalysisService.analyzeChapterTriads()` now uses graph-based `triadBuilder.buildTriad(sceneId)` instead of manual in-memory prev/next resolution. Last scene of a chapter now correctly resolves `next` from the following chapter via NEXT_IN_READING_ORDER edges (previously always `null`). Removed dead `enrichCrossChapterTemporalEdges()` workaround (54 lines) from SceneDetectionHandler. Cross-chapter temporal edges already created by `DefaultTemporalEdgeService.createAllDefaults()`. 10 tests updated to stub graph-based buildTriad. Provenance un-stubbing deferred (needs per-scene Stage granularity in DAG).
 - **Relation catalog M0–M3 shipped** — `lorevault-catalog` Maven submodule with closed module boundary (`@ApplicationModule(CLOSED)`, ArchUnit rules); public API types (`RelationCatalogService`, `RelationCatalogDefinition`, `RelationCatalogId`, `RelationQuery`, `RelationKindSignature`, `EmbeddingFunction`); PostgreSQL backend with one evolving wipe-state Flyway V1 schema, `ON CONFLICT DO NOTHING` idempotency, HikariCP connection pooling, pgvector extension, `embedding vector(1536)`, and HNSW cosine index; dual-database transaction boundary (catalog: PostgreSQL `REQUIRES_NEW`, core: Neo4j); `RelationClaim` updated with `catalogId` + resolved `definitionKey`; degradation mode when catalog is disabled; Testcontainers PostgreSQL integration tests; `NoOpRelationCatalogService` for catalog-disabled state; `CatalogHealthIndicator` bean (surfaces at `/actuator/health`); `pgvector/pgvector:pg16` Docker image
+- **Package restructure shipped** — `content/` + `ingestion/` dismantled and redistributed into three top-level packages: `graph/` (entity nodes, persistence, consolidation), `orchestration/` (pipeline, signals, job, submission, triad, consolidation engine), and `library/` (chapter, chunk, book, series, universe). `ingestion/events/` → `orchestration/signals/`, `ingestion/pipeline/` → `orchestration/pipeline/`, `ingestion/infrastructure/` dissolved. `ai/embedding/` and `ai/infrastructure/` absorbed `EmbeddingHandler`/`EmbeddingOperation` and `LlmCallLoggingService`. All imports updated across core and web modules. 320 files changed.
+- **StageDispatcher extraction (Phase 3b) shipped** — centralized orchestration dispatcher replaces per-handler `@Async`/`@EventListener`/`onTrigger` boilerplate across all 15 ingestion handlers. Handlers are now pure `StageOperation` beans implementing only `execute(StageExecutionContext ctx)`. `StageDispatcher` owns event listening, executor routing (scene detection vs ingestion lane), guard/idempotency/error boundary/MDC. `@ForStage` annotation enables startup-validated handler discovery. `StageKey` enum gained `isChapterStage()`/`isBookLevel()`/`queryableValues()` classification. 66 tests across 5 test suites. `AsyncConfig` executor beans fixed to return `TaskExecutor`. See: [StageDispatcher Extraction](planning/2026-05-24T0000_stagedispatcher-extraction.md)
+- **StepKey retired — StageKey consolidated** — Deleted `StepKey`, `StepDefinition`, `StepCatalog` (4 files, ~50 imports). `StepResult` → `StageResult`. All 12 command controllers and `StepEventMapper` now use `StageKey` directly. `StageKey.queryableValues()` returns 14 queryable stages (excludes `INGESTION_COMPLETE` as no-op terminal barrier). `StepQueryController` → `StageQueryController`. See: [Retire StepKey](planning/2026-05-31T0000_retire-stepkey-consolidate-stagekey.md)
+- **Unified entity consolidation shipped** — Shared `ConsolidationEngine<S>` (generic connected-components clustering), `EntityMerger<S,T>`, `NameKeys`, `PickFirstNonBlank`, and `ChapterEntityGuardService` extracted into `orchestration/consolidation/`. 8 consolidation services refactored to use the engine — ~530 lines of duplicated clustering removed. Individual gained alias-aware merging (previously name-only). Object and Collective upgraded from O(n²) scan to alias-aware connected-components. All 4 entity types now use identical zero-mention guard behavior. `ChapterIndividual` and `BookIndividual` records now carry `aliases` field. Individual mention linking switched from normalizedName-based to mentionId-based. `ChapterIndividualCandidate`/`ChapterIndividualCandidateView` DTOs deleted. See: [Unified Entity Consolidation](planning/2026-05-27T0015_unified-entity-consolidation.md)
 
 ## What Is Next
 
 ### Immediate: Code walkthrough (ongoing)
 
-Walk the durable orchestration end-to-end to identify simplification, cleanup, and consistency improvements. **Progress:** `submitChapter` → `bootstrapJob` → `SceneDetectionHandler` — complete. **Remaining:** chunking, embedding, resolution lanes, book reductions.
+Walk the durable orchestration end-to-end to identify simplification, cleanup, and consistency improvements. **Progress:** Full walkthrough complete — found and fixed 20 issues across SceneDetectionHandler, consolidation services, and import paths. Package restructure, StageDispatcher extraction, StepKey retirement, and consolidation engine unification all complete.
 
 | Completed leg | Findings |
 |---|---|
-| `submitChapter` → `bootstrapJob` → `SceneDetectionHandler` | 20 cleanup items surfaced, oracle-reviewed (16/20 confirmed), organized into 4 phases. All 4 phases now complete. |
-
-The walkthrough is a standing activity — it feeds findings into the cleanup plan but is not itself a Phase 2 blocking dependency. Phase 2 items can be tackled incrementally as individual handlers are understood.
+| `submitChapter` → `bootstrapJob` → all 15 pipeline stages | Package restructure, StageDispatcher, StepKey retirement, consolidation engine — all shipped. 456 tests green. |
 
 ### Immediate: Phase 3 structural changes (active)
 
@@ -155,7 +157,7 @@ Near-term execution slices before pivoting to AWS/n8n:
 
 ### Testing Debt
 
-After the `lorevault-core` / `lorevault-web` module split, all tests remained in `lorevault-web`. The StageDispatcher test suite began addressing this: `StageDagTest`, `StageKeyTest`, and `StepResultTest` now live in `lorevault-core/src/test/` as pure unit tests, while `StageDispatcherTest`, `IngestionPipelineCoordinatorTest`, and `StageDispatcherWiringTest` correctly live in `lorevault-web/src/test/` as Mockito-based tests. A broader relocation pass for the remaining ~388 lorevault-web tests is deferred.
+After the `lorevault-core` / `lorevault-web` module split, tests remain split: ~103 tests in `lorevault-core/src/test/` (pure unit tests — `StageDagTest`, `StageKeyTest`, `StageResultTest`, `ConsolidationEngineTest`, `BookEventConsolidationServiceTest`, `BookEventPersistenceServiceTest`, `ChapterEventAnnRerunServiceTest`, `ChapterEventEmbeddingServiceTest`), and ~353 tests in `lorevault-web/src/test/` (integration, Mockito-based, and web-layer tests). A broader relocation pass for remaining tests is deferred.
 
 ### Deferred
 
@@ -184,7 +186,7 @@ The code walkthrough continues until the full pipeline is reviewed. Pipeline har
 
 ## Open Decisions
 
-- **Legacy domain events:** 12 dead event classes (`ScenesDetectedEvent`, `ChunksCreatedEvent`, etc.) no longer published — handlers now publish `StageCompletedEvent`. `JobStatusBroadcaster` SSE is silently broken (listens to `IngestionEvent` but never receives it). Fix planned — see [SSE Event Migration](planning/2026-05-24T0000_sse-event-migration.md) (Phase 2, live bug fix).
+- **Legacy domain events:** 12 dead event classes (`ScenesDetectedEvent`, `ChunksCreatedEvent`, etc.) no longer published — all handlers now use `StageDispatcher` which publishes `StageCompletedEvent`. `JobStatusBroadcaster` SSE listens to `StageCompletedEvent` for status updates. All dead event classes will be deleted in a follow-up cleanup pass.
 
 - **n8n deployment model:** Self-hosted Docker alongside LoreVault, or n8n Cloud? Decision deferred to n8n sprint phase.
 - **AWS clone strategy:** How much of `lorevault-kb` domain logic should be shared as a library vs. rewritten for `lorevault-aws`? Decision deferred to AWS foundation phase.
@@ -208,6 +210,7 @@ The code walkthrough continues until the full pipeline is reviewed. Pipeline har
 - [Cleanup Quick Wins](planning/2026-05-24T0000_submission-cleanup-quick-wins.md) — Phase 1 (~30 min)
 - [StageDispatcher Extraction](planning/2026-05-24T0000_stagedispatcher-extraction.md) — Phase 3b structural change
 - [Unified Entity Consolidation](planning/2026-05-27T0015_unified-entity-consolidation.md) — Phase 3a structural change
+- [Retire StepKey — Consolidate into StageKey](planning/2026-05-31T0000_retire-stepkey-consolidate-stagekey.md) — StepKey retirement plan
 - [SSE Event Migration](planning/2026-05-24T0000_sse-event-migration.md) — Phase 2 bug fix
 - [n8n Ingestion-Retrieval Boundary Strategy](brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md) — strategic n8n enhancement plan
 - [AWS Cloud-Native Learning Path](brainstorm/aws-cloud-native/2026-05-11T2027_aws-cloud-native-learning-path.md) — AWS deployment strategy

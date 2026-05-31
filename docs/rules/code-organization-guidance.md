@@ -15,12 +15,13 @@ Use the existing feature-oriented split under `com.lorevault.api`.
 | Package | Semantic meaning |
 |---|---|
 | `ai` | generic interaction with LLM APIs and AI infrastructure |
+| `common` | shared utilities with no feature ownership (e.g., HashUtils) |
 | `config` | Spring bean wiring and framework configuration |
-| `content` | the canonical persisted knowledge model and graph state of the product |
+| `graph` | the canonical persisted knowledge graph (entities, persistence, consolidation) |
 | `health` | monitoring, diagnostics, readiness, and observability |
-| `ingestion` | everything related to turning uploads into `content` |
-| `library` | canon scope, corpus boundaries, and library/catalog operations |
-| `search` | navigating, querying, retrieving, and answering over `content` |
+| `library` | canon scope, corpus boundaries, chapter/chunk storage, and library operations |
+| `orchestration` | ingestion pipeline, stage coordination, job tracking, entity consolidation engine |
+| `search` | navigating, querying, retrieving, and answering over the knowledge graph |
 | `web` | HTTP and UI edges |
 
 ## Current package map
@@ -32,10 +33,11 @@ Representative current internal shape:
 
 | Top-level package | Representative internal packages |
 |---|---|
-| `ai` | `chunking`, `embedding`, `llm`, `infrastructure` |
-| `content` | `association`, `chapter`, `chunk`, `mention`, `scene`, `timeline` |
-| `ingestion` | `completion`, `content`, `events`, `job`, `pipeline`, `resolution`, `scene`, `submission`, `triad`, `infrastructure` |
-| `library` | `book`, `series`, `service`, `universe` |
+| `ai` | `embedding`, `infrastructure`, `llm`, `telemetry` |
+| `common` | `error` |
+| `graph` | `collective`, `event`, `individual`, `location`, `mention`, `object`, `relation`, `timeline` |
+| `library` | `book`, `chapter`, `chunk`, `series`, `service`, `universe` |
+| `orchestration` | `consolidation`, `job`, `pipeline`, `signals`, `submission`, `triad` |
 | `search` | `extraction`, `model`, `rag`, `semantic` |
 
 This map is descriptive, not a mandatory template. The rule is capability ownership first,
@@ -63,17 +65,19 @@ Examples:
 - prompt repositories and prompt rendering
 - retry strategies and API-call support code
 - reusable AI-facing contracts or parsing support when they are not feature-owned
+- `ai/infrastructure` for generic AI support code (model clients, retry strategies); feature-owned shared infrastructure now lives under `orchestration/` and `graph/`
 
 If a type is orchestrating a product workflow such as ingestion, search, or another feature, it usually does **not** belong in `ai`.
 
-### `ingestion` owns content-production workflows
+### `orchestration` owns ingestion and pipeline workflows
 
-`ingestion` should contain:
+`orchestration` should contain:
 
-- upload-to-graph orchestration
-- pipeline handlers and stage coordination
-- extraction, reduction, and resolution flows
-- feature-owned scene-processing logic used to build or enrich content
+- upload-to-graph orchestration (`submission/`)
+- pipeline handlers and stage coordination (`pipeline/`, `signals/`)
+- job tracking and status (`job/`)
+- entity consolidation engine (`consolidation/`)
+- triad analysis orchestration (`triad/`)
 
 ### `search` owns retrieval workflows
 
@@ -100,8 +104,8 @@ recreating `application/domain/infrastructure` buckets by habit.
 
 Prefer packages that communicate what the feature does:
 
-- `scene`, `chunk`, `mention`, `association`
-- `submission`, `job`, `resolution`, `completion`
+- `scene`, `chunk`, `mention`, `persistence`, `consolidation`
+- `submission`, `job`, `pipeline`, `signals`, `triad`
 - `rag`, `semantic`, `extraction`, `model`
 - `book`, `series`, `universe`
 
@@ -109,10 +113,9 @@ Local support buckets are still valid when they are the clearest fit for one bou
 
 | Subpackage | Use it for |
 |---|---|
-| `events` | shared workflow events used across multiple emitters/listeners |
-| `infrastructure` | technical support types that are genuinely shared within one feature |
 | `pipeline` | small feature-local pipeline support that is not itself a business capability |
 | `service` | a compact service/query seam when a feature is too small to justify finer capability splits |
+| `signals` | shared workflow events used across multiple emitters/listeners (was `events`) |
 
 Do not introduce `application`, `domain`, or `infrastructure` as a feature-wide template just
 to complete a familiar architecture pattern. Use them only as a narrow local fit when the

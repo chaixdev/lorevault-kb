@@ -21,7 +21,7 @@ Both executors are configured in `AsyncConfig`. The `sceneDetectionTaskExecutor`
 
 ### Same-chapter pipeline (serial by design)
 
-All work for a single `(jobId, chapterId)` runs on `ingestionLaneTaskExecutor` after the scene detection stage completes. Within one chapter, the fan-out branches (`ChapterIndividualResolutionHandler`, `ChapterLocationResolutionHandler`, `ChapterObjectResolutionHandler`, `ChapterCollectiveResolutionHandler`, `ChapterEventResolutionHandler`) are routed by `StageDispatcher` to `ingestionLaneTaskExecutor` and run concurrently with each other — and with `ChunkingHandler` and `EmbeddingHandler` — after the publishing transaction commits.
+All work for a single `(jobId, chapterId)` runs on `ingestionLaneTaskExecutor` after the scene detection stage completes. Within one chapter, the fan-out branches (`ChapterIndividualConsolidationHandler`, `ChapterLocationConsolidationHandler`, `ChapterObjectConsolidationHandler`, `ChapterCollectiveConsolidationHandler`, `ChapterEventConsolidationHandler`) are routed by `StageDispatcher` to `ingestionLaneTaskExecutor` and run concurrently with each other — and with `ChunkingHandler` and `EmbeddingHandler` — after the publishing transaction commits.
 
 ### Cross-chapter submissions (concurrent-capable)
 
@@ -75,7 +75,7 @@ When a second batch of chapters is submitted before the first batch finishes, th
 
 ### Claim-Based Concurrency for Book-Level Stages
 
-Book-level consolidation stages (`BookIndividual`, `BookLocation`, `BookObject`, `BookCollective`, `BookEvent`) use `BookConsolidationClaimService` to prevent concurrent reduction of the same book. The claim is a Neo4j MERGE-based lock: `tryAcquireClaim(bookId, lane, stageId)` atomically creates a `BookConsolidationClaim` node. If the claim already exists, the handler returns `StepResult.retryableFailure()` and the stage is retried later.
+Book-level consolidation stages (`BookIndividual`, `BookLocation`, `BookObject`, `BookCollective`, `BookEvent`) use `BookConsolidationClaimService` to prevent concurrent reduction of the same book. The claim is a Neo4j MERGE-based lock: `tryAcquireClaim(bookId, lane, stageId)` atomically creates a `BookConsolidationClaim` node. If the claim already exists, the handler returns `StageResult.retryableFailure()` and the stage is retried later.
 
 This claim-based approach is necessary because book-level consolidation is destructive (delete-and-rebuild) and must not run concurrently for the same book. The `stageId` on the claim node provides provenance for cleanup.
 

@@ -74,20 +74,20 @@ public record SceneRelationshipOutcome(
 
 ### When a record is scaffolding
 
-**Counting results** — identical shapes with different type tags, consumed once to build a `StepResult`:
+**Counting results** — identical shapes with different type tags, consumed once to build a `StageResult`:
 
 ```java
 // All 9 share the exact same fields. Different names, no different behavior.
-public record ChapterIndividualResolutionResult(UUID id, boolean success, int processed, int created, String message) {}
-public record BookObjectResolutionResult(UUID bookId, boolean success, int processed, int created, String message) {}
+public record ChapterIndividualConsolidationResult(UUID id, boolean success, int processed, int created, String message) {}
+public record BookObjectConsolidationResult(UUID bookId, boolean success, int processed, int created, String message) {}
 // ... 7 more
 ```
 
-The type tag (`Individual`, `Object`) carries information the caller already knows (it called `individualResolutionService`, not `objectResolutionService`). The record exists solely to carry two integers 3 lines up the call stack before being converted to `StepResult`.
+The type tag (`Individual`, `Object`) carries information the caller already knows (it called `individualConsolidationService`, not `objectConsolidationService`). The record exists solely to carry two integers 3 lines up the call stack before being converted to `StageResult`.
 
 ### Design question
 
-If the handler only exists to convert `ResolutionResult` → `StepResult`, should the service return `StepResult` directly? This eliminates the intermediate type and the handler's repackaging boilerplate in one move. Cost: the service knows about a pipeline type (`StepResult`).
+If the handler only exists to convert `ConsolidationResult` → `StageResult`, should the service return `StageResult` directly? This eliminates the intermediate type and the handler's repackaging boilerplate in one move. Cost: the service knows about a pipeline type (`StageResult`).
 
 ## Intermediate result types vs DTOs
 
@@ -100,7 +100,7 @@ The older alternative (mutable context objects passed through methods) wasn't be
 The codebase works. Ingestion IS a pipeline, and the service-oriented style maps to the problem. LLM-driven development will continue to default to this style. This document exists so that:
 
 1. Future design decisions are conscious, not accidental
-2. When refactoring, you can ask: "is this a `SceneRelationshipOutcome` (earns its type) or a `ChapterIndividualResolutionResult` (scaffolding)?"
+2. When refactoring, you can ask: "is this a `SceneRelationshipOutcome` (earns its type) or a `ChapterIndividualConsolidationResult` (scaffolding)?"
 3. The walkthrough doesn't need to re-derive this tension every time it surfaces
 
 ## Related

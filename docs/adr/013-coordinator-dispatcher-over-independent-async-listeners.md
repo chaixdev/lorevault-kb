@@ -24,7 +24,7 @@ Replace the 15 independent `@Async @EventListener` methods with a single `StageD
 3. **Sets MDC context** (`stage`, `jobId`, `stageId`) before execution and clears it after
 4. **Performs an atomic `TRIGGERED→RUNNING` transition** as a guard against duplicate execution
 5. **Checks idempotency** — skips already-completed stages
-6. **Wraps execution in an error boundary** that converts unhandled exceptions to `StepResult.failure`
+6. **Wraps execution in an error boundary** that converts unhandled exceptions to `StageResult.failure`
 7. **Emits `StageCompletedEvent`** on completion, regardless of success or failure
 
 Each handler implements `StageOperation` with a `@ForStage(StageKey)` annotation. The dispatcher validates at startup that every `StageKey` has exactly one handler.

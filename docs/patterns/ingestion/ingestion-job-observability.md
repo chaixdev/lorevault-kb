@@ -80,7 +80,7 @@ Additionally, every domain node created during pipeline execution carries a `sta
 
 ## Failure Details Extraction
 
-When a job fails, the `FAILED` status record carries structured failure information in its properties map. `StageDispatcher` wraps handler execution in an error boundary and converts exceptions to `StepResult.failure()` or `StepResult.retryableFailure()`. The `IngestionFailure` object is still used for structured failure details. `IngestionJobService.extractFailureDetails()` reconstructs `FailureDetails` from the properties for API responses.
+When a job fails, the `FAILED` status record carries structured failure information in its properties map. `StageDispatcher` wraps handler execution in an error boundary and converts exceptions to `StageResult.failure()` or `StageResult.retryableFailure()`. The `IngestionFailure` object is still used for structured failure details. `IngestionJobService.extractFailureDetails()` reconstructs `FailureDetails` from the properties for API responses.
 
 ## Boundaries
 
