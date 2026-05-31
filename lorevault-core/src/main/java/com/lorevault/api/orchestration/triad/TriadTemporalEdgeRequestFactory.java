@@ -1,5 +1,6 @@
 package com.lorevault.api.orchestration.triad;
 
+import com.lorevault.api.ai.telemetry.LlmCallRecord;
 import com.lorevault.api.graph.timeline.TemporalEdgeProvenance;
 import com.lorevault.api.graph.timeline.TemporalEdgeWriteRequest;
 
@@ -27,6 +28,9 @@ public class TriadTemporalEdgeRequestFactory {
         }
 
         UUID jobId = resolveLatestJobId(chapterId);
+        UUID llmCallId = triadAnalysisArtifactLookup.findLatestTriadCallRecord(jobId, stageId)
+                .map(LlmCallRecord::getId)
+                .orElse(null);
         List<TemporalEdgeWriteRequest> requests = new ArrayList<>();
         for (var analysis : analyses) {
             UUID currentScenePersistedId = resolvePersistedSceneId(
@@ -35,7 +39,7 @@ public class TriadTemporalEdgeRequestFactory {
                     sceneIndexToPersistedId
             );
             TemporalEdgeProvenance provenance = new TemporalEdgeProvenance(
-                    jobId, chapterId, stageId, null);
+                    jobId, chapterId, stageId, llmCallId);
 
             if (analysis.previousSceneIndex() != null
                     && analysis.currentSceneIndex() != null
