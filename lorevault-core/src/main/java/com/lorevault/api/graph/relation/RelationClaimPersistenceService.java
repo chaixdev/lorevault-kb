@@ -1,5 +1,6 @@
 package com.lorevault.api.graph.relation;
 
+import com.lorevault.api.common.NameNormalizer;
 import com.lorevault.api.graph.event.scene.Scene;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.triad.TriadAnalysisModels;
@@ -30,7 +31,13 @@ public class RelationClaimPersistenceService {
     public void persistExtractedRelationClaims(
             StageExecutionContext ctx,
             List<Scene> persistedScenes,
-            List<TriadAnalysisModels.SceneRelationClaimExtraction> sceneExtractions
+            List<TriadAnalysisModels.SceneRelationClaimExtraction> sceneExtractions,
+            UUID bookId,
+            Map<String, UUID> individualIds,
+            Map<String, UUID> collectiveIds,
+            Map<String, UUID> objectIds,
+            Map<String, UUID> locationIds,
+            Map<String, UUID> eventIds
     ) {
         if (persistedScenes == null || persistedScenes.isEmpty() || sceneExtractions == null || sceneExtractions.isEmpty()) {
             log.debug("[RELATION_CLAIM_PERSIST] Skipping: no extraction data");
@@ -43,6 +50,8 @@ public class RelationClaimPersistenceService {
 
         int totalPersisted = 0;
         int totalSkipped = 0;
+        int totalLinked = 0;
+        int totalUnlinked = 0;
 
         for (TriadAnalysisModels.SceneRelationClaimExtraction sceneExtraction : sceneExtractions) {
             Scene scene = sceneByIndex.get(sceneExtraction.sceneIndex());
@@ -83,7 +92,6 @@ public class RelationClaimPersistenceService {
                     definitionKey = definition.definitionKey();
                 } catch (UnsupportedOperationException | DataAccessException e) {
                     log.warn("[RELATION_CLAIM_PERSIST] Catalog resolution failed, persisting without catalog identity: {}", e.getMessage());
-                    // catalogId remains null, definitionKey keeps the extracted value
                 }
 
                 RelationClaim saved = relationClaimRepository.save(new RelationClaim(
@@ -102,18 +110,78 @@ public class RelationClaimPersistenceService {
                         ctx.stageId(),
                         sceneId,
                         chapterId,
-                        null,
+                        bookId,
                         extractionIndex,
                         null,
                         null
                 ));
                 relationClaimRepository.linkClaimToScene(sceneId, saved.id());
+
+                // Layer 1: link to subject mention node via in-memory lookup
+                UUID subjectMentionId = resolveMentionId(
+                        extracted.subjectKind(), extracted.subjectName(),
+                        individualIds, collectiveIds, objectIds, locationIds, eventIds);
+                if (subjectMentionId != null) {
+                    relationClaimRepository.linkSubjectMention(saved.id(), subjectMentionId);
+                    totalLinked++;
+                } else {
+                    totalUnlinked++;
+                }
+
+                // Layer 1: link to object mention node via in-memory lookup
+                UUID objectMentionId = resolveMentionId(
+                        extracted.objectKind(), extracted.objectName(),
+                        individualIds, collectiveIds, objectIds, locationIds, eventIds);
+                if (objectMentionId != null) {
+                    relationClaimRepository.linkObjectMention(saved.id(), objectMentionId);
+                    totalLinked++;
+                } else {
+                    totalUnlinked++;
+                }
+
                 totalPersisted++;
             }
         }
 
-        log.info("[RELATION_CLAIM_PERSIST] Completed: persisted {} claims, skipped {} duplicates — chapterId={}",
-                totalPersisted, totalSkipped,
+        log.info("[RELATION_CLAIM_PERSIST] Completed: persisted {} claims, skipped {} duplicates, linked {} edges, unlinked {} refs — chapterId={}",
+                totalPersisted, totalSkipped, totalLinked, totalUnlinked,
                 sceneByIndex.values().stream().map(Scene::getChapterId).findFirst().orElse(null));
+    }
+
+    /**
+     * Resolve a mention ID from the in-memory maps by entity kind and normalized name.
+     * Events are deferred to Phase 4; the eventIds map is collected but not routed here.
+     */
+    private UUID resolveMentionId(
+            String kind, String name,
+            Map<String, UUID> individualIds,
+            Map<String, UUID> collectiveIds,
+            Map<String, UUID> objectIds,
+            Map<String, UUID> locationIds,
+            Map<String, UUID> eventIds
+    ) {
+        if (kind == null || name == null) {
+            return null;
+        }
+        String key = NameNormalizer.normalize(name);
+        if (key == null) {
+            return null;
+        }
+        Map<String, UUID> map = switch (kind) {
+            case "Individual" -> individualIds;
+            case "Collective" -> collectiveIds;
+            case "Object" -> objectIds;
+            case "Location" -> locationIds;
+            // Event: deferred to Phase 4 (collected but not routed)
+            default -> null;
+        };
+        if (map == null) {
+            return null;
+        }
+        UUID id = map.get(key);
+        if (id == null) {
+            log.debug("[RELATION_CLAIM_PERSIST] No mention found for kind={}, name={}", kind, name);
+        }
+        return id;
     }
 }

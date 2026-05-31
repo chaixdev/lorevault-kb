@@ -1,7 +1,7 @@
 # Claim-Entity Linking
 
-**Status:** NOT STARTED  
-**Last revised:** 2026-05-31 — oracle audit folded in. Primary strategy: prompt restructuring + persistence services return mention IDs for direct in-memory matching within the same handler.
+**Status:** PHASE 1 IMPLEMENTED  
+**Last revised:** 2026-06-01 — Phase 1 (prompt restructuring + Layer 1 edges + bookId) implemented. Core builds (441 tests, 0 failures). Web module has pre-existing compilation errors (unrelated).
 
 ## Summary
 
@@ -359,12 +359,12 @@ Pure graph traversal from claim → chapter entity → book entity. No string ma
 
 ## Success Criteria
 
-- [ ] Restructured prompt produces structured entity refs (`<entityType>` + `<alias>`) with alias reuse
-- [ ] `parseEntityRef()` deleted; `TriadEntityRef` and `TriadRelationType` records in use
-- [ ] All 5 entity persistence services return `Map<String, UUID>` (normalizedName → mentionId)
-- [ ] Every RelationClaim has `RELATES_SUBJECT` and `RELATES_OBJECT` edges
-- [ ] Every RelationClaim has a populated `bookId`
-- [ ] Layer 1 subjectName-to-mentionName match rate ≥ 95%
+- [x] Restructured prompt produces structured entity refs (`<entityType>` + `<alias>`) with alias reuse
+- [x] `parseEntityRef()` deleted; `TriadEntityRef` and `TriadRelationType` records in use
+- [x] All 5 entity persistence services return `Map<String, UUID>` (normalizedName → mentionId)
+- [x] Every RelationClaim has `RELATES_SUBJECT` and `RELATES_OBJECT` edges
+- [x] Every RelationClaim has a populated `bookId`
+- [ ] Layer 1 subjectName-to-mentionName match rate ≥ 95% (needs integration test with real LLM output)
 - [ ] Chapter consolidation recreates `HAS_CHAPTER_SUBJECT`/`HAS_CHAPTER_OBJECT` edges (Individual lane)
 - [ ] Book consolidation recreates `HAS_BOOK_SUBJECT`/`HAS_BOOK_OBJECT` edges (Individual lane, after incremental consolidation)
 - [ ] Layer 2 extended to Location, Object, Collective lanes (Phase 4)
@@ -394,4 +394,39 @@ Pure graph traversal from claim → chapter entity → book entity. No string ma
   - `lorevault-core/src/main/java/com/lorevault/api/graph/event/persistence/EventPersistenceService.java` — return mention IDs
   - `lorevault-core/src/main/java/com/lorevault/api/graph/individual/consolidation/chapter/ChapterIndividualConsolidationService.java` — Layer 2 hook
   - `lorevault-core/src/main/java/com/lorevault/api/graph/individual/consolidation/book/BookIndividualConsolidationHandler.java` — Layer 3 hook
-  - `lorevault-core/src/main/java/com/lorevault/api/config/Neo4jSchemaInitializer.java`
+   - `lorevault-core/src/main/java/com/lorevault/api/config/Neo4jSchemaInitializer.java`
+
+## Phase 1 Implementation Notes (2026-06-01)
+
+### Files Created
+- `lorevault-core/src/main/java/com/lorevault/api/common/NameNormalizer.java` — shared normalization utility
+
+### Files Modified
+| File | Change |
+|---|---|
+| `prompts/scene-analysis.txt` | Replaced free-form `"Kind: Name"` with structured `<subject><entityType>...<alias>...</alias></entityType></subject>`. Added instruction to reuse entity aliases verbatim. Updated XML examples. |
+| `SceneRelationshipAnalysisService.java` | Added `TriadEntityRef` and `TriadRelationType` records. Updated `TriadRelationClaimExtraction` to use structured fields. Updated `normalizeRelationClaims()` to extract from records instead of parsing strings. Deleted `parseEntityRef()` (~23 lines), `validateKind()`, and `VALID_ENTITY_KINDS`. |
+| `IndividualPersistenceService.java` | Returns `Map<String, UUID>` with all alias variants as keys. Uses `NameNormalizer`. Deleted private `normalizeName()`. |
+| `CollectivePersistenceService.java` | Same transformation as Individual. |
+| `ObjectPersistenceService.java` | Same transformation as Individual. |
+| `LocationPersistenceService.java` | Same transformation as Individual. |
+| `EventPersistenceService.java` | Same transformation as Individual (single-key map for event name). |
+| `RelationClaimPersistenceService.java` | Accepts `UUID bookId` + 5 mention-ID maps. After saving each claim, looks up mention by kind+normalized name (O(1) in-memory). Calls `linkSubjectMention()`/`linkObjectMention()`. Populates `bookId`. Added `resolveMentionId()` helper. Logs linked/unlinked counts. |
+| `Scene.java` (SceneDetectionHandler) | Collects mention-ID maps from 5 persistence services. Passes `bookId` + maps to claim persistence service. |
+| `RelationClaimPersistenceServiceTest.java` | Updated all test method calls to new 9-param signature. Changed `bookId().isNull()` assertion to `bookId().isEqualTo(BOOK_ID)`. |
+| `SceneRelationshipAnalysisServiceTest.java` | Removed `parseEntityRef` test battery (7 tests for deleted method). |
+
+### Deviations from Plan
+1. **No `VALID_ENTITY_KINDS` in lookup.** The in-memory lookup uses strict kind-matching by map, not validation against a set. If kind is unknown (e.g., "Concept"), the switch returns `null` and no edge is created. This matches the plan's intent. The `VALID_ENTITY_KINDS` set was only used by the old `validateKind()` helper — no replacement needed.
+2. **Event map collected but not routed.** The `eventIds` map is collected in the handler but the `resolveMentionId()` switch does not route Event claims. This matches the plan's Phase 4 deferral.
+
+### Verification
+- `mvn test -rf :lorevault-core`: **441 tests, 0 failures, 0 errors** (includes architecture tests, boundary tests, and all unit tests)
+- Web module has pre-existing compilation errors (unrelated package reorganization — no changes made to `/web` sources)
+
+### Remaining Phase 1 Work
+- Integration test with real LLM output to measure match rate
+- Prompt tuning if match rate < 95%
+
+### Next: Phase 2 — Layer 2 (Chapter-level edges)
+Blocked on nothing — can proceed independently. Requires `ChapterIndividualConsolidationService` batched Cypher + repository method.

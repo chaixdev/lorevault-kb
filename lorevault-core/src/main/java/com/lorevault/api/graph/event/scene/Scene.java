@@ -410,12 +410,15 @@ public class Scene {
                 );
 
                 if (! scenes.isEmpty()) {
-                    individualPersistenceService.persistExtractedIndividuals(ctx, scenes, sceneRelationshipOutcome.sceneIndividualExtractions());
-                    collectivePersistenceService.persistExtractedCollectives(ctx, scenes, sceneRelationshipOutcome.sceneCollectiveExtractions());
-                    objectPersistenceService.persistExtractedObjects(ctx, scenes, sceneRelationshipOutcome.sceneObjectExtractions());
-                    locationPersistenceService.persistExtractedLocations(ctx, scenes, sceneRelationshipOutcome.sceneLocationExtractions());
-                    eventPersistenceService.persistExtractedEvents(ctx, scenes, sceneRelationshipOutcome.sceneEventExtractions());
-                    relationClaimPersistenceService.persistExtractedRelationClaims(ctx, scenes, sceneRelationshipOutcome.sceneRelationClaimExtractions());
+                    Map<String, UUID> individualIds = individualPersistenceService.persistExtractedIndividuals(ctx, scenes, sceneRelationshipOutcome.sceneIndividualExtractions());
+                    Map<String, UUID> collectiveIds = collectivePersistenceService.persistExtractedCollectives(ctx, scenes, sceneRelationshipOutcome.sceneCollectiveExtractions());
+                    Map<String, UUID> objectIds     = objectPersistenceService.persistExtractedObjects(ctx, scenes, sceneRelationshipOutcome.sceneObjectExtractions());
+                    Map<String, UUID> locationIds   = locationPersistenceService.persistExtractedLocations(ctx, scenes, sceneRelationshipOutcome.sceneLocationExtractions());
+                    Map<String, UUID> eventIds      = eventPersistenceService.persistExtractedEvents(ctx, scenes, sceneRelationshipOutcome.sceneEventExtractions());
+                    relationClaimPersistenceService.persistExtractedRelationClaims(
+                            ctx, scenes, sceneRelationshipOutcome.sceneRelationClaimExtractions(),
+                            bookId, individualIds, collectiveIds, objectIds, locationIds, eventIds
+                    );
                 }
 
                 // Note: ScenesDetectedEvent is emitted by the caller (handleChapterIngestion

@@ -1,8 +1,10 @@
 package com.lorevault.api.graph.location.persistence;
 
+import com.lorevault.api.common.NameNormalizer;
 import com.lorevault.api.graph.event.scene.Scene;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.triad.TriadAnalysisModels;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,13 +23,14 @@ public class LocationPersistenceService {
     private final LocationMentionGraphRepository locationMentionRepository;
 
     @Transactional
-    public void persistExtractedLocations(
+    public Map<String, UUID> persistExtractedLocations(
             StageExecutionContext ctx,
             List<Scene> persistedScenes,
             List<TriadAnalysisModels.SceneLocationExtraction> sceneExtractions
     ) {
+        Map<String, UUID> mentionIds = new HashMap<>();
         if (persistedScenes == null || persistedScenes.isEmpty() || sceneExtractions == null || sceneExtractions.isEmpty()) {
-            return;
+            return mentionIds;
         }
 
         Map<Integer, Scene> sceneByIndex = persistedScenes.stream()
@@ -53,7 +56,7 @@ public class LocationPersistenceService {
                         UUID.randomUUID(),
                         SOURCE,
                         displayName,
-                        normalizeName(displayName),
+                        NameNormalizer.normalize(displayName),
                         extracted.aliases(),
                         extracted.kind(),
                         extracted.region(),
@@ -68,8 +71,16 @@ public class LocationPersistenceService {
                         null
                 ));
                 locationMentionRepository.linkMentionToScene(sceneId, saved.id());
+
+                for (String alias : extracted.aliases()) {
+                    String key = NameNormalizer.normalize(alias);
+                    if (key != null) {
+                        mentionIds.put(key, saved.id());
+                    }
+                }
             }
         }
+        return mentionIds;
     }
 
     private String chooseDisplayName(TriadAnalysisModels.LocationExtraction extracted) {
@@ -90,7 +101,4 @@ public class LocationPersistenceService {
         return null;
     }
 
-    private String normalizeName(String displayName) {
-        return displayName == null ? null : displayName.trim().replaceAll("\\s+", " ").toLowerCase();
-    }
 }

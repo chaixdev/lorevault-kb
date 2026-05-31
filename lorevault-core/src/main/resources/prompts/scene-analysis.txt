@@ -100,13 +100,18 @@ Important:
 - Prefer StronglyImplied when a relation is clearly implied by context but not directly stated.
 
 Relation fields:
-- subject: the entity initiating or experiencing the relation (format: "Kind: Name", e.g. "Individual: Frodo")
-- relationName: a short verb phrase describing the enduring relation (e.g. "is a member of", "leads", "was abducted by", "opposes", "is loyal to", "is headquartered in")
-- relationDescription: a short, abstract, reusable definition of what this relation KIND means. Use your own words — do not copy examples. Format: \"category: definition\". Define the relation type, not this specific instance. Never mention individual characters by name.
-  Good: \"employment: one entity works for or serves under another\"
-  Good: \"hostility: standing adversarial opposition between entities\"
-  Bad: \"Gabriel works as a detective for the San Diego Police Department\"
-- object: the other entity in the relation (format: "Kind: Name")
+- subject: the entity initiating or experiencing the relation. Contains structured elements:
+  - entityType: one of the entity categories above (Individual, Collective, Object, Location, Concept, Event)
+  - alias: the primary alias for this entity, copied verbatim from its `<aliases>` section. Do not invent a new name — reuse the alias exactly as extracted. Use the first alias you listed for that entity — this is the primary alias. Do not invent a new name.
+- relationType: structured block with:
+  - name: a short verb phrase describing the enduring relation (e.g. "is a member of", "leads", "was abducted by", "opposes", "is loyal to", "is headquartered in")
+  - description: a short, abstract, reusable definition of what this relation KIND means. Use your own words — do not copy examples. Format: \"category: definition\". Define the relation type, not this specific instance. Never mention individual characters by name.
+    Good: \"employment: one entity works for or serves under another\"
+    Good: \"hostility: standing adversarial opposition between entities\"
+    Bad: \"Gabriel works as a detective for the San Diego Police Department\"
+- object: the other entity in the relation. Contains structured elements:
+  - entityType: one of the entity categories above (Individual, Collective, Object, Location, Concept, Event)
+  - alias: the primary alias for this entity, copied verbatim from the entity's `<aliases>` section. Use the first alias you listed for that entity.
 - certainty: Choose one of: Explicit | StronglyImplied | WeaklyImplied
 - evidence: ≤180 chars, verbatim or tight paraphrase grounding the relation
 
@@ -190,18 +195,34 @@ Relation fields:
   <!-- optional: if no enduring inter-entity relations are evident, output empty <relations/> -->
   <relations>
     <relation>
-      <subject>Individual: Frodo</subject>
-      <relationName>trusts</relationName>
-      <relationDescription>trust-based companionship and loyalty between individuals</relationDescription>
-      <object>Individual: Samwise</object>
+      <subject>
+        <entityType>Individual</entityType>
+        <alias>Frodo</alias>
+      </subject>
+      <relationType>
+        <name>trusts</name>
+        <description>trust-based companionship and loyalty between individuals</description>
+      </relationType>
+      <object>
+        <entityType>Individual</entityType>
+        <alias>Samwise</alias>
+      </object>
       <certainty>Explicit</certainty>
       <evidence>Frodo turned to Sam and said, "I trust you more than anyone."</evidence>
     </relation>
     <relation>
-      <subject>Individual: Aragorn</subject>
-      <relationName>opposes</relationName>
-      <relationDescription>standing adversarial opposition between an individual and a group</relationDescription>
-      <object>Collective: Ringwraiths</object>
+      <subject>
+        <entityType>Individual</entityType>
+        <alias>Aragorn</alias>
+      </subject>
+      <relationType>
+        <name>opposes</name>
+        <description>standing adversarial opposition between an individual and a group</description>
+      </relationType>
+      <object>
+        <entityType>Collective</entityType>
+        <alias>Ringwraiths</alias>
+      </object>
       <certainty>StronglyImplied</certainty>
       <evidence>Aragorn barred the path, sword drawn, facing the nine riders.</evidence>
     </relation>

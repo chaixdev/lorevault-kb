@@ -89,11 +89,14 @@ public class SceneRelationshipAnalysisService {
             String evidence
     ) {}
 
+    public record TriadEntityRef(String entityType, String alias) {}
+
+    public record TriadRelationType(String name, String description) {}
+
     public record TriadRelationClaimExtraction(
-            String subject,
-            String relationName,
-            String relationDescription,
-            String object,
+            TriadEntityRef subject,
+            TriadRelationType relationType,
+            TriadEntityRef object,
             String certainty,
             String evidence
     ) {}
@@ -457,69 +460,34 @@ public class SceneRelationshipAnalysisService {
         return parsed.currentSceneEntities().relations().stream()
                 .filter(claim -> claim != null)
                 .map(claim -> {
-                    String[] subjectParts = parseEntityRef(claim.subject());
-                    String[] objectParts = parseEntityRef(claim.object());
-
-                    String normalizedRelationName = normalizeText(claim.relationName());
+                    String normalizedRelationName = normalizeText(claim.relationType().name());
                     if (normalizedRelationName != null) {
                         normalizedRelationName = normalizedRelationName.replaceAll("\\s+", " ");
                     }
 
                     String definitionKey = generateDefinitionKey(normalizedRelationName);
 
-                    String normalizedDescription = truncate(normalizeText(claim.relationDescription()), 1000);
+                    String normalizedDescription = truncate(normalizeText(claim.relationType().description()), 1000);
                     String normalizedEvidence = truncate(normalizeText(claim.evidence()), 500);
+
+                    String subjectKind = normalizeText(claim.subject().entityType());
+                    String subjectName = normalizeText(claim.subject().alias());
+                    String objectKind = normalizeText(claim.object().entityType());
+                    String objectName = normalizeText(claim.object().alias());
 
                     return new TriadAnalysisModels.RelationClaimExtraction(
                             definitionKey,
-                            subjectParts[0],
-                            subjectParts[1],
+                            subjectKind,
+                            subjectName,
                             normalizedRelationName,
                             normalizedDescription,
-                            objectParts[0],
-                            objectParts[1],
+                            objectKind,
+                            objectName,
                             normalizeCertainty(claim.certainty()),
                             normalizedEvidence
                     );
                 })
                 .toList();
-    }
-
-    private static final Set<String> VALID_ENTITY_KINDS = Set.of(
-            "Individual", "Collective", "Object", "Location", "Concept", "Event"
-    );
-
-    private String[] parseEntityRef(String entityRef) {
-        String normalized = normalizeText(entityRef);
-        if (normalized == null) {
-            return new String[]{null, null};
-        }
-        // Try "Kind: Name" format first (prompt-specified)
-        int colonSpaceIdx = normalized.indexOf(": ");
-        if (colonSpaceIdx > 0 && colonSpaceIdx < normalized.length() - 2) {
-            String kind = normalized.substring(0, colonSpaceIdx).trim();
-            String name = normalized.substring(colonSpaceIdx + 2).trim();
-            return new String[]{validateKind(kind), name};
-        }
-        // Fallback: try "Kind:Name" (no space after colon) — LLM deviation
-        int colonIdx = normalized.indexOf(':');
-        if (colonIdx > 0 && colonIdx < normalized.length() - 1) {
-            String kind = normalized.substring(0, colonIdx).trim();
-            String name = normalized.substring(colonIdx + 1).trim();
-            if (!name.isEmpty()) {
-                return new String[]{validateKind(kind), name};
-            }
-        }
-        LOG.debug("[RELATION_CLAIM] Entity ref missing kind separator: entityRef={}", normalized);
-        return new String[]{null, normalized};
-    }
-
-    private String validateKind(String kind) {
-        if (kind == null || !VALID_ENTITY_KINDS.contains(kind)) {
-            LOG.warn("[RELATION_CLAIM] Unknown entity kind '{}': falling back to null", kind);
-            return null;
-        }
-        return kind;
     }
 
     private String generateDefinitionKey(String relationName) {

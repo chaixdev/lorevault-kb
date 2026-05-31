@@ -1,8 +1,10 @@
 package com.lorevault.api.graph.object.persistence;
 
+import com.lorevault.api.common.NameNormalizer;
 import com.lorevault.api.graph.event.scene.Scene;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.triad.TriadAnalysisModels;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,13 +23,14 @@ public class ObjectPersistenceService {
     private final ObjectMentionGraphRepository objectMentionRepository;
 
     @Transactional
-    public void persistExtractedObjects(
+    public Map<String, UUID> persistExtractedObjects(
             StageExecutionContext ctx,
             List<Scene> persistedScenes,
             List<TriadAnalysisModels.SceneObjectExtraction> sceneExtractions
     ) {
+        Map<String, UUID> mentionIds = new HashMap<>();
         if (persistedScenes == null || persistedScenes.isEmpty() || sceneExtractions == null || sceneExtractions.isEmpty()) {
-            return;
+            return mentionIds;
         }
 
         Map<Integer, Scene> sceneByIndex = persistedScenes.stream()
@@ -53,7 +56,7 @@ public class ObjectPersistenceService {
                         UUID.randomUUID(),
                         SOURCE,
                         displayName,
-                        normalizeName(displayName),
+                        NameNormalizer.normalize(displayName),
                         extracted.aliases(),
                         extracted.type(),
                         extracted.material(),
@@ -69,8 +72,16 @@ public class ObjectPersistenceService {
                         null
                 ));
                 objectMentionRepository.linkMentionToScene(sceneId, saved.id());
+
+                for (String alias : extracted.aliases()) {
+                    String key = NameNormalizer.normalize(alias);
+                    if (key != null) {
+                        mentionIds.put(key, saved.id());
+                    }
+                }
             }
         }
+        return mentionIds;
     }
 
     private String chooseDisplayName(TriadAnalysisModels.ObjectExtraction extracted) {
@@ -85,10 +96,6 @@ public class ObjectPersistenceService {
             }
         }
         return normalizeText(extracted.type());
-    }
-
-    private String normalizeName(String displayName) {
-        return displayName == null ? null : displayName.trim().replaceAll("\\s+", " ").toLowerCase();
     }
 
     private String normalizeText(String value) {

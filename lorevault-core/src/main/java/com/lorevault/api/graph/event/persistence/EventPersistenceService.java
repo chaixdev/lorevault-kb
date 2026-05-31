@@ -1,8 +1,10 @@
 package com.lorevault.api.graph.event.persistence;
 
+import com.lorevault.api.common.NameNormalizer;
 import com.lorevault.api.graph.event.scene.Scene;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.triad.TriadAnalysisModels;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,13 +23,14 @@ public class EventPersistenceService {
     private final EventMentionGraphRepository eventMentionRepository;
 
     @Transactional
-    public void persistExtractedEvents(
+    public Map<String, UUID> persistExtractedEvents(
             StageExecutionContext ctx,
             List<Scene> persistedScenes,
             List<TriadAnalysisModels.SceneEventExtraction> sceneExtractions
     ) {
+        Map<String, UUID> mentionIds = new HashMap<>();
         if (persistedScenes == null || persistedScenes.isEmpty() || sceneExtractions == null || sceneExtractions.isEmpty()) {
-            return;
+            return mentionIds;
         }
 
         Map<Integer, Scene> sceneByIndex = persistedScenes.stream()
@@ -53,7 +56,7 @@ public class EventPersistenceService {
                         UUID.randomUUID(),
                         SOURCE,
                         displayName,
-                        normalizeName(displayName),
+                        NameNormalizer.normalize(displayName),
                         List.of(displayName),
                         normalizeText(extracted.eventType()),
                         normalizeText(extracted.description()),
@@ -70,12 +73,14 @@ public class EventPersistenceService {
                         null
                 ));
                 eventMentionRepository.linkMentionToScene(sceneId, saved.id());
+
+                String key = NameNormalizer.normalize(displayName);
+                if (key != null) {
+                    mentionIds.put(key, saved.id());
+                }
             }
         }
-    }
-
-    private String normalizeName(String displayName) {
-        return displayName == null ? null : displayName.trim().replaceAll("\\s+", " ").toLowerCase();
+        return mentionIds;
     }
 
     private String normalizeText(String value) {

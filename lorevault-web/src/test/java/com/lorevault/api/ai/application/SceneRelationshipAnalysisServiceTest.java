@@ -484,68 +484,6 @@ class SceneRelationshipAnalysisServiceTest {
             return method.invoke(sceneRelationshipAnalysisService, args);
         }
 
-        // -- parseEntityRef --------------------------------------------------
-
-        @Test
-        @DisplayName("Should parse standard 'Kind: Name' format")
-        void shouldParseStandardKindNameFormat() throws Exception {
-            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
-                    new Class<?>[]{String.class}, "Individual: Frodo");
-            assertThat(result).containsExactly("Individual", "Frodo");
-        }
-
-        @Test
-        @DisplayName("Should parse 'Collective: Bridge Crew' as Collective kind")
-        void shouldParseCollectiveKindNameFormat() throws Exception {
-            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
-                    new Class<?>[]{String.class}, "Collective: Bridge Crew");
-            assertThat(result).containsExactly("Collective", "Bridge Crew");
-        }
-
-        @Test
-        @DisplayName("Should parse 'Kind:Name' without space after colon")
-        void shouldParseKindNameWithoutSpaceAfterColon() throws Exception {
-            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
-                    new Class<?>[]{String.class}, "Individual:Frodo");
-            assertThat(result).containsExactly("Individual", "Frodo");
-        }
-
-        @Test
-        @DisplayName("Should return null kind and full name when no kind separator present")
-        void shouldReturnNullKindWhenNoSeparator() throws Exception {
-            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
-                    new Class<?>[]{String.class}, "Frodo");
-            assertThat(result[0]).isNull();
-            assertThat(result[1]).isEqualTo("Frodo");
-        }
-
-        @Test
-        @DisplayName("Should return null array entries for null input")
-        void shouldReturnNullsForNullInput() throws Exception {
-            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
-                    new Class<?>[]{String.class}, (Object) null);
-            assertThat(result[0]).isNull();
-            assertThat(result[1]).isNull();
-        }
-
-        @Test
-        @DisplayName("Should return null kind for non-standard entity kind with WARN")
-        void shouldReturnNullKindForNonStandardKind() throws Exception {
-            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
-                    new Class<?>[]{String.class}, "Person: Frodo");
-            assertThat(result[0]).isNull();
-            assertThat(result[1]).isEqualTo("Frodo");
-        }
-
-        @Test
-        @DisplayName("Should handle empty name after colon-space gracefully")
-        void shouldHandleEmptyNameAfterColonSpace() throws Exception {
-            String[] result = (String[]) invokePrivateMethod("parseEntityRef",
-                    new Class<?>[]{String.class}, "Object: ");
-            assertThat(result[0]).isNull();
-            assertThat(result[1]).isNotNull();
-        }
-
         // -- generateDefinitionKey -------------------------------------------
 
         @Test

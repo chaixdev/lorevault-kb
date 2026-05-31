@@ -10,6 +10,7 @@ import com.lorevault.catalog.RelationCatalogService;
 import com.lorevault.catalog.RelationKindSignature;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,14 @@ class RelationClaimPersistenceServiceTest {
 
     private static final StageExecutionContext CTX =
             new StageExecutionContext(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), StageKey.SCENE_SEGMENTATION);
+    private static final UUID BOOK_ID = UUID.randomUUID();
+    private static final Map<String, UUID> EMPTY_IDS = Map.of();
+
+    private static Map<String, UUID>[] allEmptyMaps() {
+        @SuppressWarnings("unchecked")
+        Map<String, UUID>[] maps = new Map[]{EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS};
+        return maps;
+    }
 
     // -----------------------------------------------------------------------
     // Null / empty input guards
@@ -52,7 +61,8 @@ class RelationClaimPersistenceServiceTest {
         TriadAnalysisModels.SceneRelationClaimExtraction extraction =
                 new TriadAnalysisModels.SceneRelationClaimExtraction(0, List.of(claim));
 
-        service.persistExtractedRelationClaims(CTX, null, List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, null, List.of(extraction),
+                BOOK_ID, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS);
 
         verifyNoInteractions(relationClaimRepository, catalogService);
     }
@@ -67,7 +77,8 @@ class RelationClaimPersistenceServiceTest {
         TriadAnalysisModels.SceneRelationClaimExtraction extraction =
                 new TriadAnalysisModels.SceneRelationClaimExtraction(0, List.of(claim));
 
-        service.persistExtractedRelationClaims(CTX, List.of(), List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, List.of(), List.of(extraction),
+                BOOK_ID, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS);
 
         verifyNoInteractions(relationClaimRepository, catalogService);
     }
@@ -78,7 +89,8 @@ class RelationClaimPersistenceServiceTest {
         Scene scene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text",
                 UUID.randomUUID(), null, null, null, null, null);
 
-        service.persistExtractedRelationClaims(CTX, List.of(scene), null);
+        service.persistExtractedRelationClaims(CTX, List.of(scene), null,
+                BOOK_ID, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS);
 
         verifyNoInteractions(relationClaimRepository, catalogService);
     }
@@ -89,7 +101,8 @@ class RelationClaimPersistenceServiceTest {
         Scene scene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text",
                 UUID.randomUUID(), null, null, null, null, null);
 
-        service.persistExtractedRelationClaims(CTX, List.of(scene), List.of());
+        service.persistExtractedRelationClaims(CTX, List.of(scene), List.of(),
+                BOOK_ID, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS);
 
         verifyNoInteractions(relationClaimRepository, catalogService);
     }
@@ -132,7 +145,8 @@ class RelationClaimPersistenceServiceTest {
         TriadAnalysisModels.SceneRelationClaimExtraction extraction =
                 new TriadAnalysisModels.SceneRelationClaimExtraction(0, List.of(claim1, claim2));
 
-        service.persistExtractedRelationClaims(CTX, List.of(persistedScene), List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, List.of(persistedScene), List.of(extraction),
+                BOOK_ID, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS);
 
         ArgumentCaptor<RelationClaim> savedCaptor = ArgumentCaptor.forClass(RelationClaim.class);
         verify(relationClaimRepository, times(2)).save(savedCaptor.capture());
@@ -154,7 +168,7 @@ class RelationClaimPersistenceServiceTest {
         assertThat(first.source()).isEqualTo("ai-scene-analysis");
         assertThat(first.sceneId()).isEqualTo(sceneId);
         assertThat(first.chapterId()).isEqualTo(chapterId);
-        assertThat(first.bookId()).isNull();
+        assertThat(first.bookId()).isEqualTo(BOOK_ID);
         assertThat(first.extractionIndex()).isEqualTo(0);
         // timestamps are handled by Spring Data listeners (null before persist)
         assertThat(first.createdAt()).isNull();
@@ -198,7 +212,8 @@ class RelationClaimPersistenceServiceTest {
         when(catalogService.resolve(any())).thenThrow(new UnsupportedOperationException("Catalog module is disabled"));
         when(relationClaimRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.persistExtractedRelationClaims(CTX, List.of(persistedScene), List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, List.of(persistedScene), List.of(extraction),
+                BOOK_ID, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS);
 
         ArgumentCaptor<RelationClaim> savedCaptor = ArgumentCaptor.forClass(RelationClaim.class);
         verify(relationClaimRepository).save(savedCaptor.capture());
@@ -232,7 +247,8 @@ class RelationClaimPersistenceServiceTest {
         when(relationClaimRepository.countBySceneIdAndContentIdentity(
                 sceneId, "Kaladin", "leads", "Bridge Four")).thenReturn(1L);
 
-        service.persistExtractedRelationClaims(CTX, List.of(persistedScene), List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, List.of(persistedScene), List.of(extraction),
+                BOOK_ID, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS);
 
         verify(relationClaimRepository, never()).save(any());
         verify(relationClaimRepository, never()).linkClaimToScene(any(), any());
@@ -259,7 +275,8 @@ class RelationClaimPersistenceServiceTest {
         TriadAnalysisModels.SceneRelationClaimExtraction extraction =
                 new TriadAnalysisModels.SceneRelationClaimExtraction(99, List.of(claim));
 
-        service.persistExtractedRelationClaims(CTX, List.of(persistedScene), List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, List.of(persistedScene), List.of(extraction),
+                BOOK_ID, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS);
 
         verify(relationClaimRepository, never()).save(any());
         verify(relationClaimRepository, never()).linkClaimToScene(any(), any());
@@ -279,7 +296,8 @@ class RelationClaimPersistenceServiceTest {
         TriadAnalysisModels.SceneRelationClaimExtraction extraction =
                 new TriadAnalysisModels.SceneRelationClaimExtraction(0, List.of(claim));
 
-        service.persistExtractedRelationClaims(CTX, List.of(invalidScene), List.of(extraction));
+        service.persistExtractedRelationClaims(CTX, List.of(invalidScene), List.of(extraction),
+                BOOK_ID, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS);
 
         verify(relationClaimRepository, never()).save(any());
         verify(relationClaimRepository, never()).linkClaimToScene(any(), any());
