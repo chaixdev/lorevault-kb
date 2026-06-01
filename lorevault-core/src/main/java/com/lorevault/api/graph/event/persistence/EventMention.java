@@ -11,7 +11,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Property;
 
-@Node(primaryLabel = "EventMention", labels = {"EntityMention", "EventNode"})
+@Node(primaryLabel = "EventMention", labels = {"EntityMention", "EventNode", "EntityNode"})
 public record EventMention(
         @Id UUID id,
         String source,

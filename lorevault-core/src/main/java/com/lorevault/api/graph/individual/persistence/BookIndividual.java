@@ -9,7 +9,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Property;
 
-@Node(primaryLabel = "BookIndividual", labels = {"BookEntity", "IndividualNode"})
+@Node(primaryLabel = "BookIndividual", labels = {"BookEntity", "IndividualNode", "EntityNode"})
 public record BookIndividual(
         @Id UUID id,
         UUID bookId,
