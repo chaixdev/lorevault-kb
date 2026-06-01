@@ -120,13 +120,18 @@ public class IngestionPipelineCoordinator {
      */
     private void evaluateDownstream(UUID jobId, UUID chapterId, UUID bookId, StageKey completedStage) {
         for (StageKey child : dag.childrenOf(completedStage)) {
-            boolean triggered = stageRepo.tryTrigger(jobId, child);
-            if (triggered) {
-                UUID resolvedBookId = resolveBookId(chapterId, bookId, child);
-                log.info("[ORCHESTRATION] Barrier open — triggering: jobId={} chapterId={} child={}",
-                        jobId, chapterId, child);
-                eventPublisher.publishEvent(
-                        new StageTriggeredEvent(this, jobId, chapterId, resolvedBookId, child));
+            try {
+                boolean triggered = stageRepo.tryTrigger(jobId, child);
+                if (triggered) {
+                    UUID resolvedBookId = resolveBookId(chapterId, bookId, child);
+                    log.info("[ORCHESTRATION] Barrier open — triggering: jobId={} chapterId={} child={}",
+                            jobId, chapterId, child);
+                    eventPublisher.publishEvent(
+                            new StageTriggeredEvent(this, jobId, chapterId, resolvedBookId, child));
+                }
+            } catch (Exception e) {
+                log.error("[ORCHESTRATION] Failed to evaluate barrier for child={} after parent={}: {}",
+                        child, completedStage, e.getMessage(), e);
             }
         }
     }

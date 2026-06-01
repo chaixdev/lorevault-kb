@@ -32,7 +32,6 @@ import java.util.UUID;
  *   <li>MDC context: sets {@code stage}, {@code jobId}, and {@code stageId}
  *       before execution so all downstream logs carry stage identity</li>
  *   <li>Guard: atomic TRIGGERED→RUNNING transition, returns stage ID</li>
- *   <li>Idempotency: checks {@code Stage.status == COMPLETED}</li>
  *   <li>Error boundary: catches unchecked exceptions and converts
  *       to {@link StepResult#failure}</li>
  *   <li>Completion: emits {@link StageCompletedEvent}</li>
@@ -145,16 +144,7 @@ public class StageDispatcher {
         UUID stageId = stageIdOpt.get();
         MDC.put("stageId", stageId.toString());
 
-        // 2. Idempotency: check Stage.status (not StageOutput)
-        if (isAlreadyCompleted(jobId, stage)) {
-            stageRepo.setSkipped(jobId, stage);
-            emitComplete(jobId, chapterId, bookId, stage,
-                    StepResult.success(stage, "Skipped — already completed", 0L));
-            MDC.clear();
-            return;
-        }
-
-        // 3. Execute with error boundary
+        // 2. Execute with error boundary
         StageExecutionContext ctx = new StageExecutionContext(stageId, jobId, chapterId, bookId, stage);
         StepResult result;
         try {
@@ -169,16 +159,6 @@ public class StageDispatcher {
         emitComplete(jobId, chapterId, bookId, stage, result);
 
         MDC.clear();
-    }
-
-    /**
-     * Check if the stage is already COMPLETED for this job.
-     * Replaces the old StageOutput-based idempotency check.
-     */
-    private boolean isAlreadyCompleted(UUID jobId, StageKey stage) {
-        return stageRepo.findByJobIdAndStep(jobId, stage)
-                .map(s -> s.getStatus() == StageStatus.COMPLETED)
-                .orElse(false);
     }
 
     private void emitComplete(UUID jobId, UUID chapterId, UUID bookId,

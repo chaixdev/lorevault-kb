@@ -1,6 +1,6 @@
 # Retire StepKey — Consolidate into StageKey
 
-**Status:** IMPLEMENTED  
+**Status:** PLANNING  
 **Created:** 2026-05-31  
 **Context:** `StepKey` predates the `StageDispatcher` refactor. It duplicates `StageKey` (12 of 12 values map 1:1) and creates false distinction between "API-facing step catalog" and "internal pipeline DAG." `StageKey` is now the canonical pipeline vertex identifier everywhere; `StepKey` should be retired and all consumers use `StageKey` directly.
 

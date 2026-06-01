@@ -151,20 +151,11 @@ class StageDispatcherTest {
         sceneDetectionTaskExecutor = spy(new SynchronousTaskExecutor());
         ingestionLaneTaskExecutor = spy(new SynchronousTaskExecutor());
 
-        // Default stubs: let dispatch proceed past guard and idempotency checks
+        // Default stub: let dispatch proceed past guard check
         lenient().when(stageRepo.setRunningConditionally(any(), any())).thenReturn(Optional.of(STAGE_ID));
-        lenient().when(stageRepo.findByJobIdAndStep(any(), any())).thenReturn(Optional.of(pendingStage(CHUNKING)));
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────
-
-    private static Stage pendingStage(StageKey key) {
-        return Stage.builder().id(STAGE_ID).jobId(JOB_ID).step(key).status(StageStatus.PENDING).build();
-    }
-
-    private static Stage completedStage(StageKey key) {
-        return Stage.builder().id(STAGE_ID).jobId(JOB_ID).step(key).status(StageStatus.COMPLETED).build();
-    }
 
     private StageDispatcher createDispatcher(Map<StageKey, StageOperation> handlers) {
         return new StageDispatcher(
@@ -302,36 +293,12 @@ class StageDispatcherTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    //  Idempotency — chapter stages
+    //  Handler dispatch
     // ═══════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("dispatch: chapter stage already COMPLETED → setSkipped, emit skip event, handler not called")
-    void dispatch_chapterStage_alreadyCompleted_shouldSkipAndEmitCompletedEvent() {
-        when(stageRepo.findByJobIdAndStep(JOB_ID, CHUNKING)).thenReturn(Optional.of(completedStage(CHUNKING)));
-
-        var handler = mock(StageOperation.class);
-        var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
-
-        verify(stageRepo).setSkipped(JOB_ID, CHUNKING);
-        verify(eventPublisher).publishEvent(completedEventCaptor.capture());
-        verifyNoInteractions(handler);
-
-        var event = completedEventCaptor.getValue();
-        assertThat(event.getJobId()).isEqualTo(JOB_ID);
-        assertThat(event.getChapterId()).isEqualTo(CHAPTER_ID);
-        assertThat(event.getBookId()).isNull();
-        assertThat(event.getStage()).isEqualTo(CHUNKING);
-        assertThat(event.getResult().success()).isTrue();
-        assertThat(event.getResult().summary()).contains("Skipped");
-    }
-
-    @Test
-    @DisplayName("dispatch: chapter stage not yet completed → handler called")
+    @DisplayName("dispatch: chapter stage → handler called, event published")
     void dispatch_chapterStage_notCompleted_shouldCallHandler() {
-        when(stageRepo.findByJobIdAndStep(JOB_ID, CHUNKING)).thenReturn(Optional.of(pendingStage(CHUNKING)));
-
         var handler = mock(StageOperation.class);
         when(handler.execute(any())).thenReturn(success(CHUNKING, "executed", 0L));
 
@@ -342,36 +309,9 @@ class StageDispatcherTest {
         verify(eventPublisher).publishEvent(any());
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  Idempotency — book stages
-    // ═══════════════════════════════════════════════════════════════════════
-
     @Test
-    @DisplayName("dispatch: book stage already COMPLETED → setSkipped, emit skip event, handler not called")
-    void dispatch_bookStage_alreadyCompleted_shouldSkipAndEmitCompletedEvent() {
-        when(stageRepo.findByJobIdAndStep(JOB_ID, BOOK_INDIVIDUAL_CONSOLIDATION))
-                .thenReturn(Optional.of(completedStage(BOOK_INDIVIDUAL_CONSOLIDATION)));
-
-        var handler = mock(StageOperation.class);
-        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_CONSOLIDATION, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(
-                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION));
-
-        verify(stageRepo).setSkipped(JOB_ID, BOOK_INDIVIDUAL_CONSOLIDATION);
-        verify(eventPublisher).publishEvent(completedEventCaptor.capture());
-        verifyNoInteractions(handler);
-
-        var event = completedEventCaptor.getValue();
-        assertThat(event.getBookId()).isEqualTo(BOOK_ID);
-        assertThat(event.getResult().summary()).contains("Skipped");
-    }
-
-    @Test
-    @DisplayName("dispatch: book stage not yet completed → handler called")
+    @DisplayName("dispatch: book stage → handler called, event published")
     void dispatch_bookStage_notCompleted_shouldCallHandler() {
-        when(stageRepo.findByJobIdAndStep(JOB_ID, BOOK_INDIVIDUAL_CONSOLIDATION))
-                .thenReturn(Optional.of(pendingStage(BOOK_INDIVIDUAL_CONSOLIDATION)));
-
         var handler = mock(StageOperation.class);
         when(handler.execute(any())).thenReturn(success(BOOK_INDIVIDUAL_CONSOLIDATION, "executed", 0L));
 
@@ -384,8 +324,8 @@ class StageDispatcherTest {
     }
 
     @Test
-    @DisplayName("dispatch: book stage with null bookId → skip idempotency check, handler called")
-    void dispatch_bookStage_bookIdNull_shouldSkipIdempotencyCheckAndCallHandler() {
+    @DisplayName("dispatch: book stage with null bookId → handler called")
+    void dispatch_bookStage_bookIdNull_shouldCallHandler() {
         var handler = mock(StageOperation.class);
         when(handler.execute(any())).thenReturn(success(BOOK_INDIVIDUAL_CONSOLIDATION, "executed", 0L));
 
@@ -497,21 +437,6 @@ class StageDispatcherTest {
     }
 
     @Test
-    @DisplayName("dispatch: MDC is cleared after idempotency skip")
-    void dispatch_shouldClearMdcAfterIdempotencySkip() {
-        when(stageRepo.findByJobIdAndStep(JOB_ID, CHUNKING)).thenReturn(Optional.of(completedStage(CHUNKING)));
-
-        try (MockedStatic<MDC> mdc = mockStatic(MDC.class)) {
-            var handler = mock(StageOperation.class);
-            var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-            dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
-
-            mdc.verify(MDC::clear);
-            verifyNoInteractions(handler);
-        }
-    }
-
-    @Test
     @DisplayName("dispatch: MDC is cleared after handler throws exception")
     void dispatch_shouldClearMdcAfterHandlerException() {
         var handler = mock(StageOperation.class);
@@ -565,34 +490,6 @@ class StageDispatcherTest {
         assertThat(event.getBookId()).isEqualTo(BOOK_ID);
         assertThat(event.getStage()).isEqualTo(BOOK_INDIVIDUAL_CONSOLIDATION);
         assertThat(event.getResult()).isSameAs(expectedResult);
-    }
-
-    @Test
-    @DisplayName("emitComplete: skip event for chapter stage has null bookId")
-    void emitComplete_chapterStageSkipEvent_hasNullBookId() {
-        when(stageRepo.findByJobIdAndStep(JOB_ID, CHUNKING)).thenReturn(Optional.of(completedStage(CHUNKING)));
-
-        var handler = mock(StageOperation.class);
-        var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
-
-        verify(eventPublisher).publishEvent(completedEventCaptor.capture());
-        assertThat(completedEventCaptor.getValue().getBookId()).isNull();
-    }
-
-    @Test
-    @DisplayName("emitComplete: skip event for book stage has correct bookId")
-    void emitComplete_bookStageSkipEvent_hasCorrectBookId() {
-        when(stageRepo.findByJobIdAndStep(JOB_ID, BOOK_INDIVIDUAL_CONSOLIDATION))
-                .thenReturn(Optional.of(completedStage(BOOK_INDIVIDUAL_CONSOLIDATION)));
-
-        var handler = mock(StageOperation.class);
-        var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_CONSOLIDATION, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(
-                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION));
-
-        verify(eventPublisher).publishEvent(completedEventCaptor.capture());
-        assertThat(completedEventCaptor.getValue().getBookId()).isEqualTo(BOOK_ID);
     }
 
     @Test
