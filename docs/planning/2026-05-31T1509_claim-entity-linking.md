@@ -408,3 +408,15 @@ Original Phase 2 (`HAS_CHAPTER_SUBJECT`) and Phase 3 (`HAS_BOOK_SUBJECT`) are un
 Phase 2 is now: add `EntityNode` as a secondary label to all entity nodes at every ladder level (Mention, Chapter, Book, all 5 kinds). This unifies the query surface — `(a:IndividualNode)-[:RELATES_SUBJECT]-(rc)-[:RELATES_OBJECT]->(b:EntityNode)` returns cross-kind relationships without per-kind branching.
 
 Implementation: update `@Node(labels = {...})` annotations or schema initializer. 15 node types × 1 label addition. No new edges, no Cypher, no consolidation hook points.
+
+### Phase 2 Implementation Notes (2026-06-01)
+
+Phase 2 implemented as planned — added `EntityNode` to all 15 `@Node` annotations. 441 core tests pass.
+
+### Additional fixes shipped alongside
+
+- **ANN Cartesian product fix:** Added `candidate.chapterId <> $chapterId` filter to `BookEventAnnCandidateService.queryNeighbours()`. Same-chapter events dominated candidate pairs (all KEEP_SEPARATE), wasting LLM verification calls. ANN now only returns cross-chapter candidates.
+
+- **Triad retry improvements:** `MAX_SEMANTIC_TRIAD_ATTEMPTS` 2 → 3. Dynamic temperature 0.1 → 0.3 → 0.5 per attempt (matching scene detection pattern). Previously `detectSceneAnalysisTriad()` had no temperature param — hardcoded 0.1 in `executeSceneDetectionStructuredCall`.
+
+- **Replay button:** Replaced 3 consolidation action buttons in operator UI with single amber "⟳ Replay" button. Calls `IngestionPipelineCoordinator.rerunStage(SCENE_SEGMENTATION)` which cascade-invalidates downstream stages, deletes all graph data, recreates PENDING stages, and triggers reingestion.
