@@ -107,7 +107,8 @@ public class LlmClient {
         return executeSceneDetectionCall(jobId, StageKey.SCENE_SEGMENTATION, systemPrompt, chapterText, chatClient, actualModelId, temperature);
     }
 
-    public <T> T detectSceneAnalysisTriad(UUID jobId, String systemPrompt, Map<String, Object> userVariables, Class<T> responseType) {
+    public <T> T detectSceneAnalysisTriad(UUID jobId, String systemPrompt, Map<String, Object> userVariables,
+                                          double temperature, Class<T> responseType) {
         PromptTemplate userTemplate = promptRepository.get(PromptName.SCENE_ANALYSIS_USER);
         String userInput = userTemplate.render(userVariables);
 
@@ -124,6 +125,7 @@ public class LlmClient {
                 userInput,
                 chatClient,
                 actualModelId,
+                temperature,
                 responseType
         );
     }
@@ -157,6 +159,7 @@ public class LlmClient {
                 userInput,
                 chatClient,
                 actualModelId,
+                0.1,
                 EventCorefModels.CorefWindowResponse.class
         );
     }
@@ -182,6 +185,7 @@ public class LlmClient {
                 userInput,
                 chatClient,
                 nlpSmallModelId,
+                0.1,
                 EventMergeModels.EventMergePairResponse.class
         );
     }
@@ -311,14 +315,15 @@ public class LlmClient {
     }
 
     private <T> T executeSceneDetectionStructuredCall(UUID jobId, StageKey stage, String promptTemplateId,
-                                                       String systemPrompt, String userInput,
-                                                       ChatClient chatClient, String modelId, Class<T> responseType) {
+                                                        String systemPrompt, String userInput,
+                                                        ChatClient chatClient, String modelId,
+                                                        double temperature, Class<T> responseType) {
         String step = stage.name().toLowerCase().replace('_', '-');
         log.debug("[LLM] {} request: inputLength={} chars, model={}",
                 step, userInput == null ? 0 : userInput.length(), modelId);
 
         OpenAiChatOptions options = OpenAiChatOptions.builder()
-                .temperature(0.1)
+                .temperature(temperature)
                 .topP(0.9)
                 .maxTokens(6000)
                 .build();

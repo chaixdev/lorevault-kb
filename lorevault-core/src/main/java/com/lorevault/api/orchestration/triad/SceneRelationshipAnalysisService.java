@@ -38,7 +38,7 @@ public class SceneRelationshipAnalysisService {
             "R:temporal.during"
     );
 
-    private static final int MAX_SEMANTIC_TRIAD_ATTEMPTS = 2;
+    private static final int MAX_SEMANTIC_TRIAD_ATTEMPTS = 3;
 
     private static final Set<String> RETRYABLE_TRIAD_ANALYSIS_FAILURE_CODES = Set.of(
             "TRIAD_RESPONSE_MISSING",
@@ -330,10 +330,12 @@ public class SceneRelationshipAnalysisService {
 
         for (int attempt = 1; attempt <= MAX_SEMANTIC_TRIAD_ATTEMPTS; attempt++) {
             try {
+                double temperature = 0.1 + ((attempt - 1) * 0.2); // 0.1, 0.3, 0.5
                 TriadStructuredResult parsed = llmClient.detectSceneAnalysisTriad(
                         jobId,
                         systemPrompt,
                         userVariables,
+                        temperature,
                         TriadStructuredResult.class
                 );
                 return validateAndNormalizeTriadResult(parsed, triad, statusProps);
