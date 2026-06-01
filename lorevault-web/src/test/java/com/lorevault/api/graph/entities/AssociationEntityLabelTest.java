@@ -24,21 +24,21 @@ class AssociationEntityLabelTest {
     @Test
     @DisplayName("should map chapter aggregate entities with ChapterEntity + entity-type labels")
     void shouldMapChapterAggregateEntitiesWithSpecificPrimaryLabelsAndSharedChapterEntityLabel() {
-        assertNodeLabels(ChapterIndividual.class, "ChapterIndividual", "ChapterEntity", "IndividualNode");
-        assertNodeLabels(ChapterCollective.class, "ChapterCollective", "ChapterEntity", "CollectiveNode");
-        assertNodeLabels(ChapterLocation.class, "ChapterLocation", "ChapterEntity", "LocationNode");
-        assertNodeLabels(ChapterObject.class, "ChapterObject", "ChapterEntity", "ObjectNode");
-        assertNodeLabels(ChapterEvent.class, "ChapterEvent", "ChapterEntity", "EventNode");
+        assertNodeLabels(ChapterIndividual.class, "ChapterIndividual", "ChapterEntity", "IndividualNode", "EntityNode");
+        assertNodeLabels(ChapterCollective.class, "ChapterCollective", "ChapterEntity", "CollectiveNode", "EntityNode");
+        assertNodeLabels(ChapterLocation.class, "ChapterLocation", "ChapterEntity", "LocationNode", "EntityNode");
+        assertNodeLabels(ChapterObject.class, "ChapterObject", "ChapterEntity", "ObjectNode", "EntityNode");
+        assertNodeLabels(ChapterEvent.class, "ChapterEvent", "ChapterEntity", "EventNode", "EntityNode");
     }
 
     @Test
     @DisplayName("should map book aggregate entities with BookEntity + entity-type labels")
     void shouldMapBookAggregateEntitiesWithSpecificPrimaryLabelsAndSharedBookEntityLabel() {
-        assertNodeLabels(BookIndividual.class, "BookIndividual", "BookEntity", "IndividualNode");
-        assertNodeLabels(BookCollective.class, "BookCollective", "BookEntity", "CollectiveNode");
-        assertNodeLabels(BookLocation.class, "BookLocation", "BookEntity", "LocationNode");
-        assertNodeLabels(BookObject.class, "BookObject", "BookEntity", "ObjectNode");
-        assertNodeLabels(BookEvent.class, "BookEvent", "BookEntity", "EventNode");
+        assertNodeLabels(BookIndividual.class, "BookIndividual", "BookEntity", "IndividualNode", "EntityNode");
+        assertNodeLabels(BookCollective.class, "BookCollective", "BookEntity", "CollectiveNode", "EntityNode");
+        assertNodeLabels(BookLocation.class, "BookLocation", "BookEntity", "LocationNode", "EntityNode");
+        assertNodeLabels(BookObject.class, "BookObject", "BookEntity", "ObjectNode", "EntityNode");
+        assertNodeLabels(BookEvent.class, "BookEvent", "BookEntity", "EventNode", "EntityNode");
     }
 
     private static void assertNodeLabels(Class<?> entityType, String primaryLabel, String... additionalLabels) {

@@ -116,7 +116,7 @@ class LlmClientTest {
         when(requestSpec.call()).thenReturn(callSpec);
         when(callSpec.entity(eq(SceneRelationshipAnalysisService.TriadStructuredResult.class))).thenReturn(response);
 
-        client.detectSceneAnalysisTriad(jobId, "system prompt", Map.of("curr_text", "chapter text"), SceneRelationshipAnalysisService.TriadStructuredResult.class);
+        client.detectSceneAnalysisTriad(jobId, "system prompt", Map.of("curr_text", "chapter text"), 0.1, SceneRelationshipAnalysisService.TriadStructuredResult.class);
 
         ArgumentCaptor<String> responseBodyCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);

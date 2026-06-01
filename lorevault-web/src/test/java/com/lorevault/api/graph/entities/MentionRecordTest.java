@@ -141,11 +141,11 @@ class MentionRecordTest {
     @Test
     @DisplayName("should map all mention records with EntityMention + entity-type labels")
     void shouldMapAllMentionRecordsWithSpecificPrimaryLabelsAndSharedMentionLabel() {
-        assertNodeLabels(IndividualMention.class, "IndividualMention", "EntityMention", "IndividualNode");
-        assertNodeLabels(CollectiveMention.class, "CollectiveMention", "EntityMention", "CollectiveNode");
-        assertNodeLabels(ObjectMention.class, "ObjectMention", "EntityMention", "ObjectNode");
-        assertNodeLabels(LocationMention.class, "LocationMention", "EntityMention", "LocationNode");
-        assertNodeLabels(EventMention.class, "EventMention", "EntityMention", "EventNode");
+        assertNodeLabels(IndividualMention.class, "IndividualMention", "EntityMention", "IndividualNode", "EntityNode");
+        assertNodeLabels(CollectiveMention.class, "CollectiveMention", "EntityMention", "CollectiveNode", "EntityNode");
+        assertNodeLabels(ObjectMention.class, "ObjectMention", "EntityMention", "ObjectNode", "EntityNode");
+        assertNodeLabels(LocationMention.class, "LocationMention", "EntityMention", "LocationNode", "EntityNode");
+        assertNodeLabels(EventMention.class, "EventMention", "EntityMention", "EventNode", "EntityNode");
     }
 
     private static CollectiveMention collectiveMention(UUID id, List<String> aliases, String resolutionStatus) {
