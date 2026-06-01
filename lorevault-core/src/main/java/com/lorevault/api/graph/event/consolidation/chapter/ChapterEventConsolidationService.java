@@ -49,8 +49,9 @@ public class ChapterEventConsolidationService {
 
         long mentionCount = chapterEventRepository.countMentionsByChapterId(chapterId);
         if (mentionCount == 0) {
+            chapterEventRepository.deleteByChapterId(chapterId);
             return new ChapterEventConsolidationResult(
-                    chapterId, false, 0, 0, 0, "No event mentions found for chapter");
+                    chapterId, true, 0, 0, 0, "No event mentions found for chapter");
         }
 
         // Idempotent rebuild: remove previous ChapterEvent nodes + REFERS_TO edges

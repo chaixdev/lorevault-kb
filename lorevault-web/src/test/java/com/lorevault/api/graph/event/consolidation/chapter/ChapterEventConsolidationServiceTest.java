@@ -93,11 +93,11 @@ class ChapterEventConsolidationServiceTest {
 
         ChapterEventConsolidationResult result = service.consolidateChapter(CTX, chapterId);
 
-        assertThat(result.success()).isFalse();
+        assertThat(result.success()).isTrue();
         assertThat(result.rawMentionsProcessed()).isZero();
         assertThat(result.chapterEventsCreated()).isZero();
         assertThat(result.failedCorefWindowCount()).isZero();
-        verify(chapterEventRepository, never()).deleteByChapterId(any());
+        verify(chapterEventRepository).deleteByChapterId(chapterId);
     }
 
     @Test

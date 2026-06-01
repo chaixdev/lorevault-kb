@@ -151,11 +151,11 @@ class ChapterLocationConsolidationServiceTest {
 
         ChapterLocationConsolidationResult response = service.consolidateChapter(CTX, chapterId);
 
-        assertThat(response.success()).isFalse();
+        assertThat(response.success()).isTrue();
         assertThat(response.rawLocationsProcessed()).isZero();
         assertThat(response.chapterLocationsCreated()).isZero();
 
-        verify(chapterLocationRepository, never()).deleteByChapterId(any());
+        verify(chapterLocationRepository).deleteByChapterId(chapterId);
         verify(locationMentionRepository, never()).findByChapterId(any());
     }
 

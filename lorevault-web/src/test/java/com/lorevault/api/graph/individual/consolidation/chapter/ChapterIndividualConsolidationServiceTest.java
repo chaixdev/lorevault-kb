@@ -165,11 +165,11 @@ class ChapterIndividualConsolidationServiceTest {
 
         ChapterIndividualConsolidationResult result = service.consolidateChapter(CTX, chapterId);
 
-        assertThat(result.success()).isFalse();
+        assertThat(result.success()).isTrue();
         assertThat(result.rawIndividualsProcessed()).isZero();
         assertThat(result.chapterIndividualsCreated()).isZero();
 
-        verify(chapterIndividualRepository, never()).deleteByChapterId(any());
+        verify(chapterIndividualRepository).deleteByChapterId(chapterId);
         verify(chapterIndividualRepository, never()).saveAll(any());
         verify(chapterIndividualRepository, never()).linkChapterToIndividual(any(), any());
         verify(chapterIndividualRepository, never()).linkMentionToChapterIndividual(any(), any(), any());

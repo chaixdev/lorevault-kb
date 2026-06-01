@@ -52,7 +52,8 @@ public class ChapterLocationConsolidationService {
 
         long mentionCount = chapterLocationRepository.countMentionsByChapterId(chapterId);
         if (mentionCount == 0) {
-            return new ChapterLocationConsolidationResult(chapterId, false, 0, 0, "No location mentions found for chapter");
+            chapterLocationRepository.deleteByChapterId(chapterId);
+            return new ChapterLocationConsolidationResult(chapterId, true, 0, 0, "No location mentions found for chapter");
         }
 
         chapterLocationRepository.deleteByChapterId(chapterId);

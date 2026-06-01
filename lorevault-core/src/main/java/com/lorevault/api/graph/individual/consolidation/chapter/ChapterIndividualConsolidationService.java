@@ -52,7 +52,8 @@ public class ChapterIndividualConsolidationService {
 
         long mentionCount = chapterIndividualRepository.countMentionsByChapterId(chapterId);
         if (mentionCount == 0) {
-            return new ChapterIndividualConsolidationResult(chapterId, false, 0, 0, "No individual mentions found for chapter");
+            chapterIndividualRepository.deleteByChapterId(chapterId);
+            return new ChapterIndividualConsolidationResult(chapterId, true, 0, 0, "No individual mentions found for chapter");
         }
 
         chapterIndividualRepository.deleteByChapterId(chapterId);
