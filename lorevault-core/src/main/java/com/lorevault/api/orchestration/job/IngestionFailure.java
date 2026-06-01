@@ -1,6 +1,6 @@
 package com.lorevault.api.orchestration.job;
 
-import static com.lorevault.api.common.error.ExceptionSanitizer.safeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -32,7 +32,7 @@ public record IngestionFailure(
     public static IngestionFailure fromException(String stage, Exception exception) {
         return new IngestionFailure(
                 "INGESTION_STAGE_FAILED",
-                safeMessage(exception),
+                sanitize(exception),
                 exception != null ? exception.getClass().getSimpleName() : null,
                 stage,
                 Map.of()

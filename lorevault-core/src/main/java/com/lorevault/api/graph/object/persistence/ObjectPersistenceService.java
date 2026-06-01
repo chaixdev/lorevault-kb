@@ -10,11 +10,13 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ObjectPersistenceService {
 
     private static final String SOURCE = "ai-scene-analysis";
@@ -33,6 +35,9 @@ public class ObjectPersistenceService {
             return mentionIds;
         }
 
+        log.info("[OBJECT_PERSIST] Persisting {} extractions from {} scenes for chapterId={}",
+                sceneExtractions.size(), persistedScenes.size(), ctx.chapterId());
+
         Map<Integer, Scene> sceneByIndex = persistedScenes.stream()
                 .filter(scene -> scene.getSceneIndex() != null && scene.getEventId() != null)
                 .collect(Collectors.toMap(Scene::getSceneIndex, scene -> scene, (a, b) -> a));
@@ -48,7 +53,7 @@ public class ObjectPersistenceService {
                 if (extracted == null) {
                     continue;
                 }
-                String displayName = chooseDisplayName(extracted);
+                String displayName = firstNonBlankAlias(extracted);
                 if (displayName == null) {
                     continue;
                 }
@@ -84,10 +89,11 @@ public class ObjectPersistenceService {
                 }
             }
         }
+        log.info("[OBJECT_PERSIST] Completed: {} mentions persisted", mentionIds.size());
         return mentionIds;
     }
 
-    private String chooseDisplayName(TriadAnalysisModels.ObjectExtraction extracted) {
+    private String firstNonBlankAlias(TriadAnalysisModels.ObjectExtraction extracted) {
         if (extracted == null) {
             return null;
         }
@@ -98,7 +104,7 @@ public class ObjectPersistenceService {
                 }
             }
         }
-        return normalizeText(extracted.type());
+        return null;
     }
 
     private String normalizeText(String value) {

@@ -1,6 +1,6 @@
 package com.lorevault.api.graph.object.consolidation.chapter;
 
-import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
@@ -72,9 +72,9 @@ public class ChapterObjectConsolidationHandler implements ChapterObjectConsolida
             boolean retryable = isRetryableError(e);
             return retryable
                     ? StepResult.retryableFailure(StageKey.CHAPTER_OBJECT_CONSOLIDATION,
-                            sanitizeMessage(e), elapsed)
+                            sanitize(e), elapsed)
                     : StepResult.failure(StageKey.CHAPTER_OBJECT_CONSOLIDATION,
-                            sanitizeMessage(e), elapsed);
+                            sanitize(e), elapsed);
         }
     }
 

@@ -60,7 +60,7 @@ public class ConceptPersistenceService {
                 if (extracted == null) {
                     continue;
                 }
-                String displayName = chooseDisplayName(extracted);
+                String displayName = firstNonBlankAlias(extracted);
                 if (displayName == null) {
                     continue;
                 }
@@ -105,7 +105,7 @@ public class ConceptPersistenceService {
         return mentionIds;
     }
 
-    private String chooseDisplayName(TriadAnalysisModels.ConceptExtraction extracted) {
+    private String firstNonBlankAlias(TriadAnalysisModels.ConceptExtraction extracted) {
         if (extracted == null) {
             return null;
         }

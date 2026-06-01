@@ -6,7 +6,7 @@ import java.util.UUID;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
 import lombok.extern.slf4j.Slf4j;
-import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StepResult;
@@ -67,9 +67,9 @@ public class ChapterIndividualConsolidationHandler implements ChapterIndividualC
             boolean retryable = isRetryableError(e);
             return retryable
                     ? StepResult.retryableFailure(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION,
-                            sanitizeMessage(e), elapsed)
+                            sanitize(e), elapsed)
                     : StepResult.failure(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION,
-                            sanitizeMessage(e), elapsed);
+                            sanitize(e), elapsed);
         }
     }
 

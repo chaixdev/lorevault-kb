@@ -12,7 +12,7 @@ import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -135,7 +135,7 @@ public class ChapterEventEmbeddingService {
         } catch (EmbeddingGenerationException e) {
             throw e;
         } catch (Exception e) {
-            log.error("[EventEmbeddings] Batch embedding failed chapter={} error={}", chapterId, sanitizeMessage(e), e);
+            log.error("[EventEmbeddings] Batch embedding failed chapter={} error={}", chapterId, sanitize(e), e);
             EmbeddingFailure failure = EmbeddingFailure.builder(
                             "EVENT_EMBEDDING_BACKEND_UNAVAILABLE",
                             "Embedding backend failed while generating ChapterEvent vectors")

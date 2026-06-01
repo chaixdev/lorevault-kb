@@ -5,10 +5,12 @@ import com.lorevault.api.graph.collective.persistence.BookCollectiveGraphReposit
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
 public class BookCollectivePersistenceService {
 
     private final BookCollectiveGraphRepository bookCollectiveRepository;
@@ -23,8 +25,10 @@ public class BookCollectivePersistenceService {
             List<BookCollective> bookCollectives,
             List<List<UUID>> chapterCollectiveIdsByBookCollective
     ) {
+        log.info("[BOOK_COLLECTIVE_PERSISTENCE] replaceBookCollectives start: bookId={}, inputSize={}", bookId, bookCollectives.size());
         bookCollectiveRepository.deleteByBookId(bookId);
         if (bookCollectives.isEmpty()) {
+            log.warn("[BOOK_COLLECTIVE_PERSISTENCE] replaceBookCollectives empty input: bookId={}", bookId);
             return List.of();
         }
 
@@ -39,6 +43,7 @@ public class BookCollectivePersistenceService {
             );
         }
 
+        log.info("[BOOK_COLLECTIVE_PERSISTENCE] replaceBookCollectives complete: bookId={}, savedCount={}", bookId, savedCollectives.size());
         return savedCollectives;
     }
 

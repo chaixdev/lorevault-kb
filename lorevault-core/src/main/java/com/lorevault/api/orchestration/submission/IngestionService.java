@@ -23,7 +23,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import static com.lorevault.api.common.error.ExceptionSanitizer.safeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 import static com.lorevault.api.common.HashUtils.generateSha256Hash;
 
 /**
@@ -194,7 +194,7 @@ public class IngestionService {
         } catch (Exception e) {
             IngestionFailure failure = IngestionFailure.builder(
                             "CHAPTER_PERSISTENCE_FAILED",
-                            "Failed to create chapter in graph: " + safeMessage(e)
+                            "Failed to create chapter in graph: " + sanitize(e)
                     )
                     .exceptionType(e.getClass().getSimpleName())
                     .stage("CHAPTER_SUBMISSION")
@@ -247,7 +247,7 @@ public class IngestionService {
         } catch (Exception e) {
             log.warn("Required lookup failed: {}", e.getMessage());
             log.debug("Required lookup failure details:", e);
-            var builder = IngestionFailure.builder(code, message + ": " + safeMessage(e))
+            var builder = IngestionFailure.builder(code, message + ": " + sanitize(e))
                     .exceptionType(e.getClass().getSimpleName())
                     .stage("CHAPTER_SUBMISSION");
             if (details != null) {

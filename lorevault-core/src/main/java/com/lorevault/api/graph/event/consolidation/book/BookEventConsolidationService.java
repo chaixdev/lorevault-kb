@@ -13,14 +13,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class BookEventConsolidationService {
-
-    private static final Logger log = LoggerFactory.getLogger(BookEventConsolidationService.class);
 
     private final BookEventPersistenceService persistenceService;
     private final ChapterEventGraphRepository chapterEventRepository;

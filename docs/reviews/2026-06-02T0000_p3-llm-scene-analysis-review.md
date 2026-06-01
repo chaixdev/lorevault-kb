@@ -39,6 +39,8 @@ The most pervasive theme is **content leakage**: chapter-derived text (copyright
     && claim.object() != null)
 ```
 
+>! agreed, fix accepted
+
 ---
 
 ### 🟠 HIGH
@@ -54,6 +56,7 @@ The most pervasive theme is **content leakage**: chapter-derived text (copyright
 The service-level retry in `SceneRelationshipAnalysisService.analyzeTriadWithSemanticRetry()` does adjust temperature across attempts, but Spring RetryTemplate retries *within* a single service attempt are wasted.
 
 **Fix:** Move `OpenAiChatOptions` construction inside the retry lambda, computing `double attemptTemp = temperature + (retryContext.getRetryCount() * 0.1)` — matching the pattern in `executeSceneDetectionCall()`.
+>! the temperature increase should be designed for consistently, if an existing approach 
 
 ---
 

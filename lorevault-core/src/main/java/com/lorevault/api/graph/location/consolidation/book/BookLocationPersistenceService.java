@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BookLocationPersistenceService {
 
     private final BookLocationGraphRepository bookLocationRepository;
@@ -28,8 +30,10 @@ public class BookLocationPersistenceService {
             List<BookLocation> bookLocations,
             List<List<UUID>> chapterLocationIdsByBookLocation
     ) {
+        log.info("[BOOK_LOCATION_PERSISTENCE] replaceBookLocations start: bookId={}, inputSize={}", bookId, bookLocations.size());
         bookLocationRepository.deleteByBookId(bookId);
         if (bookLocations.isEmpty()) {
+            log.warn("[BOOK_LOCATION_PERSISTENCE] replaceBookLocations empty input: bookId={}", bookId);
             return List.of();
         }
 
@@ -44,6 +48,7 @@ public class BookLocationPersistenceService {
             );
         }
 
+        log.info("[BOOK_LOCATION_PERSISTENCE] replaceBookLocations complete: bookId={}, savedCount={}", bookId, savedLocations.size());
         return savedLocations;
     }
 

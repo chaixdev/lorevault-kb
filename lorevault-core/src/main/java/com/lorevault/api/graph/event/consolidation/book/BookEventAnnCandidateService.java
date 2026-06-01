@@ -2,7 +2,7 @@ package com.lorevault.api.graph.event.consolidation.book;
 
 import com.lorevault.api.config.LoreVaultEmbeddingProperties;
 import com.lorevault.api.graph.event.persistence.ChapterEvent;
-import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import com.lorevault.api.orchestration.job.IngestionFailure;
 import lombok.RequiredArgsConstructor;
@@ -135,7 +135,7 @@ public class BookEventAnnCandidateService {
 
             return pairs;
         } catch (Exception e) {
-            log.warn("[EventAnn] ANN query failed for source={} chapter={} error={}", source.id(), chapterId, sanitizeMessage(e));
+            log.warn("[EventAnn] ANN query failed for source={} chapter={} error={}", source.id(), chapterId, sanitize(e));
             throw annQueryFailure(source.id(), chapterId, e);
         }
     }

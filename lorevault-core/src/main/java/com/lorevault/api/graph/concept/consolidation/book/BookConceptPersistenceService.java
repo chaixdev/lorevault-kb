@@ -5,10 +5,12 @@ import com.lorevault.api.graph.concept.persistence.BookConceptGraphRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
 public class BookConceptPersistenceService {
 
     private final BookConceptGraphRepository bookConceptRepository;
@@ -23,8 +25,10 @@ public class BookConceptPersistenceService {
             List<BookConcept> bookConcepts,
             List<List<UUID>> chapterConceptIdsByBookConcept
     ) {
+        log.info("[BOOK_CONCEPT_PERSISTENCE] replaceBookConcepts start: bookId={}, inputSize={}", bookId, bookConcepts.size());
         bookConceptRepository.deleteByBookId(bookId);
         if (bookConcepts.isEmpty()) {
+            log.warn("[BOOK_CONCEPT_PERSISTENCE] replaceBookConcepts empty input: bookId={}", bookId);
             return List.of();
         }
 
@@ -39,6 +43,7 @@ public class BookConceptPersistenceService {
             );
         }
 
+        log.info("[BOOK_CONCEPT_PERSISTENCE] replaceBookConcepts complete: bookId={}, savedCount={}", bookId, savedConcepts.size());
         return savedConcepts;
     }
 

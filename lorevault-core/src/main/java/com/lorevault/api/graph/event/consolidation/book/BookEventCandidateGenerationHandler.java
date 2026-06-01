@@ -4,7 +4,7 @@ import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.graph.event.persistence.ChapterEvent;
 import com.lorevault.api.library.chapter.Chapter;
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
-import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import com.lorevault.api.graph.event.consolidation.chapter.ChapterEventEmbeddingTransactionSupport;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
@@ -83,7 +83,7 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
 
         if (!bookConsolidationClaimService.tryAcquireClaim(bookId, CLAIM_LANE, ctx.stageId())) {
             long elapsed = System.currentTimeMillis() - start;
-            log.info("[EVENT_CANDIDATE_GENERATION] Claim contention for bookId={}", bookId);
+            log.warn("[EVENT_CANDIDATE_GENERATION] Claim contention: jobId={}, bookId={}", jobId, bookId);
             return StepResult.retryableFailure(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
                     "Claim contention — another worker holds the reduction claim for this book", elapsed);
         }
@@ -198,9 +198,9 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
             boolean retryable = isRetryableError(e);
             return retryable
                     ? StepResult.retryableFailure(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
-                            sanitizeMessage(e), elapsed)
+                            sanitize(e), elapsed)
                     : StepResult.failure(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
-                            sanitizeMessage(e), elapsed);
+                            sanitize(e), elapsed);
         } finally {
             bookConsolidationClaimService.releaseClaim(bookId, CLAIM_LANE);
         }

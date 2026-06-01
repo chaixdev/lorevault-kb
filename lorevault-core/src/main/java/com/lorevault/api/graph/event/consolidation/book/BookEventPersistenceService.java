@@ -6,11 +6,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
 public class BookEventPersistenceService {
 
     private final BookEventGraphRepository bookEventRepository;
@@ -30,9 +32,11 @@ public class BookEventPersistenceService {
             List<List<UUID>> chapterEventIdsByBookEvent,
             List<UUID> scopedChapterEventIds
     ) {
+        log.info("[BOOK_EVENT_PERSISTENCE] saveAndLinkBookEvents start: jobId={}, bookId={}, inputSize={}", jobId, bookId, bookEvents != null ? bookEvents.size() : 0);
         clearExistingBookEventLinks(scopedChapterEventIds);
 
         if (bookEvents == null || bookEvents.isEmpty()) {
+            log.warn("[BOOK_EVENT_PERSISTENCE] saveAndLinkBookEvents empty input: jobId={}, bookId={}", jobId, bookId);
             return new BookEventWriteSummary(0, 0);
         }
 
@@ -46,6 +50,7 @@ public class BookEventPersistenceService {
             writtenLinks += linkChapterEventsToBookEvent(chapterEventIds, bookEvent.id());
         }
 
+        log.info("[BOOK_EVENT_PERSISTENCE] saveAndLinkBookEvents complete: jobId={}, bookId={}, savedCount={}, writtenLinks={}", jobId, bookId, savedBookEvents.size(), writtenLinks);
         return new BookEventWriteSummary(savedBookEvents.size(), writtenLinks);
     }
 
@@ -89,17 +94,7 @@ public class BookEventPersistenceService {
         }
 
         List<String> scopedIds = scopedChapterEventIds.stream().map(UUID::toString).toList();
-
-        neo4jClient.query("""
-                UNWIND $chapterEventIds AS chapterEventId
-                MATCH (ce:ChapterEvent {id: chapterEventId})-[r:REFERS_TO]->(be:BookEvent)
-                DELETE r
-                WITH DISTINCT be
-                WHERE NOT EXISTS { MATCH (:ChapterEvent)-[:REFERS_TO]->(be) }
-                DETACH DELETE be
-                """)
-                .bind(scopedIds).to("chapterEventIds")
-                .run();
+        bookEventRepository.clearLinksAndDeleteOrphanBookEvents(scopedIds);
     }
 
     private int linkChapterEventsToBookEvent(List<UUID> chapterEventIds, UUID bookEventId) {

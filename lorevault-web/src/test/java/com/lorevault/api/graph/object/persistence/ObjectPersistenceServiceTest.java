@@ -77,13 +77,13 @@ class ObjectPersistenceServiceTest {
     }
 
     @Test
-    @DisplayName("Falls back to object type when aliases are missing")
-    void fallsBackToTypeWhenAliasesMissing() {
+    @DisplayName("Uses first non-blank alias as display name")
+    void usesFirstNonBlankAliasAsDisplayName() {
         Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null, null);
         TriadAnalysisModels.ObjectExtraction extracted =
                 new TriadAnalysisModels.ObjectExtraction(
-                        List.of("", "   "),
-                        "  pulse gun  ",
+                        List.of("", "   ", "  pulse gun  "),
+                        null,
                         null,
                         null,
                         null

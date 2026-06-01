@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,14 +19,17 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BookIndividualPersistenceService {
 
     private final BookIndividualGraphRepository bookIndividualRepository;
 
     @Transactional
     public List<BookIndividual> replaceBookIndividuals(UUID bookId, List<BookIndividual> bookIndividuals, List<List<UUID>> chapterIndividualIdsByBookIndividual) {
+        log.info("[BOOK_INDIVIDUAL_PERSISTENCE] replaceBookIndividuals start: bookId={}, inputSize={}", bookId, bookIndividuals.size());
         bookIndividualRepository.deleteByBookId(bookId);
         if (bookIndividuals.isEmpty()) {
+            log.warn("[BOOK_INDIVIDUAL_PERSISTENCE] replaceBookIndividuals empty input: bookId={}", bookId);
             return List.of();
         }
 
@@ -40,6 +44,7 @@ public class BookIndividualPersistenceService {
             }
         }
 
+        log.info("[BOOK_INDIVIDUAL_PERSISTENCE] replaceBookIndividuals complete: bookId={}, savedCount={}", bookId, savedIndividuals.size());
         return savedIndividuals;
     }
 

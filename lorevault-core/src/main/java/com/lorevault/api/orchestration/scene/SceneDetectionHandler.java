@@ -1,6 +1,6 @@
 package com.lorevault.api.orchestration.scene;
 
-import com.lorevault.api.common.error.ExceptionSanitizer;
+import com.lorevault.api.common.ExceptionSanitizer;
 import com.lorevault.api.graph.collective.persistence.CollectivePersistenceService;
 import com.lorevault.api.graph.concept.persistence.ConceptPersistenceService;
 import com.lorevault.api.graph.event.persistence.EventPersistenceService;
@@ -189,9 +189,9 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             boolean retryable = isRetryableError(e);
             return retryable
                     ?StepResult.retryableFailure(StageKey.SCENE_SEGMENTATION,
-                    ExceptionSanitizer.sanitizeMessage(e), elapsed)
+                    ExceptionSanitizer.sanitize(e), elapsed)
                     : StepResult.failure(StageKey.SCENE_SEGMENTATION,
-                    ExceptionSanitizer.sanitizeMessage(e), elapsed);
+                    ExceptionSanitizer.sanitize(e), elapsed);
         }
     }
 

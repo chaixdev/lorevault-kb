@@ -19,6 +19,13 @@ public interface ChapterEventGraphRepository extends Neo4jRepository<ChapterEven
             """)
     long countChapterEventsByChapterId(UUID chapterId);
 
+    @Query("""
+            MATCH (ce:ChapterEvent {chapterId: $chapterId})
+            WHERE ce.embedding IS NULL
+            RETURN count(ce)
+            """)
+    long countChapterEventsWithoutEmbedding(UUID chapterId);
+
     /**
      * Delete all ChapterEvent nodes for a chapter and their inbound REFERS_TO edges.
      * Resets mention resolutionStatus to 'unresolved' so the resolution pass is idempotent.

@@ -14,7 +14,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
-import static com.lorevault.api.common.error.ExceptionSanitizer.safeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 /**
  * AI-backed scene detection as part of the ingestion scene stage.
@@ -55,7 +55,7 @@ public class SceneDetectionService {
             }
             throw buildSceneDetectionFailure(
                     "SCENE_DETECTION_FAILED",
-                    "Scene detection failed: " + safeMessage(e),
+                    "Scene detection failed: " + sanitize(e),
                     chapterId,
                     e
             );
@@ -93,7 +93,7 @@ public class SceneDetectionService {
             }
             throw buildSceneDetectionFailure(
                     "SCENE_DETECTION_FAILED",
-                    "Scene detection failed: " + safeMessage(e),
+                    "Scene detection failed: " + sanitize(e),
                     chapterId,
                     e
             );

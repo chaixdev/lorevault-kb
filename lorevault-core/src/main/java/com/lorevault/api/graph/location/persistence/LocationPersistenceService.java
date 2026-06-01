@@ -10,11 +10,13 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class LocationPersistenceService {
 
     private static final String SOURCE = "ai-scene-analysis";
@@ -33,6 +35,9 @@ public class LocationPersistenceService {
             return mentionIds;
         }
 
+        log.info("[LOCATION_PERSIST] Persisting {} extractions from {} scenes for chapterId={}",
+                sceneExtractions.size(), persistedScenes.size(), ctx.chapterId());
+
         Map<Integer, Scene> sceneByIndex = persistedScenes.stream()
                 .filter(scene -> scene.getSceneIndex() != null && scene.getEventId() != null)
                 .collect(Collectors.toMap(Scene::getSceneIndex, scene -> scene, (a, b) -> a));
@@ -48,7 +53,7 @@ public class LocationPersistenceService {
                 if (extracted == null) {
                     continue;
                 }
-                String displayName = chooseDisplayName(extracted);
+                String displayName = firstNonBlankAlias(extracted);
                 if (displayName == null) {
                     continue;
                 }
@@ -83,22 +88,19 @@ public class LocationPersistenceService {
                 }
             }
         }
+        log.info("[LOCATION_PERSIST] Completed: {} mentions persisted", mentionIds.size());
         return mentionIds;
     }
 
-    private String chooseDisplayName(TriadAnalysisModels.LocationExtraction extracted) {
+    private String firstNonBlankAlias(TriadAnalysisModels.LocationExtraction extracted) {
         if (extracted == null) {
             return null;
         }
-        if (extracted.primaryName() != null && !extracted.primaryName().isBlank()) {
-            return extracted.primaryName().trim();
-        }
-        if (extracted.aliases() == null || extracted.aliases().isEmpty()) {
-            return null;
-        }
-        for (String alias : extracted.aliases()) {
-            if (alias != null && !alias.isBlank()) {
-                return alias.trim();
+        if (extracted.aliases() != null) {
+            for (String alias : extracted.aliases()) {
+                if (alias != null && !alias.isBlank()) {
+                    return alias.trim();
+                }
             }
         }
         return null;

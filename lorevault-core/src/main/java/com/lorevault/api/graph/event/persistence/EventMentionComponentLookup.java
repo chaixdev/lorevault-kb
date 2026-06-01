@@ -19,7 +19,7 @@ public class EventMentionComponentLookup {
     public List<SameEventComponentRow> findSameEventComponents(UUID chapterId) {
         return new ArrayList<>(neo4jClient.query("""
                         MATCH (root:EventMention {chapterId: $chapterId})
-                        OPTIONAL MATCH path = (root)-[:SAME_EVENT*0..]-(peer:EventMention {chapterId: $chapterId})
+                        OPTIONAL MATCH path = (root)-[:SAME_EVENT*0..10]-(peer:EventMention {chapterId: $chapterId})
                         WHERE all(n IN nodes(path) WHERE n.chapterId = $chapterId)
                         WITH root, collect(DISTINCT coalesce(peer.id, root.id)) AS componentMemberIds
                         WITH root,

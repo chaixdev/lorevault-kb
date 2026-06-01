@@ -1,6 +1,6 @@
 package com.lorevault.api.ai.embedding;
 
-import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
@@ -78,9 +78,9 @@ public class EmbeddingHandler implements EmbeddingOperation {
             boolean retryable = isRetryableError(e);
             return retryable
                     ? StepResult.retryableFailure(StageKey.EMBEDDING,
-                            sanitizeMessage(e), elapsed)
+                            sanitize(e), elapsed)
                     : StepResult.failure(StageKey.EMBEDDING,
-                            sanitizeMessage(e), elapsed);
+                            sanitize(e), elapsed);
         }
     }
 

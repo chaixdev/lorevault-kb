@@ -2,7 +2,7 @@ package com.lorevault.api.graph.location.consolidation.book;
 
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
-import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StepResult;
@@ -40,7 +40,7 @@ public class BookLocationConsolidationHandler implements BookLocationConsolidati
 
         if (!bookConsolidationClaimService.tryAcquireClaim(bookId, CLAIM_LANE, ctx.stageId())) {
             long elapsed = System.currentTimeMillis() - start;
-            log.warn("[BOOK_LOCATION_CONSOLIDATION] Claim contention for bookId={}", bookId);
+            log.warn("[BOOK_LOCATION_CONSOLIDATION] Claim contention: jobId={}, bookId={}", jobId, bookId);
             return StepResult.retryableFailure(StageKey.BOOK_LOCATION_CONSOLIDATION,
                     "Claim contention — another worker holds the reduction claim for this book", elapsed);
         }
@@ -78,9 +78,9 @@ public class BookLocationConsolidationHandler implements BookLocationConsolidati
             boolean retryable = isRetryableError(e);
             return retryable
                     ? StepResult.retryableFailure(StageKey.BOOK_LOCATION_CONSOLIDATION,
-                            sanitizeMessage(e), elapsed)
+                            sanitize(e), elapsed)
                     : StepResult.failure(StageKey.BOOK_LOCATION_CONSOLIDATION,
-                            sanitizeMessage(e), elapsed);
+                            sanitize(e), elapsed);
         } finally {
             bookConsolidationClaimService.releaseClaim(bookId, CLAIM_LANE);
         }

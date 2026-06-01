@@ -8,7 +8,7 @@ import com.lorevault.api.graph.event.persistence.EventMention;
 import com.lorevault.api.graph.event.persistence.EventMentionGraphRepository;
 import com.lorevault.api.orchestration.job.IngestionFailure;
 import com.lorevault.api.orchestration.job.IngestionFailureCarrier;
-import static com.lorevault.api.common.error.ExceptionSanitizer.safeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 import jakarta.annotation.Nullable;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -113,7 +113,7 @@ public class EventCoreferenceService {
                 failureCount++;
                 failedWindows.add(windowSceneIds);
                 log.warn("[EVENT_COREF] Window failed: chapterId={}, jobId={}, windowIndex={}, windowScenes={}, error={}",
-                        chapterId, jobId, windowIndex, windowSceneIds, safeMessage((Exception) ex));
+                        chapterId, jobId, windowIndex, windowSceneIds, sanitize((Exception) ex));
                 log.debug("[EVENT_COREF] Window failure details: chapterId={}, jobId={}, windowIndex={}",
                         chapterId, jobId, windowIndex, ex);
             }

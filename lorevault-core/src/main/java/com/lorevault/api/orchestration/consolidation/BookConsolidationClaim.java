@@ -1,8 +1,9 @@
 package com.lorevault.api.orchestration.consolidation;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 
@@ -23,7 +24,8 @@ import java.util.UUID;
  * by {@link BookConsolidationClaimService}
  * to handle worker crashes.
  */
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Node("BookConsolidationClaim")

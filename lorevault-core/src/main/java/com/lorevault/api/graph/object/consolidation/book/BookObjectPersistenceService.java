@@ -5,10 +5,12 @@ import com.lorevault.api.graph.object.persistence.BookObjectGraphRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
 public class BookObjectPersistenceService {
 
     private final BookObjectGraphRepository bookObjectRepository;
@@ -23,8 +25,10 @@ public class BookObjectPersistenceService {
             List<BookObject> bookObjects,
             List<List<UUID>> chapterObjectIdsByBookObject
     ) {
+        log.info("[BOOK_OBJECT_PERSISTENCE] replaceBookObjects start: bookId={}, inputSize={}", bookId, bookObjects.size());
         bookObjectRepository.deleteByBookId(bookId);
         if (bookObjects.isEmpty()) {
+            log.warn("[BOOK_OBJECT_PERSISTENCE] replaceBookObjects empty input: bookId={}", bookId);
             return List.of();
         }
 
@@ -36,6 +40,7 @@ public class BookObjectPersistenceService {
             bookObjectRepository.linkChapterObjectsToBookObject(chapterObjectIdsByBookObject.get(i), bookObject.id());
         }
 
+        log.info("[BOOK_OBJECT_PERSISTENCE] replaceBookObjects complete: bookId={}, savedCount={}", bookId, savedObjects.size());
         return savedObjects;
     }
 

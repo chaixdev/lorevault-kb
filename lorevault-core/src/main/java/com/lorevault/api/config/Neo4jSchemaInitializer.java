@@ -338,9 +338,11 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
                         existingDimensions,
                         expectedDimensions
                 );
+                // Index names are compile-time constants; safe to concatenate
                 neo4jClient.query("DROP INDEX " + Chunk.VECTOR_INDEX_NAME + " IF EXISTS").run();
             }
 
+            // Index names are compile-time constants; safe to concatenate
             neo4jClient.query(chunkVectorIndexCypher(expectedDimensions)).run();
             log.debug("Ensured vector index: {}", description);
             return "ensured: " + description;
@@ -368,6 +370,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     }
 
     private String chunkVectorIndexCypher(int dimensions) {
+        // Index names are compile-time constants; safe to concatenate
         return "CREATE VECTOR INDEX " + Chunk.VECTOR_INDEX_NAME + " IF NOT EXISTS FOR (ch:Chunk) ON (ch.embedding) " +
                "OPTIONS {indexConfig: {`vector.dimensions`: " + dimensions + ", `vector.similarity_function`: 'cosine'}}";
     }
@@ -385,9 +388,11 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
                         existingDimensions,
                         expectedDimensions
                 );
+                // Index names are compile-time constants; safe to concatenate
                 neo4jClient.query("DROP INDEX " + ChapterEvent.VECTOR_INDEX_NAME + " IF EXISTS").run();
             }
 
+            // Index names are compile-time constants; safe to concatenate
             neo4jClient.query(chapterEventVectorIndexCypher(expectedDimensions)).run();
             log.debug("Ensured vector index: {}", description);
             return "ensured: " + description;
@@ -415,6 +420,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     }
 
     private String chapterEventVectorIndexCypher(int dimensions) {
+        // Index names are compile-time constants; safe to concatenate
         return "CREATE VECTOR INDEX " + ChapterEvent.VECTOR_INDEX_NAME + " IF NOT EXISTS FOR (ce:ChapterEvent) ON (ce.embedding) " +
                "OPTIONS {indexConfig: {`vector.dimensions`: " + dimensions + ", `vector.similarity_function`: 'cosine'}}";
     }

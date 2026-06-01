@@ -1,6 +1,6 @@
 package com.lorevault.api.graph.location.consolidation.chapter;
 
-import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
@@ -66,9 +66,9 @@ public class ChapterLocationConsolidationHandler implements ChapterLocationConso
             boolean retryable = isRetryableError(e);
             return retryable
                     ? StepResult.retryableFailure(StageKey.CHAPTER_LOCATION_CONSOLIDATION,
-                            sanitizeMessage(e), elapsed)
+                            sanitize(e), elapsed)
                     : StepResult.failure(StageKey.CHAPTER_LOCATION_CONSOLIDATION,
-                            sanitizeMessage(e), elapsed);
+                            sanitize(e), elapsed);
         }
     }
 

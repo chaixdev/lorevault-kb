@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 import static com.lorevault.api.common.HashUtils.generateSha256Hash;
 
 /**
@@ -99,7 +99,7 @@ public class ChunkingHandler implements ChunkingOperation {
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
             log.error("[CHUNKING] Failed for job={} chapter={}: {}", jobId, chapterId, e.getMessage(), e);
-            return StepResult.failure(StageKey.CHUNKING, sanitizeMessage(e), elapsed);
+            return StepResult.failure(StageKey.CHUNKING, sanitize(e), elapsed);
         }
     }
 

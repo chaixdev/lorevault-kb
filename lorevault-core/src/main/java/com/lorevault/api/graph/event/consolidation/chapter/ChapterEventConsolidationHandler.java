@@ -1,7 +1,7 @@
 package com.lorevault.api.graph.event.consolidation.chapter;
 
 import com.lorevault.api.ai.llm.EventCorefModels;
-import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import com.lorevault.api.graph.timeline.EventCoreferenceService;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
@@ -95,9 +95,9 @@ public class ChapterEventConsolidationHandler implements ChapterEventConsolidati
             boolean retryable = isRetryableError(e);
             return retryable
                     ? StepResult.retryableFailure(StageKey.CHAPTER_EVENT_CONSOLIDATION,
-                            sanitizeMessage(e), elapsed)
+                            sanitize(e), elapsed)
                     : StepResult.failure(StageKey.CHAPTER_EVENT_CONSOLIDATION,
-                            sanitizeMessage(e), elapsed);
+                            sanitize(e), elapsed);
         }
     }
 

@@ -3,12 +3,14 @@ package com.lorevault.api.graph.event.consolidation.chapter;
 import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.graph.event.persistence.ChapterEvent;
 import com.lorevault.api.ai.embedding.EmbeddingGenerationException;
-import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
+import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import com.lorevault.api.graph.event.consolidation.book.BookEventAnnCandidateService;
 import com.lorevault.api.graph.event.consolidation.book.BookEventCandidatePair;
 import com.lorevault.api.graph.event.consolidation.book.BookEventConsolidationService;
 import com.lorevault.api.graph.event.consolidation.book.BookEventMergeVerificationService;
+import com.lorevault.api.graph.event.persistence.BookEventGraphRepository;
+import com.lorevault.api.graph.event.persistence.ChapterEventGraphRepository;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
 import com.lorevault.api.orchestration.pipeline.StageKey;
@@ -40,19 +42,25 @@ public class ChapterEventEmbeddingHandler implements StageOperation {
     private final BookEventAnnCandidateService annCandidateService;
     private final BookEventMergeVerificationService mergeVerificationService;
     private final BookEventConsolidationService bookEventConsolidationService;
+    private final ChapterEventGraphRepository chapterEventRepo;
+    private final BookEventGraphRepository bookEventRepo;
 
     public ChapterEventEmbeddingHandler(
             ChapterEventEmbeddingService embeddingService,
             ChapterEventEmbeddingTransactionSupport txSupport,
             BookEventAnnCandidateService annCandidateService,
             BookEventMergeVerificationService mergeVerificationService,
-            BookEventConsolidationService bookEventConsolidationService
+            BookEventConsolidationService bookEventConsolidationService,
+            ChapterEventGraphRepository chapterEventRepo,
+            BookEventGraphRepository bookEventRepo
     ) {
         this.embeddingService = embeddingService;
         this.txSupport = txSupport;
         this.annCandidateService = annCandidateService;
         this.mergeVerificationService = mergeVerificationService;
         this.bookEventConsolidationService = bookEventConsolidationService;
+        this.chapterEventRepo = chapterEventRepo;
+        this.bookEventRepo = bookEventRepo;
     }
 
     @Override
@@ -62,6 +70,22 @@ public class ChapterEventEmbeddingHandler implements StageOperation {
         UUID bookId = ctx.bookId();
 
         long start = System.currentTimeMillis();
+
+        // Idempotency: skip if all ChapterEvents are already embedded and a BookEvent exists
+        long unembeddedCount = chapterEventRepo.countChapterEventsWithoutEmbedding(chapterId);
+        long bookEventCount = bookEventRepo.countByChapterId(chapterId);
+        if (unembeddedCount == 0 && bookEventCount > 0) {
+            long totalCount = chapterEventRepo.countChapterEventsByChapterId(chapterId);
+            log.info("[EVENT_EMBEDDING] Skipping — all {} ChapterEvents already embedded, BookEvent(s) exist for chapter {}",
+                    totalCount, chapterId);
+            long elapsed = System.currentTimeMillis() - start;
+            return StepResult.success(StageKey.CHAPTER_EVENT_EMBEDDING,
+                    "Already completed",
+                    Map.of("embeddedCount", (int) totalCount,
+                            "bookEventsCreated", (int) bookEventCount),
+                    elapsed);
+        }
+
         try {
             int embeddedCount = embeddingService.embedChapterEvents(chapterId);
             List<ChapterEvent> chapterEvents = txSupport.loadChapterEvents(chapterId);
@@ -152,9 +176,9 @@ public class ChapterEventEmbeddingHandler implements StageOperation {
             boolean retryable = isRetryableError(e);
             return retryable
                     ? StepResult.retryableFailure(StageKey.CHAPTER_EVENT_EMBEDDING,
-                            sanitizeMessage(e), elapsed)
+                            sanitize(e), elapsed)
                     : StepResult.failure(StageKey.CHAPTER_EVENT_EMBEDDING,
-                            sanitizeMessage(e), elapsed);
+                            sanitize(e), elapsed);
         }
     }
 

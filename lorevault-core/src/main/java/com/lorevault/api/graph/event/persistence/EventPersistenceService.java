@@ -10,11 +10,13 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class EventPersistenceService {
 
     private static final String SOURCE = "ai-scene-analysis";
@@ -32,6 +34,9 @@ public class EventPersistenceService {
         if (persistedScenes == null || persistedScenes.isEmpty() || sceneExtractions == null || sceneExtractions.isEmpty()) {
             return mentionIds;
         }
+
+        log.info("[EVENT_PERSIST] Persisting {} extractions from {} scenes for chapterId={}",
+                sceneExtractions.size(), persistedScenes.size(), ctx.chapterId());
 
         Map<Integer, Scene> sceneByIndex = persistedScenes.stream()
                 .filter(scene -> scene.getSceneIndex() != null && scene.getEventId() != null)
@@ -83,6 +88,7 @@ public class EventPersistenceService {
                 }
             }
         }
+        log.info("[EVENT_PERSIST] Completed: {} mentions persisted", mentionIds.size());
         return mentionIds;
     }
 

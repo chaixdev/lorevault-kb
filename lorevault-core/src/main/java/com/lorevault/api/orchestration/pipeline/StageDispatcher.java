@@ -2,7 +2,7 @@ package com.lorevault.api.orchestration.pipeline;
 
 import com.lorevault.api.orchestration.signals.StageCompletedEvent;
 import com.lorevault.api.orchestration.signals.StageTriggeredEvent;
-import com.lorevault.api.common.error.ExceptionSanitizer;
+import com.lorevault.api.common.ExceptionSanitizer;
 
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -152,7 +152,7 @@ public class StageDispatcher {
         } catch (Exception e) {
             log.error("Unhandled exception in stage {}: jobId={}", stage, jobId, e);
             result = StepResult.failure(stage,
-                    ExceptionSanitizer.sanitizeMessage(e), 0L);
+                    ExceptionSanitizer.sanitize(e), 0L);
         }
 
         // 4. Emit completion
