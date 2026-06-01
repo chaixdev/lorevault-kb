@@ -2,9 +2,10 @@ package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.library.chapter.Chapter;
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StepResult;
-import com.lorevault.api.graph.collective.consolidation.chapter.ChapterCollectiveConsolidationOperation;
 
 import java.util.Map;
 import java.util.Optional;
@@ -28,7 +29,7 @@ class ChapterCollectiveConsolidationCommandControllerWebMvcTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ChapterCollectiveConsolidationOperation chapterCollectiveResolutionOperation;
+    private StageOperation chapterCollectiveResolutionOperation;
 
     @MockitoBean
     private StepEventMapper stepEventMapper;
@@ -42,7 +43,8 @@ class ChapterCollectiveConsolidationCommandControllerWebMvcTest {
         Chapter chapter = new Chapter();
         chapter.setId(chapterId);
         when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
-        when(chapterCollectiveResolutionOperation.execute(null, chapterId))
+        when(chapterCollectiveResolutionOperation.execute(
+                new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION)))
                 .thenReturn(StepResult.success(
                         StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION,
                         "Resolved chapter collectives",
@@ -59,7 +61,8 @@ class ChapterCollectiveConsolidationCommandControllerWebMvcTest {
                 .andExpect(jsonPath("$.counts.mentionCount").value(3))
                 .andExpect(jsonPath("$.counts.chapterCollectiveCount").value(2));
 
-        verify(chapterCollectiveResolutionOperation).execute(null, chapterId);
+        verify(chapterCollectiveResolutionOperation).execute(
+                new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION));
     }
 
     @Test

@@ -2,9 +2,10 @@ package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.library.chapter.Chapter;
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StepResult;
-import com.lorevault.api.graph.object.consolidation.chapter.ChapterObjectConsolidationOperation;
 
 import java.util.Map;
 import java.util.Optional;
@@ -28,7 +29,7 @@ class ChapterObjectConsolidationCommandControllerWebMvcTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ChapterObjectConsolidationOperation chapterObjectResolutionOperation;
+    private StageOperation chapterObjectResolutionOperation;
 
     @MockitoBean
     private StepEventMapper stepEventMapper;
@@ -42,7 +43,8 @@ class ChapterObjectConsolidationCommandControllerWebMvcTest {
         Chapter chapter = new Chapter();
         chapter.setId(chapterId);
         when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
-        when(chapterObjectResolutionOperation.execute(null, chapterId))
+        when(chapterObjectResolutionOperation.execute(
+                new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_OBJECT_CONSOLIDATION)))
                 .thenReturn(StepResult.success(
                         StageKey.CHAPTER_OBJECT_CONSOLIDATION,
                         "Resolved chapter objects",
@@ -59,7 +61,8 @@ class ChapterObjectConsolidationCommandControllerWebMvcTest {
                 .andExpect(jsonPath("$.counts.mentionCount").value(3))
                 .andExpect(jsonPath("$.counts.chapterObjectCount").value(2));
 
-        verify(chapterObjectResolutionOperation).execute(null, chapterId);
+        verify(chapterObjectResolutionOperation).execute(
+                new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_OBJECT_CONSOLIDATION));
     }
 
     @Test

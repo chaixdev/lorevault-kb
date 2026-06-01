@@ -1,9 +1,11 @@
 package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
+import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StepKey;
 import com.lorevault.api.orchestration.pipeline.StepResult;
-import com.lorevault.api.graph.concept.consolidation.chapter.ChapterConceptConsolidationOperation;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
@@ -24,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ChapterConceptConsolidationCommandController {
 
-    private final ChapterConceptConsolidationOperation chapterConceptConsolidationOperation;
+    private final StageOperation chapterConceptConsolidationOperation;
     private final StepEventMapper stepEventMapper;
     private final ChapterGraphRepository chapterGraphRepository;
 
@@ -66,7 +68,8 @@ public class ChapterConceptConsolidationCommandController {
         }
 
         log.info("[CMD] Resolve chapter concepts: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StepResult result = chapterConceptConsolidationOperation.execute(jobUuid, chapterUuid);
+        StepResult result = chapterConceptConsolidationOperation.execute(
+                new StageExecutionContext(null, jobUuid, chapterUuid, null, StageKey.CHAPTER_CONCEPT_CONSOLIDATION));
 
         StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.CHAPTER_CONSOLIDATE_CONCEPTS, "chapter", chapterId);
 

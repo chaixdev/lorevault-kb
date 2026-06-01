@@ -2,6 +2,7 @@ package com.lorevault.api.graph.concept.consolidation.book;
 
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import com.lorevault.api.orchestration.pipeline.StageKey;
@@ -17,7 +18,7 @@ import java.util.UUID;
 @Component
 @Slf4j
 @ForStage(StageKey.BOOK_CONCEPT_CONSOLIDATION)
-public class BookConceptConsolidationHandler implements BookConceptConsolidationOperation {
+public class BookConceptConsolidationHandler implements StageOperation {
 
     private static final String CLAIM_LANE = "BOOK_CONCEPT_CONSOLIDATION";
 

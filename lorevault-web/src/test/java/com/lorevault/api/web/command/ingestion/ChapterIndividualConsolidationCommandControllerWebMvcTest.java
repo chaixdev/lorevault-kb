@@ -4,8 +4,8 @@ import com.lorevault.api.library.chapter.Chapter;
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StepResult;
-import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationOperation;
 
 import java.util.Map;
 import java.util.Optional;
@@ -29,7 +29,7 @@ class ChapterIndividualConsolidationCommandControllerWebMvcTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ChapterIndividualConsolidationOperation chapterIndividualResolutionOperation;
+    private StageOperation chapterIndividualResolutionOperation;
 
     @MockitoBean
     private StepEventMapper stepEventMapper;

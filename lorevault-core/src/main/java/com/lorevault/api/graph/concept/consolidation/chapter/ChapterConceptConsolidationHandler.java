@@ -5,6 +5,7 @@ import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
 import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StepResult;
 import java.util.Map;
 import java.util.UUID;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 @ForStage(StageKey.CHAPTER_CONCEPT_CONSOLIDATION)
-public class ChapterConceptConsolidationHandler implements ChapterConceptConsolidationOperation {
+public class ChapterConceptConsolidationHandler implements StageOperation {
 
     private final ChapterConceptConsolidationService chapterConceptConsolidationService;
 

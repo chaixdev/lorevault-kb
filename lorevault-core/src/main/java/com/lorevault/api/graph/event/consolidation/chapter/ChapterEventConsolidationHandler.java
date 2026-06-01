@@ -7,6 +7,7 @@ import com.lorevault.api.graph.timeline.EventCoreferenceService;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
 import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StepResult;
 
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
@@ -24,7 +25,7 @@ import org.springframework.stereotype.Component;
  * Async handler that orchestrates Stage 2 (LLM co-reference) and Stage 3 (ChapterEvent aggregation)
  * in response to a {@link StageTriggeredEvent}.
  *
- * <p>Implements {@link ChapterEventConsolidationOperation} so the step-by-step execution controller or step-execution
+ * <p>Implements {@link StageOperation} so the step-by-step execution controller or step-execution
  * endpoints can invoke event resolution directly without Spring event dispatch.
  *
  * <p>Uses stage orchestration graph for conditional execution, idempotency, and
@@ -33,7 +34,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 @ForStage(StageKey.CHAPTER_EVENT_CONSOLIDATION)
-public class ChapterEventConsolidationHandler implements ChapterEventConsolidationOperation {
+public class ChapterEventConsolidationHandler implements StageOperation {
 
     private final EventCoreferenceService eventCoreferenceService;
     private final ChapterEventConsolidationService chapterEventConsolidationService;

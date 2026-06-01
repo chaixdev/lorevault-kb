@@ -2,6 +2,7 @@ package com.lorevault.api.graph.individual.consolidation.book;
 
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import com.lorevault.api.orchestration.pipeline.StageKey;
@@ -17,7 +18,7 @@ import java.util.UUID;
 @Component
 @Slf4j
 @ForStage(StageKey.BOOK_INDIVIDUAL_CONSOLIDATION)
-public class BookIndividualConsolidationHandler implements BookIndividualConsolidationOperation {
+public class BookIndividualConsolidationHandler implements StageOperation {
 
     private static final String CLAIM_LANE = "BOOK_INDIVIDUAL_CONSOLIDATION";
 

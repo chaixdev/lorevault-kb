@@ -56,7 +56,7 @@ The most pervasive theme is **content leakage**: chapter-derived text (copyright
 The service-level retry in `SceneRelationshipAnalysisService.analyzeTriadWithSemanticRetry()` does adjust temperature across attempts, but Spring RetryTemplate retries *within* a single service attempt are wasted.
 
 **Fix:** Move `OpenAiChatOptions` construction inside the retry lambda, computing `double attemptTemp = temperature + (retryContext.getRetryCount() * 0.1)` — matching the pattern in `executeSceneDetectionCall()`.
->! the temperature increase should be designed for consistently, if an existing approach 
+>! the temperature increase should be designed for consistently, service level retry is still warranted or not? can we simplify while keeping the progressive temperature increase?
 
 ---
 
@@ -69,6 +69,7 @@ The service-level retry in `SceneRelationshipAnalysisService.analyzeTriadWithSem
 **Problem:** `buildUserVars()` calls `extractSceneText(chapter, triad.previous())` and `extractSceneText(chapter, triad.next())`, passing the *current* `chapter` object. However, `TriadBuilderService.buildTriad()` resolves prev/next via `NEXT_IN_READING_ORDER` graph edges, which can cross chapter boundaries. When `triad.previous()` belongs to a different chapter, `extractSceneText()` reads from the current chapter's `rawText` using the previous scene's *character offsets* — which are valid only for the previous scene's own chapter text. This either returns garbage text (if offsets happen to land in-bounds for the wrong chapter) or silently returns an empty string (line 777: bounds check fails). The LLM receives corrupted or missing context for cross-chapter boundary triads, silently degrading relationship analysis quality.
 
 **Fix:** Before extracting text from a scene, verify the scene belongs to the current chapter. If not, fall back to the scene's own `text` field (populated during persistence) or skip the text for that triad position, logging a debug message that cross-chapter text extraction was suppressed.
+>! if accurate, this is in fact 'crit' grade bug. but i'm skeptical. i need this bug existence validated before proceeding to fix. 
 
 ---
 
@@ -81,6 +82,7 @@ The service-level retry in `SceneRelationshipAnalysisService.analyzeTriadWithSem
 **Problem:** `detectScenesWithRetry()` uses `Thread.sleep(delay + jitter)` inside a synchronous `for`-loop for exponential backoff between semantic retry attempts. This method is called from `SceneDetectionHandler.execute()`, which runs on the `sceneDetectionTaskExecutor` — a single-threaded executor (`corePoolSize=1, maxPoolSize=1`). While `Thread.sleep` is active (up to ~1.4s cumulative across attempts), the only thread in the pool is blocked and unable to process any other work. The delays compound with LLM call latency (30–120s per attempt). Although current product constraints (no concurrent uploads) mask the problem, this is a resource-wasting anti-pattern that blocks the executor for no benefit — the delay can be scheduled asynchronously.
 
 **Fix:** Replace the manual retry loop with a `ScheduledExecutorService.schedule()` to reschedule attempts, or delegate entirely to Spring Retry's `RetryTemplate` with a `FixedBackOffPolicy` configured in `LlmClient`. Either way, remove `Thread.sleep()` from the executor path.
+>! agreed, this needs a more robust, "adult in the room" handling. 
 
 ---
 
@@ -106,6 +108,8 @@ The service-level retry in `SceneRelationshipAnalysisService.analyzeTriadWithSem
 - `SceneProcessingService.java:183` — remove entirely; replace with `log.trace("Cleaned XML: {} chars", cleanXml.length())`
 - `LlmClient.java:280` — remove entirely; the preview at line 281 already provides the first 400 chars at DEBUG — reduce that to TRACE level
 
+>! logging can truncate verbatim fragments, but provenance and auditing nodes **can not** omit detailed request/responses.
+
 ---
 
 #### HIGH-5 — Chapter text fragments embedded in exception messages and IngestionFailure records
@@ -124,6 +128,8 @@ This represents the original author's copyrighted work embedded in operational d
 1. In `anchorPreview()`, reduce max length from 160 to 40 chars (sufficient for diagnostic matching)
 2. In `SceneDetectionHandler.execute()` line 188, use `ExceptionSanitizer.sanitizeMessage(e)` instead of `e.getMessage()` (consistent with `StepResult` construction)
 3. In `IngestionFailure` records, store a `SHA-256(startAnchor)` as a detail field instead of the raw anchor text, so the failure is deduplicable without exposing content
+
+>! rejected. this is critical app info we need. 
 
 ---
 
@@ -151,6 +157,7 @@ public class Scene {
 }
 ```
 At minimum, add `@ToString.Exclude` and `@EqualsAndHashCode.Exclude` on all `@Relationship` fields.
+>! agreed. all use of @Data on SDN entities shuold be replaced with appropriate annotations.
 
 ---
 
@@ -165,7 +172,7 @@ At minimum, add `@ToString.Exclude` and `@EqualsAndHashCode.Exclude` on all `@Re
 **Problem:** `isKnownRetryableMessage` checks for scene-coordinate and segmentation-specific substrings, but does not include `"empty response"` — the message used when `LlmClient` returns an empty response (line 273). This causes the service-level 4-attempt retry loop to break immediately on transient LLM empty responses, relying solely on the handler-level retry (`SceneDetectionHandler.isRetryableError` line 258, which *does* check for `"empty response"`). The inconsistency means the service's retry loop is useless for this failure mode.
 
 **Fix:** Add `|| lowerMessage.contains("empty response")` to `isKnownRetryableMessage`. Alternatively, extract retryable-message logic into a shared utility used by both `SceneDetectionService` and `SceneDetectionHandler`.
-
+>! 
 ---
 
 #### MED-2 — Default `execute` method passes null `stageId`, causing provenance data loss

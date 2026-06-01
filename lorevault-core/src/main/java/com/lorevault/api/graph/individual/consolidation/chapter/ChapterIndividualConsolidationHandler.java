@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import lombok.extern.slf4j.Slf4j;
 import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 @ForStage(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION)
-public class ChapterIndividualConsolidationHandler implements ChapterIndividualConsolidationOperation {
+public class ChapterIndividualConsolidationHandler implements StageOperation {
 
     private final ChapterIndividualConsolidationService chapterIndividualConsolidationService;
 

@@ -1,8 +1,10 @@
 package com.lorevault.api.web.command.ingestion;
 
+import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
+import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StepKey;
 import com.lorevault.api.orchestration.pipeline.StepResult;
-import com.lorevault.api.graph.location.consolidation.book.BookLocationConsolidationOperation;
 import com.lorevault.api.library.book.BookGraphRepository;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class BookLocationConsolidationCommandController {
 
-    private final BookLocationConsolidationOperation bookLocationReductionOperation;
+    private final StageOperation bookLocationReductionOperation;
     private final StepEventMapper stepEventMapper;
     private final BookGraphRepository bookGraphRepository;
 
@@ -66,7 +68,8 @@ public class BookLocationConsolidationCommandController {
         }
 
         log.info("[CMD] Reduce book locations: bookId={}, jobId={}, fireEvents={}", bookUuid, jobUuid, fireEvents);
-        StepResult result = bookLocationReductionOperation.execute(jobUuid, bookUuid);
+        StepResult result = bookLocationReductionOperation.execute(
+                new StageExecutionContext(null, jobUuid, null, bookUuid, StageKey.BOOK_LOCATION_CONSOLIDATION));
 
         StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.BOOK_CONSOLIDATE_LOCATIONS, "book", bookId);
 

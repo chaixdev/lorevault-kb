@@ -3,9 +3,9 @@ package com.lorevault.api.web.command.ingestion;
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StepKey;
 import com.lorevault.api.orchestration.pipeline.StepResult;
-import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationOperation;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ChapterIndividualConsolidationCommandController {
 
-    private final ChapterIndividualConsolidationOperation chapterIndividualResolutionOperation;
+    private final StageOperation chapterIndividualResolutionOperation;
     private final StepEventMapper stepEventMapper;
     private final ChapterGraphRepository chapterGraphRepository;
 

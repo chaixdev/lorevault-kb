@@ -5,9 +5,11 @@ import com.lorevault.api.library.chapter.ChapterGraphRepository;
 import com.lorevault.api.orchestration.scene.SceneDetectionOperation;
 import com.lorevault.api.library.chunk.ChunkingOperation;
 import com.lorevault.api.ai.embedding.EmbeddingOperation;
+import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
+import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StepKey;
 import com.lorevault.api.orchestration.pipeline.StepResult;
-import com.lorevault.api.graph.event.consolidation.chapter.ChapterEventConsolidationOperation;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
@@ -32,7 +34,7 @@ public class StepExecutionCommandController {
     private final SceneDetectionOperation sceneDetectionOperation;
     private final ChunkingOperation chunkingOperation;
     private final EmbeddingOperation embeddingOperation;
-    private final ChapterEventConsolidationOperation chapterEventResolutionOperation;
+    private final StageOperation chapterEventResolutionOperation;
     private final StepEventMapper stepEventMapper;
 
     @PostMapping("/chapters/{chapterId}/detect-scenes")
@@ -227,7 +229,8 @@ public class StepExecutionCommandController {
         }
 
         log.info("[CMD] Resolve chapter events: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StepResult result = chapterEventResolutionOperation.execute(jobUuid, chapterUuid);
+        StepResult result = chapterEventResolutionOperation.execute(
+                new StageExecutionContext(null, jobUuid, chapterUuid, null, StageKey.CHAPTER_EVENT_CONSOLIDATION));
 
         StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.CHAPTER_CONSOLIDATE_EVENTS, "chapter", chapterId);
 
