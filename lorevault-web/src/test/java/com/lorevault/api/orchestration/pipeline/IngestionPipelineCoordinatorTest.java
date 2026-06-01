@@ -206,13 +206,13 @@ class IngestionPipelineCoordinatorTest {
         @Test
         @DisplayName("triggers all children when barriers are satisfied")
         void triggersAllChildren() {
-            // SCENE_SEGMENTATION → 6 chapter-level children; resolveBookId returns null directly
+            // SCENE_SEGMENTATION → 7 chapter-level children; resolveBookId returns null directly
             stubNeo4jQueryLenient();
 
             StageKey stage = StageKey.SCENE_SEGMENTATION;
             StageCompletedEvent event = completedEvent(stage, null, successResult(stage));
 
-            // All 6 children have their barriers satisfied
+            // All 7 children have their barriers satisfied
             for (StageKey child : coordinator.dag().childrenOf(stage)) {
                 when(stageRepo.tryTrigger(JOB_ID, child)).thenReturn(true);
             }
@@ -222,8 +222,8 @@ class IngestionPipelineCoordinatorTest {
             verify(stageRepo).setCompleted(JOB_ID, stage);
 
 
-            // 6 events published — one per child
-            verify(eventPublisher, times(6)).publishEvent(any(StageTriggeredEvent.class));
+            // 7 events published — one per child
+            verify(eventPublisher, times(7)).publishEvent(any(StageTriggeredEvent.class));
 
             // Collect captured events via mockingDetails
             List<StageTriggeredEvent> events = org.mockito.Mockito.mockingDetails(eventPublisher)
@@ -232,7 +232,7 @@ class IngestionPipelineCoordinatorTest {
                     .map(i -> (StageTriggeredEvent) i.getArgument(0))
                     .toList();
 
-            assertThat(events).hasSize(6);
+            assertThat(events).hasSize(7);
             assertThat(events).allSatisfy(e -> {
                 assertThat(e).isInstanceOf(StageTriggeredEvent.class);
                 StageTriggeredEvent ste = (StageTriggeredEvent) e;
@@ -247,7 +247,8 @@ class IngestionPipelineCoordinatorTest {
                     StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION,
                     StageKey.CHAPTER_LOCATION_CONSOLIDATION,
                     StageKey.CHAPTER_OBJECT_CONSOLIDATION,
-                    StageKey.CHAPTER_EVENT_CONSOLIDATION);
+                    StageKey.CHAPTER_EVENT_CONSOLIDATION,
+                    StageKey.CHAPTER_CONCEPT_CONSOLIDATION);
             assertThat(events)
                     .extracting(e -> ((StageTriggeredEvent) e).getStage())
                     .containsExactlyInAnyOrderElementsOf(childKeys);
@@ -280,6 +281,7 @@ class IngestionPipelineCoordinatorTest {
             when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_LOCATION_CONSOLIDATION)).thenReturn(false);
             when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_OBJECT_CONSOLIDATION)).thenReturn(false);
             when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_EVENT_CONSOLIDATION)).thenReturn(false);
+            when(stageRepo.tryTrigger(JOB_ID, StageKey.CHAPTER_CONCEPT_CONSOLIDATION)).thenReturn(false);
 
             coordinator.onStageCompleted(event);
 
@@ -329,7 +331,7 @@ class IngestionPipelineCoordinatorTest {
 
             coordinator.onStageCompleted(event);
 
-            verify(eventPublisher, times(6)).publishEvent(any(StageTriggeredEvent.class));
+            verify(eventPublisher, times(7)).publishEvent(any(StageTriggeredEvent.class));
 
             List<StageTriggeredEvent> events = org.mockito.Mockito.mockingDetails(eventPublisher)
                     .getInvocations().stream()

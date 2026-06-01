@@ -224,7 +224,7 @@ class SceneRelationshipAnalysisServiceTest {
                 .isInstanceOf(TriadAnalysisException.class)
                 .hasMessageContaining("omitted required relation 'previousToCurrent'");
 
-        verify(llmClient, times(2)).detectSceneAnalysisTriad(
+        verify(llmClient, times(3)).detectSceneAnalysisTriad(
                 eq(testJobId),
                 eq("mock system prompt"),
                 any(),

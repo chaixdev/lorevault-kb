@@ -252,7 +252,16 @@ public class SceneRelationshipAnalysisService {
                                                                                               Consumer<Map<String, Object>> onTriadStart) {
         List<Scene> scenes = loadScenes(chapter);
         if (scenes.isEmpty()) {
-            return TriadAnalysisModels.SceneRelationshipOutcome.builder().build();
+            return TriadAnalysisModels.SceneRelationshipOutcome.builder()
+                    .triadAnalyses(List.of())
+                    .sceneIndividualExtractions(List.of())
+                    .sceneCollectiveExtractions(List.of())
+                    .sceneConceptExtractions(List.of())
+                    .sceneObjectExtractions(List.of())
+                    .sceneLocationExtractions(List.of())
+                    .sceneEventExtractions(List.of())
+                    .sceneRelationClaimExtractions(List.of())
+                    .build();
         }
 
         PromptTemplate systemTemplate = promptRepository.get(PromptName.SCENE_ANALYSIS);
