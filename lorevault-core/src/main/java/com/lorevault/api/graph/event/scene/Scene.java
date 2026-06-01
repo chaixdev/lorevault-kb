@@ -19,6 +19,7 @@ import com.lorevault.api.orchestration.job.IngestionFailure;
 import com.lorevault.api.orchestration.job.IngestionFailureCarrier;
 import com.lorevault.api.orchestration.pipeline.*;
 import com.lorevault.api.orchestration.triad.SceneRelationshipAnalysisService;
+import com.lorevault.api.orchestration.triad.TriadAnalysisException;
 import com.lorevault.api.orchestration.triad.TriadAnalysisModels;
 import com.lorevault.api.orchestration.triad.TriadTemporalEdgeRequestFactory;
 import lombok.Data;
@@ -474,6 +475,11 @@ public class Scene {
                         || "SCENE_SEGMENTATION_XML_EMPTY".equals(code)
                         || "SCENE_COORDINATE_LOCALIZATION_EMPTY".equals(code)
                         || "SCENE_COORDINATE_LOCALIZATION_DROPPED_SCENES".equals(code);
+            }
+            // Triad analysis failures — LLM response quality issues, transient
+            if (e instanceof TriadAnalysisException triadException
+                    && triadException.failure() != null) {
+                return true;
             }
             // Transient infrastructure errors — retryable
             if (e instanceof org.springframework.web.client.ResourceAccessException) {
