@@ -2,6 +2,7 @@ package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.graph.event.scene.Scene;
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.orchestration.scene.SceneDetectionOperation;
 import com.lorevault.api.library.chunk.ChunkingOperation;
 import com.lorevault.api.ai.embedding.EmbeddingOperation;
 import com.lorevault.api.orchestration.pipeline.StepKey;
@@ -28,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class StepExecutionCommandController {
 
     private final ChapterGraphRepository chapterGraphRepository;
-    private final Scene.SceneDetectionOperation sceneDetectionOperation;
+    private final SceneDetectionOperation sceneDetectionOperation;
     private final ChunkingOperation chunkingOperation;
     private final EmbeddingOperation embeddingOperation;
     private final ChapterEventConsolidationOperation chapterEventResolutionOperation;

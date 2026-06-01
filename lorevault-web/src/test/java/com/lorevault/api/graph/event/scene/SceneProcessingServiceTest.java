@@ -1,6 +1,9 @@
 package com.lorevault.api.graph.event.scene;
 
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.orchestration.scene.SceneDetectionResult;
+import com.lorevault.api.orchestration.scene.SceneLocalizationException;
+import com.lorevault.api.orchestration.scene.SceneProcessingService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,7 +27,7 @@ class SceneProcessingServiceTest {
     private SceneGraphRepository sceneRepo;
 
     @InjectMocks
-    private Scene.SceneProcessingService sceneProcessingService;
+    private SceneProcessingService sceneProcessingService;
 
     @Test
     @DisplayName("Should return empty list for null or blank XML response")
@@ -36,7 +39,7 @@ class SceneProcessingServiceTest {
     @Test
     @DisplayName("Should return empty list for malformed XML response")
     void parseSceneDetectionXml_malformedXml_returnsEmpty() {
-        List<Scene.SceneDetectionResult> results = sceneProcessingService.parseSceneDetectionXml(
+        List<SceneDetectionResult> results = sceneProcessingService.parseSceneDetectionXml(
                 "<scenes><scene><index>0</index><start_anchor>alpha</start_anchor>",
                 100
         );
@@ -61,7 +64,7 @@ class SceneProcessingServiceTest {
                 </scenes>
                 """;
 
-        List<Scene.SceneDetectionResult> results = sceneProcessingService.parseSceneDetectionXml(xml, 1000);
+        List<SceneDetectionResult> results = sceneProcessingService.parseSceneDetectionXml(xml, 1000);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).sceneIndex()).isEqualTo(0);
@@ -72,12 +75,12 @@ class SceneProcessingServiceTest {
     @Test
     @DisplayName("Should throw typed localization failure when scene anchor is missing")
     void localizeSceneCoordinates_missingAnchor_throwsSceneLocalizationException() {
-        List<Scene.SceneDetectionResult> results = List.of(
-                new Scene.SceneDetectionResult(2, "missing anchor", "ctx", "", "", "", "")
+        List<SceneDetectionResult> results = List.of(
+                new SceneDetectionResult(2, "missing anchor", "ctx", "", "", "", "")
         );
 
         assertThatThrownBy(() -> sceneProcessingService.localizeSceneCoordinates("Existing chapter text", results))
-                .isInstanceOf(Scene.SceneLocalizationException.class)
+                .isInstanceOf(SceneLocalizationException.class)
                 .hasMessageContaining("Failed to localize scene 2 because start anchor 'missing anchor' was not found");
     }
 }

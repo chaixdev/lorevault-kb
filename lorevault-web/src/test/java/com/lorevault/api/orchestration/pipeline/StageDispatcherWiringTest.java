@@ -6,6 +6,7 @@ import com.lorevault.api.graph.collective.consolidation.book.BookCollectiveConso
 import com.lorevault.api.graph.collective.consolidation.chapter.ChapterCollectiveConsolidationHandler;
 import com.lorevault.api.graph.event.scene.Scene;
 import com.lorevault.api.graph.individual.consolidation.book.BookIndividualConsolidationHandler;
+import com.lorevault.api.orchestration.scene.SceneDetectionHandler;
 import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationHandler;
 import com.lorevault.api.graph.event.consolidation.book.BookEventCandidateGenerationHandler;
 import com.lorevault.api.graph.event.consolidation.chapter.ChapterEventConsolidationHandler;
@@ -49,7 +50,7 @@ class StageDispatcherWiringTest {
      */
     private static final List<Class<? extends StageOperation>> HANDLER_CLASSES = List.of(
             // Scene detection
-            Scene.SceneDetectionHandler.class,
+            SceneDetectionHandler.class,
             // Content lane
             ChunkingHandler.class,
             EmbeddingHandler.class,
