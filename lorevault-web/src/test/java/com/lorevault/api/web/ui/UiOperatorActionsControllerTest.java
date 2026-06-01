@@ -1,5 +1,6 @@
 package com.lorevault.api.web.ui;
 
+import com.lorevault.api.orchestration.pipeline.IngestionPipelineCoordinator;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationResult;
 import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationService;
@@ -38,6 +39,9 @@ class UiOperatorActionsControllerTest {
 
     @MockitoBean
     private BookLocationConsolidationService bookLocationConsolidationService;
+
+    @MockitoBean
+    private IngestionPipelineCoordinator pipelineCoordinator;
 
     @Test
     void chapterIndividualActionReturnsToast() throws Exception {
