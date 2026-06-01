@@ -206,6 +206,20 @@ public class IngestionPipelineCoordinator {
     // ── Manual rerun with cascade invalidation ──────────────────────
 
     /**
+     * Find the ingestion job ID for a chapter.
+     */
+    public UUID findJobIdByChapterId(UUID chapterId) {
+        return findJobId(chapterId);
+    }
+
+    /**
+     * Find the book ID for a chapter.
+     */
+    public UUID findBookIdByChapterId(UUID chapterId) {
+        return findBookId(chapterId);
+    }
+
+    /**
      * Rerun a stage by invalidating it and all its transitive downstream stages.
      * Sibling branches are untouched. The rerun stage is re-triggered.
      *
@@ -289,6 +303,19 @@ public class IngestionPipelineCoordinator {
     }
 
     // ── Helpers ─────────────────────────────────────────────────────
+
+    private UUID findJobId(UUID chapterId) {
+        return neo4jClient.query("""
+                MATCH (j:ChapterIngestionJob {chapterId: $chapterId})
+                RETURN j.id
+                """)
+                .bind(chapterId.toString()).to("chapterId")
+                .fetchAs(UUID.class)
+                .mappedBy((typeSystem, record) ->
+                        UUID.fromString(record.get("j.id").asString()))
+                .one()
+                .orElse(null);
+    }
 
     private UUID findChapterId(UUID jobId) {
         return neo4jClient.query("""
