@@ -77,6 +77,12 @@ public class StepCatalog {
                         "chapter",
                         List.of(StepKey.DETECT_SCENES)
                 ),
+                new StepDefinition(
+                        StepKey.CHAPTER_CONSOLIDATE_CONCEPTS,
+                        "Consolidate concept entity mentions across scenes",
+                        "chapter",
+                        List.of(StepKey.DETECT_SCENES)
+                ),
 
                 // ── Book-scoped steps ────────────────────────────────────
                 new StepDefinition(
@@ -102,6 +108,12 @@ public class StepCatalog {
                         "Consolidate chapter-level objects to book-level entities",
                         "book",
                         List.of(StepKey.CHAPTER_CONSOLIDATE_OBJECTS)
+                ),
+                new StepDefinition(
+                        StepKey.BOOK_CONSOLIDATE_CONCEPTS,
+                        "Consolidate chapter-level concepts to book-level entities",
+                        "book",
+                        List.of(StepKey.CHAPTER_CONSOLIDATE_CONCEPTS)
                 )
         );
     }

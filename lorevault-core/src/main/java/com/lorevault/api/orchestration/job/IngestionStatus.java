@@ -55,6 +55,11 @@ public enum IngestionStatus {
      * The system is resolving object entity mentions into chapter-level object records.
      */
     RESOLVING_OBJECTS,
+
+    /**
+     * The system is resolving concept entity mentions into chapter-level concept records.
+     */
+    RESOLVING_CONCEPTS,
     
     /**
      * All stages finished successfully. The ingested content is now available for querying
@@ -88,6 +93,7 @@ public enum IngestionStatus {
             case RESOLVING_COLLECTIVES -> 60;
             case RESOLVING_LOCATIONS -> 65;
             case RESOLVING_OBJECTS -> 70;
+            case RESOLVING_CONCEPTS -> 75;
             case COMPLETE -> 100;
             case FAILED -> -1; // Indicates error state
         };

@@ -112,13 +112,14 @@ At minimum, each planning item should include:
 - [Q&A Retrieval Quality Validation](2026-04-30T1237_qa-retrieval-quality-validation.md)
 - [Concept Entity Resolution Lane](2026-04-30T1237_concept-resolution-lane.md)
 - [Event extraction and resolution tuning](2026-04-27T0951_event-extraction-and-resolution-tuning.md)
-- [Relation Evidence Harvesting and Catalog Discovery — Phased Solution Design](2026-05-07T1917_relation-evidence-harvesting.md)
+- [Relation Evidence Harvesting and Catalog Discovery — Phased Solution Design](2026-05-07T1917_relation-evidence-harvesting.md) — FUNCTIONALLY COMPLETE (all 3 phases absorbed by other shipped work)
 - [Catalog Module](2026-05-13T2027_relation-catalog-module.md)
 - [Pipeline Issues from Smoke Test](2026-05-27T0230_pipeline-issues-from-smoke-test.md)
 - [Code Walkthrough Issues](2026-05-29T2308_code-walkthrough-issues.md)
 - [Model Catalog & A/B Testing](2026-05-30T0930_model-catalog-and-ab-testing.md)
 - [Incremental Book Consolidation](2026-05-30T1750_incremental-book-consolidation.md)
-- [SSE Event Migration](2026-05-24T0000_sse-event-migration.md)
+- [Entity Disambiguation — Co-occurrence + Relation Blocking](2026-06-01T1430_entity-disambiguation-blocking.md) — PLANNING
+- [SSE Event Migration](2026-05-24T0000_sse-event-migration.md) — DONE (May 25 & May 31)
 - [Scene Detection Handler Decomposition](2026-05-23T1600_scene-detection-handler-decomposition.md) — parked
 - [Micrometer Stage Timing](2026-05-23T1700_micrometer-stage-timing.md) — parked
-- [Claim-Entity Linking](2026-05-31T1509_claim-entity-linking.md) — Phases 1+2 complete, Phase 2+3 revised (dropped HAS_CHAPTER_SUBJECT edges)
+- [Claim-Entity Linking](2026-05-31T1509_claim-entity-linking.md) — Phases 1+2 complete, Phase 3 (HAS_CHAPTER edges) dropped

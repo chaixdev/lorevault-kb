@@ -1,7 +1,8 @@
 # SSE Event Migration — Fix Broken SSE + Delete Dead Events
 
-**Date:** May 24, 2026
-**Status:** Ready to execute (bug fix, not structural cleanup)
+**Date:** May 24, 2026  
+**Status:** DONE — Implemented May 25 & May 31  
+**Implemented in:** `99ebd2a4` (fix broken SSE, delete 15 dead event classes), `c8d4f761` (delete remaining IngestionEvent + ChapterEventsConsolidatedEvent)
 **Parent:** [Submission Flow Code Quality Cleanup](../archive/planning/2026-05-23T1530_submission-flow-cleanup.md) (issue #10a)
 **Oracle reviewed:** May 24, 2026 — confirmed live bug, not just cleanup.
 

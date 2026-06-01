@@ -44,9 +44,10 @@ Entity Categories — definitions (for <scene_entities>)
   - Include: “Engineering Deck”, “New York”, “Sector 001”.
   - Exclude: vehicles/vessels as objects (→ Object), organizations (→ Collective).
 
-- Concept: abstract categories and ideas (titles, species, roles, doctrines, magic systems).
-  - Include: “Vulcan” (species), “Captaincy”, “Prime Directive”.
-  - Exclude: concrete actors (→ Individual), concrete places (→ Location).
+- Concept: abstract categories, ideas, or taxonomies that define narrative-significant categories (species, technologies, artifact classes, doctrines, roles, institutions, magic systems, political ideologies).
+  - Include: "Vulcan" (species), "Captaincy", "Prime Directive", "Warp Drive" (technology), "The Force" (magic-system).
+  - Exclude: concrete actors (→ Individual), concrete places (→ Location), concrete objects (→ Object).
+  - Do NOT extract ordinary nouns or common categories (e.g., "captain", "war", "laser") — only extract concepts that are narratively significant and distinctive to this fictional universe.
 
 - Event: a temporal occurrence, anything that can serve as a timeline marker (battles, meetings, journeys, ceremonies).
   - Include: “first contact on vega”, “Council Vote”, "The Winter War",
@@ -191,6 +192,18 @@ Relation fields:
         <evidence>≤180 chars, verbatim or tight paraphrase grounding the relation</evidence>
       </event>
     </events>
+    <concepts>
+      <concept>
+        <aliases>
+          <alias>Prime Directive</alias>
+          <alias>Starfleet General Order 1</alias>
+        </aliases>
+        <concept_type>doctrine | species | technology | artifact-class | role | magic-system | ideology | other</concept_type>
+        <description>A sentence or two defining what this concept is</description>
+        <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied</certainty>
+        <evidence>≤180 chars, verbatim or tight paraphrase grounding why this concept is present</evidence>
+      </concept>
+    </concepts>
   </current_scene_entities>
   <!-- optional: if no enduring inter-entity relations are evident, output empty <relations/> -->
   <relations>

@@ -35,6 +35,7 @@ public class RelationClaimPersistenceService {
             UUID bookId,
             Map<String, UUID> individualIds,
             Map<String, UUID> collectiveIds,
+            Map<String, UUID> conceptIds,
             Map<String, UUID> objectIds,
             Map<String, UUID> locationIds,
             Map<String, UUID> eventIds
@@ -120,7 +121,7 @@ public class RelationClaimPersistenceService {
                 // Layer 1: link to subject mention node via in-memory lookup
                 UUID subjectMentionId = resolveMentionId(
                         extracted.subjectKind(), extracted.subjectName(),
-                        individualIds, collectiveIds, objectIds, locationIds, eventIds);
+                        individualIds, collectiveIds, conceptIds, objectIds, locationIds, eventIds);
                 if (subjectMentionId != null) {
                     relationClaimRepository.linkSubjectMention(saved.id(), subjectMentionId);
                     totalLinked++;
@@ -131,7 +132,7 @@ public class RelationClaimPersistenceService {
                 // Layer 1: link to object mention node via in-memory lookup
                 UUID objectMentionId = resolveMentionId(
                         extracted.objectKind(), extracted.objectName(),
-                        individualIds, collectiveIds, objectIds, locationIds, eventIds);
+                        individualIds, collectiveIds, conceptIds, objectIds, locationIds, eventIds);
                 if (objectMentionId != null) {
                     relationClaimRepository.linkObjectMention(saved.id(), objectMentionId);
                     totalLinked++;
@@ -156,6 +157,7 @@ public class RelationClaimPersistenceService {
             String kind, String name,
             Map<String, UUID> individualIds,
             Map<String, UUID> collectiveIds,
+            Map<String, UUID> conceptIds,
             Map<String, UUID> objectIds,
             Map<String, UUID> locationIds,
             Map<String, UUID> eventIds
@@ -170,9 +172,11 @@ public class RelationClaimPersistenceService {
         Map<String, UUID> map = switch (kind) {
             case "Individual" -> individualIds;
             case "Collective" -> collectiveIds;
+            case "Concept" -> conceptIds;
             case "Object" -> objectIds;
             case "Location" -> locationIds;
             // Event: deferred to Phase 4 (collected but not routed)
+            // TODO: Event claim-entity linking (Phase 4)
             default -> null;
         };
         if (map == null) {

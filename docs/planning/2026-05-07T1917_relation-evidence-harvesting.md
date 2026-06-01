@@ -1,11 +1,17 @@
 # Relation Evidence Harvesting and Catalog Discovery
 
-**Status:** Phase 0 IMPLEMENTED — Phase 1 NOT STARTED  
-**Last Updated:** May 09, 2026
+**Status:** FUNCTIONALLY COMPLETE — All three phases absorbed by other shipped work  
+**Last Updated:** June 1, 2026
 
 ## Summary
 
-A phased solution design for extracting inter-entity relation claims from scene analysis, preserving the LLM's semantic detail through a catalog module that matches, clusters, and promotes relation observations into stable queryable IDs. The first phase is deliberately thin — prompt extension plus persistence plus a dev-console harvest view — so real extraction data drives vocabulary decisions rather than speculative hand-authored taxonomies.
+A phased solution design for extracting inter-entity relation claims from scene analysis, preserving the LLM's semantic detail through a catalog module that matches, clusters, and promotes relation observations into stable queryable IDs.
+
+**Phase absorption (June 2026):**
+- **Phase 0 (extraction pipeline):** Absorbed by claim-entity linking Phase 1 — prompt restructuring, structured entity refs, `RelationClaim` persistence with `RELATES_SUBJECT`/`RELATES_OBJECT` edges, `bookId` population.
+- **Phase 1 (catalog matching):** Absorbed by catalog module M0-M3 — PostgreSQL-backed `RelationCatalogStore`, semantic embedding matching, validation, cache eviction. Functionally complete.
+- **Phase 2 (REL edge projection):** Absorbed by claim-entity linking — `RELATES_SUBJECT`/`RELATES_OBJECT` edges + `EntityNode` label provide equivalent query power.
+- **Phase 3 (event-sourcing claims):** Absorbed by durable orchestration — `StageExecutionContext` + `deleteDataByStageId` + replay button (`e3ff9650`) provide per-boundary replay.
 
 ## Problem
 

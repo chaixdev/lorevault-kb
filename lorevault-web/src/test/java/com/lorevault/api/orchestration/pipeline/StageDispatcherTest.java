@@ -23,11 +23,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static com.lorevault.api.orchestration.pipeline.StageKey.BOOK_COLLECTIVE_CONSOLIDATION;
+import static com.lorevault.api.orchestration.pipeline.StageKey.BOOK_CONCEPT_CONSOLIDATION;
 import static com.lorevault.api.orchestration.pipeline.StageKey.BOOK_EVENT_CANDIDATE_GENERATION;
 import static com.lorevault.api.orchestration.pipeline.StageKey.BOOK_INDIVIDUAL_CONSOLIDATION;
 import static com.lorevault.api.orchestration.pipeline.StageKey.BOOK_LOCATION_CONSOLIDATION;
 import static com.lorevault.api.orchestration.pipeline.StageKey.BOOK_OBJECT_CONSOLIDATION;
 import static com.lorevault.api.orchestration.pipeline.StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION;
+import static com.lorevault.api.orchestration.pipeline.StageKey.CHAPTER_CONCEPT_CONSOLIDATION;
 import static com.lorevault.api.orchestration.pipeline.StageKey.CHAPTER_EVENT_EMBEDDING;
 import static com.lorevault.api.orchestration.pipeline.StageKey.CHAPTER_EVENT_CONSOLIDATION;
 import static com.lorevault.api.orchestration.pipeline.StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION;
@@ -101,6 +103,9 @@ class StageDispatcherTest {
     @ForStage(CHAPTER_COLLECTIVE_CONSOLIDATION) static class H_CHAPTER_COLLECTIVE_CONSOLIDATION implements StageOperation {
         @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
+    @ForStage(CHAPTER_CONCEPT_CONSOLIDATION) static class H_CHAPTER_CONCEPT_CONSOLIDATION implements StageOperation {
+        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+    }
     @ForStage(CHAPTER_LOCATION_CONSOLIDATION) static class H_CHAPTER_LOCATION_CONSOLIDATION implements StageOperation {
         @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
@@ -114,6 +119,9 @@ class StageDispatcherTest {
         @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(BOOK_COLLECTIVE_CONSOLIDATION) static class H_BOOK_COLLECTIVE_CONSOLIDATION implements StageOperation {
+        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+    }
+    @ForStage(BOOK_CONCEPT_CONSOLIDATION) static class H_BOOK_CONCEPT_CONSOLIDATION implements StageOperation {
         @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(BOOK_LOCATION_CONSOLIDATION) static class H_BOOK_LOCATION_CONSOLIDATION implements StageOperation {
@@ -184,9 +192,11 @@ class StageDispatcherTest {
         return List.of(
                 new H_SCENE_SEGMENTATION(), new H_CHUNKING(), new H_EMBEDDING(),
                 new H_CHAPTER_INDIVIDUAL_CONSOLIDATION(), new H_CHAPTER_COLLECTIVE_CONSOLIDATION(),
+                new H_CHAPTER_CONCEPT_CONSOLIDATION(),
                 new H_CHAPTER_LOCATION_CONSOLIDATION(), new H_CHAPTER_OBJECT_CONSOLIDATION(),
                 new H_CHAPTER_EVENT_CONSOLIDATION(),
                 new H_BOOK_INDIVIDUAL_CONSOLIDATION(), new H_BOOK_COLLECTIVE_CONSOLIDATION(),
+                new H_BOOK_CONCEPT_CONSOLIDATION(),
                 new H_BOOK_LOCATION_CONSOLIDATION(), new H_BOOK_OBJECT_CONSOLIDATION(),
                 new H_CHAPTER_EVENT_EMBEDDING(), new H_BOOK_EVENT_CANDIDATE_GENERATION(),
                 new H_INGESTION_COMPLETE()
@@ -223,8 +233,8 @@ class StageDispatcherTest {
     @Test
     @DisplayName("constructor: missing handler for a StageKey throws IllegalStateException")
     void constructor_missingHandlerForStageKey_shouldThrowIllegalStateException() {
-        var fourteen = allAnnotatedHandlers().subList(0, 14);
-        assertThatThrownBy(() -> createProductionDispatcher(fourteen))
+        var sixteen = allAnnotatedHandlers().subList(0, 16);
+        assertThatThrownBy(() -> createProductionDispatcher(sixteen))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("No @ForStage handler registered for stage:")
                 .hasMessageContaining("INGESTION_COMPLETE");

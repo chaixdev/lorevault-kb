@@ -2,7 +2,7 @@
 
 **Last Updated:** June 1, 2026
 **Status:** Active — Claim-entity linking Phases 1+2 shipped (prompt restructuring, RELATES_SUBJECT/RELATES_OBJECT edges, EntityNode label, bookId population). Durable ingestion orchestration shipped. Phases 1+2+4 complete, Phases 3a+3b+3c complete. 441 core tests, 0 failures.
-**Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane, relation evidence harvesting to shippable state. Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
+**Functional Goals:** Complete ingestion pipeline hardening: Concept entity lane. Then: AWS Phase 1 foundation → n8n sprint (retrieval + HITL) → AWS native pipeline (SQS, DynamoDB, Step Functions).
 **Technical Goals:** Enforce true domain isolation through Maven module boundary; Spring Modulith `CLOSED` module verification; Testcontainers PostgreSQL integration test suite; each module owns its DB transactions (catalog: PostgreSQL REQUIRES_NEW, core: Neo4j).
 
 ## What LoreVault Is
@@ -187,7 +187,7 @@ The code walkthrough continues until the full pipeline is reviewed. Pipeline har
 
 ## Open Decisions
 
-- **Legacy domain events:** 12 dead event classes (`ScenesDetectedEvent`, `ChunksCreatedEvent`, etc.) no longer published — all handlers now use `StageDispatcher` which publishes `StageCompletedEvent`. `JobStatusBroadcaster` SSE listens to `StageCompletedEvent` for status updates. All dead event classes will be deleted in a follow-up cleanup pass.
+- **Legacy domain events:** 12 dead event classes deleted in `99ebd2a4` and `c8d4f761`. All handlers use `StageDispatcher` which publishes `StageCompletedEvent`. `JobStatusBroadcaster` SSE listens to `StageCompletedEvent` for status updates. No remaining dead event classes.
 
 - **n8n deployment model:** Self-hosted Docker alongside LoreVault, or n8n Cloud? Decision deferred to n8n sprint phase.
 - **AWS clone strategy:** How much of `lorevault-kb` domain logic should be shared as a library vs. rewritten for `lorevault-aws`? Decision deferred to AWS foundation phase.
@@ -212,7 +212,7 @@ The code walkthrough continues until the full pipeline is reviewed. Pipeline har
 - [StageDispatcher Extraction](archive/planning/2026-05-24T0000_stagedispatcher-extraction.md) — Phase 3b structural change
 - [Unified Entity Consolidation](archive/planning/2026-05-27T0015_unified-entity-consolidation.md) — Phase 3a structural change
 - [Retire StepKey — Consolidate into StageKey](archive/planning/2026-05-31T0000_retire-stepkey-consolidate-stagekey.md) — StepKey retirement plan
-- [SSE Event Migration](planning/2026-05-24T0000_sse-event-migration.md) — Phase 2 bug fix
+- [SSE Event Migration](planning/2026-05-24T0000_sse-event-migration.md) — DONE (May 25 & May 31)
 - [n8n Ingestion-Retrieval Boundary Strategy](brainstorm/n8n/2026-05-19T2154_strategic-n8n-enhancement.md) — strategic n8n enhancement plan
 - [AWS Cloud-Native Learning Path](brainstorm/aws-cloud-native/2026-05-11T2027_aws-cloud-native-learning-path.md) — AWS deployment strategy
 - [Entity Pipeline Terminology Alignment](archive/planning/2026-05-20T1536_entity-pipeline-terminology-alignment.md) — resolution → reduction terminology proposal

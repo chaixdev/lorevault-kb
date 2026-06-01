@@ -42,7 +42,7 @@ class StageDagTest {
     class ChildrenOf {
 
         @Test
-        void sceneSegmentationHasSixChildren() {
+        void sceneSegmentationHasSevenChildren() {
             assertThat(dag.childrenOf(StageKey.SCENE_SEGMENTATION))
                     .containsExactlyInAnyOrder(
                             StageKey.CHUNKING,
@@ -50,6 +50,7 @@ class StageDagTest {
                             StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION,
                             StageKey.CHAPTER_LOCATION_CONSOLIDATION,
                             StageKey.CHAPTER_OBJECT_CONSOLIDATION,
+                            StageKey.CHAPTER_CONCEPT_CONSOLIDATION,
                             StageKey.CHAPTER_EVENT_CONSOLIDATION
                     );
         }
@@ -129,7 +130,7 @@ class StageDagTest {
         }
 
         @Test
-        void ingestionCompleteHasSixParents() {
+        void ingestionCompleteHasSevenParents() {
             assertThat(dag.parentsOf(StageKey.INGESTION_COMPLETE))
                     .containsExactlyInAnyOrder(
                             StageKey.EMBEDDING,
@@ -137,6 +138,7 @@ class StageDagTest {
                             StageKey.BOOK_COLLECTIVE_CONSOLIDATION,
                             StageKey.BOOK_LOCATION_CONSOLIDATION,
                             StageKey.BOOK_OBJECT_CONSOLIDATION,
+                            StageKey.BOOK_CONCEPT_CONSOLIDATION,
                             StageKey.BOOK_EVENT_CANDIDATE_GENERATION
                     );
         }

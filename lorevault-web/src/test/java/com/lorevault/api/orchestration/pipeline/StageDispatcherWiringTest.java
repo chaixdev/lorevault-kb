@@ -15,6 +15,8 @@ import com.lorevault.api.graph.location.consolidation.book.BookLocationConsolida
 import com.lorevault.api.graph.location.consolidation.chapter.ChapterLocationConsolidationHandler;
 import com.lorevault.api.graph.object.consolidation.book.BookObjectConsolidationHandler;
 import com.lorevault.api.graph.object.consolidation.chapter.ChapterObjectConsolidationHandler;
+import com.lorevault.api.graph.concept.consolidation.book.BookConceptConsolidationHandler;
+import com.lorevault.api.graph.concept.consolidation.chapter.ChapterConceptConsolidationHandler;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -57,6 +59,7 @@ class StageDispatcherWiringTest {
             // Chapter resolution
             ChapterIndividualConsolidationHandler.class,
             ChapterCollectiveConsolidationHandler.class,
+            ChapterConceptConsolidationHandler.class,
             ChapterLocationConsolidationHandler.class,
             ChapterObjectConsolidationHandler.class,
             // Chapter event
@@ -65,6 +68,7 @@ class StageDispatcherWiringTest {
             // Book reduction
             BookIndividualConsolidationHandler.class,
             BookCollectiveConsolidationHandler.class,
+            BookConceptConsolidationHandler.class,
             BookLocationConsolidationHandler.class,
             BookObjectConsolidationHandler.class,
             // Book event
@@ -74,7 +78,7 @@ class StageDispatcherWiringTest {
     );
 
     @Test
-    @DisplayName("All 15 handler classes carry @ForStage annotation")
+    @DisplayName("All 17 handler classes carry @ForStage annotation")
     void allHandlersAnnotated() {
         for (Class<?> handlerClass : HANDLER_CLASSES) {
             assertThat(handlerClass.getAnnotation(ForStage.class))
@@ -107,10 +111,10 @@ class StageDispatcherWiringTest {
     @Test
     @DisplayName("No handler class is missing from the HANDLER_CLASSES list")
     void handlerListIsComplete() {
-        // 15 handler classes for 16 stage keys (INGESTION_COMPLETE has its own handler)
+        // 17 handler classes for 18 stage keys (INGESTION_COMPLETE has its own handler)
         assertThat(HANDLER_CLASSES)
-                .as("Expected 15 handler classes covering 16 StageKey values")
-                .hasSize(15);
+                .as("Expected 17 handler classes covering 18 StageKey values")
+                .hasSize(17);
     }
 
     @Test
@@ -176,12 +180,14 @@ class StageDispatcherWiringTest {
                 Map.entry("EmbeddingHandler", StageKey.EMBEDDING),
                 Map.entry("ChapterIndividualConsolidationHandler", StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION),
                 Map.entry("ChapterCollectiveConsolidationHandler", StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION),
+                Map.entry("ChapterConceptConsolidationHandler", StageKey.CHAPTER_CONCEPT_CONSOLIDATION),
                 Map.entry("ChapterLocationConsolidationHandler", StageKey.CHAPTER_LOCATION_CONSOLIDATION),
                 Map.entry("ChapterObjectConsolidationHandler", StageKey.CHAPTER_OBJECT_CONSOLIDATION),
                 Map.entry("ChapterEventConsolidationHandler", StageKey.CHAPTER_EVENT_CONSOLIDATION),
                 Map.entry("ChapterEventEmbeddingHandler", StageKey.CHAPTER_EVENT_EMBEDDING),
                 Map.entry("BookIndividualConsolidationHandler", StageKey.BOOK_INDIVIDUAL_CONSOLIDATION),
                 Map.entry("BookCollectiveConsolidationHandler", StageKey.BOOK_COLLECTIVE_CONSOLIDATION),
+                Map.entry("BookConceptConsolidationHandler", StageKey.BOOK_CONCEPT_CONSOLIDATION),
                 Map.entry("BookLocationConsolidationHandler", StageKey.BOOK_LOCATION_CONSOLIDATION),
                 Map.entry("BookObjectConsolidationHandler", StageKey.BOOK_OBJECT_CONSOLIDATION),
                 Map.entry("BookEventCandidateGenerationHandler", StageKey.BOOK_EVENT_CANDIDATE_GENERATION),

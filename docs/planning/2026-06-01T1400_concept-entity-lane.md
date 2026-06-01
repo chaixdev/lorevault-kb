@@ -1,7 +1,7 @@
 # Concept Entity Lane
 
-**Status:** PLANNING  
-**Last Updated:** June 1, 2026 (v2 — catalog deferred, plain String conceptType)
+**Status:** IMPLEMENTED  
+**Last Updated:** June 1, 2026 (v4 — implemented, reviewed, all findings fixed, 161 tests passing)
 
 ## Summary
 
@@ -328,3 +328,57 @@ lorevault-core/src/main/resources/prompts/
 - claim-entity linking pattern: `docs/patterns/ingestion/claim-entity-linking.md`
 - Coding standards: `docs/rules/coding-standards.md`
 - Unified consolidation: `docs/archive/planning/2026-05-27T0015_unified-entity-consolidation.md`
+
+---
+
+## Implementation Notes (June 1, 2026 — Wave 1–3)
+
+**Status:** IMPLEMENTED — All 13 phases shipped across 3 parallel waves. 23 files created, ~18 modified. Compilation clean, 161 tests pass (107 core + 54 web). Remaining web test failures are pre-existing `@WebMvcTest` ApplicationContext issues.
+
+### Files created (~23)
+
+| Phase | Files | Count |
+|-------|-------|-------|
+| P3 (entities) | `ConceptMention.java`, `ConceptMentionGraphRepository.java`, `ChapterConcept.java`, `ChapterConceptGraphRepository.java`, `BookConcept.java`, `BookConceptGraphRepository.java` | 6 |
+| P4 (persistence) | `ConceptPersistenceService.java` | 1 |
+| P8 (consolidation) | `ChapterConceptConsolidationService.java`, `ChapterConceptConsolidationOperation.java`, `ChapterConceptConsolidationResult.java`, `BookConceptConsolidationService.java`, `BookConceptConsolidationOperation.java`, `BookConceptConsolidationResult.java`, `BookConceptPersistenceService.java` | 7 |
+| P9 (handlers) | `ChapterConceptConsolidationHandler.java`, `BookConceptConsolidationHandler.java` | 2 |
+| P10 (controllers) | `ChapterConceptConsolidationCommandController.java`, `BookConceptConsolidationCommandController.java` | 2 |
+
+### Files modified (~18)
+
+`TriadAnalysisModels.java` (added ConceptExtraction, SceneConceptExtraction; converted SceneRelationshipOutcome to @Builder), `scene-analysis.txt` (added concepts XML section), `SceneRelationshipAnalysisService.java` (TriadConceptExtraction, normalizeConcepts, builder switch), `SceneDetectionHandler.java` (ConceptPersistenceService as 15th dep, conceptIds wiring), `RelationClaimPersistenceService.java` (conceptIds param + switch case), `StageKey.java` (2 new enum values + sets), `StageDag.java` (3 new edges), `IngestionStatus.java` / `IngestionJobService.java` (RESOLVING_CONCEPTS), `StepKey.java` (2 new values), `StepCatalog.java` (registrations), `StepEventMapper.java` (switch cases), `Neo4jSchemaInitializer.java` (5 constraints + 3 indexes), plus 8 test files.
+
+### Deviations from plan
+
+1. **P2 fixer proactively fixed SceneDetectionHandler fallback** — resolved builder compile error at the empty-scene fallback site.
+2. **P7 fixer proactively fixed switch exhaustiveness** in `IngestionStatus`/`IngestionJobService`.
+3. **P9+P10 fixer proactively updated `StepEventMapper`**.
+4. **BookConceptPersistenceService** was unlisted in original plan but is required by BookConceptConsolidationService.
+5. **P12 required no explicit changes** — pipeline coordinator reads DAG topology dynamically.
+
+### Noteworthy patterns
+
+- `ConceptMention.description` is the only structural deviation from Collective template.
+- `conceptType` stored as raw String at all 3 ladder levels; `// TODO: ObjectKindCatalogService` marker in persistence service.
+- Name-only consolidation identity via `ConsolidationEngine.cluster()`; `conceptType` is attribute only.
+
+---
+
+## Post-Review Fixes (June 1, 2026 — 5-track deep review)
+
+5 oracle tracks (Logic, Data, Async, Security, Structure) reviewed all 42 changed files. 9 findings identified and fixed:
+
+| ID | Severity | Finding | Fix |
+|----|----------|---------|-----|
+| CRIT-1 | 🔴 CRITICAL | `BookConceptConsolidationHandler` missing `BookConsolidationClaimService` concurrency guard (cross-track hit: Tracks A+C) | Added claim-lane locking (`CLAIM_LANE = "BOOK_CONCEPT_CONSOLIDATION"`), `tryAcquireClaim`/`releaseClaim`, `BookConsolidationClaimUnavailableException` in `isRetryableError()` |
+| HIGH-1 | 🟠 HIGH | `ChapterConceptGraphRepository` copy-paste param names `chapterCollectiveId` (cross-track hit: Tracks A+B+E) | Renamed all `chapterCollectiveId` → `chapterConceptId` in Java params and Cypher `$` variables |
+| HIGH-2 | 🟠 HIGH | `BookConceptGraphRepository` copy-paste param names `bookCollectiveId` (cross-track hit: Tracks A+B+E) | Renamed `bookCollectiveId` → `bookConceptId`, `chapterCollectiveIds` → `chapterConceptIds` |
+| HIGH-3 | 🟠 HIGH | `description` field lost during consolidation (Track A) | Added `String description` to `ChapterConcept` and `BookConcept` records; wired `PickFirstNonBlank` accumulation in both consolidation services |
+| HIGH-4 | 🟠 HIGH | `ChapterConceptConsolidationHandler` no retryable error classification (Track C) | Added `isRetryableError()` method; catch block returns `retryableFailure` vs `failure` conditionally |
+| HIGH-5 | 🟠 HIGH | Missing `cluster.isEmpty()` guard before `cluster.get(0)` (Track A) | Added `.filter(cluster -> !cluster.isEmpty())` in both consolidation services |
+| MED-1 | 🟡 MEDIUM | Silent null `conceptType` (Track A) | Added `log.warn` when conceptType is null/blank |
+| MED-2 | 🟡 MEDIUM | No logging in `ConceptPersistenceService` (Track D) | Added `@Slf4j` + info/warn logging at method start/end |
+| LOW-1 | 🟢 LOW | `@RequiredArgsConstructor` vs explicit constructor inconsistency (Track E) | Replaced with explicit constructor |
+
+Pre-existing findings noted but out of scope: no Spring Security on REST surface (Track D, CRITICAL), hardcoded DB password in `application.yml` (Track D, HIGH), raw exception message logged without `ExceptionSanitizer` (Track D, MEDIUM), single-implementation `*Operation` interfaces in all lanes (Track E, MEDIUM).

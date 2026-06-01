@@ -92,6 +92,16 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE CONSTRAINT book_collective_id_unique IF NOT EXISTS FOR (bc:BookCollective) REQUIRE bc.id IS UNIQUE";
     private static final String BOOK_COLLECTIVE_SCOPE_UNIQUE =
             "CREATE CONSTRAINT book_collective_scope_unique IF NOT EXISTS FOR (bc:BookCollective) REQUIRE (bc.bookId, bc.normalizedName) IS UNIQUE";
+    private static final String CONCEPT_MENTION_ID_UNIQUE =
+            "CREATE CONSTRAINT concept_mention_id_unique IF NOT EXISTS FOR (m:ConceptMention) REQUIRE m.id IS UNIQUE";
+    private static final String CHAPTER_CONCEPT_ID_UNIQUE =
+            "CREATE CONSTRAINT chapter_concept_id_unique IF NOT EXISTS FOR (cc:ChapterConcept) REQUIRE cc.id IS UNIQUE";
+    private static final String CHAPTER_CONCEPT_SCOPE_UNIQUE =
+            "CREATE CONSTRAINT chapter_concept_scope_unique IF NOT EXISTS FOR (cc:ChapterConcept) REQUIRE (cc.chapterId, cc.normalizedName) IS UNIQUE";
+    private static final String BOOK_CONCEPT_ID_UNIQUE =
+            "CREATE CONSTRAINT book_concept_id_unique IF NOT EXISTS FOR (bc:BookConcept) REQUIRE bc.id IS UNIQUE";
+    private static final String BOOK_CONCEPT_SCOPE_UNIQUE =
+            "CREATE CONSTRAINT book_concept_scope_unique IF NOT EXISTS FOR (bc:BookConcept) REQUIRE (bc.bookId, bc.normalizedName) IS UNIQUE";
 
     // RelationClaim constraints
     private static final String RELATION_CLAIM_ID_UNIQUE =
@@ -146,6 +156,12 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE INDEX chapter_collective_chapter_name IF NOT EXISTS FOR (cc:ChapterCollective) ON (cc.chapterId, cc.normalizedName)";
     private static final String BOOK_COLLECTIVE_BOOK_NAME_INDEX =
             "CREATE INDEX book_collective_book_name IF NOT EXISTS FOR (bc:BookCollective) ON (bc.bookId, bc.normalizedName)";
+    private static final String CONCEPT_MENTION_CHAPTER_NAME_INDEX =
+            "CREATE INDEX concept_mention_chapter_name IF NOT EXISTS FOR (m:ConceptMention) ON (m.chapterId, m.normalizedName)";
+    private static final String CHAPTER_CONCEPT_CHAPTER_NAME_INDEX =
+            "CREATE INDEX chapter_concept_chapter_name IF NOT EXISTS FOR (cc:ChapterConcept) ON (cc.chapterId, cc.normalizedName)";
+    private static final String BOOK_CONCEPT_BOOK_NAME_INDEX =
+            "CREATE INDEX book_concept_book_name IF NOT EXISTS FOR (bc:BookConcept) ON (bc.bookId, bc.normalizedName)";
     private static final String LLM_CALL_RECORD_JOB_ID_INDEX =
             "CREATE INDEX llm_call_record_job_id IF NOT EXISTS FOR (r:LlmCallRecord) ON (r.jobId)";
     private static final String LLM_CALL_RECORD_JOB_STEP_INDEX =
@@ -205,6 +221,11 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(CHAPTER_COLLECTIVE_SCOPE_UNIQUE, "ChapterCollective(chapterId, normalizedName) unique"));
         results.add(executeConstraint(BOOK_COLLECTIVE_ID_UNIQUE, "BookCollective.id unique"));
         results.add(executeConstraint(BOOK_COLLECTIVE_SCOPE_UNIQUE, "BookCollective(bookId, normalizedName) unique"));
+        results.add(executeConstraint(CONCEPT_MENTION_ID_UNIQUE, "ConceptMention.id unique"));
+        results.add(executeConstraint(CHAPTER_CONCEPT_ID_UNIQUE, "ChapterConcept.id unique"));
+        results.add(executeConstraint(CHAPTER_CONCEPT_SCOPE_UNIQUE, "ChapterConcept(chapterId, normalizedName) unique"));
+        results.add(executeConstraint(BOOK_CONCEPT_ID_UNIQUE, "BookConcept.id unique"));
+        results.add(executeConstraint(BOOK_CONCEPT_SCOPE_UNIQUE, "BookConcept(bookId, normalizedName) unique"));
         results.add(executeConstraint(CHAPTER_CONTENT_HASH_UNIQUE, "Chapter.contentHash unique"));
         results.add(executeConstraint(DROP_LEGACY_BOOK_REDUCTION_CLAIM_BOOK_ID_UNIQUE, "Legacy BookConsolidationClaim.bookId unique dropped"));
         results.add(executeConstraint(DELETE_LEGACY_BOOK_REDUCTION_CLAIMS, "Legacy BookConsolidationClaim rows deleted"));
@@ -237,6 +258,9 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(BOOK_OBJECT_BOOK_NAME_INDEX, "BookObject(bookId, normalizedName)"));
         results.add(executeIndex(CHAPTER_COLLECTIVE_CHAPTER_NAME_INDEX, "ChapterCollective(chapterId, normalizedName)"));
         results.add(executeIndex(BOOK_COLLECTIVE_BOOK_NAME_INDEX, "BookCollective(bookId, normalizedName)"));
+        results.add(executeIndex(CONCEPT_MENTION_CHAPTER_NAME_INDEX, "ConceptMention(chapterId, normalizedName)"));
+        results.add(executeIndex(CHAPTER_CONCEPT_CHAPTER_NAME_INDEX, "ChapterConcept(chapterId, normalizedName)"));
+        results.add(executeIndex(BOOK_CONCEPT_BOOK_NAME_INDEX, "BookConcept(bookId, normalizedName)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_ID_INDEX, "LlmCallRecord(jobId)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_INDEX, "LlmCallRecord(jobId, step)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_STATUS_INDEX, "LlmCallRecord(jobId, step, statusRecordId)"));

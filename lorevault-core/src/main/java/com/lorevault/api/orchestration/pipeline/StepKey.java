@@ -22,12 +22,14 @@ public enum StepKey {
     CHAPTER_CONSOLIDATE_LOCATIONS("chapter"),
     CHAPTER_CONSOLIDATE_OBJECTS("chapter"),
     CHAPTER_CONSOLIDATE_EVENTS("chapter"),
+    CHAPTER_CONSOLIDATE_CONCEPTS("chapter"),
 
     // ── Book-scoped steps ────────────────────────────────────────
     BOOK_CONSOLIDATE_INDIVIDUALS("book"),
     BOOK_CONSOLIDATE_COLLECTIVES("book"),
     BOOK_CONSOLIDATE_LOCATIONS("book"),
-    BOOK_CONSOLIDATE_OBJECTS("book");
+    BOOK_CONSOLIDATE_OBJECTS("book"),
+    BOOK_CONSOLIDATE_CONCEPTS("book");
 
     private final String scope;
 

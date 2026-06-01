@@ -3,6 +3,8 @@ package com.lorevault.api.orchestration.triad;
 import java.util.List;
 import java.util.UUID;
 
+import lombok.Builder;
+
 public final class TriadAnalysisModels {
 
     private TriadAnalysisModels() {
@@ -13,6 +15,7 @@ public final class TriadAnalysisModels {
             SceneLocationExtraction,
             SceneObjectExtraction,
             SceneCollectiveExtraction,
+            SceneConceptExtraction,
             SceneEventExtraction,
             SceneRelationClaimExtraction {
         int sceneIndex();
@@ -52,6 +55,15 @@ public final class TriadAnalysisModels {
     ) {
     }
 
+    public record ConceptExtraction(
+            List<String> aliases,
+            String conceptType,
+            String description,
+            String certainty,
+            String evidence
+    ) {
+    }
+
     public record EventExtraction(
             String name,
             String eventType,
@@ -72,6 +84,9 @@ public final class TriadAnalysisModels {
     }
 
     public record SceneCollectiveExtraction(int sceneIndex, List<CollectiveExtraction> collectives) implements SceneExtraction {
+    }
+
+    public record SceneConceptExtraction(int sceneIndex, List<ConceptExtraction> concepts) implements SceneExtraction {
     }
 
     public record SceneEventExtraction(int sceneIndex, List<EventExtraction> events) implements SceneExtraction {
@@ -111,48 +126,16 @@ public final class TriadAnalysisModels {
     ) {
     }
 
+    @Builder
     public record SceneRelationshipOutcome(
             List<SceneRelationshipAnalysis> triadAnalyses,
             List<SceneIndividualExtraction> sceneIndividualExtractions,
             List<SceneCollectiveExtraction> sceneCollectiveExtractions,
+            List<SceneConceptExtraction> sceneConceptExtractions,
             List<SceneObjectExtraction> sceneObjectExtractions,
             List<SceneLocationExtraction> sceneLocationExtractions,
             List<SceneEventExtraction> sceneEventExtractions,
             List<SceneRelationClaimExtraction> sceneRelationClaimExtractions
     ) {
-        public SceneRelationshipOutcome(
-                List<SceneRelationshipAnalysis> triadAnalyses,
-                List<SceneIndividualExtraction> sceneIndividualExtractions,
-                List<SceneLocationExtraction> sceneLocationExtractions
-        ) {
-            this(triadAnalyses, sceneIndividualExtractions, List.of(), List.of(), sceneLocationExtractions, List.of(), List.of());
-        }
-
-        public SceneRelationshipOutcome(
-                List<SceneRelationshipAnalysis> triadAnalyses,
-                List<SceneIndividualExtraction> sceneIndividualExtractions,
-                List<SceneLocationExtraction> sceneLocationExtractions,
-                List<SceneEventExtraction> sceneEventExtractions
-        ) {
-            this(triadAnalyses, sceneIndividualExtractions, List.of(), List.of(), sceneLocationExtractions, sceneEventExtractions, List.of());
-        }
-
-        public SceneRelationshipOutcome(
-                List<SceneRelationshipAnalysis> triadAnalyses,
-                List<SceneIndividualExtraction> sceneIndividualExtractions,
-                List<SceneObjectExtraction> sceneObjectExtractions,
-                List<SceneLocationExtraction> sceneLocationExtractions,
-                List<SceneEventExtraction> sceneEventExtractions
-        ) {
-            this(
-                    triadAnalyses,
-                    sceneIndividualExtractions,
-                    List.of(),
-                    sceneObjectExtractions,
-                    sceneLocationExtractions,
-                    sceneEventExtractions,
-                    List.of()
-            );
-        }
     }
 }

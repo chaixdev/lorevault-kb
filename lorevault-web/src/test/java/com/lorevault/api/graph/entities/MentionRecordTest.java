@@ -9,6 +9,7 @@ import java.util.UUID;
 import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.graph.event.persistence.EventMention;
 import com.lorevault.api.graph.collective.persistence.CollectiveMention;
+import com.lorevault.api.graph.concept.persistence.ConceptMention;
 import com.lorevault.api.graph.individual.persistence.IndividualMention;
 import com.lorevault.api.graph.location.persistence.LocationMention;
 import com.lorevault.api.graph.object.persistence.ObjectMention;
@@ -143,6 +144,7 @@ class MentionRecordTest {
     void shouldMapAllMentionRecordsWithSpecificPrimaryLabelsAndSharedMentionLabel() {
         assertNodeLabels(IndividualMention.class, "IndividualMention", "EntityMention", "IndividualNode", "EntityNode");
         assertNodeLabels(CollectiveMention.class, "CollectiveMention", "EntityMention", "CollectiveNode", "EntityNode");
+        assertNodeLabels(ConceptMention.class, "ConceptMention", "EntityMention", "ConceptNode", "EntityNode");
         assertNodeLabels(ObjectMention.class, "ObjectMention", "EntityMention", "ObjectNode", "EntityNode");
         assertNodeLabels(LocationMention.class, "LocationMention", "EntityMention", "LocationNode", "EntityNode");
         assertNodeLabels(EventMention.class, "EventMention", "EntityMention", "EventNode", "EntityNode");

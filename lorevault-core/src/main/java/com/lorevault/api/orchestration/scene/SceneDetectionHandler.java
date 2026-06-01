@@ -2,6 +2,7 @@ package com.lorevault.api.orchestration.scene;
 
 import com.lorevault.api.common.error.ExceptionSanitizer;
 import com.lorevault.api.graph.collective.persistence.CollectivePersistenceService;
+import com.lorevault.api.graph.concept.persistence.ConceptPersistenceService;
 import com.lorevault.api.graph.event.persistence.EventPersistenceService;
 import com.lorevault.api.graph.event.scene.Scene;
 import com.lorevault.api.graph.event.scene.SceneGraphRepository;
@@ -52,6 +53,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
     private final ObjectPersistenceService objectPersistenceService;
     private final LocationPersistenceService locationPersistenceService;
     private final EventPersistenceService eventPersistenceService;
+    private final ConceptPersistenceService conceptPersistenceService;
     private final RelationClaimPersistenceService relationClaimPersistenceService;
     private final DefaultTemporalEdgeService defaultTemporalEdgeService;
     private final SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService;
@@ -68,6 +70,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
             ObjectPersistenceService objectPersistenceService,
             LocationPersistenceService locationPersistenceService,
             EventPersistenceService eventPersistenceService,
+            ConceptPersistenceService conceptPersistenceService,
             RelationClaimPersistenceService relationClaimPersistenceService,
             DefaultTemporalEdgeService defaultTemporalEdgeService,
             SceneTemporalRelationshipPersistenceService sceneTemporalRelationshipPersistenceService,
@@ -83,6 +86,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
         this.objectPersistenceService = objectPersistenceService;
         this.locationPersistenceService = locationPersistenceService;
         this.eventPersistenceService = eventPersistenceService;
+        this.conceptPersistenceService = conceptPersistenceService;
         this.relationClaimPersistenceService = relationClaimPersistenceService;
         this.defaultTemporalEdgeService = defaultTemporalEdgeService;
         this.sceneTemporalRelationshipPersistenceService = sceneTemporalRelationshipPersistenceService;
@@ -136,13 +140,7 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                             (left, right) -> left
                     ));
 
-            TriadAnalysisModels.SceneRelationshipOutcome sceneRelationshipOutcome = new TriadAnalysisModels.SceneRelationshipOutcome(
-                    List.of(),
-                    List.of(),
-                    List.of(),
-                    List.of(),
-                    List.of()
-            );
+            TriadAnalysisModels.SceneRelationshipOutcome sceneRelationshipOutcome = TriadAnalysisModels.SceneRelationshipOutcome.builder().build();
             if ( !scenes.isEmpty()) {
                 chapter.setScenes(List.copyOf(scenes));
 
@@ -168,9 +166,10 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                 Map<String, UUID> objectIds     = objectPersistenceService.persistExtractedObjects(ctx, scenes, sceneRelationshipOutcome.sceneObjectExtractions());
                 Map<String, UUID> locationIds   = locationPersistenceService.persistExtractedLocations(ctx, scenes, sceneRelationshipOutcome.sceneLocationExtractions());
                 Map<String, UUID> eventIds      = eventPersistenceService.persistExtractedEvents(ctx, scenes, sceneRelationshipOutcome.sceneEventExtractions());
+                Map<String, UUID> conceptIds  = conceptPersistenceService.persistExtractedConcepts(ctx, scenes, sceneRelationshipOutcome.sceneConceptExtractions());
                 relationClaimPersistenceService.persistExtractedRelationClaims(
                         ctx, scenes, sceneRelationshipOutcome.sceneRelationClaimExtractions(),
-                        bookId, individualIds, collectiveIds, objectIds, locationIds, eventIds
+                        bookId, individualIds, collectiveIds, conceptIds, objectIds, locationIds, eventIds
                 );
             }
 
