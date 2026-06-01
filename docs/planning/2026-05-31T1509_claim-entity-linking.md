@@ -1,7 +1,7 @@
 # Claim-Entity Linking
 
-**Status:** PHASE 1 IMPLEMENTED, PHASE 2 REVISED  
-**Last revised:** 2026-06-01 — Phase 2/3 revised. Original 3-layer edge model (`HAS_CHAPTER_SUBJECT`, `HAS_BOOK_SUBJECT`) dropped. Replaced with: add `EntityNode` secondary label to all entity nodes. Existing `RELATES_SUBJECT` + `REFERS_TO` ladder already provides full queryability via `IndividualNode`/`CollectiveNode`/etc. polymorphic labels. No new edge types needed.
+**Status:** PHASES 1 + 2 IMPLEMENTED  
+**Last revised:** 2026-06-01 — Phase 2 implemented: `EntityNode` secondary label on all 15 entity node types. Original 3-layer edge model dropped. 441 core tests pass.
 
 ## Summary
 
@@ -340,8 +340,8 @@ Original Phase 2 (`HAS_CHAPTER_SUBJECT`) and Phase 3 (`HAS_BOOK_SUBJECT`) are un
 - [x] Every RelationClaim has `RELATES_SUBJECT` and `RELATES_OBJECT` edges
 - [x] Every RelationClaim has a populated `bookId`
 - [ ] Layer 1 subjectName-to-mentionName match rate ≥ 95% (smoke test: 93.2% — close)
-- [ ] `EntityNode` secondary label on all 15 entity node types (Phase 2)
-- [ ] Query `(a:IndividualNode)<-[r:RELATES_SUBJECT\|RELATES_OBJECT]-(rc)-[r2:RELATES_SUBJECT\|RELATES_OBJECT]->(b:EntityNode)` returns cross-kind relationships
+- [x] `EntityNode` secondary label on all 15 entity node types (Phase 2)
+- [x] Query `(a:IndividualNode)<-[r:RELATES_SUBJECT\|RELATES_OBJECT]-(rc)-[r2:RELATES_SUBJECT\|RELATES_OBJECT]->(b:EntityNode)` returns cross-kind relationships
 - [ ] Existing consolidation cycles remain correct
 - [ ] No performance regression on consolidation cycle time (<5% increase)
 
