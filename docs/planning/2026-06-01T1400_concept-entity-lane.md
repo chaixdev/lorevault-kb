@@ -1,7 +1,7 @@
 # Concept Entity Lane
 
 **Status:** PLANNING  
-**Last Updated:** June 1, 2026
+**Last Updated:** June 1, 2026 (v2 — catalog deferred, plain String conceptType)
 
 ## Summary
 
@@ -19,9 +19,9 @@ The following are pure replication of the established 5-lane pattern. No design 
 
 | Level | Class | @Node labels | Key fields |
 |-------|-------|-------------|------------|
-| Mention | `ConceptMention` in `graph/concept/persistence/` | `ConceptMention`, `EntityMention`, `ConceptNode`, `EntityNode` | `id`, `source`, `displayName`, `normalizedName`, `aliases`, `catalogId` (UUID, refs `catalog_object_kind`), `definitionKey` (String, denormalized), `description`, `certainty`, `evidence`, `stageId`, `sceneId`, `chapterId`, `bookId`, `resolutionStatus`, `extractionIndex` |
-| Chapter | `ChapterConcept` in `graph/concept/persistence/` | `ChapterConcept`, `ChapterEntity`, `ConceptNode`, `EntityNode` | `id`, `displayName`, `normalizedName`, `aliases`, `catalogId`, `definitionKey`, `chapterId`, `stageId` |
-| Book | `BookConcept` in `graph/concept/persistence/` | `BookConcept`, `BookEntity`, `ConceptNode`, `EntityNode` | `id`, `displayName`, `normalizedName`, `aliases`, `catalogId`, `definitionKey`, `bookId`, `stageId` |
+| Mention | `ConceptMention` in `graph/concept/persistence/` | `ConceptMention`, `EntityMention`, `ConceptNode`, `EntityNode` | `id`, `source`, `displayName`, `normalizedName`, `aliases`, `conceptType` (String, raw LLM label), `description`, `certainty`, `evidence`, `stageId`, `sceneId`, `chapterId`, `bookId`, `resolutionStatus`, `extractionIndex` |
+| Chapter | `ChapterConcept` in `graph/concept/persistence/` | `ChapterConcept`, `ChapterEntity`, `ConceptNode`, `EntityNode` | `id`, `displayName`, `normalizedName`, `aliases`, `conceptType`, `chapterId`, `stageId` |
+| Book | `BookConcept` in `graph/concept/persistence/` | `BookConcept`, `BookEntity`, `ConceptNode`, `EntityNode` | `id`, `displayName`, `normalizedName`, `aliases`, `conceptType`, `bookId`, `stageId` |
 
 `ConceptMention` implements `Mention` interface. `ChapterConcept` and `BookConcept` are consolidated aggregates — they do NOT implement `Mention` (same as `ChapterCollective`/`BookCollective`). Pattern: identical to `CollectiveMention` / `ChapterCollective` / `BookCollective`.
 
@@ -161,9 +161,9 @@ Pattern: identical to `ChapterCollectiveConsolidationCommandController` / `BookC
 
 ### 14. Schema/index (Neo4j)
 
-Constraints on `ConceptMention`, `ChapterConcept`, `BookConcept` following existing pattern. Index on `normalizedName`, `catalogId`, `definitionKey`, `chapterId`, `bookId`.
+Constraints on `ConceptMention`, `ChapterConcept`, `BookConcept` following existing pattern. Index on `normalizedName`, `conceptType`, `chapterId`, `bookId`.
 
-Note: existing entity lanes have `(chapterId, normalizedName)` indexes only — no type-discriminator indexes. Adding `catalogId` and `definitionKey` indexes for concept nodes is forward-looking (future catalog-driven queries) and deviates from the minimal-schema pattern. Acceptable — catalytic queries are a reasonable index justification.
+Note: existing entity lanes have `(chapterId, normalizedName)` indexes only. Adding a `conceptType` index is forward-looking (future catalog-driven queries by type) and deviates from the minimal-schema pattern — defer to v2.
 
 ### 16. Tests
 
@@ -182,29 +182,27 @@ Note: existing entity lanes have `(chapterId, normalizedName)` indexes only — 
 
 ## What's different (needs design decisions)
 
-### D1. Concept type vocabulary — Catalog.ObjectKind
+### D1. Concept type vocabulary — plain String, catalog deferred
 
-Concept types are cataloged through the `lorevault-catalog` module's `ObjectKindCatalogService` interface. A `NoOpObjectKindCatalogService` ships now (passes through the raw LLM label). The real PostgreSQL + pgvector backend ships later as a transparent swap — the Concept entity lane is not blocked.
+`ConceptMention` stores `conceptType` as a plain `String` — the raw LLM-extracted label (e.g., `"species"`, `"technology"`, `"doctrine"`). No catalog resolution for v1. A `// TODO: resolve conceptType through ObjectKindCatalogService when catalog ships` comment marks the insertion point in `ConceptPersistenceService`.
 
-`ConceptMention` stores `catalogId UUID` + `definitionKey String` (denormalized). Same pattern as `RelationClaim.catalogId`/`definitionKey`. `ConceptPersistenceService` calls `catalogService.resolve()` to resolve the LLM-extracted concept type string.
+V2: replace the raw string with `catalogId` + `definitionKey` when the ObjectKind catalog is designed and shipped. The planning for that is parked at `docs/planning/2026-06-01T1415_catalog-objectkind.md`.
 
-See: `docs/planning/2026-06-01T1415_catalog-objectkind.md` for full design.
-
-**Catalog swap and `definitionKey` drift:** No production data — wipe-and-reset (`reset-dev-db.sh`) handles post-swap coherence. Not a concern for v1.
+`ChapterConcept` and `BookConcept` also store `conceptType` as plain String. No catalog module dependency from concept lane code.
 
 ### D2. Extraction boundaries and over-extraction risk
 
 Concepts are uniquely prone to over-extraction because ordinary nouns ("captain", "war", "laser") appear everywhere.
 
-**Recommendation: Accept over-extraction, manage through catalog + prompt tuning.** The `ObjectKindCatalogService` is the natural vocabulary limiter — unknown concept types are cataloged, deduped, and clustered. Prefer capturing nuance over premature filtering. Prompt guardrails are sufficient: instruct the LLM to extract narrative-significant categories, but don't second-guess it mechanically. No `ConceptQualityFilter` — thresholds are hard to get right and arbitrary.
+**Recommendation: Accept over-extraction, manage through prompt tuning.** The prompt is the vocabulary boundary. Instruct the LLM to extract only narrative-significant categories. No mechanical quality filter — thresholds are hard to get right and arbitrary. Over-extraction is cheaper than under-extraction.
 
 ### D3. Normalization and identity key
 
 **Cross-kind multiplicity is intentional.** "Battlestar Galactica" can appear as a Location (setting), an Object (vehicle), and a Concept (political symbol) — three different subgraphs, same name, different kinds. The architecture explicitly avoids creating a single canonical entity node. Each consolidation lane produces its own typed subgraph. The `EntityNode` label enables cross-kind querying when needed, but consolidation stays per-kind.
 
-Within the Concept lane, same-name-different-type (e.g., "Dragon" as species vs "Dragon" as artifact-class) is possible but rare. The `catalogId` distinguishes subtypes for query purposes.
+Within the Concept lane, same-name-different-type (e.g., "Dragon" as species vs "Dragon" as artifact-class) is possible but rare. `conceptType` distinguishes subtypes for query purposes.
 
-**Recommendation: Name-only key for v1.** Same `NameNormalizer.normalize()` as all other lanes. `catalogId` is an attribute, not part of the consolidation identity key. If same-name-different-type collisions become a query concern, `catalogId` can be added to the identity key in v2.
+**Recommendation: Name-only key for v1.** Same `NameNormalizer.normalize()` as all other lanes. `conceptType` is an attribute, not part of the consolidation identity key. If same-name-different-type collisions become a query concern, `conceptType` can be added to the identity key in v2.
 
 ### D4. Prompt design — dedicated extraction section or relation-only?
 
@@ -228,27 +226,25 @@ Within the Concept lane, same-name-different-type (e.g., "Dragon" as species vs 
 
 | Phase | Files | Depends on |
 |-------|-------|-----------|
-| **P0) Catalog interface + NoOp** | `lorevault-catalog`: `ObjectKindCatalogService`, `ObjectKindCatalogDefinition`, `ObjectKindQuery`, `ObjectKindCatalogId`, `NoOpObjectKindCatalogService` (5 files). No PostgreSQL table yet — deferred to post-pipeline catalog phase. | None |
-| **P1) Extraction models** | `TriadAnalysisModels.java` — add ConceptExtraction, SceneConceptExtraction, update SceneExtraction sealed interface. Convert SceneRelationshipOutcome to `@Builder` (replace canonical + 3 convenience constructors). | None (parallel with P0) |
+| **P1) Extraction models** | `TriadAnalysisModels.java` — add ConceptExtraction, SceneConceptExtraction, update SceneExtraction sealed interface. Convert SceneRelationshipOutcome to `@Builder` (replace canonical + 3 convenience constructors). | None |
 | **P2) Prompt + parsing** | `scene-analysis.txt` — add `<concepts>` section with `<concept_type>` (prompt-guided, lowercase kebab-case). `SceneRelationshipAnalysisService.java` — add TriadConceptExtraction, normalizeConcepts(), integrate into analyzeChapterTriads(). Switch `buildOutcome()` to builder calls. | P1 |
-| **P3) Entity nodes + repositories** | 6 files: `ConceptMention` (uses `catalogId UUID` + `definitionKey String` for conceptType), `ChapterConcept`, `BookConcept` + 3 repositories. Note: `catalogId` and `definitionKey` are plain Java types (UUID, String) — no compile-time dependency on the catalog module. P3 can start before P0. | None |
-| **P4) Persistence service** | `ConceptPersistenceService` — resolve conceptType through `ObjectKindCatalogService` (NoOp for now), return `Map<String, UUID>` | P0, P1, P3 |
-| **P5) Handler wiring** | `SceneDetectionHandler` — wire ConceptPersistenceService + conceptIds to RelationClaimPersistenceService | P4 |
+| **P3) Entity nodes + repositories** | 6 files: `ConceptMention` (stores `conceptType String`), `ChapterConcept`, `BookConcept` + 3 repositories. | None (parallel with P1) |
+| **P4) Persistence service** | `ConceptPersistenceService` — // TODO: resolve conceptType through ObjectKindCatalogService when catalog ships. For v1, store raw LLM label. Returns `Map<String, UUID>`. | P1, P3 |
+| **P5) Handler wiring** | `orchestration/scene/SceneDetectionHandler.java` — add ConceptPersistenceService dep + wire conceptIds to RelationClaimPersistenceService | P4 |
 | **P6) claim-entity linking** | `RelationClaimPersistenceService` — add conceptIds param + `"Concept" -> conceptIds` switch case | P4 |
-| **P7) StageKey + StageDag** | `StageKey.java`, `StageDag.java` — add 2 stage keys + 3 edges + fan-in | None (parallel with P0–P1) |
+| **P7) StageKey + StageDag** | `StageKey.java`, `StageDag.java` — add 2 stage keys + 3 edges + fan-in | None (parallel with P1) |
 | **P8) Consolidation services** | `ChapterConceptConsolidationService`, `BookConceptConsolidationService` | P3 |
 | **P9) Handlers** | `ChapterConceptConsolidationHandler`, `BookConceptConsolidationHandler` | P7, P8 |
 | **P10) Command controllers** | `ChapterConceptConsolidationCommandController`, `BookConceptConsolidationCommandController` | P8 |
 | **P11) Schema/index** | Neo4j constraints and indexes for concept nodes | P3 |
 | **P12) Pipeline coordinator** | `IngestionPipelineCoordinator` — rerun wiring | P7, P9 |
 | **P13) Tests** | 10+ test files across core and web | All phases |
-| **P14 deferred) Real catalog** | `PostgresObjectKindCatalogStore`, `ObjectKindCatalogServiceImpl`, `V2__catalog_object_kind.sql`, update `CatalogConfig`/`CatalogHealthIndicator` | After pipeline ships, catalog swap is transparent |
 
 ### Parallelization opportunities
 
-- **P0 + P1 + P3 + P7** can run in parallel (no dependencies between them; P3's `catalogId`/`definitionKey` are plain types)
+- **P1 + P3 + P7** can run in parallel (no dependencies between them)
 - **P2** depends on P1 (extraction models must exist before service can consume them)
-- **P4** depends on P0, P1, P3 (catalog service + extraction models + entity nodes)
+- **P4** depends on P1, P3 (extraction models + entity nodes)
 - **P5 + P6** depend on P4 (persistence service must exist before handler wiring)
 - **P8 + P11** can run in parallel after P3 (entity nodes + schema)
 - **P9 + P10 + P12** can run in parallel after P7 and P8 (stages + consolidation services)
@@ -256,11 +252,7 @@ Within the Concept lane, same-name-different-type (e.g., "Dragon" as species vs 
 
 ---
 
-## Files to create (~28 files)
-
-### Catalog module — no-op (P0)
-
-See `docs/planning/2026-06-01T1415_catalog-objectkind.md` for file list — 5 catalog files shipped now, 6 deferred.
+## Files to create (~23 files)
 
 ### Core module — graph entities (P3)
 
