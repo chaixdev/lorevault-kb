@@ -106,7 +106,7 @@ Add:
 
 ### 7. Handler wiring (SceneDetectionHandler)
 
-In `SceneDetectionHandler.execute()`:
+In `SceneDetectionHandler.execute()` (`orchestration/scene/SceneDetectionHandler.java`):
 - Add `ConceptPersistenceService` as constructor dependency (14 → 15 constructor params — largest constructor in the codebase; a builder or parameter object refactor is deferred)
 - Call `conceptPersistenceService.persistExtractedConcepts(ctx, scenes, outcome.sceneConceptExtractions())`
 - Pass `conceptIds` map to `relationClaimPersistenceService.persistExtractedRelationClaims()`
@@ -301,16 +301,17 @@ lorevault-web/src/main/java/com/lorevault/api/web/command/ingestion/
 lorevault-core/src/main/java/com/lorevault/api/
 ├── orchestration/
 │   ├── triad/
-│   │   ├── TriadAnalysisModels.java          — add ConceptExtraction, SceneConceptExtraction
+│   │   ├── TriadAnalysisModels.java              — add ConceptExtraction, SceneConceptExtraction
 │   │   └── SceneRelationshipAnalysisService.java — add TriadConceptExtraction, normalizeConcepts()
-│   └── pipeline/
-│       ├── StageKey.java                      — add 2 enum values + classification sets
-│       └── StageDag.java                      — add 3 edges + fan-in
+│   ├── pipeline/
+│   │   ├── StageKey.java                         — add 2 enum values + classification sets
+│   │   └── StageDag.java                         — add 3 edges + fan-in
+│   │   └── IngestionPipelineCoordinator.java     — rerun wiring
+│   └── scene/
+│       └── SceneDetectionHandler.java            — add ConceptPersistenceService dep + wire
 ├── graph/
-│   ├── event/scene/Scene.java                 — wire ConceptPersistenceService in SceneDetectionHandler
+│   ├── event/scene/Scene.java                    — unchanged (wire via SceneDetectionHandler)
 │   └── relation/RelationClaimPersistenceService.java — add conceptIds param + switch case
-└── orchestration/pipeline/
-    └── IngestionPipelineCoordinator.java      — rerun wiring
 
 lorevault-core/src/main/resources/prompts/
 └── scene-analysis.txt                         — add <concepts> extraction section
