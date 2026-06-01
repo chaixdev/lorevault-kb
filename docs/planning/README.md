@@ -123,3 +123,4 @@ At minimum, each planning item should include:
 - [Scene Detection Handler Decomposition](2026-05-23T1600_scene-detection-handler-decomposition.md) — parked
 - [Micrometer Stage Timing](2026-05-23T1700_micrometer-stage-timing.md) — parked
 - [Claim-Entity Linking](2026-05-31T1509_claim-entity-linking.md) — Phases 1+2 complete, Phase 3 (HAS_CHAPTER edges) dropped
+- [Deep Code Quality Review Sessions](2026-06-01T2220_deep-quality-review-sessions.md) — PLANNING (5 thematic review packages for feature branch merge readiness)
