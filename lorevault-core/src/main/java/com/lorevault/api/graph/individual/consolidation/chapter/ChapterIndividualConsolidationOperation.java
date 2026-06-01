@@ -1,11 +1,7 @@
 package com.lorevault.api.graph.individual.consolidation.chapter;
 
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
-import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
-import com.lorevault.api.orchestration.pipeline.StepResult;
-
-import java.util.UUID;
 
 /**
  * Synchronous operation interface for chapter-scoped individual resolution.
@@ -16,17 +12,11 @@ import java.util.UUID;
  *
  * <p>The step-by-step execution controller provides the transaction context; this interface
  * simply exposes the business logic.
+ *
+ * <p>Callers must construct a {@link StageExecutionContext} with a valid {@code stageId}
+ * when invoking {@link #execute(StageExecutionContext)}. The convenience method
+ * {@code execute(UUID, UUID)} that defaulted to {@code stageId=null} has been removed
+ * to ensure durable provenance on all created entities.
  */
 public interface ChapterIndividualConsolidationOperation extends StageOperation {
-
-    /**
-     * Execute individual resolution for a chapter within an existing transaction.
-     *
-     * @param jobId     the ingestion job ID (created by {@code prepare})
-     * @param chapterId the chapter to process
-     * @return result summarising what happened
-     */
-    default StepResult execute(UUID jobId, UUID chapterId) {
-        return execute(new StageExecutionContext(null, jobId, chapterId, null, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION));
-    }
 }

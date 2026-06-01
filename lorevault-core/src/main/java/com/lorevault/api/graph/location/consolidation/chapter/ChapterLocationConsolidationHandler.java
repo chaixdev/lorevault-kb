@@ -63,8 +63,26 @@ public class ChapterLocationConsolidationHandler implements ChapterLocationConso
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
             log.error("[CHAPTER_LOCATION_CONSOLIDATION] Failed: jobId={}, chapterId={}", jobId, chapterId, e);
-            return StepResult.failure(StageKey.CHAPTER_LOCATION_CONSOLIDATION,
-                    sanitizeMessage(e), elapsed);
+            boolean retryable = isRetryableError(e);
+            return retryable
+                    ? StepResult.retryableFailure(StageKey.CHAPTER_LOCATION_CONSOLIDATION,
+                            sanitizeMessage(e), elapsed)
+                    : StepResult.failure(StageKey.CHAPTER_LOCATION_CONSOLIDATION,
+                            sanitizeMessage(e), elapsed);
         }
+    }
+
+    private boolean isRetryableError(Exception e) {
+        if (e instanceof org.springframework.web.client.ResourceAccessException) {
+            return true;
+        }
+        if (e instanceof org.springframework.web.client.HttpClientErrorException.TooManyRequests) {
+            return true;
+        }
+        if (e instanceof org.springframework.web.client.HttpServerErrorException) {
+            return true;
+        }
+        String message = e.getMessage();
+        return message != null && (message.contains("API") || message.contains("timeout") || message.contains("rate limit") || message.contains("connection"));
     }
 }

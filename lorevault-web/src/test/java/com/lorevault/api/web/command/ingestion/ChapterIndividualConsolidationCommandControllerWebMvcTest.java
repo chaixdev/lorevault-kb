@@ -2,6 +2,7 @@ package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.library.chapter.Chapter;
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StepResult;
 import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationOperation;
@@ -42,7 +43,8 @@ class ChapterIndividualConsolidationCommandControllerWebMvcTest {
         Chapter chapter = new Chapter();
         chapter.setId(chapterId);
         when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
-        when(chapterIndividualResolutionOperation.execute(null, chapterId))
+        when(chapterIndividualResolutionOperation.execute(
+                new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION)))
                 .thenReturn(StepResult.success(
                         StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION,
                         "Resolved chapter individual mentions",
@@ -59,7 +61,8 @@ class ChapterIndividualConsolidationCommandControllerWebMvcTest {
                 .andExpect(jsonPath("$.counts.mentionCount").value(3))
                 .andExpect(jsonPath("$.counts.chapterIndividualCount").value(2));
 
-        verify(chapterIndividualResolutionOperation).execute(null, chapterId);
+        verify(chapterIndividualResolutionOperation).execute(
+                new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION));
     }
 
     @Test

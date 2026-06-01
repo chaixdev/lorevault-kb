@@ -1,4 +1,4 @@
-package com.lorevault.api.graph.location.consolidation.book;
+package com.lorevault.api.orchestration.consolidation;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;

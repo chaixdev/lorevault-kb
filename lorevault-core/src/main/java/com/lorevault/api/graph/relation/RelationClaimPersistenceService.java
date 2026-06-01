@@ -65,6 +65,9 @@ public class RelationClaimPersistenceService {
 
             for (int extractionIndex = 0; extractionIndex < sceneExtraction.relationClaims().size(); extractionIndex++) {
                 TriadAnalysisModels.RelationClaimExtraction extracted = sceneExtraction.relationClaims().get(extractionIndex);
+                if (extracted == null) {
+                    continue;
+                }
 
                 // Idempotency guard: skip if a claim with the same content identity already exists
                 long existing = relationClaimRepository.countBySceneIdAndContentIdentity(

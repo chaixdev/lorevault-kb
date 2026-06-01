@@ -45,6 +45,9 @@ public class LocationPersistenceService {
 
             for (int extractionIndex = 0; extractionIndex < sceneExtraction.locations().size(); extractionIndex++) {
                 TriadAnalysisModels.LocationExtraction extracted = sceneExtraction.locations().get(extractionIndex);
+                if (extracted == null) {
+                    continue;
+                }
                 String displayName = chooseDisplayName(extracted);
                 if (displayName == null) {
                     continue;

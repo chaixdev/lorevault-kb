@@ -45,6 +45,9 @@ public class ObjectPersistenceService {
 
             for (int extractionIndex = 0; extractionIndex < sceneExtraction.objects().size(); extractionIndex++) {
                 TriadAnalysisModels.ObjectExtraction extracted = sceneExtraction.objects().get(extractionIndex);
+                if (extracted == null) {
+                    continue;
+                }
                 String displayName = chooseDisplayName(extracted);
                 if (displayName == null) {
                     continue;

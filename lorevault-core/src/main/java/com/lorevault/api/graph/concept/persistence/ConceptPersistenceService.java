@@ -57,6 +57,9 @@ public class ConceptPersistenceService {
 
             for (int extractionIndex = 0; extractionIndex < sceneExtraction.concepts().size(); extractionIndex++) {
                 TriadAnalysisModels.ConceptExtraction extracted = sceneExtraction.concepts().get(extractionIndex);
+                if (extracted == null) {
+                    continue;
+                }
                 String displayName = chooseDisplayName(extracted);
                 if (displayName == null) {
                     continue;

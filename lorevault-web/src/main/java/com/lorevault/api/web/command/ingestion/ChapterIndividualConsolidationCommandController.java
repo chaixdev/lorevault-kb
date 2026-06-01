@@ -1,6 +1,8 @@
 package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
+import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StepKey;
 import com.lorevault.api.orchestration.pipeline.StepResult;
 import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationOperation;
@@ -66,7 +68,8 @@ public class ChapterIndividualConsolidationCommandController {
         }
 
         log.info("[CMD] Resolve chapter individuals: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StepResult result = chapterIndividualResolutionOperation.execute(jobUuid, chapterUuid);
+        StepResult result = chapterIndividualResolutionOperation.execute(
+                new StageExecutionContext(null, jobUuid, chapterUuid, null, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION));
 
         StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.CHAPTER_CONSOLIDATE_INDIVIDUALS, "chapter", chapterId);
 

@@ -45,6 +45,9 @@ public class IndividualPersistenceService {
 
             for (int extractionIndex = 0; extractionIndex < sceneExtraction.individuals().size(); extractionIndex++) {
                 TriadAnalysisModels.IndividualExtraction extracted = sceneExtraction.individuals().get(extractionIndex);
+                if (extracted == null) {
+                    continue;
+                }
                 String displayName = firstNonBlankAlias(extracted.aliases());
                 if (displayName == null) {
                     continue;

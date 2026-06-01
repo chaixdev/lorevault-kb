@@ -6,6 +6,8 @@ import static com.lorevault.api.common.error.ExceptionSanitizer.sanitizeMessage;
 
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.consolidation.BookConsolidationClaimService;
+import com.lorevault.api.orchestration.consolidation.BookConsolidationClaimUnavailableException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

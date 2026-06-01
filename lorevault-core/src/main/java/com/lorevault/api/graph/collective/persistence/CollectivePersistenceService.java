@@ -45,6 +45,9 @@ public class CollectivePersistenceService {
 
             for (int extractionIndex = 0; extractionIndex < sceneExtraction.collectives().size(); extractionIndex++) {
                 TriadAnalysisModels.CollectiveExtraction extracted = sceneExtraction.collectives().get(extractionIndex);
+                if (extracted == null) {
+                    continue;
+                }
                 String displayName = chooseDisplayName(extracted);
                 if (displayName == null) {
                     continue;

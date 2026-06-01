@@ -1,5 +1,6 @@
 package com.lorevault.api.orchestration.consolidation;
 
+import com.lorevault.api.common.NameNormalizer;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -11,7 +12,7 @@ import java.util.Set;
  * and its aliases. Two sources that share any key are considered the same
  * entity for connected-components clustering.
  *
- * <p>Keys are produced by normalizing whitespace and lowercasing. Null and
+ * <p>Keys are normalized via {@link NameNormalizer#normalize(String)}. Null and
  * blank values are excluded from the result.
  */
 public final class NameKeys {
@@ -35,7 +36,7 @@ public final class NameKeys {
         addKey(keys, normalizedName);
         if (aliases != null) {
             for (String alias : aliases) {
-                addKey(keys, normalizeName(alias));
+                addKey(keys, NameNormalizer.normalize(alias));
             }
         }
         return keys;
@@ -51,20 +52,6 @@ public final class NameKeys {
         LinkedHashSet<String> keys = new LinkedHashSet<>();
         addKey(keys, normalizedName);
         return keys;
-    }
-
-    /**
-     * Normalize a name value: trim, collapse whitespace, lowercase.
-     *
-     * @param value  the raw name value
-     * @return normalized name, or null if blank/null
-     */
-    public static String normalizeName(String value) {
-        if (value == null) {
-            return null;
-        }
-        String normalized = value.trim().replaceAll("\\s+", " ").toLowerCase();
-        return normalized.isBlank() ? null : normalized;
     }
 
     private static void addKey(Set<String> keys, String key) {

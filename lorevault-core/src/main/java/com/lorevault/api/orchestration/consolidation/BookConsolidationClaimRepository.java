@@ -1,4 +1,4 @@
-package com.lorevault.api.graph.location.consolidation.book;
+package com.lorevault.api.orchestration.consolidation;
 
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;

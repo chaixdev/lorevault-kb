@@ -186,13 +186,6 @@ assertThat(result).hasSize(1);
             assertThat(keys).containsExactly("gandalf");
         }
 
-        @Test
-        @DisplayName("NameKeys.normalizeName handles whitespace and case")
-        void normalizeName() {
-            assertThat(NameKeys.normalizeName("  Kevin   Jenkins  ")).isEqualTo("kevin jenkins");
-            assertThat(NameKeys.normalizeName(null)).isNull();
-            assertThat(NameKeys.normalizeName("   ")).isNull();
-        }
     }
 
     @Nested

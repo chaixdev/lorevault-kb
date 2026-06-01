@@ -1,4 +1,4 @@
-package com.lorevault.api.graph.location.consolidation.book;
+package com.lorevault.api.orchestration.consolidation;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

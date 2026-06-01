@@ -45,6 +45,9 @@ public class EventPersistenceService {
 
             for (int extractionIndex = 0; extractionIndex < sceneExtraction.events().size(); extractionIndex++) {
                 TriadAnalysisModels.EventExtraction extracted = sceneExtraction.events().get(extractionIndex);
+                if (extracted == null) {
+                    continue;
+                }
                 String displayName = normalizeText(extracted.name());
                 if (displayName == null) {
                     continue;
