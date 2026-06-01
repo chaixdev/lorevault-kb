@@ -48,6 +48,16 @@ Each review package targets ~30–80 files, yielding a manageable review scope. 
 
 **Review emphasis:** DAG correctness, fan-in barrier semantics, retryable vs non-retryable classifications, claim-locking correctness, stage idempotency guards, event immutability, MDC propagation, executor binding.
 
+**Known planned refactor (not defects):** The orchestration core currently couples book-level stages into the per-chapter DAG — each chapter completion triggers a full O(N²) book-level rebuild protected by claim locks. This is a known architectural debt item, planned for replacement via [Incremental Book Consolidation](../planning/2026-05-30T1750_incremental-book-consolidation.md). When reviewing, do not flag the following as defects — they are intentionally temporary:
+
+- Book-level stages (`BOOK_*_CONSOLIDATION`) living inside `StageDag` as children of chapter-level stages
+- `BookConsolidationClaimService` / claim-locking mechanism (exists only to prevent concurrent full-rebuild corruption; will be removed with incremental merge)
+- `StageExecutionContext` carrying both `chapterId` and `bookId` (one is always null depending on stage scope; will simplify when book coordinator is separate)
+- Book-level stages appearing in `CHAPTER_STAGES` classification sets (current DAG topology requires it; will move to separate book-level DAG)
+- Fan-in from N chapter completions into a single `INGESTION_COMPLETE` per chapter (future: chapter completion is terminal; book completion is a separate lifecycle)
+
+The reviewer should still flag **correctness** issues within the current architecture (e.g., barrier miscounts, missing claim release, retryable failure misclassification) — just not flag the architecture itself as a defect.
+
 ---
 
 ## Review Package 2: Entity Lanes
