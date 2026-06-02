@@ -69,6 +69,32 @@ Avoids CGLib subclassing overhead when `@Bean` methods do not call each other.
 
 **`@ConfigurationProperties` over scattered `@Value` injections.**
 A cluster of related `@Value` fields is a signal to extract a `@ConfigurationProperties` record.
+When a class uses constructor injection for its dependencies, configuration values must also
+flow through the constructor — not via `@Value` on fields. The valid patterns are:
+
+- `@ConfigurationProperties` record injected via constructor (preferred)
+- `@Value` on constructor parameters (acceptable for isolated values)
+
+`@Value` on fields alongside constructor-injected dependencies is a style inconsistency.
+Using `@Value` on fields also makes the dependency invisible in the constructor signature
+and harder to test without a Spring context.
+
+```java
+// Wrong — mixed styles: constructor injection + @Value fields
+@RequiredArgsConstructor
+public class LlmClient {
+    private final ChatClient chatClient;  // constructor-injected
+    @Value("${model.id}") private String modelId;  // field-injected — inconsistent
+}
+
+// Correct — ConfigurationProperties record, constructor-injected
+public class LlmClient {
+    private final ChatClient chatClient;
+    private final LlmClientProperties props;  // constructor-injected record
+    public LlmClient(ChatClient chatClient, LlmClientProperties props) { ... }
+    // props.modelId() used throughout
+}
+```
 
 **Prefer slice tests over `@SpringBootTest`.**
 - `@WebMvcTest` for the controller layer.
@@ -114,6 +140,25 @@ index declaration.
 **`MERGE` key discipline.**
 A `MERGE` must use the exact properties that constitute the uniqueness constraint.
 Merging on a partial key creates duplicate nodes when other properties differ.
+
+**Atomic idempotency guards.**
+An idempotency guard that checks then creates — `if (exists) return; else save()` —
+is a TOCTOU defect. The check and the create must be atomic. Acceptable patterns:
+
+- `MERGE` with the full uniqueness key (preferred — single atomic operation)
+- Catch a unique-constraint violation from the write (guardrail, not primary strategy)
+- A persisted claim record under a unique constraint (multi-node-safe serialization)
+
+```java
+// Wrong — check-then-create race between threads
+if (sceneRepo.findByChapterId(chapterId).isEmpty()) {
+    sceneRepo.saveAll(scenes); // another thread may have inserted between check and save
+}
+
+// Correct — MERGE is atomic
+MERGE (s:Scene {chapterId: $chapterId, sceneIndex: $sceneIndex})
+ON CREATE SET s.id = $id, s.text = $text, ...
+```
 
 **Path repetition cardinality bounds.**
 Never use unbounded path repetition patterns (e.g., `(m)-[:SAME_EVENT*0..]-(related)`).
@@ -522,8 +567,31 @@ Analyze the following content:
 Do not hardcode prompts as Java string literals. Externalize to classpath template files
 or `application.yml` properties to allow tuning without recompile.
 
+**Retry parameter variation.**
+When retrying a structured-output LLM call after a parse or validation failure, vary the
+temperature across attempts. A fixed temperature re-rolls the same likely-failure
+distribution — wasted retries. Progressive temperature (e.g., `+0.1` per retry) or a
+temperature sweep is required for all structured-output call paths that have retry logic.
+
+```java
+// Good — temperature increases on each retry
+retryTemplate.execute(ctx -> {
+    double attemptTemp = baseTemp + (ctx.getRetryCount() * 0.1);
+    var options = OpenAiChatOptions.builder().temperature(attemptTemp).build();
+    return chatClient.prompt().options(options).call().entity(MyType.class);
+});
+
+// Bad — same temperature on every retry
+var options = OpenAiChatOptions.builder().temperature(0.1).build();
+retryTemplate.execute(ctx -> {
+    return chatClient.prompt().options(options).call().entity(MyType.class);
+});
+```
+
 **Token usage observability.**
 Log token usage per LLM call at DEBUG level for cost attribution and capacity planning.
+Prefer actual API-reported token counts (`ChatResponse.getMetadata().getUsage()`) over
+heuristic estimates (`chars/3`). Heuristic estimates can be off by 30%+.
 
 ---
 

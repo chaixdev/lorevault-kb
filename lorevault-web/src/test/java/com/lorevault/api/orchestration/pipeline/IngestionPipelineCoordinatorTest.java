@@ -149,7 +149,7 @@ class IngestionPipelineCoordinatorTest {
     }
 
     private static StageCompletedEvent completedEvent(StageKey stage, UUID bookId, StageResult result) {
-        return new StageCompletedEvent("test", JOB_ID, CHAPTER_ID, bookId, stage, result);
+        return new StageCompletedEvent("test", JOB_ID, CHAPTER_ID, bookId, stage, result, UUID.randomUUID().toString());
     }
 
     private static Stage stageWithStatus(StageKey key, StageStatus status) {

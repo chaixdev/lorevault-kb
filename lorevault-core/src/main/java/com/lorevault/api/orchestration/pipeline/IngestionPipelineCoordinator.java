@@ -124,10 +124,11 @@ public class IngestionPipelineCoordinator {
                 boolean triggered = stageRepo.tryTrigger(jobId, child);
                 if (triggered) {
                     UUID resolvedBookId = resolveBookId(chapterId, bookId, child);
+                    String correlationId = UUID.randomUUID().toString();
                     log.info("[ORCHESTRATION] Barrier open — triggering: jobId={} chapterId={} child={}",
                             jobId, chapterId, child);
                     eventPublisher.publishEvent(
-                            new StageTriggeredEvent(this, jobId, chapterId, resolvedBookId, child));
+                            new StageTriggeredEvent(this, jobId, chapterId, resolvedBookId, child, correlationId));
                 }
             } catch (Exception e) {
                 log.error("[ORCHESTRATION] Failed to evaluate barrier for child={} after parent={}: {}",
@@ -150,10 +151,11 @@ public class IngestionPipelineCoordinator {
         for (Stage s : stale) {
             UUID chapterId = findChapterId(s.getJobId());
             UUID bookId = resolveBookId(chapterId, null, s.getStep());
+            String correlationId = UUID.randomUUID().toString();
             log.warn("[ORCHESTRATION] Re-publishing stale trigger: jobId={} step={} triggeredAt={}",
                     s.getJobId(), s.getStep(), s.getTriggeredAt());
             eventPublisher.publishEvent(
-                    new StageTriggeredEvent(this, s.getJobId(), chapterId, bookId, s.getStep()));
+                    new StageTriggeredEvent(this, s.getJobId(), chapterId, bookId, s.getStep(), correlationId));
         }
     }
 
@@ -169,10 +171,11 @@ public class IngestionPipelineCoordinator {
             UUID chapterId = findChapterId(s.getJobId());
             UUID bookId = resolveBookId(chapterId, null, s.getStep());
             if (s.getStatus() == StageStatus.TRIGGERED) {
+                String correlationId = UUID.randomUUID().toString();
                 log.warn("[ORCHESTRATION] Resetting stale RUNNING→TRIGGERED: jobId={} step={} attempt={}/{}",
                         s.getJobId(), s.getStep(), s.getAttemptCount(), maxStageAttempts);
                 eventPublisher.publishEvent(
-                        new StageTriggeredEvent(this, s.getJobId(), chapterId, bookId, s.getStep()));
+                        new StageTriggeredEvent(this, s.getJobId(), chapterId, bookId, s.getStep(), correlationId));
             } else {
                 log.error("[ORCHESTRATION] Stale RUNNING→FAILED (max attempts): jobId={} step={} attempts={}",
                         s.getJobId(), s.getStep(), s.getAttemptCount());
@@ -201,9 +204,10 @@ public class IngestionPipelineCoordinator {
         for (StageKey root : dag.roots()) {
             boolean triggered = stageRepo.tryTrigger(jobId, root);
             if (triggered) {
+                String correlationId = UUID.randomUUID().toString();
                 log.info("[ORCHESTRATION] Root triggered: jobId={} stage={}", jobId, root);
                 eventPublisher.publishEvent(
-                        new StageTriggeredEvent(this, jobId, chapterId, root));
+                        new StageTriggeredEvent(this, jobId, chapterId, root, correlationId));
             }
         }
     }
@@ -267,9 +271,10 @@ public class IngestionPipelineCoordinator {
         // 8. Emit trigger for the rerun stage
         boolean triggered = stageRepo.tryTrigger(jobId, stage);
         if (triggered) {
+            String correlationId = UUID.randomUUID().toString();
             log.info("[ORCHESTRATION] Rerun triggered: jobId={} chapterId={} stage={}", jobId, chapterId, stage);
             eventPublisher.publishEvent(
-                    new StageTriggeredEvent(this, jobId, chapterId, bookId, stage));
+                    new StageTriggeredEvent(this, jobId, chapterId, bookId, stage, correlationId));
         }
     }
 

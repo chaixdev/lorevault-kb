@@ -4,7 +4,6 @@ import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StageResult;
-import com.lorevault.api.library.book.BookGraphRepository;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
@@ -27,7 +26,6 @@ public class BookCollectiveConsolidationCommandController {
 
     private final StageOperation bookCollectiveReductionOperation;
     private final StepEventMapper stepEventMapper;
-    private final BookGraphRepository bookGraphRepository;
 
     @PostMapping("/books/{bookId}/book-consolidate-collectives")
     public ResponseEntity<?> consolidateBookCollectives(
@@ -60,10 +58,6 @@ public class BookCollectiveConsolidationCommandController {
                         .path("/api/command/ingest/books/" + bookId + "/book-consolidate-collectives")
                         .build());
             }
-        }
-
-        if (bookGraphRepository.findById(bookUuid).isEmpty()) {
-            return ResponseEntity.notFound().build();
         }
 
         log.info("[CMD] Reduce book collectives: bookId={}, jobId={}, fireEvents={}", bookUuid, jobUuid, fireEvents);

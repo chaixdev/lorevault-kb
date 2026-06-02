@@ -2,11 +2,14 @@ package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.orchestration.submission.IngestionService;
 import com.lorevault.api.orchestration.submission.IngestionSubmissionResult;
+import com.lorevault.api.web.ErrorResponse;
 import com.lorevault.api.web.command.ingestion.builder.CoordinatesBuilder;
 import com.lorevault.api.web.command.ingestion.extractor.FileContentExtractor;
 import com.lorevault.api.web.command.ingestion.response.ErrorResponseFactory;
 import com.lorevault.api.web.command.ingestion.validation.FileUploadValidator;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -36,9 +39,22 @@ public class CommandIngestionController {
 	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<?> submitFile(
 			@RequestParam("file") MultipartFile file,
-			@RequestParam("bookId") java.util.UUID bookId,
+			@RequestParam("bookId") String bookIdStr,
 			@RequestParam("chapterNumber") Integer chapterNumber,
 			@RequestParam(value = "chapterTitle", required = false) String chapterTitle) {
+
+		UUID bookId;
+		try {
+			bookId = UUID.fromString(bookIdStr);
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(ErrorResponse.builder()
+					.code("INVALID_BOOK_ID")
+					.message("Book ID must be a valid UUID")
+					.details("bookId", bookIdStr)
+					.timestamp(LocalDateTime.now())
+					.path("/api/command/ingest")
+					.build());
+		}
 
 		log.info("[CMD] Ingest: bookId={}, chapterNumber={}, chapterTitle={}, filename={}",
 				bookId, chapterNumber, chapterTitle, file.getOriginalFilename());

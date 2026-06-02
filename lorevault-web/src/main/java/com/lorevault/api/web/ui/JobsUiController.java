@@ -34,17 +34,23 @@ public class JobsUiController {
 
     @GetMapping("/{jobId}")
     public String jobDetail(@PathVariable UUID jobId, Model model) {
-        JobStatusDetails status = ingestionService.getJobStatus(jobId)
-                .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
-        model.addAttribute("status", status);
+        var statusOpt = ingestionService.getJobStatus(jobId);
+        if (statusOpt.isEmpty()) {
+            model.addAttribute("error", "Job not found");
+            return "ui/error/404";
+        }
+        model.addAttribute("status", statusOpt.get());
         return "ui/jobs :: jobDetail";
     }
 
     @GetMapping("/{jobId}/expand")
     public String expandedJobDetail(@PathVariable UUID jobId, Model model) {
-        JobStatusDetails status = ingestionService.getJobStatus(jobId)
-                .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
-        model.addAttribute("status", status);
+        var statusOpt = ingestionService.getJobStatus(jobId);
+        if (statusOpt.isEmpty()) {
+            model.addAttribute("error", "Job not found");
+            return "ui/error/404";
+        }
+        model.addAttribute("status", statusOpt.get());
         return "ui/jobs :: jobExpandedRow";
     }
 

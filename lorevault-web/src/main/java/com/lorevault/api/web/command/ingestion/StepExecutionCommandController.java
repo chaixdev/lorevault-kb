@@ -1,7 +1,6 @@
 package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.graph.event.scene.Scene;
-import com.lorevault.api.library.chapter.ChapterGraphRepository;
 import com.lorevault.api.orchestration.scene.SceneDetectionHandler;
 import com.lorevault.api.library.chunk.ChunkingOperation;
 import com.lorevault.api.ai.embedding.EmbeddingOperation;
@@ -29,7 +28,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class StepExecutionCommandController {
 
-    private final ChapterGraphRepository chapterGraphRepository;
     private final SceneDetectionHandler sceneDetectionHandler;
     private final ChunkingOperation chunkingOperation;
     private final EmbeddingOperation embeddingOperation;
@@ -68,10 +66,6 @@ public class StepExecutionCommandController {
                         .path("/api/command/ingest/chapters/" + chapterId + "/detect-scenes")
                         .build());
             }
-        }
-
-        if (chapterGraphRepository.findById(chapterUuid).isEmpty()) {
-            return ResponseEntity.notFound().build();
         }
 
         log.info("[CMD] Detect scenes: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
@@ -121,10 +115,6 @@ public class StepExecutionCommandController {
             }
         }
 
-        if (chapterGraphRepository.findById(chapterUuid).isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
         log.info("[CMD] Chunk chapter: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
         StageResult result = chunkingOperation.execute(jobUuid, chapterUuid);
 
@@ -172,10 +162,6 @@ public class StepExecutionCommandController {
             }
         }
 
-        if (chapterGraphRepository.findById(chapterUuid).isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
         log.info("[CMD] Embed chapter: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
         StageResult result = embeddingOperation.execute(jobUuid, chapterUuid);
 
@@ -221,10 +207,6 @@ public class StepExecutionCommandController {
                         .path("/api/command/ingest/chapters/" + chapterId + "/chapter-consolidate-events")
                         .build());
             }
-        }
-
-        if (chapterGraphRepository.findById(chapterUuid).isEmpty()) {
-            return ResponseEntity.notFound().build();
         }
 
         log.info("[CMD] Resolve chapter events: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);

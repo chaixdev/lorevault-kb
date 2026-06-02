@@ -214,3 +214,20 @@ public class ChapterIndividualConsolidationHandler implements StageOperation {
 The dispatcher validates at startup that every `StageKey` has exactly one handler. Missing or duplicate registrations produce a fail-fast `IllegalStateException`.
 
 See ADR-013 (coordinator/dispatcher over independent async listeners).
+
+### 12. Cross-cutting audit properties must use consistent storage
+
+Audit fields that span multiple edge types and node types (e.g., `stageId`, `llmCallRecordId`) must use the same storage mechanism everywhere. Do not embed an audit identifier in free-text on one edge type while giving it a dedicated property on another.
+
+```java
+// Wrong — llmCallRecordId stored in free-text rationale on TEMPORAL edges but as a
+// dedicated r.llmCallRecordId property on AMBIGUOUS_RELATION edges.
+t.rationale = "evidence=... | timelineMarker=... | llmCallRecordId=<uuid>"  // free-text
+r.llmCallRecordId = "<uuid>"  // dedicated property
+
+// Correct — dedicated property on both edge types
+t.llmCallRecordId = coalesce($llmCallRecordId, '')
+r.llmCallRecordId = coalesce($llmCallRecordId, '')
+```
+
+This applies to any new cross-cutting audit field added to the schema. When introducing a new provenance field, audit all edge types and node types in the same domain to ensure the storage pattern is consistent.

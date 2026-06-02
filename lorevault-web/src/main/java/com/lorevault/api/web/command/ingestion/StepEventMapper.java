@@ -4,12 +4,14 @@ import com.lorevault.api.orchestration.signals.StageCompletedEvent;
 import com.lorevault.api.orchestration.signals.StageTriggeredEvent;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageResult;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Publishes {@link StageCompletedEvent}/{@link StageTriggeredEvent} when
@@ -19,11 +21,17 @@ import java.util.UUID;
  * mapping has been removed as part of the StepKey retirement.
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class StepEventMapper {
 
     private final ApplicationEventPublisher eventPublisher;
+    private final TaskExecutor ingestionTaskExecutor;
+
+    public StepEventMapper(ApplicationEventPublisher eventPublisher,
+                           @Qualifier("ingestionTaskExecutor") TaskExecutor ingestionTaskExecutor) {
+        this.eventPublisher = eventPublisher;
+        this.ingestionTaskExecutor = ingestionTaskExecutor;
+    }
 
     /**
      * Publishes a {@link StageCompletedEvent} for the given completed stage.
@@ -34,28 +42,34 @@ public class StepEventMapper {
      * @param result  the outcome of the stage execution
      */
     public void publishCompletionEvent(StageKey stage, UUID jobId, UUID scopeId, StageResult result) {
+        String correlationId = UUID.randomUUID().toString();
         StageCompletedEvent event = switch (stage) {
             // Chapter-level stages
-            case SCENE_SEGMENTATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.SCENE_SEGMENTATION, result);
-            case CHUNKING -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHUNKING, result);
-            case EMBEDDING -> new StageCompletedEvent(this, jobId, scopeId, StageKey.EMBEDDING, result);
-            case CHAPTER_INDIVIDUAL_CONSOLIDATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION, result);
-            case CHAPTER_COLLECTIVE_CONSOLIDATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION, result);
-            case CHAPTER_LOCATION_CONSOLIDATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHAPTER_LOCATION_CONSOLIDATION, result);
-            case CHAPTER_OBJECT_CONSOLIDATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHAPTER_OBJECT_CONSOLIDATION, result);
-            case CHAPTER_EVENT_CONSOLIDATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHAPTER_EVENT_CONSOLIDATION, result);
-            case CHAPTER_CONCEPT_CONSOLIDATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHAPTER_CONCEPT_CONSOLIDATION, result);
+            case SCENE_SEGMENTATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.SCENE_SEGMENTATION, result, correlationId);
+            case CHUNKING -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHUNKING, result, correlationId);
+            case EMBEDDING -> new StageCompletedEvent(this, jobId, scopeId, StageKey.EMBEDDING, result, correlationId);
+            case CHAPTER_INDIVIDUAL_CONSOLIDATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION, result, correlationId);
+            case CHAPTER_COLLECTIVE_CONSOLIDATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION, result, correlationId);
+            case CHAPTER_LOCATION_CONSOLIDATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHAPTER_LOCATION_CONSOLIDATION, result, correlationId);
+            case CHAPTER_OBJECT_CONSOLIDATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHAPTER_OBJECT_CONSOLIDATION, result, correlationId);
+            case CHAPTER_EVENT_CONSOLIDATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHAPTER_EVENT_CONSOLIDATION, result, correlationId);
+            case CHAPTER_CONCEPT_CONSOLIDATION -> new StageCompletedEvent(this, jobId, scopeId, StageKey.CHAPTER_CONCEPT_CONSOLIDATION, result, correlationId);
             // Book-level stages (chapterId is null, scopeId is the bookId)
-            case BOOK_INDIVIDUAL_CONSOLIDATION -> new StageCompletedEvent(this, jobId, null, scopeId, StageKey.BOOK_INDIVIDUAL_CONSOLIDATION, result);
-            case BOOK_COLLECTIVE_CONSOLIDATION -> new StageCompletedEvent(this, jobId, null, scopeId, StageKey.BOOK_COLLECTIVE_CONSOLIDATION, result);
-            case BOOK_LOCATION_CONSOLIDATION -> new StageCompletedEvent(this, jobId, null, scopeId, StageKey.BOOK_LOCATION_CONSOLIDATION, result);
-            case BOOK_OBJECT_CONSOLIDATION -> new StageCompletedEvent(this, jobId, null, scopeId, StageKey.BOOK_OBJECT_CONSOLIDATION, result);
-            case BOOK_CONCEPT_CONSOLIDATION -> new StageCompletedEvent(this, jobId, null, scopeId, StageKey.BOOK_CONCEPT_CONSOLIDATION, result);
+            case BOOK_INDIVIDUAL_CONSOLIDATION -> new StageCompletedEvent(this, jobId, null, scopeId, StageKey.BOOK_INDIVIDUAL_CONSOLIDATION, result, correlationId);
+            case BOOK_COLLECTIVE_CONSOLIDATION -> new StageCompletedEvent(this, jobId, null, scopeId, StageKey.BOOK_COLLECTIVE_CONSOLIDATION, result, correlationId);
+            case BOOK_LOCATION_CONSOLIDATION -> new StageCompletedEvent(this, jobId, null, scopeId, StageKey.BOOK_LOCATION_CONSOLIDATION, result, correlationId);
+            case BOOK_OBJECT_CONSOLIDATION -> new StageCompletedEvent(this, jobId, null, scopeId, StageKey.BOOK_OBJECT_CONSOLIDATION, result, correlationId);
+            case BOOK_CONCEPT_CONSOLIDATION -> new StageCompletedEvent(this, jobId, null, scopeId, StageKey.BOOK_CONCEPT_CONSOLIDATION, result, correlationId);
             default -> throw new IllegalArgumentException("Unknown stage: " + stage);
         };
-        eventPublisher.publishEvent(event);
-        log.info("[StepEventMapper] Published StageCompletedEvent: stage={}, jobId={}, scopeId={}",
-                event.getStage(), jobId, scopeId);
+        CompletableFuture.runAsync(() -> eventPublisher.publishEvent(event), ingestionTaskExecutor)
+                .exceptionally(ex -> {
+                    log.error("[StepEventMapper] Failed to publish StageCompletedEvent: stage={}, jobId={}",
+                            stage, jobId, ex);
+                    return null;
+                });
+        log.info("[StepEventMapper] Dispatched StageCompletedEvent: stage={}, jobId={}, scopeId={}, correlationId={}",
+                event.getStage(), jobId, scopeId, correlationId);
     }
 
     /**
@@ -66,27 +80,33 @@ public class StepEventMapper {
      * @param scopeId the chapter or book ID being processed
      */
     public void publishStartEvent(StageKey stage, UUID jobId, UUID scopeId) {
+        String correlationId = UUID.randomUUID().toString();
         StageTriggeredEvent event = switch (stage) {
             // Chapter-level stages
-            case SCENE_SEGMENTATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.SCENE_SEGMENTATION);
-            case CHUNKING -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHUNKING);
-            case EMBEDDING -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.EMBEDDING);
-            case CHAPTER_INDIVIDUAL_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION);
-            case CHAPTER_COLLECTIVE_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION);
-            case CHAPTER_LOCATION_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHAPTER_LOCATION_CONSOLIDATION);
-            case CHAPTER_OBJECT_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHAPTER_OBJECT_CONSOLIDATION);
-            case CHAPTER_EVENT_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHAPTER_EVENT_CONSOLIDATION);
-            case CHAPTER_CONCEPT_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHAPTER_CONCEPT_CONSOLIDATION);
+            case SCENE_SEGMENTATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.SCENE_SEGMENTATION, correlationId);
+            case CHUNKING -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHUNKING, correlationId);
+            case EMBEDDING -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.EMBEDDING, correlationId);
+            case CHAPTER_INDIVIDUAL_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION, correlationId);
+            case CHAPTER_COLLECTIVE_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION, correlationId);
+            case CHAPTER_LOCATION_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHAPTER_LOCATION_CONSOLIDATION, correlationId);
+            case CHAPTER_OBJECT_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHAPTER_OBJECT_CONSOLIDATION, correlationId);
+            case CHAPTER_EVENT_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHAPTER_EVENT_CONSOLIDATION, correlationId);
+            case CHAPTER_CONCEPT_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, scopeId, StageKey.CHAPTER_CONCEPT_CONSOLIDATION, correlationId);
             // Book-level stages (chapterId is null, scopeId is the bookId)
-            case BOOK_INDIVIDUAL_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, null, scopeId, StageKey.BOOK_INDIVIDUAL_CONSOLIDATION);
-            case BOOK_COLLECTIVE_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, null, scopeId, StageKey.BOOK_COLLECTIVE_CONSOLIDATION);
-            case BOOK_LOCATION_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, null, scopeId, StageKey.BOOK_LOCATION_CONSOLIDATION);
-            case BOOK_OBJECT_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, null, scopeId, StageKey.BOOK_OBJECT_CONSOLIDATION);
-            case BOOK_CONCEPT_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, null, scopeId, StageKey.BOOK_CONCEPT_CONSOLIDATION);
+            case BOOK_INDIVIDUAL_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, null, scopeId, StageKey.BOOK_INDIVIDUAL_CONSOLIDATION, correlationId);
+            case BOOK_COLLECTIVE_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, null, scopeId, StageKey.BOOK_COLLECTIVE_CONSOLIDATION, correlationId);
+            case BOOK_LOCATION_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, null, scopeId, StageKey.BOOK_LOCATION_CONSOLIDATION, correlationId);
+            case BOOK_OBJECT_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, null, scopeId, StageKey.BOOK_OBJECT_CONSOLIDATION, correlationId);
+            case BOOK_CONCEPT_CONSOLIDATION -> new StageTriggeredEvent(this, jobId, null, scopeId, StageKey.BOOK_CONCEPT_CONSOLIDATION, correlationId);
             default -> throw new IllegalArgumentException("Unknown stage: " + stage);
         };
-        eventPublisher.publishEvent(event);
-        log.info("[StepEventMapper] Published StageTriggeredEvent: stage={}, jobId={}, scopeId={}",
-                event.getStage(), jobId, scopeId);
+        CompletableFuture.runAsync(() -> eventPublisher.publishEvent(event), ingestionTaskExecutor)
+                .exceptionally(ex -> {
+                    log.error("[StepEventMapper] Failed to publish StageTriggeredEvent: stage={}, jobId={}",
+                            stage, jobId, ex);
+                    return null;
+                });
+        log.info("[StepEventMapper] Dispatched StageTriggeredEvent: stage={}, jobId={}, scopeId={}, correlationId={}",
+                event.getStage(), jobId, scopeId, correlationId);
     }
 }

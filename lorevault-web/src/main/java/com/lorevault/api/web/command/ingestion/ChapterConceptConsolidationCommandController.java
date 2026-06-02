@@ -1,6 +1,5 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.library.chapter.ChapterGraphRepository;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
@@ -27,7 +26,6 @@ public class ChapterConceptConsolidationCommandController {
 
     private final StageOperation chapterConceptConsolidationOperation;
     private final StepEventMapper stepEventMapper;
-    private final ChapterGraphRepository chapterGraphRepository;
 
     @PostMapping("/chapters/{chapterId}/chapter-consolidate-concepts")
     public ResponseEntity<?> consolidateChapterConcepts(
@@ -60,10 +58,6 @@ public class ChapterConceptConsolidationCommandController {
                         .path("/api/command/ingest/chapters/" + chapterId + "/chapter-consolidate-concepts")
                         .build());
             }
-        }
-
-        if (chapterGraphRepository.findById(chapterUuid).isEmpty()) {
-            return ResponseEntity.notFound().build();
         }
 
         log.info("[CMD] Resolve chapter concepts: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);

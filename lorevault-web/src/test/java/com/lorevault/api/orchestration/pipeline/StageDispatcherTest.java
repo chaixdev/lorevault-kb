@@ -246,7 +246,7 @@ class StageDispatcherTest {
     @DisplayName("onTrigger: SCENE_SEGMENTATION uses sceneDetectionTaskExecutor")
     void onTrigger_sceneSegmentation_shouldRouteToSceneDetectionExecutor() {
         var dispatcher = createDispatcher(allSuccessHandlers());
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, null, SCENE_SEGMENTATION));
+        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, null, SCENE_SEGMENTATION, UUID.randomUUID().toString()));
         verify(sceneDetectionTaskExecutor).execute(any());
         verifyNoInteractions(ingestionLaneTaskExecutor);
     }
@@ -255,7 +255,7 @@ class StageDispatcherTest {
     @DisplayName("onTrigger: non-SCENE_SEGMENTATION stage uses ingestionLaneTaskExecutor")
     void onTrigger_nonSceneSegmentation_shouldRouteToIngestionLaneExecutor() {
         var dispatcher = createDispatcher(allSuccessHandlers());
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
         verify(ingestionLaneTaskExecutor).execute(any());
         verifyNoInteractions(sceneDetectionTaskExecutor);
     }
@@ -271,7 +271,7 @@ class StageDispatcherTest {
 
         var handler = mock(StageOperation.class);
         var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
 
         verify(stageRepo).setRunningConditionally(JOB_ID, CHUNKING);
         verifyNoInteractions(handler);
@@ -287,7 +287,7 @@ class StageDispatcherTest {
         when(handler.execute(any())).thenReturn(success(CHUNKING, "done", 0L));
 
         var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
 
         verify(handler).execute(any());
     }
@@ -303,7 +303,7 @@ class StageDispatcherTest {
         when(handler.execute(any())).thenReturn(success(CHUNKING, "executed", 0L));
 
         var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
 
         verify(handler).execute(any());
         verify(eventPublisher).publishEvent(any());
@@ -317,7 +317,7 @@ class StageDispatcherTest {
 
         var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_CONSOLIDATION, handler));
         dispatcher.onTrigger(new StageTriggeredEvent(
-                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION));
+                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION, UUID.randomUUID().toString()));
 
         verify(handler).execute(any());
         verify(eventPublisher).publishEvent(any());
@@ -331,7 +331,7 @@ class StageDispatcherTest {
 
         var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_CONSOLIDATION, handler));
         dispatcher.onTrigger(new StageTriggeredEvent(
-                this, JOB_ID, CHAPTER_ID, BOOK_INDIVIDUAL_CONSOLIDATION));
+                this, JOB_ID, CHAPTER_ID, BOOK_INDIVIDUAL_CONSOLIDATION, UUID.randomUUID().toString()));
 
         verify(handler).execute(any());
     }
@@ -348,7 +348,7 @@ class StageDispatcherTest {
         when(handler.execute(any())).thenReturn(result);
 
         var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
 
         verify(eventPublisher).publishEvent(completedEventCaptor.capture());
         var event = completedEventCaptor.getValue();
@@ -364,7 +364,7 @@ class StageDispatcherTest {
         when(handler.execute(any())).thenReturn(result);
 
         var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
 
         verify(eventPublisher).publishEvent(completedEventCaptor.capture());
         var event = completedEventCaptor.getValue();
@@ -379,7 +379,7 @@ class StageDispatcherTest {
         when(handler.execute(any())).thenThrow(new RuntimeException("critical error"));
 
         var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
 
         verify(eventPublisher).publishEvent(completedEventCaptor.capture());
         var event = completedEventCaptor.getValue();
@@ -399,7 +399,7 @@ class StageDispatcherTest {
             when(handler.execute(any())).thenReturn(success(CHUNKING, "done", 0L));
 
             var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-            dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+            dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
 
             mdc.verify(() -> MDC.put("stage", CHUNKING.name()));
             mdc.verify(() -> MDC.put("jobId", JOB_ID.toString()));
@@ -415,7 +415,7 @@ class StageDispatcherTest {
             when(handler.execute(any())).thenReturn(success(CHUNKING, "done", 0L));
 
             var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-            dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+            dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
 
             mdc.verify(MDC::clear);
         }
@@ -429,7 +429,7 @@ class StageDispatcherTest {
         try (MockedStatic<MDC> mdc = mockStatic(MDC.class)) {
             var handler = mock(StageOperation.class);
             var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-            dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+            dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
 
             mdc.verify(MDC::clear);
             verifyNoInteractions(handler);
@@ -444,7 +444,7 @@ class StageDispatcherTest {
 
         try (MockedStatic<MDC> mdc = mockStatic(MDC.class)) {
             var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-            dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+            dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
 
             mdc.verify(MDC::clear);
         }
@@ -462,7 +462,7 @@ class StageDispatcherTest {
         when(handler.execute(any())).thenReturn(expectedResult);
 
         var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
 
         verify(eventPublisher).publishEvent(completedEventCaptor.capture());
         var event = completedEventCaptor.getValue();
@@ -483,7 +483,7 @@ class StageDispatcherTest {
 
         var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_CONSOLIDATION, handler));
         dispatcher.onTrigger(new StageTriggeredEvent(
-                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION));
+                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION, UUID.randomUUID().toString()));
 
         verify(eventPublisher).publishEvent(completedEventCaptor.capture());
         var event = completedEventCaptor.getValue();
@@ -500,7 +500,7 @@ class StageDispatcherTest {
         when(handler.execute(any())).thenReturn(result);
 
         var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
 
         verify(eventPublisher).publishEvent(completedEventCaptor.capture());
         assertThat(completedEventCaptor.getValue().getResult().durationMs()).isEqualTo(1234L);
@@ -517,7 +517,7 @@ class StageDispatcherTest {
         when(handler.execute(any())).thenReturn(success(CHUNKING, "ok", 0L));
 
         var dispatcher = createDispatcher(Map.of(CHUNKING, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING));
+        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, CHUNKING, UUID.randomUUID().toString()));
 
         var ctxCaptor = ArgumentCaptor.forClass(StageExecutionContext.class);
         verify(handler).execute(ctxCaptor.capture());
@@ -537,7 +537,7 @@ class StageDispatcherTest {
 
         var dispatcher = createDispatcher(Map.of(BOOK_INDIVIDUAL_CONSOLIDATION, handler));
         dispatcher.onTrigger(new StageTriggeredEvent(
-                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION));
+                this, JOB_ID, CHAPTER_ID, BOOK_ID, BOOK_INDIVIDUAL_CONSOLIDATION, UUID.randomUUID().toString()));
 
         var ctxCaptor = ArgumentCaptor.forClass(StageExecutionContext.class);
         verify(handler).execute(ctxCaptor.capture());
@@ -560,7 +560,7 @@ class StageDispatcherTest {
         when(handler.execute(any())).thenReturn(success(INGESTION_COMPLETE, "done", 0L));
 
         var dispatcher = createDispatcher(Map.of(INGESTION_COMPLETE, handler));
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, INGESTION_COMPLETE));
+        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, INGESTION_COMPLETE, UUID.randomUUID().toString()));
 
         verify(handler).execute(any());
     }
@@ -569,7 +569,7 @@ class StageDispatcherTest {
     @DisplayName("dispatch: INGESTION_COMPLETE uses ingestionLaneTaskExecutor")
     void onTrigger_ingestionComplete_shouldUseIngestionLaneExecutor() {
         var dispatcher = createDispatcher(allSuccessHandlers());
-        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, INGESTION_COMPLETE));
+        dispatcher.onTrigger(new StageTriggeredEvent(this, JOB_ID, CHAPTER_ID, INGESTION_COMPLETE, UUID.randomUUID().toString()));
 
         verify(ingestionLaneTaskExecutor).execute(any());
     }

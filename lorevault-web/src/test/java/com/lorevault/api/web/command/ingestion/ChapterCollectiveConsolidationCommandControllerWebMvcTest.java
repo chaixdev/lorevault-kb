@@ -1,14 +1,11 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.library.chapter.Chapter;
-import com.lorevault.api.library.chapter.ChapterGraphRepository;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StageResult;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,15 +31,9 @@ class ChapterCollectiveConsolidationCommandControllerWebMvcTest {
     @MockitoBean
     private StepEventMapper stepEventMapper;
 
-    @MockitoBean
-    private ChapterGraphRepository chapterGraphRepository;
-
     @Test
     void consolidateChapterCollectivesSuccessReturns200() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        Chapter chapter = new Chapter();
-        chapter.setId(chapterId);
-        when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
         when(chapterCollectiveResolutionOperation.execute(
                 new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION)))
                 .thenReturn(StageResult.success(
@@ -73,11 +64,16 @@ class ChapterCollectiveConsolidationCommandControllerWebMvcTest {
     }
 
     @Test
-    void consolidateChapterCollectivesMissingChapterReturns404() throws Exception {
+    void consolidateChapterCollectives_stageFailure_returns200WithFailureResult() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.empty());
+        when(chapterCollectiveResolutionOperation.execute(
+                new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION)))
+                .thenReturn(StageResult.failure(
+                        StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION, "Entity not found", 0L));
 
         mockMvc.perform(post("/api/command/ingest/chapters/{chapterId}/chapter-consolidate-collectives", chapterId))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.summary").value("Entity not found"));
     }
 }

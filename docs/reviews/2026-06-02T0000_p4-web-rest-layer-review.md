@@ -375,7 +375,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** Single-implementation, single-consumer `@Component` — only `CommandIngestionController` uses it. `PrepareCommandController` and `JobsController` construct `ErrorResponse` inline, making the factory inconsistent.
 
 **Fix:** Either inline into `CommandIngestionController` or adopt as the standard across all controllers.
-
+>! agreed. should be used across all.
 ---
 
 ### MED-16 — `LibraryOptionsController.getBookSelector()` is dead stub
@@ -385,8 +385,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** Returns an empty `LibraryHierarchy` with TODO comment. The endpoint always returns an empty book selector regardless of database contents.
 
 **Fix:** Implement the book hierarchy query or remove the endpoint if unused.
-
----
+>! remove dead code/stub
 
 ### MED-17 — `JobStatusResponse` and `JobListResponse` nested classes use `@Data`
 **Severity:** 🟡 MEDIUM  
@@ -395,7 +394,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** Nested static classes (`FailureDetails`, `StatusUpdateDto`, `JobSummary`, `Pagination`) annotated with `@Data`. These are pure data carriers — `equals`/`hashCode` unnecessary.
 
 **Fix:** Replace with `@Getter @Setter` or convert to records.
-
+>! agreed, but take up together with other @Data remarks
 ---
 
 ### MED-18 — `UiQueryController` narrow catch misses NPE from null LLM responses
@@ -405,7 +404,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** Catches only `SemanticSearchException | EntityLookupException` but not `RuntimeException` (e.g., NPE from null LLM response). A known coding-standards pattern warns: "Null-guard every LLM response access."
 
 **Fix:** Broaden catch to `Exception` in the error-handling path, matching `CommandIngestionController`.
-
+>! agreed
 ---
 
 ### MED-19 — `IngestionUiController` batch upload processes files sequentially on HTTP thread
@@ -415,7 +414,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** 50-file batch upload holds the HTTP thread for 50 sequential `@Transactional` database transactions. No early termination on failure — partial submission state not rollback-safe.
 
 **Fix:** Offload individual submissions to a bounded executor and return 202 Accepted immediately with batch tracking. Document that large batches should be split.
-
+>! agreed, but might be more appropriate for a separate planning ticket? also to be addressed: for some reason current upload is limited to 10 files in one formdata. can we improve that? also, 
 ---
 
 ### MED-20 — `UiOperatorActionsController` replays with null `bookId`
@@ -425,7 +424,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** `pipelineCoordinator.findBookIdByChapterId()` can return `null` and is passed to `rerunStage()` without a null check. Book-level stage handlers may NPE when dereferencing null `bookId`.
 
 **Fix:** Add a null check for `bookId` alongside the `jobId` null check.
-
+>! agreed
 ---
 
 ### LOW Findings (consolidated)

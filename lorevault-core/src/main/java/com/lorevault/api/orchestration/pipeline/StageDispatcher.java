@@ -124,6 +124,8 @@ public class StageDispatcher {
         UUID bookId = event.getBookId();
         StageKey stage = event.getStage();
 
+        String correlationId = UUID.randomUUID().toString();
+        MDC.put("correlationId", correlationId);
         MDC.put("stage", stage.name());
         MDC.put("jobId", jobId.toString());
 
@@ -156,15 +158,15 @@ public class StageDispatcher {
         }
 
         // 4. Emit completion
-        emitComplete(jobId, chapterId, bookId, stage, result);
+        emitComplete(jobId, chapterId, bookId, stage, result, correlationId);
 
         MDC.clear();
     }
 
     private void emitComplete(UUID jobId, UUID chapterId, UUID bookId,
-                               StageKey stage, StageResult result) {
+                               StageKey stage, StageResult result, String correlationId) {
         eventPublisher.publishEvent(new StageCompletedEvent(
-                this, jobId, chapterId, bookId, stage, result));
+                this, jobId, chapterId, bookId, stage, result, correlationId));
     }
 
     /**
