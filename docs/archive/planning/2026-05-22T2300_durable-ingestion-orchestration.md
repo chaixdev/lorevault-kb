@@ -593,7 +593,7 @@ Handlers should use `@TransactionalEventListener(phase = AFTER_COMMIT)` rather t
 
 ### Verification
 
-- `mvn -pl lorevault-core,lorevault-web compile -DskipTests` passes clean
+- `mvn compile -DskipTests` passes clean
 - Neo4j schema constraints/indexes added (not yet verified against running DB)
 - No integration or unit tests updated/written yet (Phase 11)
 

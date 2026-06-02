@@ -15,7 +15,7 @@ import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -64,7 +64,7 @@ public class ChapterEventEmbeddingHandler implements StageOperation {
     }
 
     @Override
-    public StepResult execute(StageExecutionContext ctx) {
+    public StageResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         UUID chapterId = ctx.chapterId();
         UUID bookId = ctx.bookId();
@@ -79,7 +79,7 @@ public class ChapterEventEmbeddingHandler implements StageOperation {
             log.info("[EVENT_EMBEDDING] Skipping — all {} ChapterEvents already embedded, BookEvent(s) exist for chapter {}",
                     totalCount, chapterId);
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(StageKey.CHAPTER_EVENT_EMBEDDING,
+            return StageResult.success(StageKey.CHAPTER_EVENT_EMBEDDING,
                     "Already completed",
                     Map.of("embeddedCount", (int) totalCount,
                             "bookEventsCreated", (int) bookEventCount),
@@ -158,7 +158,7 @@ public class ChapterEventEmbeddingHandler implements StageOperation {
                     reductionResult.referenceLinksWritten()
             );
 
-            return StepResult.success(StageKey.CHAPTER_EVENT_EMBEDDING,
+            return StageResult.success(StageKey.CHAPTER_EVENT_EMBEDDING,
                     String.format("Embedded %d events, %d candidate pairs, %d book events created",
                             embeddedCount, candidatePairs.size(), reductionResult.bookEventsCreated()),
                     Map.of(
@@ -175,9 +175,9 @@ public class ChapterEventEmbeddingHandler implements StageOperation {
                     jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure(StageKey.CHAPTER_EVENT_EMBEDDING,
+                    ? StageResult.retryableFailure(StageKey.CHAPTER_EVENT_EMBEDDING,
                             sanitize(e), elapsed)
-                    : StepResult.failure(StageKey.CHAPTER_EVENT_EMBEDDING,
+                    : StageResult.failure(StageKey.CHAPTER_EVENT_EMBEDDING,
                             sanitize(e), elapsed);
         }
     }

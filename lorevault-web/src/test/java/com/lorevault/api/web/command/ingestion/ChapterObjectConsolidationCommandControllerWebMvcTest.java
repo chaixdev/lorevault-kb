@@ -5,7 +5,7 @@ import com.lorevault.api.library.chapter.ChapterGraphRepository;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 
 import java.util.Map;
 import java.util.Optional;
@@ -45,7 +45,7 @@ class ChapterObjectConsolidationCommandControllerWebMvcTest {
         when(chapterGraphRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
         when(chapterObjectResolutionOperation.execute(
                 new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_OBJECT_CONSOLIDATION)))
-                .thenReturn(StepResult.success(
+                .thenReturn(StageResult.success(
                         StageKey.CHAPTER_OBJECT_CONSOLIDATION,
                         "Resolved chapter objects",
                         Map.of("mentionCount", 3, "chapterObjectCount", 2),
@@ -55,7 +55,7 @@ class ChapterObjectConsolidationCommandControllerWebMvcTest {
         mockMvc.perform(post("/api/command/ingest/chapters/{chapterId}/chapter-consolidate-objects", chapterId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.step").value("chapter-consolidate-objects"))
+                .andExpect(jsonPath("$.step").value("chapter-object-consolidation"))
                 .andExpect(jsonPath("$.scope").value("chapter"))
                 .andExpect(jsonPath("$.scopeId").value(chapterId.toString()))
                 .andExpect(jsonPath("$.counts.mentionCount").value(3))

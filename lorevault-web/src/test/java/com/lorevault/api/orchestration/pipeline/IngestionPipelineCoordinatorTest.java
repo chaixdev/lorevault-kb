@@ -136,19 +136,19 @@ class IngestionPipelineCoordinatorTest {
 
     // ── Helpers ──────────────────────────────────────────────────────
 
-    private static StepResult successResult(StageKey stage) {
-        return StepResult.success(stage, "Completed OK", 42L);
+    private static StageResult successResult(StageKey stage) {
+        return StageResult.success(stage, "Completed OK", 42L);
     }
 
-    private static StepResult failureResult(StageKey stage) {
-        return StepResult.failure(stage, "Something went wrong", 42L);
+    private static StageResult failureResult(StageKey stage) {
+        return StageResult.failure(stage, "Something went wrong", 42L);
     }
 
-    private static StepResult retryableFailureResult(StageKey stage) {
-        return StepResult.retryableFailure(stage, "Transient error", 42L);
+    private static StageResult retryableFailureResult(StageKey stage) {
+        return StageResult.retryableFailure(stage, "Transient error", 42L);
     }
 
-    private static StageCompletedEvent completedEvent(StageKey stage, UUID bookId, StepResult result) {
+    private static StageCompletedEvent completedEvent(StageKey stage, UUID bookId, StageResult result) {
         return new StageCompletedEvent("test", JOB_ID, CHAPTER_ID, bookId, stage, result);
     }
 
@@ -358,7 +358,7 @@ class IngestionPipelineCoordinatorTest {
             stubNeo4jQueryLenient();
 
             StageKey stage = StageKey.SCENE_SEGMENTATION;
-            StepResult result = failureResult(stage);
+            StageResult result = failureResult(stage);
             StageCompletedEvent event = completedEvent(stage, null, result);
 
             coordinator.onStageCompleted(event);
@@ -373,7 +373,7 @@ class IngestionPipelineCoordinatorTest {
             stubNeo4jQueryLenient();
 
             StageKey stage = StageKey.CHUNKING;
-            StepResult result = retryableFailureResult(stage);
+            StageResult result = retryableFailureResult(stage);
             StageCompletedEvent event = completedEvent(stage, null, result);
 
             coordinator.onStageCompleted(event);

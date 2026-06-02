@@ -5,7 +5,7 @@ import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
 import com.lorevault.api.orchestration.pipeline.StageKey;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 
 import com.lorevault.api.library.chunk.ChunkGraphRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +44,7 @@ public class EmbeddingHandler implements EmbeddingOperation {
     }
 
     @Override
-    public StepResult execute(StageExecutionContext ctx) {
+    public StageResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         UUID chapterId = ctx.chapterId();
         long start = System.currentTimeMillis();
@@ -55,7 +55,7 @@ public class EmbeddingHandler implements EmbeddingOperation {
                 log.info("[EMBEDDING] Skipping — {} embeddings already exist for chapter {}",
                         existingEmbeddings, chapterId);
                 long elapsed = System.currentTimeMillis() - start;
-                return StepResult.success(StageKey.EMBEDDING,
+                return StageResult.success(StageKey.EMBEDDING,
                         String.format("Skipped — %d embeddings already exist", existingEmbeddings),
                         Map.of("embeddingsGenerated", existingEmbeddings),
                         elapsed);
@@ -68,7 +68,7 @@ public class EmbeddingHandler implements EmbeddingOperation {
                     chapterId, embeddedCount);
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(StageKey.EMBEDDING,
+            return StageResult.success(StageKey.EMBEDDING,
                     String.format("Generated embeddings for %d chunks", embeddedCount),
                     Map.of("embeddingsGenerated", embeddedCount),
                     elapsed);
@@ -77,9 +77,9 @@ public class EmbeddingHandler implements EmbeddingOperation {
             log.error("[EMBEDDING] Failed for job={} chapter={}: {}", jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure(StageKey.EMBEDDING,
+                    ? StageResult.retryableFailure(StageKey.EMBEDDING,
                             sanitize(e), elapsed)
-                    : StepResult.failure(StageKey.EMBEDDING,
+                    : StageResult.failure(StageKey.EMBEDDING,
                             sanitize(e), elapsed);
         }
     }

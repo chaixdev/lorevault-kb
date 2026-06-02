@@ -265,7 +265,7 @@ Verification targets:
 - focused Object lane unit tests
 - focused command controller WebMvc tests
 - focused schema initializer tests
-- `mvn -pl lorevault-web -am compile -DskipTests`
+- `mvn compile -DskipTests`
 - relevant integration tests under the documented integration-test profile when graph-backed behavior is touched
 
 ### 9. Documentation updates after implementation

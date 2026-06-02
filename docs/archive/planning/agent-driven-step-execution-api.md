@@ -527,13 +527,13 @@ Test fix:
 
 Compilation verified:
 ```bash
-mvn clean compile -pl lorevault-core,lorevault-web -DskipTests
+mvn clean compile -DskipTests
 # BUILD SUCCESS
 ```
 
 SceneDetectionHandler tests verified:
 ```bash
-mvn test -pl lorevault-web -Dtest="SceneDetectionHandlerTest"
+mvn test -Dtest="SceneDetectionHandlerTest"
 # Tests run: 13, Failures: 0, Errors: 0, Skipped: 0
 ```
 
@@ -611,13 +611,13 @@ Web layer (`lorevault-web`):
 
 Compilation verified:
 ```bash
-mvn clean compile -pl lorevault-core,lorevault-web -DskipTests
+mvn clean compile -DskipTests
 # BUILD SUCCESS
 ```
 
 Handler tests verified:
 ```bash
-mvn test -pl lorevault-web -Dtest="SceneDetectionHandlerTest,ChunkingHandlerTest,EmbeddingHandlerTest,ChapterEventResolutionHandlerTest"
+mvn test -Dtest="SceneDetectionHandlerTest,ChunkingHandlerTest,EmbeddingHandlerTest,ChapterEventResolutionHandlerTest"
 # Tests run: 23, Failures: 0, Errors: 0
 ```
 
@@ -672,13 +672,13 @@ Web layer (`lorevault-web`):
 
 Compilation verified:
 ```bash
-mvn clean compile -pl lorevault-core,lorevault-web -DskipTests
+mvn clean compile -DskipTests
 # BUILD SUCCESS
 ```
 
 Handler tests verified:
 ```bash
-mvn test -pl lorevault-web -Dtest="SceneDetectionHandlerTest,ChunkingHandlerTest,EmbeddingHandlerTest,ChapterEventResolutionHandlerTest"
+mvn test -Dtest="SceneDetectionHandlerTest,ChunkingHandlerTest,EmbeddingHandlerTest,ChapterEventResolutionHandlerTest"
 # Tests run: 23, Failures: 0, Errors: 0
 ```
 
@@ -808,7 +808,7 @@ During E2E validation with a 2-chapter Deathworlders test, the cross-chapter bou
 **Verification:**
 
 ```bash
-mvn test -pl lorevault-core,lorevault-web
+mvn test
 # Tests run: 497, Failures: 0, Errors: 9 (pre-existing WebMvc ApplicationContext failures for deleted controllers)
 ```
 

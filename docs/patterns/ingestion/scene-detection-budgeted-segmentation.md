@@ -102,8 +102,8 @@ Chapter-segmentation call output caps remain hardcoded in code (`maxTokens=6000`
 
 Validated during implementation with:
 
-- `mvn -pl lorevault-web,lorevault-core clean compile -DskipTests`
-- `mvn -pl lorevault-web -am -Dtest=SceneDetectionServiceTest,SceneDetectionHandlerTest,SceneProcessingServiceTest test`
+- `mvn clean compile -DskipTests`
+- `mvn -Dtest=SceneDetectionServiceTest,SceneDetectionHandlerTest,SceneProcessingServiceTest test`
 
 Latest full-module result at implementation time: `188` tests, `0` failures, `0` errors.
 

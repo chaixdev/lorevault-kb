@@ -3,7 +3,7 @@ package com.lorevault.api.library.chunk;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 
 import java.util.UUID;
 
@@ -23,7 +23,7 @@ public interface ChunkingOperation extends StageOperation {
      * @param chapterId the chapter to process
      * @return result summarising what happened
      */
-    default StepResult execute(UUID jobId, UUID chapterId) {
+    default StageResult execute(UUID jobId, UUID chapterId) {
         return execute(new StageExecutionContext(null, jobId, chapterId, null, StageKey.CHUNKING));
     }
 }

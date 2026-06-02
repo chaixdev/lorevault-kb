@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import com.lorevault.api.orchestration.pipeline.StageKey;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -27,7 +27,7 @@ public class ChapterIndividualConsolidationHandler implements StageOperation {
     }
 
     @Override
-    public StepResult execute(StageExecutionContext ctx) {
+    public StageResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         UUID chapterId = ctx.chapterId();
         long start = System.currentTimeMillis();
@@ -54,7 +54,7 @@ public class ChapterIndividualConsolidationHandler implements StageOperation {
             }
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION,
+            return StageResult.success(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION,
                     response.message() != null ? response.message() : "Completed",
                     Map.of(
                             "rawIndividualsProcessed", response.rawIndividualsProcessed(),
@@ -67,9 +67,9 @@ public class ChapterIndividualConsolidationHandler implements StageOperation {
             log.error("[CHAPTER_INDIVIDUAL_CONSOLIDATION] Failed: jobId={}, chapterId={}", jobId, chapterId, e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION,
+                    ? StageResult.retryableFailure(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION,
                             sanitize(e), elapsed)
-                    : StepResult.failure(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION,
+                    : StageResult.failure(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION,
                             sanitize(e), elapsed);
         }
     }

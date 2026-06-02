@@ -19,7 +19,7 @@ import com.lorevault.api.orchestration.pipeline.ForStage;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 import com.lorevault.api.orchestration.triad.SceneRelationshipAnalysisService;
 import com.lorevault.api.orchestration.triad.TriadAnalysisException;
 import com.lorevault.api.orchestration.triad.TriadAnalysisModels;
@@ -94,7 +94,7 @@ public class SceneDetectionHandler implements StageOperation {
     }
 
     @Override
-    public StepResult execute(StageExecutionContext ctx) {
+    public StageResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         UUID chapterId = ctx.chapterId();
         long start = System.currentTimeMillis();
@@ -114,7 +114,7 @@ public class SceneDetectionHandler implements StageOperation {
                         existingScenes.size(), chapterId);
                 // Note: StageCompletedEvent is emitted by the caller
                 long elapsed = System.currentTimeMillis() - start;
-                return StepResult.success(StageKey.SCENE_SEGMENTATION,
+                return StageResult.success(StageKey.SCENE_SEGMENTATION,
                         String.format("Skipped — %d scenes already exist", existingScenes.size()),
                         Map.of("scenesDetected", existingScenes.size()),
                         elapsed);
@@ -181,7 +181,7 @@ public class SceneDetectionHandler implements StageOperation {
             // can suppress the cascade.
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(StageKey.SCENE_SEGMENTATION,
+            return StageResult.success(StageKey.SCENE_SEGMENTATION,
                     String.format("Detected %d scenes", scenes.size()),
                     Map.of("scenesDetected", scenes.size()),
                     elapsed);
@@ -191,9 +191,9 @@ public class SceneDetectionHandler implements StageOperation {
             log.error("[SCENE_DETECTION] Failed for job={} chapter={}: {}", jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ?StepResult.retryableFailure(StageKey.SCENE_SEGMENTATION,
+                    ?StageResult.retryableFailure(StageKey.SCENE_SEGMENTATION,
                     ExceptionSanitizer.sanitize(e), elapsed)
-                    : StepResult.failure(StageKey.SCENE_SEGMENTATION,
+                    : StageResult.failure(StageKey.SCENE_SEGMENTATION,
                     ExceptionSanitizer.sanitize(e), elapsed);
         }
     }

@@ -95,7 +95,7 @@ public class IngestionPipelineCoordinator {
         UUID chapterId = event.getChapterId();
         UUID bookId = event.getBookId();
         StageKey stage = event.getStage();
-        StepResult result = event.getResult();
+        StageResult result = event.getResult();
 
         if (result.success()) {
             stageRepo.setCompleted(jobId, stage);

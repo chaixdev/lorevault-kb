@@ -1,15 +1,15 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.orchestration.pipeline.StepKey;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 
 import java.util.Map;
 
 /**
- * Uniform response envelope for all step execution endpoints.
+ * Uniform response envelope for all stage execution endpoints.
  *
- * <p>Maps from the core-layer {@link StepResult} and adds scope/scopeId
- * for client convenience. All step endpoints return this shape so that
+ * <p>Maps from the core-layer {@link StageResult} and adds scope/scopeId
+ * for client convenience. All stage endpoints return this shape so that
  * agents can parse responses consistently.
  *
  * @param step       kebab-case step identifier (e.g. "detect-scenes")
@@ -21,7 +21,7 @@ import java.util.Map;
  * @param retryable  whether a failure is retryable (false for successes)
  * @param counts     step-specific integer metrics
  */
-public record StepExecutionResponse(
+public record StageExecutionResponse(
         String step,
         String scope,
         String scopeId,
@@ -32,16 +32,16 @@ public record StepExecutionResponse(
         Map<String, Integer> counts
 ) {
     /**
-     * Create a response from a core-layer StepResult, adding scope context.
+     * Create a response from a core-layer StageResult, adding scope context.
      *
-     * <p>Uses {@link StepKey#toUrlSegment()} to convert the internal step name
-     * to a kebab-case URL segment (e.g., "SCENE_DETECTION" → "detect-scenes").
+     * <p>Uses {@link StageKey#toUrlSegment()} to convert the internal stage name
+     * to a kebab-case URL segment (e.g., "SCENE_SEGMENTATION" → "scene-segmentation").
      * This ensures the response step identifier matches the step catalog and
      * can be used to construct subsequent step URLs.
      */
-    public static StepExecutionResponse from(StepResult result, StepKey stepKey, String scope, String scopeId) {
-        return new StepExecutionResponse(
-                stepKey.toUrlSegment(),
+    public static StageExecutionResponse from(StageResult result, StageKey stageKey, String scope, String scopeId) {
+        return new StageExecutionResponse(
+                stageKey.toUrlSegment(),
                 scope,
                 scopeId,
                 result.success(),

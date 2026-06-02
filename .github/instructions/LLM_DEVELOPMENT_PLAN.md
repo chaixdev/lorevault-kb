@@ -229,7 +229,7 @@ class [ServiceName]Test {
 
 ### Build & Run (using developer-testing-workflow.md commands)
 1. **Build**: `mvn clean install` (from project root)
-2. **Run**: `mvn -pl lorevault-api spring-boot:run -Dspring-boot.run.profiles=dev` (start application)  
+2. **Run**: `mvn spring-boot:run -Dspring-boot.run.profiles=dev` (start application)  
 3. **Test API**: Use provided curl commands or test endpoints
 4. **Monitor**: Check application logs for expected behavior
 

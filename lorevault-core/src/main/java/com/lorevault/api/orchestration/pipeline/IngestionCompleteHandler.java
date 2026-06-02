@@ -11,9 +11,9 @@ import java.util.UUID;
 public class IngestionCompleteHandler implements StageOperation {
 
     @Override
-    public StepResult execute(StageExecutionContext ctx) {
+    public StageResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         log.info("[ORCHESTRATION] Ingestion complete: jobId={}", jobId);
-        return StepResult.success(StageKey.INGESTION_COMPLETE, "Ingestion pipeline completed", 0L);
+        return StageResult.success(StageKey.INGESTION_COMPLETE, "Ingestion pipeline completed", 0L);
     }
 }

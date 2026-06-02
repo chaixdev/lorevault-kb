@@ -8,7 +8,7 @@ import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
 import com.lorevault.api.graph.event.scene.Scene;
@@ -54,7 +54,7 @@ public class ChapterEventConsolidationHandler implements StageOperation {
     }
 
     @Override
-    public StepResult execute(StageExecutionContext ctx) {
+    public StageResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         UUID chapterId = ctx.chapterId();
         long start = System.currentTimeMillis();
@@ -75,7 +75,7 @@ public class ChapterEventConsolidationHandler implements StageOperation {
                     chapterEventConsolidationService.consolidateChapter(ctx, chapterId);
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(StageKey.CHAPTER_EVENT_CONSOLIDATION,
+            return StageResult.success(StageKey.CHAPTER_EVENT_CONSOLIDATION,
                     String.format("Coref: %d windows, %d links; Aggregation: %d events from %d mentions",
                             corefResult.windowsRun(), corefResult.linksCreated(),
                             aggregationResult.chapterEventsCreated(),
@@ -95,9 +95,9 @@ public class ChapterEventConsolidationHandler implements StageOperation {
                     jobId, chapterId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure(StageKey.CHAPTER_EVENT_CONSOLIDATION,
+                    ? StageResult.retryableFailure(StageKey.CHAPTER_EVENT_CONSOLIDATION,
                             sanitize(e), elapsed)
-                    : StepResult.failure(StageKey.CHAPTER_EVENT_CONSOLIDATION,
+                    : StageResult.failure(StageKey.CHAPTER_EVENT_CONSOLIDATION,
                             sanitize(e), elapsed);
         }
     }

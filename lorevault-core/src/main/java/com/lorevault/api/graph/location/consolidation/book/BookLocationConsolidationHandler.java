@@ -6,7 +6,7 @@ import com.lorevault.api.orchestration.pipeline.StageOperation;
 import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 
 import com.lorevault.api.orchestration.pipeline.StageKey;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 import com.lorevault.api.orchestration.consolidation.BookConsolidationClaimService;
 import com.lorevault.api.orchestration.consolidation.BookConsolidationClaimUnavailableException;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +34,7 @@ public class BookLocationConsolidationHandler implements StageOperation {
     }
 
     @Override
-    public StepResult execute(StageExecutionContext ctx) {
+    public StageResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         UUID bookId = ctx.bookId();
         long start = System.currentTimeMillis();
@@ -42,7 +42,7 @@ public class BookLocationConsolidationHandler implements StageOperation {
         if (!bookConsolidationClaimService.tryAcquireClaim(bookId, CLAIM_LANE, ctx.stageId())) {
             long elapsed = System.currentTimeMillis() - start;
             log.warn("[BOOK_LOCATION_CONSOLIDATION] Claim contention: jobId={}, bookId={}", jobId, bookId);
-            return StepResult.retryableFailure(StageKey.BOOK_LOCATION_CONSOLIDATION,
+            return StageResult.retryableFailure(StageKey.BOOK_LOCATION_CONSOLIDATION,
                     "Claim contention — another worker holds the reduction claim for this book", elapsed);
         }
 
@@ -56,7 +56,7 @@ public class BookLocationConsolidationHandler implements StageOperation {
                         "[BOOK_LOCATION_CONSOLIDATION] Completed: jobId={}, bookId={}, chapterLocationCount={}, bookLocationCount={}",
                         jobId, bookId, response.chapterLocationsProcessed(), response.bookLocationsCreated()
                 );
-                return StepResult.success(StageKey.BOOK_LOCATION_CONSOLIDATION,
+                return StageResult.success(StageKey.BOOK_LOCATION_CONSOLIDATION,
                         String.format("Reduced %d chapter locations into %d book locations",
                                 response.chapterLocationsProcessed(), response.bookLocationsCreated()),
                         Map.of("chapterLocationsProcessed", response.chapterLocationsProcessed(),
@@ -67,7 +67,7 @@ public class BookLocationConsolidationHandler implements StageOperation {
                         "[BOOK_LOCATION_CONSOLIDATION] Skipped: jobId={}, bookId={}, reason={}",
                         jobId, bookId, response.message()
                 );
-                return StepResult.success(StageKey.BOOK_LOCATION_CONSOLIDATION,
+                return StageResult.success(StageKey.BOOK_LOCATION_CONSOLIDATION,
                         "Skipped — " + response.message(),
                         Map.of("chapterLocationsProcessed", response.chapterLocationsProcessed(),
                                 "bookLocationsCreated", response.bookLocationsCreated()),
@@ -78,9 +78,9 @@ public class BookLocationConsolidationHandler implements StageOperation {
             log.error("[BOOK_LOCATION_CONSOLIDATION] Failed for job={} bookId={}: {}", jobId, bookId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure(StageKey.BOOK_LOCATION_CONSOLIDATION,
+                    ? StageResult.retryableFailure(StageKey.BOOK_LOCATION_CONSOLIDATION,
                             sanitize(e), elapsed)
-                    : StepResult.failure(StageKey.BOOK_LOCATION_CONSOLIDATION,
+                    : StageResult.failure(StageKey.BOOK_LOCATION_CONSOLIDATION,
                             sanitize(e), elapsed);
         } finally {
             bookConsolidationClaimService.releaseClaim(bookId, CLAIM_LANE);

@@ -11,7 +11,7 @@ import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 import com.lorevault.api.orchestration.consolidation.BookConsolidationClaimService;
 import com.lorevault.api.orchestration.consolidation.BookConsolidationClaimUnavailableException;
 import java.util.ArrayList;
@@ -65,7 +65,7 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
     }
 
     @Override
-    public StepResult execute(StageExecutionContext ctx) {
+    public StageResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         UUID chapterId = ctx.chapterId();
         UUID bookId = ctx.bookId();
@@ -74,7 +74,7 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
         if (bookId == null) {
             log.warn("[LANE:EVENT] [EVENT_CANDIDATE_GENERATION] Skipped: jobId={}, bookId={}, reason={}",
                     jobId, null, "Book ID is required");
-            return StepResult.success(StageKey.BOOK_EVENT_CANDIDATE_GENERATION, "Book ID is required", 0L);
+            return StageResult.success(StageKey.BOOK_EVENT_CANDIDATE_GENERATION, "Book ID is required", 0L);
         }
 
         long start = System.currentTimeMillis();
@@ -84,7 +84,7 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
         if (!bookConsolidationClaimService.tryAcquireClaim(bookId, CLAIM_LANE, ctx.stageId())) {
             long elapsed = System.currentTimeMillis() - start;
             log.warn("[EVENT_CANDIDATE_GENERATION] Claim contention: jobId={}, bookId={}", jobId, bookId);
-            return StepResult.retryableFailure(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
+            return StageResult.retryableFailure(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
                     "Claim contention — another worker holds the reduction claim for this book", elapsed);
         }
 
@@ -96,7 +96,7 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
                 long elapsed = System.currentTimeMillis() - start;
                 log.warn("[LANE:EVENT] [EVENT_CANDIDATE_GENERATION] Skipped: jobId={}, bookId={}, reason={}",
                         jobId, bookId, "No chapters found for book");
-                return StepResult.success(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
+                return StageResult.success(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
                         "No chapters found for book",
                         Map.of("totalCandidatePairs", 0,
                                 "mergeDecisionCount", 0,
@@ -144,7 +144,7 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
                 long elapsed = System.currentTimeMillis() - start;
                 log.warn("[LANE:EVENT] [EVENT_CANDIDATE_GENERATION] Skipped: jobId={}, bookId={}, reason={}",
                         jobId, bookId, "No candidate pairs generated");
-                return StepResult.success(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
+                return StageResult.success(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
                         "No cross-chapter ANN candidate pairs generated",
                         Map.of("totalCandidatePairs", 0,
                                 "mergeDecisionCount", 0,
@@ -180,7 +180,7 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
                     reductionResult.bookEventsCreated(),
                     reductionResult.referenceLinksWritten());
 
-            return StepResult.success(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
+            return StageResult.success(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
                     String.format("Generated %d cross-chapter candidate pairs, %d merge decisions, %d book events created",
                             dedupedPairs.size(), mergeDecisions.size(),
                             reductionResult.bookEventsCreated()),
@@ -197,9 +197,9 @@ public class BookEventCandidateGenerationHandler implements StageOperation {
             log.error("[EVENT_CANDIDATE_GENERATION] Failed for job={} bookId={}: {}", jobId, bookId, e.getMessage(), e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
+                    ? StageResult.retryableFailure(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
                             sanitize(e), elapsed)
-                    : StepResult.failure(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
+                    : StageResult.failure(StageKey.BOOK_EVENT_CANDIDATE_GENERATION,
                             sanitize(e), elapsed);
         } finally {
             bookConsolidationClaimService.releaseClaim(bookId, CLAIM_LANE);

@@ -33,7 +33,7 @@ import java.util.UUID;
  *       before execution so all downstream logs carry stage identity</li>
  *   <li>Guard: atomic TRIGGERED→RUNNING transition, returns stage ID</li>
  *   <li>Error boundary: catches unchecked exceptions and converts
- *       to {@link StepResult#failure}</li>
+ *       to {@link StageResult#failure}</li>
  *   <li>Completion: emits {@link StageCompletedEvent}</li>
  * </ol>
  *
@@ -146,12 +146,12 @@ public class StageDispatcher {
 
         // 2. Execute with error boundary
         StageExecutionContext ctx = new StageExecutionContext(stageId, jobId, chapterId, bookId, stage);
-        StepResult result;
+        StageResult result;
         try {
             result = handler.execute(ctx);
         } catch (Exception e) {
             log.error("Unhandled exception in stage {}: jobId={}", stage, jobId, e);
-            result = StepResult.failure(stage,
+            result = StageResult.failure(stage,
                     ExceptionSanitizer.sanitize(e), 0L);
         }
 
@@ -162,7 +162,7 @@ public class StageDispatcher {
     }
 
     private void emitComplete(UUID jobId, UUID chapterId, UUID bookId,
-                               StageKey stage, StepResult result) {
+                               StageKey stage, StageResult result) {
         eventPublisher.publishEvent(new StageCompletedEvent(
                 this, jobId, chapterId, bookId, stage, result));
     }

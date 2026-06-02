@@ -245,7 +245,7 @@ No per-handler cleanup queries. The first deletes tagged nodes (DETACH DELETE re
 - `StageDispatcherWiringTest`: Removed `StageOutputGraphRepository` mock from constructor call.
 
 **Cross-JAR visibility:**
-Used `mvn test -pl lorevault-core,lorevault-web` initially, which caused stale JAR issues (lorevault-web tests couldn't see updated lorevault-core classes). User called this out. Switched to `mvn test` (full reactor build) which builds all modules in dependency order. Lesson: always use full reactor unless there's a specific reason to limit scope.
+Used `mvn test` initially, which caused stale JAR issues (lorevault-web tests couldn't see updated lorevault-core classes). User called this out. Switched to `mvn test` (full reactor build) which builds all modules in dependency order. Lesson: always use full reactor unless there's a specific reason to limit scope.
 
 **Subagent provider failure:**
 Subagent provider went down mid-execution. Fell back to doing everything sequentially instead of flagging the failure and asking how to proceed. Should have communicated the blocker earlier.

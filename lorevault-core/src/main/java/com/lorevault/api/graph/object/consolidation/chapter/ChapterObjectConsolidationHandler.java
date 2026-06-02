@@ -6,7 +6,7 @@ import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,7 @@ public class ChapterObjectConsolidationHandler implements StageOperation {
     }
 
     @Override
-    public StepResult execute(StageExecutionContext ctx) {
+    public StageResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         UUID chapterId = ctx.chapterId();
         long start = System.currentTimeMillis();
@@ -59,7 +59,7 @@ public class ChapterObjectConsolidationHandler implements StageOperation {
             }
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(StageKey.CHAPTER_OBJECT_CONSOLIDATION,
+            return StageResult.success(StageKey.CHAPTER_OBJECT_CONSOLIDATION,
                     response.message() != null ? response.message() : "Completed",
                     Map.of(
                             "rawObjectsProcessed", response.rawObjectsProcessed(),
@@ -72,9 +72,9 @@ public class ChapterObjectConsolidationHandler implements StageOperation {
             log.error("[CHAPTER_OBJECT_CONSOLIDATION] Failed: jobId={}, chapterId={}", jobId, chapterId, e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure(StageKey.CHAPTER_OBJECT_CONSOLIDATION,
+                    ? StageResult.retryableFailure(StageKey.CHAPTER_OBJECT_CONSOLIDATION,
                             sanitize(e), elapsed)
-                    : StepResult.failure(StageKey.CHAPTER_OBJECT_CONSOLIDATION,
+                    : StageResult.failure(StageKey.CHAPTER_OBJECT_CONSOLIDATION,
                             sanitize(e), elapsed);
         }
     }

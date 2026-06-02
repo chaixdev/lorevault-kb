@@ -3,8 +3,7 @@ package com.lorevault.api.web.command.ingestion;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
-import com.lorevault.api.orchestration.pipeline.StepKey;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 import com.lorevault.api.library.book.BookGraphRepository;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -68,14 +67,14 @@ public class BookConceptConsolidationCommandController {
         }
 
         log.info("[CMD] Reduce book concepts: bookId={}, jobId={}, fireEvents={}", bookUuid, jobUuid, fireEvents);
-        StepResult result = bookConceptConsolidationOperation.execute(
+        StageResult result = bookConceptConsolidationOperation.execute(
                 new StageExecutionContext(null, jobUuid, null, bookUuid, StageKey.BOOK_CONCEPT_CONSOLIDATION));
 
-        StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.BOOK_CONSOLIDATE_CONCEPTS, "book", bookId);
+        StageExecutionResponse response = StageExecutionResponse.from(result, StageKey.BOOK_CONCEPT_CONSOLIDATION, "book", bookId);
 
         if (fireEvents && result.success()) {
             log.info("[CMD] Publishing completion event for BOOK_CONSOLIDATE_CONCEPTS: jobId={}, bookId={}", jobUuid, bookUuid);
-            stepEventMapper.publishCompletionEvent(StepKey.BOOK_CONSOLIDATE_CONCEPTS, jobUuid, bookUuid, result);
+            stepEventMapper.publishCompletionEvent(StageKey.BOOK_CONCEPT_CONSOLIDATION, jobUuid, bookUuid, result);
         }
 
         return ResponseEntity.ok(response);

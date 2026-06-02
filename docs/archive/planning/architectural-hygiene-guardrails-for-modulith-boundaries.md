@@ -110,7 +110,7 @@ Relevant files and areas include:
 
 ### Baseline Evidence (current run)
 
-- Command: `mvn -pl lorevault-web test -P architecture-tests -DskipTests=false`
+- Command: `mvn test -P architecture-tests -DskipTests=false`
 - Result: `BUILD FAILURE` (expected for this phase)
 - Artifact log: `./artifacts/architectural-hygiene-guardrails-pass1-archunit-failure.log`
 

@@ -296,9 +296,9 @@ Implemented:
 
 Validation snapshot:
 
-- `mvn -pl lorevault-api clean compile -DskipTests` ✅
-- `mvn -pl lorevault-api -Dtest=SceneDetectionServiceTest,SceneDetectionHandlerTest,TriadOrchestrationServiceTest test` ✅
-- `mvn -pl lorevault-api test` ✅ (`188` tests, `0` failures, `0` errors)
+- `mvn clean compile -DskipTests` ✅
+- `mvn -Dtest=SceneDetectionServiceTest,SceneDetectionHandlerTest,TriadOrchestrationServiceTest test` ✅
+- `mvn test` ✅ (`188` tests, `0` failures, `0` errors)
 
 Deviations / clarifications from original prose:
 

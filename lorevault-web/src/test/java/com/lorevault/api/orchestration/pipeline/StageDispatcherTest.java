@@ -39,7 +39,7 @@ import static com.lorevault.api.orchestration.pipeline.StageKey.CHUNKING;
 import static com.lorevault.api.orchestration.pipeline.StageKey.EMBEDDING;
 import static com.lorevault.api.orchestration.pipeline.StageKey.INGESTION_COMPLETE;
 import static com.lorevault.api.orchestration.pipeline.StageKey.SCENE_SEGMENTATION;
-import static com.lorevault.api.orchestration.pipeline.StepResult.success;
+import static com.lorevault.api.orchestration.pipeline.StageResult.success;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -89,59 +89,59 @@ class StageDispatcherTest {
     // ── Annotated handler stubs for production-constructor tests ─────────
 
     @ForStage(SCENE_SEGMENTATION) static class H_SCENE_SEGMENTATION implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(CHUNKING) static class H_CHUNKING implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(EMBEDDING) static class H_EMBEDDING implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(CHAPTER_INDIVIDUAL_CONSOLIDATION) static class H_CHAPTER_INDIVIDUAL_CONSOLIDATION implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(CHAPTER_COLLECTIVE_CONSOLIDATION) static class H_CHAPTER_COLLECTIVE_CONSOLIDATION implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(CHAPTER_CONCEPT_CONSOLIDATION) static class H_CHAPTER_CONCEPT_CONSOLIDATION implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(CHAPTER_LOCATION_CONSOLIDATION) static class H_CHAPTER_LOCATION_CONSOLIDATION implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(CHAPTER_OBJECT_CONSOLIDATION) static class H_CHAPTER_OBJECT_CONSOLIDATION implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(CHAPTER_EVENT_CONSOLIDATION) static class H_CHAPTER_EVENT_CONSOLIDATION implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(BOOK_INDIVIDUAL_CONSOLIDATION) static class H_BOOK_INDIVIDUAL_CONSOLIDATION implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(BOOK_COLLECTIVE_CONSOLIDATION) static class H_BOOK_COLLECTIVE_CONSOLIDATION implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(BOOK_CONCEPT_CONSOLIDATION) static class H_BOOK_CONCEPT_CONSOLIDATION implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(BOOK_LOCATION_CONSOLIDATION) static class H_BOOK_LOCATION_CONSOLIDATION implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(BOOK_OBJECT_CONSOLIDATION) static class H_BOOK_OBJECT_CONSOLIDATION implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(CHAPTER_EVENT_EMBEDDING) static class H_CHAPTER_EVENT_EMBEDDING implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(BOOK_EVENT_CANDIDATE_GENERATION) static class H_BOOK_EVENT_CANDIDATE_GENERATION implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
     @ForStage(INGESTION_COMPLETE) static class H_INGESTION_COMPLETE implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "ok", 0L); }
     }
 
     static class UnannotatedHandler implements StageOperation {
-        @Override public StepResult execute(StageExecutionContext c) { return success(c.stage(), "unannotated", 0L); }
+        @Override public StageResult execute(StageExecutionContext c) { return success(c.stage(), "unannotated", 0L); }
     }
 
     // ── Set-up ──────────────────────────────────────────────────────────
@@ -359,7 +359,7 @@ class StageDispatcherTest {
     @Test
     @DisplayName("dispatch: handler returns failure → StageCompletedEvent published with failure result")
     void dispatch_handlerReturnsFailure_shouldPublishCompletedEvent() {
-        var result = StepResult.failure(CHUNKING, "something went wrong", 7L);
+        var result = StageResult.failure(CHUNKING, "something went wrong", 7L);
         var handler = mock(StageOperation.class);
         when(handler.execute(any())).thenReturn(result);
 

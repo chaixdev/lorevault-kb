@@ -2,7 +2,7 @@ package com.lorevault.api.web.query.job;
 
 import com.lorevault.api.orchestration.signals.StageCompletedEvent;
 import com.lorevault.api.orchestration.pipeline.StageKey;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,7 +44,7 @@ class JobStatusBroadcasterTest {
         UUID bookId = UUID.randomUUID();
         StageCompletedEvent event = new StageCompletedEvent(
                 this, jobId, chapterId, bookId, StageKey.SCENE_SEGMENTATION,
-                StepResult.success(StageKey.SCENE_SEGMENTATION, "Detected 5 scenes", Map.of("scenesDetected", 5), 1234L)
+                StageResult.success(StageKey.SCENE_SEGMENTATION, "Detected 5 scenes", Map.of("scenesDetected", 5), 1234L)
         );
 
         broadcaster.onStageCompleted(event);

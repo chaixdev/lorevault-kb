@@ -4,8 +4,7 @@ import com.lorevault.api.library.chapter.ChapterGraphRepository;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
-import com.lorevault.api.orchestration.pipeline.StepKey;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
@@ -68,14 +67,14 @@ public class ChapterLocationConsolidationCommandController {
         }
 
         log.info("[CMD] Resolve chapter locations: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StepResult result = chapterLocationResolutionOperation.execute(
+        StageResult result = chapterLocationResolutionOperation.execute(
                 new StageExecutionContext(null, jobUuid, chapterUuid, null, StageKey.CHAPTER_LOCATION_CONSOLIDATION));
 
-        StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.CHAPTER_CONSOLIDATE_LOCATIONS, "chapter", chapterId);
+        StageExecutionResponse response = StageExecutionResponse.from(result, StageKey.CHAPTER_LOCATION_CONSOLIDATION, "chapter", chapterId);
 
         if (fireEvents && result.success()) {
             log.info("[CMD] Publishing completion event for CHAPTER_CONSOLIDATE_LOCATIONS: jobId={}, chapterId={}", jobUuid, chapterUuid);
-            stepEventMapper.publishCompletionEvent(StepKey.CHAPTER_CONSOLIDATE_LOCATIONS, jobUuid, chapterUuid, result);
+            stepEventMapper.publishCompletionEvent(StageKey.CHAPTER_LOCATION_CONSOLIDATION, jobUuid, chapterUuid, result);
         }
 
         return ResponseEntity.ok(response);

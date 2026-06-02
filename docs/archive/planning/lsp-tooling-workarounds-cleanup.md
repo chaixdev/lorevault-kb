@@ -124,8 +124,8 @@ These were reviewed and deliberately left alone:
 
 - [x] Zero `BeanWrapperImpl` imports in `lorevault-api`.
 - [x] All removed workaround sites use direct Lombok-generated method calls.
-- [x] `mvn -pl lorevault-api compile` passes.
-- [x] `mvn -pl lorevault-api test-compile` passes.
+- [x] `mvn compile` passes.
+- [x] `mvn test-compile` passes.
 - [x] Targeted tests for each batch pass.
 - [x] Agent LSP environment correctly resolves Lombok-generated members (verified on `@Data`, `@Getter`, `@Slf4j`, `@RequiredArgsConstructor` classes).
 - [x] Lombok avoidance patterns found during investigation are either converted (Batch A/B) or explicitly documented as intentional (above).

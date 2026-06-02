@@ -141,8 +141,8 @@ Strong current precedent already exists and should guide the audit baseline:
 
 ### Verification evidence
 
-- `mvn -pl lorevault-web -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=IngestionServiceTest,SceneDetectionServiceTest,SceneDetectionHandlerTest test` → **PASS** (24 tests, 0 failures).
-- `mvn -pl lorevault-web -am test-compile -DskipTests` → **PASS**.
+- `mvn -Dsurefire.failIfNoSpecifiedTests=false -Dtest=IngestionServiceTest,SceneDetectionServiceTest,SceneDetectionHandlerTest test` → **PASS** (24 tests, 0 failures).
+- `mvn test-compile -DskipTests` → **PASS**.
 
 ### Next bounded slice candidates
 
@@ -163,7 +163,7 @@ Strong current precedent already exists and should guide the audit baseline:
 
 ### Verification evidence (pass 3)
 
-- `mvn -pl lorevault-web -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SceneDetectionServiceTest,SceneDetectionHandlerTest test` → **PASS** (16 tests, 0 failures).
+- `mvn -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SceneDetectionServiceTest,SceneDetectionHandlerTest test` → **PASS** (16 tests, 0 failures).
 - `mvn clean compile` → **PASS**.
 - `lsp_diagnostics` (error severity) clean for:
   - `lorevault-core/src/main/java/com/lorevault/api/ingestion/application/scene/SceneDetectionService.java`
@@ -185,7 +185,7 @@ Strong current precedent already exists and should guide the audit baseline:
 
 ### Verification evidence (pass 4)
 
-- `mvn -pl lorevault-web -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SceneProcessingServiceTest,SceneDetectionServiceTest,SceneDetectionHandlerTest test` → **PASS** (19 tests, 0 failures).
+- `mvn -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SceneProcessingServiceTest,SceneDetectionServiceTest,SceneDetectionHandlerTest test` → **PASS** (19 tests, 0 failures).
 - `mvn clean compile` → **PASS**.
 - `lsp_diagnostics` (error severity) clean for:
   - `lorevault-core/src/main/java/com/lorevault/api/ingestion/application/scene/SceneProcessingService.java`
@@ -199,7 +199,7 @@ Strong current precedent already exists and should guide the audit baseline:
 
 ### Verification evidence (pass 5)
 
-- `mvn -pl lorevault-web -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SceneProcessingServiceTest,SceneDetectionServiceTest,SceneDetectionHandlerTest test` → **PASS** (20 tests, 0 failures).
+- `mvn -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SceneProcessingServiceTest,SceneDetectionServiceTest,SceneDetectionHandlerTest test` → **PASS** (20 tests, 0 failures).
 - `mvn clean compile` → **PASS**.
 - `lsp_diagnostics` (error severity) clean for:
   - `lorevault-core/src/main/java/com/lorevault/api/ingestion/application/scene/SceneProcessingService.java`
@@ -220,7 +220,7 @@ Strong current precedent already exists and should guide the audit baseline:
 
 ### Verification evidence (pass 6)
 
-- `mvn -pl lorevault-web -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=RagServiceTest,Neo4jSemanticSearchIntegrationTest test` → **PASS** (executed set passed; `RagServiceTest` reported 9 tests, 0 failures).
+- `mvn -Dsurefire.failIfNoSpecifiedTests=false -Dtest=RagServiceTest,Neo4jSemanticSearchIntegrationTest test` → **PASS** (executed set passed; `RagServiceTest` reported 9 tests, 0 failures).
 - `mvn clean compile` → **PASS**.
 - `lsp_diagnostics` (error severity) clean for:
   - `lorevault-core/src/main/java/com/lorevault/api/search/application/RagService.java`
@@ -242,7 +242,7 @@ Strong current precedent already exists and should guide the audit baseline:
 
 ### Verification evidence (pass 7)
 
-- `mvn -pl lorevault-web -am -Dtest=RagServiceTest,SemanticSearchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (13 tests, 0 failures).
+- `mvn -Dtest=RagServiceTest,SemanticSearchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (13 tests, 0 failures).
 - `mvn clean compile` → **PASS**.
 - `lsp_diagnostics` (error severity) clean for:
   - `lorevault-core/src/main/java/com/lorevault/api/search/domain/SemanticSearchException.java`
@@ -265,7 +265,7 @@ Strong current precedent already exists and should guide the audit baseline:
 
 ### Verification evidence (pass 7b)
 
-- `mvn -pl lorevault-web -am -Dtest=RagServiceTest,SemanticSearchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (15 tests, 0 failures).
+- `mvn -Dtest=RagServiceTest,SemanticSearchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (15 tests, 0 failures).
 - `mvn clean compile` → **PASS**.
 - `lsp_diagnostics` (error severity) clean for:
   - `lorevault-core/src/main/java/com/lorevault/api/search/infrastructure/Neo4jSemanticSearch.java`
@@ -289,7 +289,7 @@ Strong current precedent already exists and should guide the audit baseline:
 
 ### Verification evidence (pass 8)
 
-- `mvn -pl lorevault-web -am clean -Dtest=RagServiceTest,CypherTemplateRegistryTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (14 tests, 0 failures).
+- `mvn clean -Dtest=RagServiceTest,CypherTemplateRegistryTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (14 tests, 0 failures).
 - `mvn clean compile` → **PASS**.
 - Oracle review completed with no MUST_FIX findings; one refinement applied:
   - unknown internal template IDs are now classified as invariant defects (`IllegalStateException`) rather than `EntityLookupException`.
@@ -318,7 +318,7 @@ Strong current precedent already exists and should guide the audit baseline:
 
 ### Verification evidence (pass 9)
 
-- `mvn -pl lorevault-web -am clean -Dtest=IngestionServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (11 tests, 0 failures).
+- `mvn clean -Dtest=IngestionServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (11 tests, 0 failures).
 - `mvn clean compile` → **PASS**.
 - Oracle review completed with one required follow-up, applied in the same pass:
   - active-job-known but recent-job-id-missing now fails closed instead of creating duplicate work.
@@ -348,7 +348,7 @@ Strong current precedent already exists and should guide the audit baseline:
 ### Verification evidence (pass 10)
 
 - `mvn clean compile` → **PASS**.
-- `mvn -pl lorevault-web -am clean -Dtest=EmbeddingServiceTest,EmbeddingHandlerTest,SystemHealthServiceTest,SemanticSearchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (24 tests, 0 failures).
+- `mvn clean -Dtest=EmbeddingServiceTest,EmbeddingHandlerTest,SystemHealthServiceTest,SemanticSearchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (24 tests, 0 failures).
 - Oracle review completed with one MUST_FIX follow-up, applied in the same pass:
   - non-empty embedding work with empty/mismatched response is now treated as failure rather than false success.
 - `lsp_diagnostics` clean for changed production files:
@@ -375,7 +375,7 @@ Strong current precedent already exists and should guide the audit baseline:
 ### Verification evidence (pass 11)
 
 - `mvn clean compile` → **PASS**.
-- `mvn -pl lorevault-web -am clean -Dtest=AskControllerWebMvcTest,UiQueryControllerTest,RagServiceTest,SemanticSearchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (32 tests, 0 failures).
+- `mvn clean -Dtest=AskControllerWebMvcTest,UiQueryControllerTest,RagServiceTest,SemanticSearchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (32 tests, 0 failures).
 - Oracle review completed with no MUST_FIX findings:
   - verdict: safe to keep as-is
   - note: the widened typed catches on some RAG endpoints are currently more defensive than contractual because those service paths often absorb failures before they reach the controller.
@@ -402,8 +402,8 @@ Strong current precedent already exists and should guide the audit baseline:
 ### Verification evidence (pass 12)
 
 - `mvn compile` → **PASS**.
-- `mvn -pl lorevault-web -am clean -Dtest=UiQueryControllerTest,AskControllerWebMvcTest,RagServiceTest,SemanticSearchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → code-semantics pass verified; one rerun hit a Maven `clean` target-delete race while another build still held `target/`, but the follow-up compile and focused test reruns were clean.
-- `mvn -pl lorevault-web -am -Dtest=UiQueryControllerTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (6 tests, 0 failures).
+- `mvn clean -Dtest=UiQueryControllerTest,AskControllerWebMvcTest,RagServiceTest,SemanticSearchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → code-semantics pass verified; one rerun hit a Maven `clean` target-delete race while another build still held `target/`, but the follow-up compile and focused test reruns were clean.
+- `mvn -Dtest=UiQueryControllerTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (6 tests, 0 failures).
 - Oracle review completed with one MUST_FIX follow-up, applied in the same pass:
   - the UI error fragment now renders through the existing HTMX flow by returning a normal fragment response instead of HTTP `503`.
 - `lsp_diagnostics` remained stale/intermittent for the typed exception imports in `UiQueryController` and `UiQueryControllerTest` even after file sync, but the checked-in source matched the Oracle-fixed contract and Maven compile/tests passed.

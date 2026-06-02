@@ -27,5 +27,5 @@ public interface StageOperation {
      * @param ctx execution context carrying stageId, jobId, chapterId, bookId, and stage
      * @return result summarising success/failure, counts, and elapsed time
      */
-    StepResult execute(StageExecutionContext ctx);
+    StageResult execute(StageExecutionContext ctx);
 }

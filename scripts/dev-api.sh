@@ -82,8 +82,8 @@ run_foreground() {
   load_env
 
   cd "$ROOT_DIR"
-  mvn -pl lorevault-web -am -DskipTests install
-  exec mvn -pl lorevault-web spring-boot:run -Dspring-boot.run.profiles="$RUN_PROFILE"
+  mvn -DskipTests install
+  exec mvn -f lorevault-web/pom.xml spring-boot:run -Dspring-boot.run.profiles="$RUN_PROFILE"
 }
 
 wait_for_ready() {

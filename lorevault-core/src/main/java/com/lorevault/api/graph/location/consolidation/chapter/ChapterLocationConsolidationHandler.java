@@ -6,7 +6,7 @@ import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,7 @@ public class ChapterLocationConsolidationHandler implements StageOperation {
     }
 
     @Override
-    public StepResult execute(StageExecutionContext ctx) {
+    public StageResult execute(StageExecutionContext ctx) {
         UUID jobId = ctx.jobId();
         UUID chapterId = ctx.chapterId();
         long start = System.currentTimeMillis();
@@ -53,7 +53,7 @@ public class ChapterLocationConsolidationHandler implements StageOperation {
             }
 
             long elapsed = System.currentTimeMillis() - start;
-            return StepResult.success(StageKey.CHAPTER_LOCATION_CONSOLIDATION,
+            return StageResult.success(StageKey.CHAPTER_LOCATION_CONSOLIDATION,
                     response.message() != null ? response.message() : "Completed",
                     Map.of(
                             "rawLocationsProcessed", response.rawLocationsProcessed(),
@@ -66,9 +66,9 @@ public class ChapterLocationConsolidationHandler implements StageOperation {
             log.error("[CHAPTER_LOCATION_CONSOLIDATION] Failed: jobId={}, chapterId={}", jobId, chapterId, e);
             boolean retryable = isRetryableError(e);
             return retryable
-                    ? StepResult.retryableFailure(StageKey.CHAPTER_LOCATION_CONSOLIDATION,
+                    ? StageResult.retryableFailure(StageKey.CHAPTER_LOCATION_CONSOLIDATION,
                             sanitize(e), elapsed)
-                    : StepResult.failure(StageKey.CHAPTER_LOCATION_CONSOLIDATION,
+                    : StageResult.failure(StageKey.CHAPTER_LOCATION_CONSOLIDATION,
                             sanitize(e), elapsed);
         }
     }

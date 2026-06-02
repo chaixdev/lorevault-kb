@@ -1,5 +1,6 @@
 package com.lorevault.api.orchestration.pipeline;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -80,5 +81,35 @@ public enum StageKey {
      */
     public boolean isBookLevel() {
         return BOOK_LEVEL_STAGES.contains(this);
+    }
+
+    /**
+     * Returns the URL-safe lower-kebab-case segment for this stage.
+     */
+    public String toUrlSegment() {
+        return name().toLowerCase().replace('_', '-');
+    }
+
+    /**
+     * Stages with real handlers that can be manually executed.
+     * Excludes INGESTION_COMPLETE (terminal DAG barrier, no-op).
+     */
+    public static List<StageKey> queryableValues() {
+        return List.of(
+            SCENE_SEGMENTATION,
+            CHUNKING,
+            EMBEDDING,
+            CHAPTER_INDIVIDUAL_CONSOLIDATION,
+            CHAPTER_COLLECTIVE_CONSOLIDATION,
+            CHAPTER_LOCATION_CONSOLIDATION,
+            CHAPTER_OBJECT_CONSOLIDATION,
+            CHAPTER_EVENT_CONSOLIDATION,
+            CHAPTER_EVENT_EMBEDDING,
+            BOOK_INDIVIDUAL_CONSOLIDATION,
+            BOOK_COLLECTIVE_CONSOLIDATION,
+            BOOK_LOCATION_CONSOLIDATION,
+            BOOK_OBJECT_CONSOLIDATION,
+            BOOK_EVENT_CANDIDATE_GENERATION
+        );
     }
 }

@@ -8,8 +8,7 @@ import com.lorevault.api.ai.embedding.EmbeddingOperation;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
-import com.lorevault.api.orchestration.pipeline.StepKey;
-import com.lorevault.api.orchestration.pipeline.StepResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
@@ -76,13 +75,13 @@ public class StepExecutionCommandController {
         }
 
         log.info("[CMD] Detect scenes: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StepResult result = sceneDetectionHandler.execute(new StageExecutionContext(null, jobUuid, chapterUuid, null, StageKey.SCENE_SEGMENTATION));
+        StageResult result = sceneDetectionHandler.execute(new StageExecutionContext(null, jobUuid, chapterUuid, null, StageKey.SCENE_SEGMENTATION));
 
-        StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.DETECT_SCENES, "chapter", chapterId);
+        StageExecutionResponse response = StageExecutionResponse.from(result, StageKey.SCENE_SEGMENTATION, "chapter", chapterId);
 
         if (fireEvents && result.success()) {
             log.info("[CMD] Publishing completion event for DETECT_SCENES: jobId={}, chapterId={}", jobUuid, chapterUuid);
-            stepEventMapper.publishCompletionEvent(StepKey.DETECT_SCENES, jobUuid, chapterUuid, result);
+            stepEventMapper.publishCompletionEvent(StageKey.SCENE_SEGMENTATION, jobUuid, chapterUuid, result);
         }
 
         return ResponseEntity.ok(response);
@@ -127,13 +126,13 @@ public class StepExecutionCommandController {
         }
 
         log.info("[CMD] Chunk chapter: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StepResult result = chunkingOperation.execute(jobUuid, chapterUuid);
+        StageResult result = chunkingOperation.execute(jobUuid, chapterUuid);
 
-        StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.CHUNK, "chapter", chapterId);
+        StageExecutionResponse response = StageExecutionResponse.from(result, StageKey.CHUNKING, "chapter", chapterId);
 
         if (fireEvents && result.success()) {
             log.info("[CMD] Publishing completion event for CHUNK: jobId={}, chapterId={}", jobUuid, chapterUuid);
-            stepEventMapper.publishCompletionEvent(StepKey.CHUNK, jobUuid, chapterUuid, result);
+            stepEventMapper.publishCompletionEvent(StageKey.CHUNKING, jobUuid, chapterUuid, result);
         }
 
         return ResponseEntity.ok(response);
@@ -178,13 +177,13 @@ public class StepExecutionCommandController {
         }
 
         log.info("[CMD] Embed chapter: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StepResult result = embeddingOperation.execute(jobUuid, chapterUuid);
+        StageResult result = embeddingOperation.execute(jobUuid, chapterUuid);
 
-        StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.EMBED, "chapter", chapterId);
+        StageExecutionResponse response = StageExecutionResponse.from(result, StageKey.EMBEDDING, "chapter", chapterId);
 
         if (fireEvents && result.success()) {
             log.info("[CMD] Publishing completion event for EMBED: jobId={}, chapterId={}", jobUuid, chapterUuid);
-            stepEventMapper.publishCompletionEvent(StepKey.EMBED, jobUuid, chapterUuid, result);
+            stepEventMapper.publishCompletionEvent(StageKey.EMBEDDING, jobUuid, chapterUuid, result);
         }
 
         return ResponseEntity.ok(response);
@@ -229,14 +228,14 @@ public class StepExecutionCommandController {
         }
 
         log.info("[CMD] Resolve chapter events: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StepResult result = chapterEventResolutionOperation.execute(
+        StageResult result = chapterEventResolutionOperation.execute(
                 new StageExecutionContext(null, jobUuid, chapterUuid, null, StageKey.CHAPTER_EVENT_CONSOLIDATION));
 
-        StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.CHAPTER_CONSOLIDATE_EVENTS, "chapter", chapterId);
+        StageExecutionResponse response = StageExecutionResponse.from(result, StageKey.CHAPTER_EVENT_CONSOLIDATION, "chapter", chapterId);
 
         if (fireEvents && result.success()) {
             log.info("[CMD] Publishing completion event for CHAPTER_CONSOLIDATE_EVENTS: jobId={}, chapterId={}", jobUuid, chapterUuid);
-            stepEventMapper.publishCompletionEvent(StepKey.CHAPTER_CONSOLIDATE_EVENTS, jobUuid, chapterUuid, result);
+            stepEventMapper.publishCompletionEvent(StageKey.CHAPTER_EVENT_CONSOLIDATION, jobUuid, chapterUuid, result);
         }
 
         return ResponseEntity.ok(response);

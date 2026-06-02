@@ -10,7 +10,7 @@
   - `PublicationCoordinates` → `content`
   - `ErrorResponse` → `web` (with `ErrorResponseFactory` consolidation — inner class retired, factory now produces `web.ErrorResponse`)
   - `SpoilerVisibility`, `SeriesProgress`, `UnconfiguredSeriesPolicy` → `search`
-- Verification: `mvn test -pl lorevault-api` passes with 301 tests, 0 failures, 0 errors after Stage 1.
+- Verification: `mvn test` passes with 301 tests, 0 failures, 0 errors after Stage 1.
 - Stage 2: module extraction is complete. The reactor now contains `lorevault-core` and `lorevault-web`; `lorevault-web` depends one-way on `lorevault-core`; transitional `../lorevault-api/src/...` back-references are gone from module POMs; and the obsolete `lorevault-api/pom.xml` module stub was removed.
 - Stage 3 (pass 1): ingestion events were moved under `ingestion.events` and all affected imports/usages were updated across core + web.
 - Latest known full-reactor verification on this branch remains green: `mvn clean test` passes with 305 tests, 0 failures, 0 errors.

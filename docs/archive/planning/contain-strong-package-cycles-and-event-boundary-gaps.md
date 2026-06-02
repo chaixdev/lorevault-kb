@@ -122,9 +122,9 @@ Relevant architectural context:
 
 ### Verification evidence
 
-- `mvn -pl lorevault-web -am clean test -Dtest=SceneRelationshipAnalysisServiceTest -Dsurefire.failIfNoSpecifiedTests=false` → **PASS** (9 tests, 0 failures).
-- `mvn -pl lorevault-web -am clean test -Dtest=SceneRelationshipAnalysisServiceTest,SceneDetectionHandlerTest -Dsurefire.failIfNoSpecifiedTests=false` → **PASS** (19 tests, 0 failures).
-- `mvn -pl lorevault-web -am clean test -P architecture-tests` → **expected FAIL** in cycle-free architecture test, but with reduced violation count from earlier baseline.
+- `mvn clean test -Dtest=SceneRelationshipAnalysisServiceTest -Dsurefire.failIfNoSpecifiedTests=false` → **PASS** (9 tests, 0 failures).
+- `mvn clean test -Dtest=SceneRelationshipAnalysisServiceTest,SceneDetectionHandlerTest -Dsurefire.failIfNoSpecifiedTests=false` → **PASS** (19 tests, 0 failures).
+- `mvn clean test -P architecture-tests` → **expected FAIL** in cycle-free architecture test, but with reduced violation count from earlier baseline.
   - Previous baseline (guardrail pass): **17** cycle violations.
   - After pass 1 + pass 1b adjustment: **8** cycle violations.
 
@@ -136,8 +136,8 @@ Relevant architectural context:
 
 ### Verification evidence (pass 2)
 
-- `mvn -pl lorevault-web -am clean test -Dtest=SceneRelationshipAnalysisServiceTest,SceneDetectionHandlerTest -Dsurefire.failIfNoSpecifiedTests=false` → **PASS** (19 tests, 0 failures).
-- `mvn -pl lorevault-web -am clean test -P architecture-tests` → **expected FAIL** in cycle-free architecture test, with additional reduction:
+- `mvn clean test -Dtest=SceneRelationshipAnalysisServiceTest,SceneDetectionHandlerTest -Dsurefire.failIfNoSpecifiedTests=false` → **PASS** (19 tests, 0 failures).
+- `mvn clean test -P architecture-tests` → **expected FAIL** in cycle-free architecture test, with additional reduction:
   - After pass 1 + pass 1b: **8** cycle violations.
   - After pass 2: **6** cycle violations.
 
@@ -160,9 +160,9 @@ Relevant architectural context:
 
 ### Verification evidence (pass 3)
 
-- `mvn -pl lorevault-web -am clean test-compile -DskipTests` → **PASS**.
-- `mvn -pl lorevault-web -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SceneRelationshipAnalysisServiceTest,SceneDetectionHandlerTest,IndividualPersistenceServiceTest,LocationPersistenceServiceTest,EventPersistenceServiceTest,SceneTemporalRelationshipPersistenceServiceTest test` → **PASS** (36 tests, 0 failures).
-- `mvn -pl lorevault-web -am clean test -P architecture-tests` → **expected FAIL** in cycle-free architecture test, with further reduction:
+- `mvn clean test-compile -DskipTests` → **PASS**.
+- `mvn -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SceneRelationshipAnalysisServiceTest,SceneDetectionHandlerTest,IndividualPersistenceServiceTest,LocationPersistenceServiceTest,EventPersistenceServiceTest,SceneTemporalRelationshipPersistenceServiceTest test` → **PASS** (36 tests, 0 failures).
+- `mvn clean test -P architecture-tests` → **expected FAIL** in cycle-free architecture test, with further reduction:
   - After pass 2: **6** cycle violations.
   - After pass 3: **2** cycle violations.
 
@@ -183,9 +183,9 @@ Relevant architectural context:
 
 ### Verification evidence (pass 4)
 
-- `mvn -pl lorevault-web -am test-compile -DskipTests` → **PASS**.
-- `mvn -pl lorevault-web -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SceneTemporalRelationshipPersistenceServiceTest,SceneDetectionHandlerTest,SceneRelationshipAnalysisServiceTest,IndividualPersistenceServiceTest,LocationPersistenceServiceTest,EventPersistenceServiceTest test` → **PASS** (36 tests, 0 failures).
-- `mvn -pl lorevault-web -am clean test -P architecture-tests` → **PASS** (all architecture tests green; cycle-free rule no longer violated).
+- `mvn test-compile -DskipTests` → **PASS**.
+- `mvn -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SceneTemporalRelationshipPersistenceServiceTest,SceneDetectionHandlerTest,SceneRelationshipAnalysisServiceTest,IndividualPersistenceServiceTest,LocationPersistenceServiceTest,EventPersistenceServiceTest test` → **PASS** (36 tests, 0 failures).
+- `mvn clean test -P architecture-tests` → **PASS** (all architecture tests green; cycle-free rule no longer violated).
 
 ### Pass 4 follow-up (ownership + terminology correction) - completed
 
@@ -205,7 +205,7 @@ Relevant architectural context:
 ### Verification evidence (pass 4 follow-up)
 
 - `mvn clean compile` → **PASS**.
-- `mvn -pl lorevault-web -am -Dtest=SceneRelationshipAnalysisServiceTest,SceneDetectionHandlerTest,IndividualPersistenceServiceTest,LocationPersistenceServiceTest,EventPersistenceServiceTest,SceneTemporalRelationshipPersistenceServiceTest,SemanticSearchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (41 tests, 0 failures).
+- `mvn -Dtest=SceneRelationshipAnalysisServiceTest,SceneDetectionHandlerTest,IndividualPersistenceServiceTest,LocationPersistenceServiceTest,EventPersistenceServiceTest,SceneTemporalRelationshipPersistenceServiceTest,SemanticSearchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test` → **PASS** (41 tests, 0 failures).
 - `lsp_diagnostics` clean for changed production files:
   - `lorevault-core/src/main/java/com/lorevault/api/ingestion/application/result/TriadAnalysisModels.java`
   - `lorevault-core/src/main/java/com/lorevault/api/content/entities/Scene.java`
