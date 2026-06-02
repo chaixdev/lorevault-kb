@@ -295,7 +295,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** The controller decides whether to fire events and manually publishes `StageCompletedEvent`/`StageTriggeredEvent`. If a new caller (scheduled job, internal trigger) invokes `StageOperation.execute()` directly, it won't publish these events because the logic is in the controller, not the service.
 
 **Fix:** Move `fireEvents` decision into `StageOperation` implementations. The controller should pass `fireEvents` as a parameter, and the operation should publish events itself.
-
+>! agreed
 ---
 
 ### MED-8 — `IngestionUiController.resolveBookSelection()` mixes writes on two aggregates
@@ -305,7 +305,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** Library creation (universe/series/book) and ingestion submission happen in a single non-transactional controller method. If library creation succeeds but ingestion fails, entities persist without associated ingestion — the caller gets a failure response suggesting nothing happened.
 
 **Fix:** Require the book to exist before submission, failing with a clear error if it doesn't. Separate library creation from file upload.
-
+>! this is a convenience method. keep for now. 
 ---
 
 ### MED-9 — User query text logged without truncation
@@ -315,7 +315,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** User-submitted query strings logged at WARN/ERROR level without truncation. Logging philosophy Rule 4: "Book text or chapter raw content must never appear in any log line." Users can paste chapter text into the query input.
 
 **Fix:** Truncate query content to safe preview (e.g., first 100 chars) before logging.
-
+>! defer
 ---
 
 ### MED-10 — Filename logged without length truncation
@@ -325,7 +325,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** `file.getOriginalFilename()` logged at INFO without truncation. A malicious 5KB filename gets written to logs in full.
 
 **Fix:** Truncate filenames to 100 chars before logging.
-
+>! defer
 ---
 
 ### MED-11 — Prompt injection risk at controller entry point
@@ -335,7 +335,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** User-supplied `question` parameter flows directly into LLM prompt construction without structural delimiting visible at the controller layer. No size limit on the `question` parameter.
 
 **Fix:** Verify downstream services use structural delimiters (`<input>...</input>`) for user content. Add a size limit on the `question` parameter.
-
+>! agreed
 ---
 
 ### MED-12 — `FileUploadValidator` has unnecessarily public implementation methods
@@ -345,7 +345,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** `validateFileType`, `validateFileSize`, and `getFileExtension` are `public` but only called from `validateFile` (same class). Internal implementation details leaked through public boundary.
 
 **Fix:** Make these methods `private`.
-
+>! agreed
 ---
 
 ### MED-13 — `FileContentExtractor` has 3 unused public methods
@@ -355,7 +355,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** `extractBasename`, `validateContentLength`, and `getContentPreview` are `public` with zero callers across the reviewed codebase. Per coding standards: "A helper method extracted from a single callsite is premature."
 
 **Fix:** Delete these three methods.
-
+>! agreed
 ---
 
 ### MED-14 — 7 of 10 consolidation controllers have no `@WebMvcTest` slice tests
@@ -365,7 +365,7 @@ if (statusOpt.isEmpty()) {
 **Problem:** Only 3 of 10 controllers have `@WebMvcTest` coverage. The 3 existing tests are copy-paste duplicates. Also missing: `StepExecutionCommandController`, `PrepareCommandController`, `StepQueryController`.
 
 **Fix:** Add `@WebMvcTest` tests for the 7 untested controllers. Consider whether the generic controller refactoring (HIGH-2) would allow a single parameterized test class.
-
+>! extract to separate planning doc
 ---
 
 ### MED-15 — `ErrorResponseFactory` is a single-consumer `@Component`
