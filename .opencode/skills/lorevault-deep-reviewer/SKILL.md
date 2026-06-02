@@ -167,6 +167,8 @@ What to look for:
 - New cross-module or cross-package dependencies that deepen known coupling risks
 - New LLM call chains without null guards, timeouts, or `maxTokens`
 - Premature abstraction or speculative generality
+- **`@Deprecated` annotations on production code** — deprecated code must not exist in the codebase. One or zero: code is either used or it is removed. Any `@Deprecated` annotation is automatically a finding; no exceptions for `forRemoval = false` or migration plans. See Deprecated Code and Backward Compatibility section for severity and action.
+- **"Backward compatibility" kept code** — any method, enum value, or class whose documentation claims it "exists only for backward compatibility" must be deleted immediately. Flag as CRITICAL.
 
 ---
 
@@ -309,3 +311,23 @@ After aggregating production code findings:
 
 Test gaps are findings. A production code fix is incomplete without a test that guards
 it from regression.
+
+---
+
+## Deprecated Code and Backward Compatibility
+
+**Deprecated code does not exist in this codebase.** Code is either used and must remain, or unused and must be deleted. There is no third state. `@Deprecated` is not a signal, a preference, or a migration tracker — it is not permitted.
+
+Every `@Deprecated` annotation or "backward compatibility" comment in production code is a finding:
+
+| Pattern | Severity | Action |
+|---------|----------|--------|
+| `@Deprecated` (any form) | 🔴 CRITICAL | Delete the deprecated code. If callers exist, migrate them first, then delete. Do not add `forRemoval` flags — just remove it. |
+| "exists only for backward compatibility" in Javadoc | 🔴 CRITICAL | Delete immediately — codebase does not maintain backward-compat shims |
+| Enum value with no code references outside its own class | 🔴 CRITICAL | Delete — orphaned enum value serving no purpose |
+
+For each finding, report:
+- The deprecated element (method, enum value, class, field)
+- Whether it has any production callers (grep the entire `lorevault-core` and `lorevault-web` source trees)
+- If it has callers: what migration is needed before deletion
+- If it has no callers: confirm it is safe to delete and recommend immediate removal

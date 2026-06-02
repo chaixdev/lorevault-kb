@@ -9,26 +9,47 @@ For generic package boundary rules, see [coding-standards.md](coding-standards.m
 
 ## Module Dependency Direction
 
-`lorevault-web` → `lorevault-core` is the only legal cross-module dependency.
+The legal dependency direction is:
 
-`lorevault-core` must not import from `lorevault-web`. Any dependency in that direction
-is a build cycle and a defect. This includes: Spring MVC annotations in core,
-`@RestController` in core, or any import of a `lorevault-web` class from within
-`lorevault-core`.
+```
+lorevault-web → lorevault-core → lorevault-catalog
+```
+
+`lorevault-core` must not import from `lorevault-web`. `lorevault-catalog` must not import
+from `lorevault-core` or `lorevault-web`. Any dependency in the reverse direction is a
+build cycle and a defect. This includes: Spring MVC annotations in core,
+`@RestController` in core, or any import of a `lorevault-web` or `lorevault-core` class
+from within `lorevault-catalog`.
+
+The catalog module (`lorevault-catalog`) is a **closed module** — its `internal` package
+is not exported. The only legal integration point is the public API surface in
+`com.lorevault.catalog`: `RelationCatalogService`, `RelationCatalogDefinition`,
+`RelationCatalogId`, `RelationQuery`, `RelationKindSignature`, and `EmbeddingFunction`.
+
+New modules should use the `com.lorevault.{domain}` package convention (no `api` segment).
+The existing `com.lorevault.api.*` packages are a legacy convention — a future task will
+rename them to drop the `api` segment.
 
 ---
 
 ## Known Coupling Risks and Shared Model Constraints
 
-The current topology — including bidirectional coupling between `library ↔ content`
+The current topology — including bidirectional coupling between `library ↔ graph`
 and the `Chapter`/`Scene`/`Chunk` shared model constraint — is documented with context
 in [codebase-topology.md](../patterns/codebase-topology.md).
 
 Do not add new cross-package method calls between the known coupled packages.
-Do not re-expand `ai` into feature-owned ingestion workflow; keep it focused on
+Do not re-expand `ai` into feature-owned orchestration workflow; keep it focused on
 generic LLM infrastructure.
 Do not add new shared domain models. See the topology doc for the current state
 and rationale.
+
+**Cross-lane type placement.** A domain type consumed by all entity consolidation lanes
+(e.g., `BookConsolidationClaim`) must not live inside a single lane's package. Placing
+a shared type inside one lane (e.g., `location/consolidation/book/`) creates an implicit
+ownership claim that all other lanes violate via cross-package imports. Cross-lane types
+belong in the consuming boundary's most stable package (e.g., `orchestration/consolidation`)
+or in `common` if they have no feature-specific semantics.
 
 ## Package-Structure Direction
 
@@ -42,10 +63,10 @@ Within `lorevault-core`, the default internal package shape is capability-orient
 
 Scoped exceptions are acceptable when they remain semantically tight:
 
-- `content/timeline` keeps its local layered substructure because it is already a dense,
+- `graph/timeline` keeps its local layered substructure because it is already a dense,
   self-contained mechanism with clear internal roles.
-- shared support seams such as `ai/infrastructure`, `ingestion/infrastructure`,
-  `ingestion/events`, `ingestion/pipeline`, or `search/model` are acceptable when they
+- shared support seams such as `ai/infrastructure`, `orchestration/signals`,
+  `orchestration/pipeline`, or `search/model` are acceptable when they
   prevent false ownership or avoid back-edge cycles between capability packages.
 
 Remove empty legacy package directories after semantic moves so the source tree does not

@@ -21,26 +21,37 @@ graph TD
     Service["IngestionJobService"] -->|"creates"| Job
     Service -->|"updates"| Latest
     LlmService["LlmCallLoggingService"] -->|"creates"| Call
-    Support["PipelineStageSupport"] -->|"emits"| Latest
+    Dispatcher["StageDispatcher"] -->|"sets MDC"| Latest
+    Dispatcher -->|"emits StageCompletedEvent"| Latest
 ```
 
 ## Status Lifecycle
 
-The `IngestionStatus` enum represents the progression of a job through the pipeline. Each handler emits status updates at stage start and stage completion. Triad analysis emits one `SCENE_TRIAD_ANALYSIS` status per triad for fine-grained visibility.
+The `IngestionStatus` enum represents the progression of a job through the pipeline. Each handler emits status updates at stage start and stage completion.
 
 ```mermaid
 graph LR
     QUEUED["QUEUED"] -->|"next"| SEGMENT["SCENE_SEGMENTATION"]
-    SEGMENT -->|"next"| TRIAD["SCENE_TRIAD_ANALYSIS"]
-    TRIAD -->|"next"| EMBED["EMBEDDING_CHUNKS"]
+    SEGMENT -->|"next"| INDIVIDUAL["CHAPTER_INDIVIDUAL_CONSOLIDATION"]
+    INDIVIDUAL -->|"next"| LOCATION["CHAPTER_LOCATION_CONSOLIDATION"]
+    LOCATION -->|"next"| OBJECT["CHAPTER_OBJECT_CONSOLIDATION"]
+    OBJECT -->|"next"| COLLECTIVE["CHAPTER_COLLECTIVE_CONSOLIDATION"]
+    COLLECTIVE -->|"next"| EVENT["CHAPTER_EVENT_CONSOLIDATION"]
+    EVENT -->|"next"| EMBED["EMBEDDING_CHUNKS"]
     EMBED -->|"next"| COMPLETE["COMPLETE"]
     QUEUED -->|"fail"| FAILED["FAILED"]
     SEGMENT -->|"fail"| FAILED
-    TRIAD -->|"fail"| FAILED
+    INDIVIDUAL -->|"fail"| FAILED
+    LOCATION -->|"fail"| FAILED
+    OBJECT -->|"fail"| FAILED
+    COLLECTIVE -->|"fail"| FAILED
+    EVENT -->|"fail"| FAILED
     EMBED -->|"fail"| FAILED
 ```
 
 `COMPLETE` and `FAILED` are terminal states. Each status has a `progressPercent` value (e.g., QUEUED=0, SCENE_SEGMENTATION=25, EMBEDDING_CHUNKS=50, COMPLETE=100).
+
+Note: The actual pipeline has more stages than shown here. This diagram shows the primary happy path. Each stage can also transition to FAILED.
 
 ## LLM Call Records
 
@@ -55,9 +66,21 @@ Each `StatusRecord` has a `Map<String, String> properties` for stage-specific me
 - `chunkCount`, `chapterLength`, `completedAt`, `version`, `pipeline` (on COMPLETE)
 - `failureCode`, `failureMessage`, `failureExceptionType`, `failureStage`, `failureDetail.*` (on FAILED)
 
+## Stage Provenance and MDC
+
+The `StageDispatcher` sets three MDC fields before executing each handler:
+
+- `stage` — the `StageKey` name (e.g., `SCENE_SEGMENTATION`)
+- `jobId` — the ingestion job ID
+- `stageId` — the `Stage` node ID (the durable execution identity)
+
+These fields are cleared after handler execution. All log statements emitted during a stage execution automatically carry these fields when using the logging pattern `log.info("[STAGE_KEY] ...", ...)`.
+
+Additionally, every domain node created during pipeline execution carries a `stageId` property (`@Property("stageId") UUID stageId`). This provides graph-level audit: any node can be traced back to the `Stage` node that created it via `MATCH (n {stageId: $stageId})`.
+
 ## Failure Details Extraction
 
-When a job fails, the `FAILED` status record carries structured failure information in its properties map. `PipelineStageSupport` builds `IngestionFailure` objects which are serialized into the properties map. `TriadAnalysisException` is unwrapped specially to preserve triad-specific failure context. `IngestionJobService.extractFailureDetails()` reconstructs `FailureDetails` from the properties for API responses.
+When a job fails, the `FAILED` status record carries structured failure information in its properties map. `StageDispatcher` wraps handler execution in an error boundary and converts exceptions to `StageResult.failure()` or `StageResult.retryableFailure()`. The `IngestionFailure` object is still used for structured failure details. `IngestionJobService.extractFailureDetails()` reconstructs `FailureDetails` from the properties for API responses.
 
 ## Boundaries
 
@@ -69,3 +92,4 @@ When a job fails, the `FAILED` status record carries structured failure informat
 ## Primary References
 
 - **Application-level logging rules** — see `../../rules/logging-philosophy.md` and ADR 009
+- **StageDispatcher architecture & stageId provenance** — see ADR-013, ADR-014, ADR-015

@@ -4,7 +4,7 @@ import com.lorevault.api.web.query.ask.AskDtos;
 import com.lorevault.api.web.query.ask.AskDtos.CitationDto;
 import com.lorevault.api.web.query.ask.SemanticSearchDtos;
 import com.lorevault.api.web.query.ask.SemanticSearchDtos.SearchResultDto;
-import com.lorevault.api.library.service.LibraryQueryService;
+import com.lorevault.api.library.LibraryQueryService;
 import com.lorevault.api.search.model.CoreSearchRecords.CoreAskRequest;
 import com.lorevault.api.search.model.CoreSearchRecords.CoreAskResponse;
 import com.lorevault.api.search.model.CoreSearchRecords.CoreSemanticSearchRequest;

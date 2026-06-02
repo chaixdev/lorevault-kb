@@ -46,3 +46,8 @@ If the decision is later replaced, the ADR should remain as history and point to
 - [009 - Structured logging philosophy](009-structured-logging-philosophy.md)
 - [010 - Practical Allen relation usage](010-practical-allen-relation-usage.md)
 - [011 - Adopt capability-oriented internal package structure](011-adopt-capability-oriented-internal-package-structure.md)
+- [012 - Dual-database transaction boundary and catalog module isolation](012-dual-database-transaction-boundary.md)
+- [013 - Coordinator/dispatcher over independent async listeners](013-coordinator-dispatcher-over-independent-async-listeners.md)
+- [014 - Explicit parameter threading over ThreadLocal for execution context](014-explicit-parameter-threading-over-threadlocal.md)
+- [015 - Stage node provenance over StageOutput nodes](015-stage-node-provenance-over-stageoutput-nodes.md)
+- [016 - Stage replayability and idempotent re-execution](016-stage-replayability-and-idempotent-re-execution.md)

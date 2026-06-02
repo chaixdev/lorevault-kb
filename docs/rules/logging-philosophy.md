@@ -90,6 +90,26 @@ if (!existingScenes.isEmpty()) {
 }
 ```
 
+#### Rule 3a — Persistence Service Write Logging
+
+Persistence services performing write operations must emit at minimum:
+
+- One `INFO` log on entry (with operation name and input counts)
+- One `INFO` log on completion (with saved/changed counts)
+- One `WARN` log on empty inputs or zero-output writes
+
+These apply even when the caller (handler) already logs — service-layer logs capture
+entity-type-specific counts and operation identifiers that handler logs substitute for
+only at a higher abstraction level. The handler log says "individual consolidation
+completed with 5 entities"; the service log says "persisted 12 individual mentions."
+
+```java
+log.info("[INDIVIDUAL_PERSIST] Persisting {} extracted individuals from {} scenes for chapterId={}",
+         extractionCount, scenes.size(), chapterId);
+// ... work ...
+log.info("[INDIVIDUAL_PERSIST] Completed: {} individual mentions persisted", mentionIds.size());
+```
+
 ---
 
 ## Rule 4 — What Must Never Appear in Logs

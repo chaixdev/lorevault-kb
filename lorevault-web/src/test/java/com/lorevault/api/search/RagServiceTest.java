@@ -1,15 +1,16 @@
 package com.lorevault.api.search;
-import com.lorevault.api.content.chapter.Chapter;
-import com.lorevault.api.ingestion.job.IngestionFailure;
+import com.lorevault.api.library.chapter.Chapter;
+import com.lorevault.api.orchestration.job.IngestionFailure;
 import com.lorevault.api.search.extraction.QuestionIntent;
 import com.lorevault.api.search.extraction.QuestionIntentClassifier;
 import com.lorevault.api.search.model.CoreSearchRecords;
 import com.lorevault.api.search.model.CoreSearchRecords.*;
 
-import com.lorevault.api.content.chunk.Chunk;
+import com.lorevault.api.library.chunk.Chunk;
 
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
-import com.lorevault.api.content.chunk.ChunkGraphRepository;
+import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.library.chunk.ChunkGraphRepository;
+import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.search.semantic.CypherTemplateRegistry;
 import com.lorevault.api.search.semantic.SemanticSearchService;
@@ -135,7 +136,7 @@ class RagServiceTest {
 
             when(semanticSearchService.search(any(CoreSemanticSearchRequest.class)))
                 .thenReturn(searchResponse);
-            when(mockPromptRepository.get("rag-answer-generation"))
+            when(mockPromptRepository.get(PromptName.RAG_ANSWER_GENERATION))
                 .thenReturn(new org.springframework.ai.chat.prompt.PromptTemplate("You are a helpful assistant."));
             when(callSpec.content())
                 .thenReturn("Kaladin is a spearman. [1]");
@@ -189,7 +190,7 @@ class RagServiceTest {
 
             when(semanticSearchService.search(any(CoreSemanticSearchRequest.class)))
                 .thenReturn(searchResponse);
-            when(mockPromptRepository.get("rag-answer-generation"))
+            when(mockPromptRepository.get(PromptName.RAG_ANSWER_GENERATION))
                 .thenReturn(new PromptTemplate("You are a helpful assistant."));
             when(callSpec.content())
                 .thenReturn(llmResponse);
@@ -285,7 +286,7 @@ class RagServiceTest {
 
             when(semanticSearchService.search(any(CoreSemanticSearchRequest.class)))
                 .thenReturn(searchResponse);
-            when(mockPromptRepository.get("rag-answer-generation"))
+            when(mockPromptRepository.get(PromptName.RAG_ANSWER_GENERATION))
                 .thenReturn(new PromptTemplate("You are a helpful assistant."));
             when(callSpec.content())
                 .thenReturn(llmResponse);
@@ -340,7 +341,7 @@ class RagServiceTest {
 
             when(semanticSearchService.search(any(CoreSemanticSearchRequest.class)))
                 .thenReturn(searchResponse);
-            when(mockPromptRepository.get("rag-answer-generation"))
+            when(mockPromptRepository.get(PromptName.RAG_ANSWER_GENERATION))
                 .thenReturn(new PromptTemplate("You are a helpful assistant."));
 
             // Act
@@ -367,7 +368,7 @@ class RagServiceTest {
             when(requestSpec.call()).thenReturn(callSpec);
             when(callSpec.content()).thenReturn("Vin is a Mistborn.");
 
-            when(mockPromptRepository.get("rag-answer-generation"))
+            when(mockPromptRepository.get(PromptName.RAG_ANSWER_GENERATION))
                     .thenReturn(new PromptTemplate("You are a helpful assistant."));
 
             CoreAskRequest request = new CoreAskRequest("Who is Vin?", 3, null, null, null);
@@ -425,7 +426,7 @@ class RagServiceTest {
             when(requestSpec.call()).thenReturn(callSpec);
             when(callSpec.content()).thenReturn("Vin is a Mistborn who appears in 47 chapters.");
 
-            when(mockPromptRepository.get("rag-answer-generation"))
+            when(mockPromptRepository.get(PromptName.RAG_ANSWER_GENERATION))
                     .thenReturn(new PromptTemplate("You are a helpful assistant."));
 
             CoreAskRequest request = new CoreAskRequest("Who is Vin?", 3, null, null, null);
@@ -452,7 +453,7 @@ class RagServiceTest {
             when(systemSpec.user(any(String.class))).thenReturn(requestSpec);
             when(requestSpec.call()).thenReturn(callSpec);
             when(callSpec.content()).thenReturn("Vin appears in both graph and vector evidence.");
-            when(mockPromptRepository.get("rag-answer-generation"))
+            when(mockPromptRepository.get(PromptName.RAG_ANSWER_GENERATION))
                     .thenReturn(new PromptTemplate("You are a helpful assistant."));
 
             CoreAskRequest request = new CoreAskRequest("Who is Vin?", 2, null, null, null);
@@ -573,7 +574,7 @@ class RagServiceTest {
             when(systemSpec.user(any(String.class))).thenReturn(requestSpec);
             when(requestSpec.call()).thenReturn(callSpec);
             when(callSpec.content()).thenReturn("Evidence answer from surviving branch.");
-            when(mockPromptRepository.get("rag-answer-generation"))
+            when(mockPromptRepository.get(PromptName.RAG_ANSWER_GENERATION))
                     .thenReturn(new PromptTemplate("You are a helpful assistant."));
 
             CoreAskRequest request = new CoreAskRequest("What happened in chapter one?", 2, null, null, null);

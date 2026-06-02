@@ -11,11 +11,12 @@ split.
 
 Examples of the current shape:
 
-- `content/{association,chapter,chunk,mention,scene,timeline}`
-- `ingestion/{completion,content,events,job,pipeline,resolution/{event,individual,location},scene,submission,triad}`
-- `library/{book,series,service,universe}`
+- `graph/{collective,event,individual,location,mention,object,relation,timeline}`
+- `orchestration/{consolidation,job,pipeline,signals,submission,triad}`
+- `library/{book,chapter,chunk,series,service,universe}`
 - `search/{extraction,model,rag,semantic}`
-- `ai/{chunking,embedding,infrastructure,llm}`
+- `ai/{embedding,infrastructure,llm,telemetry}`
+- `common/{error}`
 
 Layer-oriented subpackages remain acceptable only when they are a deliberate local fit for
 one dense sub-area, not the default shape for an entire bounded context.

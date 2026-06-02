@@ -1,7 +1,7 @@
 package com.lorevault.api.web.command.ingestion;
 
-import com.lorevault.api.ingestion.resolution.event.ChapterEventAnnRerunResult;
-import com.lorevault.api.ingestion.resolution.event.ChapterEventAnnRerunService;
+import com.lorevault.api.graph.event.consolidation.chapter.ChapterEventAnnRerunResult;
+import com.lorevault.api.graph.event.consolidation.chapter.ChapterEventAnnRerunService;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

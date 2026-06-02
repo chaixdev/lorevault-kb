@@ -1,5 +1,5 @@
 package com.lorevault.api.ai.application;
-import com.lorevault.api.ai.chunking.TextChunkingService;
+import com.lorevault.api.library.chunk.TextChunkingService;
 import com.lorevault.api.config.LoreVaultContentProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,9 +19,7 @@ class TextChunkingServiceConfigurationTest {
                             800,
                             25,
                             400,
-                            1200,
-                            "sentence-aware",
-                            new LoreVaultContentProperties.SentenceSplitterProperties(300, true)
+                            1200
                     )
             )
     );

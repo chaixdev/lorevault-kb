@@ -13,15 +13,15 @@ The pipeline runs on two named Spring executors:
 | Executor | Core threads | Max threads | Queue | Used for |
 |---|---|---|---|---|
 | `sceneDetectionTaskExecutor` | 1 | 3 | 10 | Scene detection stage (`SceneDetectionHandler`) |
-| `ingestionTaskExecutor` | 1 | 1 | unbounded | All other pipeline stages |
+| `ingestionLaneTaskExecutor` | 1 | 1 | unbounded | All other pipeline stages |
 
-Both executors are configured in `AsyncConfig`. The `sceneDetectionTaskExecutor` is the first point of concurrency and is bounded to discourage careless parallel chapter submissions. The single-threaded `ingestionTaskExecutor` serializes all downstream branches per submission order.
+Both executors are configured in `AsyncConfig`. The `sceneDetectionTaskExecutor` is the first point of concurrency and is bounded to discourage careless parallel chapter submissions. The single-threaded `ingestionLaneTaskExecutor` serializes all downstream branches per submission order.
 
 ## What Runs In Parallel — And What Does Not
 
 ### Same-chapter pipeline (serial by design)
 
-All work for a single `(jobId, chapterId)` runs on `ingestionTaskExecutor` after the scene detection stage completes. Within one chapter, the fan-out branches (`ChapterIndividualResolutionHandler`, `ChapterLocationResolutionHandler`, `ChapterObjectResolutionHandler`, `ChapterCollectiveResolutionHandler`, `ChapterEventResolutionHandler`) subscribe via `@Async` listeners and run concurrently with each other — and with `ChunkingHandler` and `EmbeddingHandler` — after the publishing transaction commits.
+All work for a single `(jobId, chapterId)` runs on `ingestionLaneTaskExecutor` after the scene detection stage completes. Within one chapter, the fan-out branches (`ChapterIndividualConsolidationHandler`, `ChapterLocationConsolidationHandler`, `ChapterObjectConsolidationHandler`, `ChapterCollectiveConsolidationHandler`, `ChapterEventConsolidationHandler`) are routed by `StageDispatcher` to `ingestionLaneTaskExecutor` and run concurrently with each other — and with `ChunkingHandler` and `EmbeddingHandler` — after the publishing transaction commits.
 
 ### Cross-chapter submissions (concurrent-capable)
 
@@ -48,7 +48,7 @@ The original pipeline ran triad analysis only during the current chapter's pipel
 
 - For each new boundary, it checks `sceneTemporalRelationshipPersistenceService.hasAnyTemporalRelationshipBetween(previousSceneId, nextSceneId)` in both directions.
 - If a `TEMPORAL` relationship already exists in either direction, replay is skipped.
-- Otherwise, it runs `analyzeChapterTriadsWithIndividuals` for the next chapter with `triadChapter = boundary.getNextChapterId()` and filters the resulting triad analyses to the boundary pair, then writes the `TEMPORAL` edge directly without calling the LLM again.
+- Otherwise, it runs `analyzeChapterTriads` for the next chapter with `triadChapter = boundary.getNextChapterId()` and filters the resulting triad analyses to the boundary pair, then writes the `TEMPORAL` edge directly without calling the LLM again.
 
 This means:
 - **Happy path** (chapters submitted in order): triad analysis runs once per chapter, no replay overhead.
@@ -73,17 +73,24 @@ When a second batch of chapters is submitted before the first batch finishes, th
 | Concurrent batch admission control | Not implemented | Second batch submissions while first is active may cause QUEUED jobs to stall if executor is saturated. |
 | Intra-chapter triad parallelization | Not implemented | `SceneRelationshipAnalysisService` processes triads sequentially within a chapter. Parallelizing triads is feasible (bounded executor, result ordering by `triadIndex`) but should wait until the queue/admission model is explicit, because compounding chapter-level and intra-chapter concurrency adds debugging surface. |
 
+### Claim-Based Concurrency for Book-Level Stages
+
+Book-level consolidation stages (`BookIndividual`, `BookLocation`, `BookObject`, `BookCollective`, `BookEvent`) use `BookConsolidationClaimService` to prevent concurrent reduction of the same book. The claim is a Neo4j MERGE-based lock: `tryAcquireClaim(bookId, lane, stageId)` atomically creates a `BookConsolidationClaim` node. If the claim already exists, the handler returns `StageResult.retryableFailure()` and the stage is retried later.
+
+This claim-based approach is necessary because book-level consolidation is destructive (delete-and-rebuild) and must not run concurrently for the same book. The `stageId` on the claim node provides provenance for cleanup.
+
 ## Relationship to Other Patterns
 
 - **Ingestion Pipeline Pattern** — This document is a child of the pipeline pattern. It extends the "Concurrency and Timing View" section with explicit ordering guarantees and known gaps.
 - **Handler Retry-Safety Pattern** — The concurrency model here is consistent with retry-safety: handlers own their projection scope, and out-of-order replay does not invalidate owned output — it only repairs missing boundary edges.
 - **Triad Analysis Pattern** — Triad analysis provides the LLM classification for temporal edges. This document describes when triad analysis runs and how the boundary replay interacts with it.
+- **ADR-013** — Documents the `StageDispatcher` architectural decision, including the rationale for lane-based executor routing and the claim-based concurrency model for book-level consolidation stages.
 
 ## Design Constraints and Rationale
 
-1. **No global chapter queue.** The pipeline uses Spring `@Async` event listeners with executors. Adding a global queue with per-book ordering would introduce a scheduling layer that the current event-driven model deliberately avoids.
+1. **No global chapter queue.** The pipeline uses `StageDispatcher` with Spring `@EventListener` for event routing and named executors for thread management. Adding a global queue with per-book ordering would introduce a scheduling layer that the current dispatcher model deliberately avoids.
 
-2. **Single-threaded downstream executor.** `ingestionTaskExecutor` is single-threaded to serialize downstream branch work and avoid write contention between concurrent submissions. This is a conservative choice; fan-out concurrency happens at the `@Async` listener level, not at the executor level.
+2. **Single-threaded downstream executor.** `ingestionLaneTaskExecutor` is single-threaded to serialize downstream branch work and avoid write contention between concurrent submissions. `StageDispatcher` routes `SCENE_SEGMENTATION` to `sceneDetectionTaskExecutor` and all other stages to `ingestionLaneTaskExecutor`. This is a conservative choice; fan-out concurrency happens at the dispatcher level, not at the executor level.
 
 3. **Idempotent default edges over locking.** `NEXT_IN_READING_ORDER` uses `MERGE` rather than pessimistic locking. This trades some retry overhead (a second `MERGE` that finds an existing edge) for the ability to run without coordination.
 

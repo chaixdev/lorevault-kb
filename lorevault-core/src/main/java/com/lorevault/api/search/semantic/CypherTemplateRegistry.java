@@ -1,7 +1,7 @@
 package com.lorevault.api.search.semantic;
 import com.lorevault.api.search.model.SpoilerVisibility;
 import com.lorevault.api.search.model.EntityLookupException;
-import com.lorevault.api.ingestion.job.IngestionFailure;
+import com.lorevault.api.orchestration.job.IngestionFailure;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

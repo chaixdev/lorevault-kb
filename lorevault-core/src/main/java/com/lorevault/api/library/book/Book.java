@@ -1,8 +1,11 @@
 package com.lorevault.api.library.book;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 
@@ -13,7 +16,10 @@ import java.util.UUID;
  * Represents a specific book within a series or standalone within a universe.
  * Stable UUID allows uniform references from chapters/chunks.
  */
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Node("Book")

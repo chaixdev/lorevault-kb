@@ -1,14 +1,17 @@
 package com.lorevault.api.ai.infrastructure;
 
-import com.lorevault.api.ai.llm.LlmCallLogger;
+import com.lorevault.api.ai.infrastructure.LlmCallLoggingService;
 import com.lorevault.api.ai.llm.EventCorefModels;
 import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.ai.llm.LlmClient;
-import com.lorevault.api.ingestion.triad.SceneRelationshipAnalysisService;
+import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.triad.SceneRelationshipAnalysisService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.config.LoreVaultModelsProperties;
+import com.lorevault.api.config.LoreVaultModelsProperties.ModelProperties;
 import com.lorevault.api.config.LoreVaultPromptProperties;
+import com.lorevault.api.ai.ModelSlot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,7 +51,7 @@ class LlmClientTest {
     private LoreVaultModelsProperties modelProperties;
 
     @Mock
-    private LlmCallLogger llmLog;
+    private LlmCallLoggingService llmLog;
 
     @Mock
     private ChatClient.ChatClientRequestSpec requestSpec;
@@ -60,6 +63,10 @@ class LlmClientTest {
 
     @BeforeEach
     void setUp() {
+        // Stub model property records so getModelIdForStage doesn't NPE
+        var nlpSmallProps = new ModelProperties(null, null, null, null, null);
+        when(modelProperties.nlpSmall()).thenReturn(nlpSmallProps);
+
         client = new LlmClient(
                 nlpSmallChatClient,
                 nlpBigChatClient,
@@ -103,9 +110,9 @@ class LlmClientTest {
                 )
         );
 
-        when(promptRepository.get("scene-analysis-user"))
+        when(promptRepository.get(PromptName.SCENE_ANALYSIS_USER))
                 .thenReturn(new org.springframework.ai.chat.prompt.PromptTemplate("{curr_text}"));
-        when(promptProperties.getSceneAnalysisModel()).thenReturn("nlp-small");
+        when(promptProperties.getSceneAnalysisModel()).thenReturn(ModelSlot.NLP_SMALL.slotName());
         when(promptProperties.getSceneAnalysisPath()).thenReturn("prompts/scene-analysis.txt");
         when(nlpSmallChatClient.prompt()).thenReturn(requestSpec);
         when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
@@ -114,13 +121,14 @@ class LlmClientTest {
         when(requestSpec.call()).thenReturn(callSpec);
         when(callSpec.entity(eq(SceneRelationshipAnalysisService.TriadStructuredResult.class))).thenReturn(response);
 
-        client.detectSceneAnalysisTriad(jobId, "system prompt", Map.of("curr_text", "chapter text"), SceneRelationshipAnalysisService.TriadStructuredResult.class);
+        client.detectSceneAnalysisTriad(jobId, "system prompt", Map.of("curr_text", "chapter text"), 0.1, SceneRelationshipAnalysisService.TriadStructuredResult.class);
 
         ArgumentCaptor<String> responseBodyCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(llmLog).logCall(
+                any(UUID.class),
                 eq(jobId),
-                eq("scene-analysis"),
+                eq(StageKey.CHAPTER_EVENT_CONSOLIDATION),
                 eq("openai-compatible"),
                 eq(null),
                 eq(0.1),
@@ -132,7 +140,8 @@ class LlmClientTest {
                 responseBodyCaptor.capture(),
                 anyLong(),
                 eq(4),
-                outputTokensCaptor.capture()
+                outputTokensCaptor.capture(),
+                any(Boolean.class)
         );
 
         assertThat(responseBodyCaptor.getValue()).contains("\"timelineMarker\":\"timeline-marker\"");
@@ -155,9 +164,9 @@ class LlmClientTest {
                 )
         ));
 
-        when(promptRepository.get("event-coref-system"))
+        when(promptRepository.get(PromptName.EVENT_COREF_SYSTEM))
                 .thenReturn(new org.springframework.ai.chat.prompt.PromptTemplate("system coref prompt"));
-        when(promptProperties.getSceneAnalysisModel()).thenReturn("nlp-small");
+        when(promptProperties.getSceneAnalysisModel()).thenReturn(ModelSlot.NLP_SMALL.slotName());
         when(promptProperties.getEventCorefSystemPath()).thenReturn("classpath:prompts/event-coref-system.st");
         when(nlpSmallChatClient.prompt()).thenReturn(requestSpec);
         when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
@@ -171,8 +180,9 @@ class LlmClientTest {
         ArgumentCaptor<String> responseBodyCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(llmLog).logCall(
+                any(UUID.class),
                 eq(jobId),
-                eq("event-coref"),
+                eq(StageKey.CHAPTER_EVENT_CONSOLIDATION),
                 eq("openai-compatible"),
                 eq(null),
                 eq(0.1),
@@ -184,7 +194,8 @@ class LlmClientTest {
                 responseBodyCaptor.capture(),
                 anyLong(),
                 eq(13),
-                outputTokensCaptor.capture()
+                outputTokensCaptor.capture(),
+                any(Boolean.class)
         );
 
         assertThat(responseBodyCaptor.getValue()).contains("\"sameEventGroups\"");
@@ -201,7 +212,7 @@ class LlmClientTest {
                 "shared anchors align"
         );
 
-        when(promptRepository.get("event-merge-system"))
+        when(promptRepository.get(PromptName.EVENT_MERGE_SYSTEM))
                 .thenReturn(new org.springframework.ai.chat.prompt.PromptTemplate("system merge prompt"));
         when(promptProperties.getEventMergeSystemPath()).thenReturn("classpath:prompts/event-merge-system.st");
         when(nlpSmallChatClient.prompt()).thenReturn(requestSpec);
@@ -216,8 +227,9 @@ class LlmClientTest {
         ArgumentCaptor<String> responseBodyCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(llmLog).logCall(
+                any(UUID.class),
                 eq(jobId),
-                eq("event-merge"),
+                eq(StageKey.CHAPTER_EVENT_CONSOLIDATION),
                 eq("openai-compatible"),
                 eq(null),
                 eq(0.1),
@@ -229,7 +241,8 @@ class LlmClientTest {
                 responseBodyCaptor.capture(),
                 anyLong(),
                 eq(5),
-                outputTokensCaptor.capture()
+                outputTokensCaptor.capture(),
+                any(Boolean.class)
         );
 
         assertThat(responseBodyCaptor.getValue()).contains("\"decision\":\"MERGE\"");

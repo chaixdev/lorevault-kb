@@ -29,6 +29,11 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>com.lorevault</groupId>
+            <artifactId>lorevault-catalog</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
@@ -186,12 +191,12 @@
                                     <element>PACKAGE</element>
                                     <includes>
                                         <include>com.lorevault.api.ai.*</include>
-                                        <include>com.lorevault.api.content.*</include>
+                                        <include>com.lorevault.api.graph.*</include>
                                         <include>com.lorevault.api.health.*</include>
-                                        <include>com.lorevault.api.ingestion.*</include>
+                                        <include>com.lorevault.api.orchestration.*</include>
                                         <include>com.lorevault.api.library.*</include>
                                         <include>com.lorevault.api.search.*</include>
-                                        <include>com.lorevault.api.content.timeline.*</include>
+                                        <include>com.lorevault.api.graph.timeline.*</include>
                                     </includes>
                                     <limits>
                                         <limit>
@@ -306,15 +311,15 @@
                         <configuration>
                             <targetClasses>
                                 <param>com.lorevault.api.ai.*</param>
-                                <param>com.lorevault.api.content.*</param>
-                                <param>com.lorevault.api.ingestion.*</param>
+                                <param>com.lorevault.api.graph.*</param>
+                                <param>com.lorevault.api.orchestration.*</param>
                                 <param>com.lorevault.api.library.*</param>
                                 <param>com.lorevault.api.search.*</param>
                             </targetClasses>
                             <targetTests>
                                 <param>com.lorevault.api.ai.*</param>
-                                <param>com.lorevault.api.content.*</param>
-                                <param>com.lorevault.api.ingestion.*</param>
+                                <param>com.lorevault.api.graph.*</param>
+                                <param>com.lorevault.api.orchestration.*</param>
                                 <param>com.lorevault.api.library.*</param>
                                 <param>com.lorevault.api.search.*</param>
                             </targetTests>

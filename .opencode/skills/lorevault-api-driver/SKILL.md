@@ -62,7 +62,7 @@ CHAPTER_ID=$(echo "$PREPARE_RESULT" | jq -r '.chapterId')
 ### 4. Discover available steps
 
 ```bash
-curl -s localhost:18080/api/query/ingestion/steps | jq '.steps[] | {key, scope, prerequisites}'
+curl -s localhost:18080/api/query/ingestion/stages | jq '.stages[] | {key, scope, prerequisites}'
 ```
 
 Use this to verify the step surface and check prerequisites before running steps.

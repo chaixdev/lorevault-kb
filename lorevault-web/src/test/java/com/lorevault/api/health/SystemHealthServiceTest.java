@@ -1,6 +1,7 @@
 package com.lorevault.api.health;
 
 import com.lorevault.api.config.LoreVaultModelsProperties;
+import com.lorevault.api.ai.ModelSlot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -74,9 +75,9 @@ class SystemHealthServiceTest {
         
         // Mock basic model properties - only when needed
         var nlpSmallProps = new LoreVaultModelsProperties.ModelProperties(
-            "openai", "http://localhost", "/chat/completions", "key", "gemma-3-4b-it", 0.3, 1.0, 128000);
+            "openai", "http://localhost", "key", "gemma-3-4b-it", 128000);
         var nlpBigProps = new LoreVaultModelsProperties.ModelProperties(
-            "openai", "http://localhost", "/chat/completions", "key", TEST_MODEL_ID, 0.3, 1.0, 128000);
+            "openai", "http://localhost", "key", TEST_MODEL_ID, 128000);
             
         // Use lenient() to avoid unnecessary stubbing issues when not all mocks are used in every test
         lenient().when(modelsProperties.nlpSmall()).thenReturn(nlpSmallProps);
@@ -158,9 +159,9 @@ class SystemHealthServiceTest {
 
         // Then
         assertThat(results).hasSize(2);
-        assertThat(results).containsKeys("nlp-small", "nlp-big");
-        assertThat(results.get("nlp-small").isHealthy()).isTrue();
-        assertThat(results.get("nlp-big").isHealthy()).isTrue();
+        assertThat(results).containsKeys(ModelSlot.NLP_SMALL.slotName(), ModelSlot.NLP_BIG.slotName());
+        assertThat(results.get(ModelSlot.NLP_SMALL.slotName()).isHealthy()).isTrue();
+        assertThat(results.get(ModelSlot.NLP_BIG.slotName()).isHealthy()).isTrue();
     }
 
     @Test

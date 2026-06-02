@@ -126,21 +126,38 @@ This workflow aims to keep the repository legible:
 
 That separation is the default standard for new work in this repository.
 
-## Local Graph Data Policy
+## Local Development Data Policy
 
-The local Neo4j development database is treated as **disposable and rebuildable** at all stages of current development.
+The local Neo4j and PostgreSQL development databases are treated as **disposable and rebuildable** at all stages of current development.
 
-There is no migration obligation for local graph data.
+There is no migration obligation for local development data.
 
-When the graph schema, extraction pipeline, or entity model changes, the correct response is to wipe the local database and re-ingest from source content. Re-ingestion is the migration path.
+When the graph schema, extraction pipeline, catalog schema, or entity model changes, the correct response is to wipe the local databases and re-ingest from source content. Re-ingestion is the migration path.
 
 This policy applies until LoreVault explicitly adopts a schema versioning and migration mechanism and documents it in a canonical rule or ADR. Until then:
 
-- Do not write planning or design docs that treat existing graph data as a constraint
-- Do not design schema changes around in-place graph migration
+- Do not write planning or design docs that treat existing local database data as a constraint
+- Do not design schema changes around in-place local data migration
 - Do not block implementation work on backfill concerns for local data
+
+### Flyway migrations during wipe-state development
+
+Flyway is used to create schemas consistently, not to preserve local data history.
+
+While LoreVault remains a demo/development project with wipe-reset-test cycles and no durable shipped database schema, module-local Flyway migrations should stay collapsed into a single evolving `V1__...sql` per schema area.
+
+Practical rule:
+
+- If a schema has not been shipped as durable user data, rewrite its existing `V1__...sql` migration instead of adding `V2`, `V3`, etc.
+- Use Git history as the version record for development-stage schema evolution.
+- If editing `V1` causes local Flyway checksum mismatches, reset the local database/schema history; do not preserve the mismatch with repair commits or compatibility migrations.
+- Start incremental migrations only after the project explicitly declares a durable schema boundary in a canonical rule or ADR.
+
+Current application:
+
+- The relation catalog PostgreSQL schema is development-only and lives in one evolving migration: `lorevault-catalog/src/main/resources/db/migration/catalog/V1__catalog_definition.sql`.
 
 Scripts that support this policy:
 
-- `scripts/reset-dev-db.sh` — wipes the local Neo4j dev database
+- `scripts/reset-dev-db.sh` — wipes the local Neo4j dev database and local PostgreSQL catalog data; pass `--catalog-schema` after editing an evolving catalog `V1` migration to also drop catalog tables and Flyway schema history before the next API start
 - `scripts/prepare-dev-environment.sh` — wipes and re-seeds canonical sample data (requires app and Neo4j already running)

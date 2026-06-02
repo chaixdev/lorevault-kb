@@ -1,5 +1,5 @@
 package com.lorevault.api.web.query.job;
-import com.lorevault.api.ingestion.job.IngestionStatus;
+import com.lorevault.api.orchestration.job.IngestionStatus;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

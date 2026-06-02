@@ -2,25 +2,30 @@ package com.lorevault.api.ai.llm;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lorevault.api.ai.infrastructure.LlmCallLoggingService;
+import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
 import com.lorevault.api.config.LoreVaultPromptProperties;
 import com.lorevault.api.config.LoreVaultModelsProperties;
+import com.lorevault.api.ai.ModelSlot;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.retry.support.RetryTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import com.lorevault.api.orchestration.pipeline.StageKey;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.UUID;
 
 /**
  * Client responsible for making AI calls for scene detection.
- * Supports both single-pass (legacy) and two-pass scene detection workflows.
  * Encapsulates the AI model configuration, prompt loading, and retry logic.
  */
 @Component
@@ -33,7 +38,7 @@ public class LlmClient {
     private final PromptRepository promptRepository;
     private final LoreVaultPromptProperties promptProperties;
     private final LoreVaultModelsProperties modelProperties;
-    private final LlmCallLogger llmLog;
+    private final LlmCallLoggingService llmLog;
     private final ObjectMapper objectMapper;
     
     @Qualifier("llmRetryTemplate")
@@ -44,7 +49,7 @@ public class LlmClient {
                      PromptRepository promptRepository,
                      LoreVaultPromptProperties promptProperties,
                      LoreVaultModelsProperties modelProperties,
-                     LlmCallLogger llmLog,
+                     LlmCallLoggingService llmLog,
                      ObjectMapper objectMapper,
                      @Qualifier("llmRetryTemplate") RetryTemplate retryTemplate) {
         this.nlpSmallChatClient = nlpSmallChatClient;
@@ -57,18 +62,14 @@ public class LlmClient {
         this.retryTemplate = retryTemplate;
     }
 
-    @Value("${lorevault.ai.models.nlp-small.model:openai/gpt-oss-120b}")
-    private String nlpSmallModelId;
-    @Value("${lorevault.ai.models.nlp-big.model:openai/gpt-oss-120b}")
-    private String nlpBigModelId;
-
     private static final double SEGMENTATION_INPUT_BUDGET_RATIO = 0.70d;
 
     public SegmentationBudgetCheck evaluateSegmentationBudget(String chapterText) {
-        PromptTemplate template = promptRepository.get("chapter-segmentation");
+        PromptTemplate template = promptRepository.get(PromptName.CHAPTER_SEGMENTATION);
         String systemPrompt = template.render(Map.of());
 
-        String modelSlot = promptProperties.getChapterSegmentationModel();
+        String modelSlotStr = promptProperties.getChapterSegmentationModel();
+        ModelSlot modelSlot = ModelSlot.NLP_BIG.slotName().equals(modelSlotStr) ? ModelSlot.NLP_BIG : ModelSlot.NLP_SMALL;
         LoreVaultModelsProperties.ModelProperties cfg = getModelProperties(modelSlot);
 
         int estimatedPromptTokens = estimateTokens(systemPrompt);
@@ -78,7 +79,7 @@ public class LlmClient {
         int usableInputBudget = (int) Math.floor(maxContextTokens * SEGMENTATION_INPUT_BUDGET_RATIO);
 
         return new SegmentationBudgetCheck(
-                modelSlot,
+                modelSlotStr,
                 maxContextTokens,
                 usableInputBudget,
                 estimatedPromptTokens,
@@ -88,58 +89,40 @@ public class LlmClient {
         );
     }
 
-    public String detectScenesTwoPass(UUID jobId, String chapterText) {
-        String segmentationModelId = getModelIdForStage("segmentation");
-        log.debug("[LLM] Starting two-stage scene detection: inputLength={} chars, segmentationModel={}", 
-                 chapterText == null ? 0 : chapterText.length(), segmentationModelId);
-        
-        String segmentationResult = detectChapterSegmentation(jobId, chapterText);
-        log.debug("[LLM] Chapter segmentation completed, result length={} chars", segmentationResult.length());
-        
-        String analysisResult = detectSceneAnalysis(jobId, segmentationResult);
-        log.debug("[LLM] Scene analysis completed, final result length={} chars", analysisResult.length());
-        
-        return analysisResult;
-    }
-
-    public String detectChapterSegmentation(UUID jobId, String chapterText) {
-        PromptTemplate template = promptRepository.get("chapter-segmentation");
+    public String detectChapterSegmentation(UUID jobId, String chapterText, double temperature) {
+        PromptTemplate template = promptRepository.get(PromptName.CHAPTER_SEGMENTATION);
         String systemPrompt = template.render(Map.of());
         
-        String modelId = promptProperties.getChapterSegmentationModel();
-        ChatClient chatClient = getChatClientForModel(modelId);
-        String actualModelId = getModelIdForStage("segmentation");
+        PromptTemplate userTemplate = promptRepository.get(PromptName.CHAPTER_SEGMENTATION_USER);
+        String userInput = userTemplate.render(Map.of("chapter_text", chapterText));
         
-        return executeSceneDetectionCall(jobId, "chapter-segmentation", systemPrompt, chapterText, chatClient, actualModelId);
+        String modelSlotStr = promptProperties.getChapterSegmentationModel();
+        ModelSlot modelSlot = ModelSlot.NLP_BIG.slotName().equals(modelSlotStr) ? ModelSlot.NLP_BIG : ModelSlot.NLP_SMALL;
+        ChatClient chatClient = getChatClientForModel(modelSlot);
+        String actualModelId = getModelIdForStage(StageKey.SCENE_SEGMENTATION);
+        
+        return executeSceneDetectionCall(jobId, StageKey.SCENE_SEGMENTATION, systemPrompt, userInput, chatClient, actualModelId, temperature);
     }
 
-    public String detectSceneAnalysis(UUID jobId, String segmentationXmlResult) {
-        PromptTemplate template = promptRepository.get("scene-analysis");
-        String systemPrompt = template.render(Map.of());
-        
-        String modelId = promptProperties.getSceneAnalysisModel();
-        ChatClient chatClient = getChatClientForModel(modelId);
-        String actualModelId = getModelIdForStage("analysis");
-        
-        return executeSceneDetectionCall(jobId, "scene-analysis", systemPrompt, segmentationXmlResult, chatClient, actualModelId);
-    }
-
-    public <T> T detectSceneAnalysisTriad(UUID jobId, String systemPrompt, Map<String, Object> userVariables, Class<T> responseType) {
-        PromptTemplate userTemplate = promptRepository.get("scene-analysis-user");
+    public <T> T detectSceneAnalysisTriad(UUID jobId, String systemPrompt, Map<String, Object> userVariables,
+                                          double temperature, Class<T> responseType) {
+        PromptTemplate userTemplate = promptRepository.get(PromptName.SCENE_ANALYSIS_USER);
         String userInput = userTemplate.render(userVariables);
 
-        String modelId = promptProperties.getSceneAnalysisModel();
-        ChatClient chatClient = getChatClientForModel(modelId);
-        String actualModelId = getModelIdForStage("analysis");
+        String modelSlotStr = promptProperties.getSceneAnalysisModel();
+        ModelSlot modelSlot = ModelSlot.NLP_BIG.slotName().equals(modelSlotStr) ? ModelSlot.NLP_BIG : ModelSlot.NLP_SMALL;
+        ChatClient chatClient = getChatClientForModel(modelSlot);
+        String actualModelId = getModelIdForStage(StageKey.CHAPTER_EVENT_CONSOLIDATION);
 
         return executeSceneDetectionStructuredCall(
                 jobId,
-                "scene-analysis",
+                StageKey.CHAPTER_EVENT_CONSOLIDATION,
                 promptProperties.getSceneAnalysisPath(),
                 systemPrompt,
                 userInput,
                 chatClient,
                 actualModelId,
+                temperature,
                 responseType
         );
     }
@@ -157,21 +140,23 @@ public class LlmClient {
             UUID jobId,
             String userInput
     ) {
-        PromptTemplate systemTemplate = promptRepository.get("event-coref-system");
+        PromptTemplate systemTemplate = promptRepository.get(PromptName.EVENT_COREF_SYSTEM);
         String systemPrompt = systemTemplate.render(Map.of());
 
-        String modelId = promptProperties.getSceneAnalysisModel();
-        ChatClient chatClient = getChatClientForModel(modelId);
-        String actualModelId = getModelIdForStage("analysis");
+        String modelSlotStr = promptProperties.getSceneAnalysisModel();
+        ModelSlot modelSlot = ModelSlot.NLP_BIG.slotName().equals(modelSlotStr) ? ModelSlot.NLP_BIG : ModelSlot.NLP_SMALL;
+        ChatClient chatClient = getChatClientForModel(modelSlot);
+        String actualModelId = getModelIdForStage(StageKey.CHAPTER_EVENT_CONSOLIDATION);
 
         return executeSceneDetectionStructuredCall(
                 jobId,
-                "event-coref",
+                StageKey.CHAPTER_EVENT_CONSOLIDATION,
                 promptProperties.getEventCorefSystemPath(),
                 systemPrompt,
                 userInput,
                 chatClient,
                 actualModelId,
+                0.1,
                 EventCorefModels.CorefWindowResponse.class
         );
     }
@@ -184,98 +169,82 @@ public class LlmClient {
             UUID jobId,
             String userInput
     ) {
-        PromptTemplate systemTemplate = promptRepository.get("event-merge-system");
+        PromptTemplate systemTemplate = promptRepository.get(PromptName.EVENT_MERGE_SYSTEM);
         String systemPrompt = systemTemplate.render(Map.of());
 
-        ChatClient chatClient = getChatClientForModel("nlp-small");
+        ChatClient chatClient = getChatClientForModel(ModelSlot.NLP_SMALL);
 
         return executeSceneDetectionStructuredCall(
                 jobId,
-                "event-merge",
+                StageKey.CHAPTER_EVENT_CONSOLIDATION,
                 promptProperties.getEventMergeSystemPath(),
                 systemPrompt,
                 userInput,
                 chatClient,
-                nlpSmallModelId,
+                modelProperties.nlpSmall().model(),
+                0.1,
                 EventMergeModels.EventMergePairResponse.class
         );
     }
 
     public String getEventCorefModelId() {
-        return getModelIdForStage("analysis");
-    }
-
-    /**
-     * Legacy method: single-pass scene detection using the v2 prompt.
-     * 
-     * @param chapterText The full chapter text to analyze
-     * @return Raw XML response from the AI model
-     * @throws RuntimeException if all retry attempts fail
-     */
-    public String detectScenes(String chapterText) {
-        PromptTemplate template = promptRepository.get("scene-analysis");
-        String systemPrompt = template.render(Map.of());
-        
-        return executeSceneDetectionCall(null, "scene-detection-single-pass", systemPrompt, chapterText, nlpSmallChatClient, nlpSmallModelId);
+        return getModelIdForStage(StageKey.CHAPTER_EVENT_CONSOLIDATION);
     }
 
     /**
      * Get the appropriate ChatClient for the specified model slot.
      */
-    private ChatClient getChatClientForModel(String modelSlot) {
+    private ChatClient getChatClientForModel(ModelSlot modelSlot) {
         return switch (modelSlot) {
-            case "nlp-big" -> nlpBigChatClient;
-            case "nlp-small" -> nlpSmallChatClient;
-            default -> nlpSmallChatClient; // Default fallback
+            case NLP_BIG -> nlpBigChatClient;
+            case NLP_SMALL -> nlpSmallChatClient;
         };
     }
     
-    private String getModelIdForStage(String stage) {
+    private String getModelIdForStage(StageKey stage) {
         return switch (stage) {
-            case "segmentation" -> "nlp-big".equals(promptProperties.getChapterSegmentationModel()) ? nlpBigModelId : nlpSmallModelId;
-            case "analysis" -> "nlp-big".equals(promptProperties.getSceneAnalysisModel()) ? nlpBigModelId : nlpSmallModelId;
-            default -> nlpSmallModelId;
+            case SCENE_SEGMENTATION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getChapterSegmentationModel()) ? modelProperties.nlpBig().model() : modelProperties.nlpSmall().model();
+            case CHAPTER_EVENT_CONSOLIDATION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getSceneAnalysisModel()) ? modelProperties.nlpBig().model() : modelProperties.nlpSmall().model();
+            default -> modelProperties.nlpSmall().model();
         };
     }
 
-    private LoreVaultModelsProperties.ModelProperties getModelProperties(String modelSlot) {
+    private LoreVaultModelsProperties.ModelProperties getModelProperties(ModelSlot modelSlot) {
         return switch (modelSlot) {
-            case "nlp-big" -> modelProperties.nlpBig();
-            case "nlp-small" -> modelProperties.nlpSmall();
-            default -> modelProperties.nlpSmall();
+            case NLP_BIG -> modelProperties.nlpBig();
+            case NLP_SMALL -> modelProperties.nlpSmall();
         };
     }
 
     /**
      * Execute a scene detection call with retry logic.
-     * Common implementation for both stages and legacy single-pass.
-     * 
-     * @param step Descriptive name for logging (e.g., "chapter-segmentation", "scene-analysis", "scene-detection-single-pass")
+     *
+     * @param step Descriptive name for logging (e.g., "chapter-segmentation")
      * @param systemPrompt The system prompt to use
-     * @param userInput The user input (chapter text or chapter segmentation results)
+     * @param userInput The user input (chapter text)
      * @param chatClient The ChatClient to use for this call
      * @param modelId The model ID for logging
      * @return Raw XML response from the AI model
      * @throws RuntimeException if all retry attempts fail
      */
-    private String executeSceneDetectionCall(UUID jobId, String step, String systemPrompt, String userInput, ChatClient chatClient, String modelId) {
+    private String executeSceneDetectionCall(UUID jobId, StageKey stage, String systemPrompt, String userInput, ChatClient chatClient, String modelId, double temperature) {
+        String step = stage.name().toLowerCase().replace('_', '-');
         log.debug("[LLM] {} request: inputLength={} chars, model={}", 
                  step, userInput == null ? 0 : userInput.length(), modelId);
-        log.trace("[LLM] System prompt ({} chars): {}", systemPrompt.length(), systemPrompt);
+        log.trace("[LLM] System prompt ({} chars) sha256={}", systemPrompt.length(), sha256prefix(systemPrompt));
         
-        // Create options for consistent, deterministic results
-        OpenAiChatOptions options = OpenAiChatOptions.builder()
-            .temperature(0.1)
-            .topP(0.9)
-            .maxTokens(6000)
-            .build();
-            
         final String safeInput = userInput == null ? "" : userInput;
         
         try {
             long start = System.nanoTime();
             String response = retryTemplate.execute(retryContext -> {
                 int retryCount = retryContext.getRetryCount();
+                double attemptTemp = temperature + (retryCount * 0.1);
+                OpenAiChatOptions options = OpenAiChatOptions.builder()
+                    .temperature(attemptTemp)
+                    .topP(0.9)
+                    .maxTokens(6000)
+                    .build();
                 String attemptMsg = retryCount > 0 ? " (retry=" + retryCount + ")" : "";
                 if (retryCount > 0) {
                     log.warn("[LLM] Retrying: jobId={}, step={}, model={}, attempt={}",
@@ -298,10 +267,9 @@ public class LlmClient {
                 }
                 
                 int len = responseContent.length();
-                String preview = responseContent.substring(0, Math.min(400, len)).replaceAll("\n", "\\n");
                 log.debug("[LLM] {} response length={} elapsed={}ms model={}", 
                          step, len, elapsedMs, modelId);
-                log.trace("[LLM] Full raw response:{}\n{}", System.lineSeparator(), responseContent);
+                String preview = responseContent.substring(0, Math.min(100, len)).replaceAll("\n", "\\n");
                 log.debug("[LLM] Response preview (first {} chars): {}", preview.length(), preview);
 
                 return responseContent;
@@ -317,19 +285,23 @@ public class LlmClient {
                         recoveryContext.getLastThrowable());
             });
             long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
-            persistLlmCallSafely(
-                    jobId,
-                    step,
-                    modelId,
-                    options.getTemperature(),
-                    options.getTopP(),
-                    options.getMaxTokens(),
-                    step.equals("chapter-segmentation") ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
-                    systemPrompt,
-                    safeInput,
-                    response,
-                    elapsedMs
-            );
+            
+             persistLlmCallSafely(
+                     UUID.randomUUID(),
+                     jobId,
+                     stage,
+                     modelId,
+                     temperature,
+                     0.9,
+                     6000,
+                     stage == StageKey.SCENE_SEGMENTATION ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
+                     systemPrompt,
+                     safeInput,
+                     response,
+                     elapsedMs,
+                     null,
+                     null
+             );
             return response;
             
         } catch (Exception e) {
@@ -338,17 +310,13 @@ public class LlmClient {
         }
     }
 
-    private <T> T executeSceneDetectionStructuredCall(UUID jobId, String step, String promptTemplateId,
-                                                      String systemPrompt, String userInput,
-                                                      ChatClient chatClient, String modelId, Class<T> responseType) {
+    private <T> T executeSceneDetectionStructuredCall(UUID jobId, StageKey stage, String promptTemplateId,
+                                                        String systemPrompt, String userInput,
+                                                        ChatClient chatClient, String modelId,
+                                                        double temperature, Class<T> responseType) {
+        String step = stage.name().toLowerCase().replace('_', '-');
         log.debug("[LLM] {} request: inputLength={} chars, model={}",
                 step, userInput == null ? 0 : userInput.length(), modelId);
-
-        OpenAiChatOptions options = OpenAiChatOptions.builder()
-                .temperature(0.1)
-                .topP(0.9)
-                .maxTokens(6000)
-                .build();
 
         final String safeInput = userInput == null ? "" : userInput;
 
@@ -356,6 +324,12 @@ public class LlmClient {
             long start = System.nanoTime();
             T response = retryTemplate.execute(retryContext -> {
                 int retryCount = retryContext.getRetryCount();
+                double attemptTemp = temperature + (retryCount * 0.1);
+                OpenAiChatOptions options = OpenAiChatOptions.builder()
+                        .temperature(attemptTemp)
+                        .topP(0.9)
+                        .maxTokens(6000)
+                        .build();
                 String attemptMsg = retryCount > 0 ? " (retry=" + retryCount + ")" : "";
                 if (retryCount > 0) {
                     log.warn("[LLM] Retrying: jobId={}, step={}, model={}, attempt={}",
@@ -375,8 +349,6 @@ public class LlmClient {
                     throw new RuntimeException("Empty structured response from " + modelId + " during " + step);
                 }
 
-                String responseBody = serializeStructuredResponse(structuredResponse);
-
                 return structuredResponse;
             }, recoveryContext -> {
                 Throwable lastError = recoveryContext.getLastThrowable();
@@ -389,17 +361,20 @@ public class LlmClient {
             long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
             String responseBody = serializeStructuredResponse(response);
             persistLlmCallSafely(
+                    UUID.randomUUID(),
                     jobId,
-                    step,
+                    stage,
                     modelId,
-                    options.getTemperature(),
-                    options.getTopP(),
-                    options.getMaxTokens(),
+                    temperature,
+                    0.9,
+                    6000,
                     promptTemplateId,
                     systemPrompt,
                     safeInput,
                     responseBody,
-                    elapsedMs
+                    elapsedMs,
+                    null,
+                    null
             );
             return response;
         } catch (Exception e) {
@@ -408,8 +383,9 @@ public class LlmClient {
         }
     }
 
-    private void persistLlmCallSafely(UUID jobId,
-                                      String step,
+    private void persistLlmCallSafely(UUID callId,
+                                      UUID jobId,
+                                      StageKey stage,
                                       String modelId,
                                       Double temperature,
                                       Double topP,
@@ -418,11 +394,18 @@ public class LlmClient {
                                       String systemPrompt,
                                       String input,
                                       String responseBody,
-                                      long elapsedMs) {
+                                      long elapsedMs,
+                                      Integer inputTokensActual,
+                                      Integer outputTokensActual) {
+        String step = stage.name().toLowerCase().replace('_', '-');
         try {
+            Integer inputTokens = inputTokensActual != null ? inputTokensActual : estimateTokens(input);
+            Integer outputTokens = outputTokensActual != null ? outputTokensActual : estimateTokens(responseBody);
+            Boolean tokensEstimated = (inputTokensActual == null || outputTokensActual == null);
             llmLog.logCall(
+                    callId,
                     jobId,
-                    step,
+                    stage,
                     "openai-compatible",
                     modelId,
                     temperature,
@@ -433,8 +416,9 @@ public class LlmClient {
                     input,
                     responseBody,
                     elapsedMs,
-                    estimateTokens(input),
-                    estimateTokens(responseBody)
+                    inputTokens,
+                    outputTokens,
+                    tokensEstimated
             );
         } catch (Exception loggingError) {
             log.warn("[LLM] Call logging failed after successful model response: jobId={}, step={}, model={}, error={}",
@@ -454,11 +438,26 @@ public class LlmClient {
         return Math.max(1, Math.max(charsEstimate, wordsEstimate));
     }
 
+    private static String sha256prefix(String s) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(s.getBytes(StandardCharsets.UTF_8));
+            var hex = new StringBuilder();
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.substring(0, 12);
+        } catch (NoSuchAlgorithmException e) {
+            log.warn("[LLM] SHA-256 not available for prefix generation");
+            return "ERROR";
+        }
+    }
+
     private String serializeStructuredResponse(Object response) {
         try {
             return objectMapper.writeValueAsString(response);
         } catch (JsonProcessingException | RuntimeException e) {
-            log.debug("[LLM] Structured response serialization failed, falling back to String.valueOf(): {}", e.getMessage());
+            log.warn("[LLM] Structured response serialization failed, falling back to String.valueOf(): {}", e.getMessage());
             return String.valueOf(response);
         }
     }

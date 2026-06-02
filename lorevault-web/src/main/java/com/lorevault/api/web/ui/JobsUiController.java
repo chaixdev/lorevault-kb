@@ -1,8 +1,8 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.ingestion.submission.IngestionService;
-import com.lorevault.api.ingestion.job.JobStatusDetails;
-import com.lorevault.api.ingestion.job.PaginatedJobSummaries;
+import com.lorevault.api.orchestration.submission.IngestionService;
+import com.lorevault.api.orchestration.job.JobStatusDetails;
+import com.lorevault.api.orchestration.job.PaginatedJobSummaries;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -34,17 +34,23 @@ public class JobsUiController {
 
     @GetMapping("/{jobId}")
     public String jobDetail(@PathVariable UUID jobId, Model model) {
-        JobStatusDetails status = ingestionService.getJobStatus(jobId)
-                .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
-        model.addAttribute("status", status);
+        var statusOpt = ingestionService.getJobStatus(jobId);
+        if (statusOpt.isEmpty()) {
+            model.addAttribute("error", "Job not found");
+            return "ui/error/404";
+        }
+        model.addAttribute("status", statusOpt.get());
         return "ui/jobs :: jobDetail";
     }
 
     @GetMapping("/{jobId}/expand")
     public String expandedJobDetail(@PathVariable UUID jobId, Model model) {
-        JobStatusDetails status = ingestionService.getJobStatus(jobId)
-                .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
-        model.addAttribute("status", status);
+        var statusOpt = ingestionService.getJobStatus(jobId);
+        if (statusOpt.isEmpty()) {
+            model.addAttribute("error", "Job not found");
+            return "ui/error/404";
+        }
+        model.addAttribute("status", statusOpt.get());
         return "ui/jobs :: jobExpandedRow";
     }
 

@@ -1,0 +1,141 @@
+package com.lorevault.api.graph.event.consolidation.book;
+
+import com.lorevault.api.graph.event.persistence.BookEvent;
+import com.lorevault.api.graph.event.persistence.BookEventGraphRepository;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.neo4j.core.Neo4jClient;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@Slf4j
+public class BookEventPersistenceService {
+
+    private final BookEventGraphRepository bookEventRepository;
+    private final Neo4jClient neo4jClient;
+
+    public BookEventPersistenceService(BookEventGraphRepository bookEventRepository, Neo4jClient neo4jClient) {
+        this.bookEventRepository = bookEventRepository;
+        this.neo4jClient = neo4jClient;
+    }
+
+    @Transactional
+    public BookEventWriteSummary saveAndLinkBookEvents(
+            UUID bookId,
+            UUID chapterId,
+            UUID jobId,
+            List<BookEvent> bookEvents,
+            List<List<UUID>> chapterEventIdsByBookEvent,
+            List<UUID> scopedChapterEventIds
+    ) {
+        log.info("[BOOK_EVENT_PERSISTENCE] saveAndLinkBookEvents start: jobId={}, bookId={}, inputSize={}", jobId, bookId, bookEvents != null ? bookEvents.size() : 0);
+        clearExistingBookEventLinks(scopedChapterEventIds);
+
+        if (bookEvents == null || bookEvents.isEmpty()) {
+            log.warn("[BOOK_EVENT_PERSISTENCE] saveAndLinkBookEvents empty input: jobId={}, bookId={}", jobId, bookId);
+            return new BookEventWriteSummary(0, 0);
+        }
+
+        List<BookEvent> savedBookEvents = new ArrayList<>(bookEventRepository.saveAll(bookEvents));
+        int writtenLinks = 0;
+
+        for (int i = 0; i < savedBookEvents.size(); i++) {
+            BookEvent bookEvent = savedBookEvents.get(i);
+            bookEventRepository.linkBookToEvent(bookId, bookEvent.id());
+            List<UUID> chapterEventIds = chapterEventIdsByBookEvent.get(i);
+            writtenLinks += linkChapterEventsToBookEvent(chapterEventIds, bookEvent.id());
+        }
+
+        log.info("[BOOK_EVENT_PERSISTENCE] saveAndLinkBookEvents complete: jobId={}, bookId={}, savedCount={}, writtenLinks={}", jobId, bookId, savedBookEvents.size(), writtenLinks);
+        return new BookEventWriteSummary(savedBookEvents.size(), writtenLinks);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UUID> expandRewriteScope(List<UUID> scopedChapterEventIds) {
+        if (scopedChapterEventIds == null || scopedChapterEventIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> scopedIds = scopedChapterEventIds.stream().map(UUID::toString).toList();
+        Object rawIds = neo4jClient.query("""
+                MATCH (ce:ChapterEvent)
+                WHERE ce.id IN $chapterEventIds
+                OPTIONAL MATCH (ce)-[:REFERS_TO]->(be:BookEvent)<-[:REFERS_TO]-(linked:ChapterEvent)
+                WITH collect(DISTINCT be) AS touchedBookEvents
+                UNWIND touchedBookEvents AS be
+                MATCH (linked:ChapterEvent)-[:REFERS_TO]->(be)
+                RETURN collect(DISTINCT linked.id) AS chapterEventIds
+                """)
+                .bind(scopedIds).to("chapterEventIds")
+                .fetch()
+                .one()
+                .map(row -> row.get("chapterEventIds"))
+                .orElse(List.of());
+
+        LinkedHashSet<UUID> expanded = new LinkedHashSet<>(scopedChapterEventIds);
+        if (rawIds instanceof List<?> linkedIds) {
+            for (Object linkedId : linkedIds) {
+                UUID uuid = toUuid(linkedId);
+                if (uuid != null) {
+                    expanded.add(uuid);
+                }
+            }
+        }
+        return List.copyOf(expanded);
+    }
+
+    private void clearExistingBookEventLinks(List<UUID> scopedChapterEventIds) {
+        if (scopedChapterEventIds == null || scopedChapterEventIds.isEmpty()) {
+            return;
+        }
+
+        List<String> scopedIds = scopedChapterEventIds.stream().map(UUID::toString).toList();
+        bookEventRepository.clearLinksAndDeleteOrphanBookEvents(scopedIds);
+    }
+
+    private int linkChapterEventsToBookEvent(List<UUID> chapterEventIds, UUID bookEventId) {
+        if (chapterEventIds == null || chapterEventIds.isEmpty() || bookEventId == null) {
+            return 0;
+        }
+
+        List<String> ids = chapterEventIds.stream().map(UUID::toString).toList();
+
+        Object rawCount = neo4jClient.query("""
+                UNWIND $chapterEventIds AS chapterEventId
+                MATCH (ce:ChapterEvent {id: chapterEventId})
+                MATCH (be:BookEvent {id: $bookEventId})
+                MERGE (ce)-[:REFERS_TO]->(be)
+                RETURN count(*) AS linkCount
+                """)
+                .bind(ids).to("chapterEventIds")
+                .bind(bookEventId.toString()).to("bookEventId")
+                .fetch()
+                .one()
+                .map(row -> row.get("linkCount"))
+                .orElse(0);
+
+        if (rawCount instanceof Number number) {
+            return number.intValue();
+        }
+        return 0;
+    }
+
+    private UUID toUuid(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof UUID uuid) {
+            return uuid;
+        }
+        return UUID.fromString(value.toString());
+    }
+
+    public record BookEventWriteSummary(
+            int bookEventsCreated,
+            int referenceLinksWritten
+    ) {}
+}

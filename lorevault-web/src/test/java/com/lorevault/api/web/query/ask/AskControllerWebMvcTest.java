@@ -3,7 +3,7 @@ import com.lorevault.api.search.model.CoreSearchRecords;
 import com.lorevault.api.search.model.CoreSearchRecords.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lorevault.api.ingestion.job.IngestionFailure;
+import com.lorevault.api.orchestration.job.IngestionFailure;
 import com.lorevault.api.search.model.EntityLookupException;
 import com.lorevault.api.search.model.SemanticSearchException;
 import com.lorevault.api.web.query.ask.AskDtos.AskRequest;

@@ -1,6 +1,6 @@
 package com.lorevault.api.web.ui.view;
 
-import com.lorevault.api.library.service.LibraryQueryService;
+import com.lorevault.api.library.LibraryQueryService;
 
 import java.util.List;
 import java.util.Map;

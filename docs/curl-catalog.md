@@ -18,28 +18,28 @@ curl -s localhost:18080/actuator/health | jq .
 ### Create Universe
 
 ```bash
-curl -s -X POST localhost:18080/api/command/library/universe \
+curl -s -X POST localhost:18080/api/command/library/create-universe \
   -H 'Content-Type: application/json' \
   -d '{"name":"My Universe"}'
-# → {"id":"...","name":"My Universe","created":true}
+# → {"universeId":"...","name":"...","slug":"...","created":true,...}
 ```
 
 ### Create Series
 
 ```bash
-curl -s -X POST localhost:18080/api/command/library/series \
+curl -s -X POST localhost:18080/api/command/library/create-series \
   -H 'Content-Type: application/json' \
   -d '{"universeId":"UNIVERSE_ID","name":"My Series"}'
-# → {"id":"...","name":"My Series","created":true}
+# → {"seriesId":"...","universeId":"...","name":"...","created":true,...}
 ```
 
 ### Create Book
 
 ```bash
-curl -s -X POST localhost:18080/api/command/library/book \
+curl -s -X POST localhost:18080/api/command/library/create-book \
   -H 'Content-Type: application/json' \
   -d '{"universeId":"UNIVERSE_ID","seriesId":"SERIES_ID","title":"My Book","bookNumber":1}'
-# → {"id":"...","title":"My Book","created":true}
+# → {"bookId":"...","universeId":"...","title":"...","bookNumber":1,"created":true,...}
 ```
 
 ## Ingestion: Full Pipeline
@@ -55,7 +55,7 @@ curl -s -X POST localhost:18080/api/command/ingest \
 # → {"jobId":"...","chapterId":"...","message":"Chapter submitted successfully for processing"}
 ```
 
-## Ingestion: Prepare (Step-by-Step)
+## Ingestion: Prepare (Stage-by-Stage)
 
 ### Prepare Chapter (no pipeline trigger)
 
@@ -71,13 +71,13 @@ curl -s -X POST localhost:18080/api/command/ingest/prepare \
 # → {"jobId":"...","chapterId":"..."}
 ```
 
-## Ingestion: Chapter-Scoped Steps
+## Ingestion: Chapter-Scoped Stages
 
-All chapter-scoped step endpoints accept optional `fireEvents` and `jobId` query parameters:
+All chapter-scoped stage endpoints accept optional `fireEvents` and `jobId` query parameters:
 
-- `fireEvents=true` — publish domain events after step completion (triggers downstream pipeline)
-- `fireEvents=false` (default) — run step in isolation, no cascade
-- `jobId=UUID` — track step execution within an ingestion job
+- `fireEvents=true` — publish domain events after stage completion (triggers downstream pipeline)
+- `fireEvents=false` (default) — run stage in isolation, no cascade
+- `jobId=UUID` — track stage execution within an ingestion job
 
 ### Detect Scenes
 
@@ -154,9 +154,9 @@ curl -s -X POST "localhost:18080/api/command/ingest/chapters/CHAPTER_ID/resolve-
 #    "counts":{"rawMentionsProcessed":20,"chapterEventsCreated":6,"failedCorefWindowCount":0}}
 ```
 
-## Ingestion: Book-Scoped Steps
+## Ingestion: Book-Scoped Stages
 
-Book-scoped steps reduce chapter-level entities to book-level entities. They accept the same `fireEvents` and `jobId` parameters.
+Book-scoped stages reduce chapter-level entities to book-level entities. They accept the same `fireEvents` and `jobId` parameters.
 
 ### Reduce Individuals
 
@@ -213,14 +213,14 @@ Clients should update to use `/reduce-*` URLs directly.
 curl -s -X POST "localhost:18080/api/command/ingest/events/rerun-ann?universeId=UNIVERSE_ID"
 ```
 
-## Query: Step Discoverability
+## Query: Stage Discoverability
 
-### List Available Steps
+### List Available Stages
 
 ```bash
-curl -s localhost:18080/api/query/ingestion/steps | jq .
+curl -s localhost:18080/api/query/ingestion/stages | jq .
 # → {
-#     "steps": [
+#     "stages": [
 #       {"key":"detect-scenes","scope":"chapter","description":"Detect semantic scene boundaries in chapter text","prerequisites":[]},
 #       {"key":"chunk","scope":"chapter","description":"Split detected scenes into text chunks for embedding","prerequisites":["detect-scenes"]},
 #       {"key":"embed","scope":"chapter","description":"Generate vector embeddings for scene chunks","prerequisites":["chunk"]},
@@ -267,10 +267,9 @@ curl -s -X POST "localhost:18080/api/command/ingest/chapters/00000000-0000-0000-
 # → (empty 404 response)
 ```
 
-### Step Failed (200 with success=false)
+### Stage Failed (200 with success=false)
 
-```bash
-# When a step fails but the request was valid:
+# When a stage fails but the request was valid:
 # → {"step":"SCENE_DETECTION","scope":"chapter","scopeId":"...","success":false,
 #    "summary":"Scene detection failed: LLM API timeout after 60s","durationMs":60043,"retryable":true,
 #    "counts":{}}
@@ -278,7 +277,7 @@ curl -s -X POST "localhost:18080/api/command/ingest/chapters/00000000-0000-0000-
 
 ## Agentic Workflow Example
 
-Complete step-by-step workflow for an agent driving ingestion:
+Complete stage-by-stage workflow for an agent driving ingestion:
 
 ```bash
 # 1. Create library
@@ -300,8 +299,8 @@ PREPARE_RESULT=$(curl -s -X POST localhost:18080/api/command/ingest/prepare \
 JOB_ID=$(echo $PREPARE_RESULT | jq -r '.jobId')
 CHAPTER_ID=$(echo $PREPARE_RESULT | jq -r '.chapterId')
 
-# 3. Discover available steps
-curl -s localhost:18080/api/query/ingestion/steps | jq '.steps[] | .key'
+# 3. Discover available stages
+curl -s localhost:18080/api/query/ingestion/stages | jq '.stages[] | .key'
 
 # 4. Run scene detection (isolated, no cascade)
 curl -s -X POST "localhost:18080/api/command/ingest/chapters/$CHAPTER_ID/detect-scenes" | jq .
@@ -309,10 +308,10 @@ curl -s -X POST "localhost:18080/api/command/ingest/chapters/$CHAPTER_ID/detect-
 # 5. Inspect results in Neo4j
 # MATCH (rc:RelationClaim) WHERE rc.chapterId = $CHAPTER_ID RETURN rc.relationName, rc.subjectName, rc.objectName
 
-# 6. Run next step when ready
+# 6. Run next stage when ready
 curl -s -X POST "localhost:18080/api/command/ingest/chapters/$CHAPTER_ID/resolve-individuals" | jq .
 
-# 7. Or run a step and let it cascade
+# 7. Or run a stage and let it cascade
 curl -s -X POST "localhost:18080/api/command/ingest/chapters/$CHAPTER_ID/detect-scenes?fireEvents=true&jobId=$JOB_ID" | jq .
 
 # 8. Full pipeline (existing endpoint, unchanged)

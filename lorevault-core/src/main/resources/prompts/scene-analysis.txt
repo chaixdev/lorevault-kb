@@ -44,9 +44,10 @@ Entity Categories — definitions (for <scene_entities>)
   - Include: “Engineering Deck”, “New York”, “Sector 001”.
   - Exclude: vehicles/vessels as objects (→ Object), organizations (→ Collective).
 
-- Concept: abstract categories and ideas (titles, species, roles, doctrines, magic systems).
-  - Include: “Vulcan” (species), “Captaincy”, “Prime Directive”.
-  - Exclude: concrete actors (→ Individual), concrete places (→ Location).
+- Concept: abstract categories, ideas, or taxonomies that define narrative-significant categories (species, technologies, artifact classes, doctrines, roles, institutions, magic systems, political ideologies).
+  - Include: "Vulcan" (species), "Captaincy", "Prime Directive", "Warp Drive" (technology), "The Force" (magic-system).
+  - Exclude: concrete actors (→ Individual), concrete places (→ Location), concrete objects (→ Object).
+  - Do NOT extract ordinary nouns or common categories (e.g., "captain", "war", "laser") — only extract concepts that are narratively significant and distinctive to this fictional universe.
 
 - Event: a temporal occurrence, anything that can serve as a timeline marker (battles, meetings, journeys, ceremonies).
   - Include: “first contact on vega”, “Council Vote”, "The Winter War",
@@ -100,10 +101,18 @@ Important:
 - Prefer StronglyImplied when a relation is clearly implied by context but not directly stated.
 
 Relation fields:
-- subject: the entity initiating or experiencing the relation (format: "Kind: Name", e.g. "Individual: Frodo")
-- relationName: a short verb phrase describing the enduring relation (e.g. "is a member of", "leads", "was abducted by", "opposes", "is loyal to", "is headquartered in")
-- relationDescription: one sentence of context explaining the enduring nature of the connection
-- object: the other entity in the relation (format: "Kind: Name")
+- subject: the entity initiating or experiencing the relation. Contains structured elements:
+  - entityType: one of the entity categories above (Individual, Collective, Object, Location, Concept, Event)
+  - alias: the primary alias for this entity, copied verbatim from its `<aliases>` section. Do not invent a new name — reuse the alias exactly as extracted. Use the first alias you listed for that entity — this is the primary alias. Do not invent a new name.
+- relationType: structured block with:
+  - name: a short verb phrase describing the enduring relation (e.g. "is a member of", "leads", "was abducted by", "opposes", "is loyal to", "is headquartered in")
+  - description: a short, abstract, reusable definition of what this relation KIND means. Use your own words — do not copy examples. Format: \"category: definition\". Define the relation type, not this specific instance. Never mention individual characters by name.
+    Good: \"employment: one entity works for or serves under another\"
+    Good: \"hostility: standing adversarial opposition between entities\"
+    Bad: \"Gabriel works as a detective for the San Diego Police Department\"
+- object: the other entity in the relation. Contains structured elements:
+  - entityType: one of the entity categories above (Individual, Collective, Object, Location, Concept, Event)
+  - alias: the primary alias for this entity, copied verbatim from the entity's `<aliases>` section. Use the first alias you listed for that entity.
 - certainty: Choose one of: Explicit | StronglyImplied | WeaklyImplied
 - evidence: ≤180 chars, verbatim or tight paraphrase grounding the relation
 
@@ -183,22 +192,50 @@ Relation fields:
         <evidence>≤180 chars, verbatim or tight paraphrase grounding the relation</evidence>
       </event>
     </events>
+    <concepts>
+      <concept>
+        <aliases>
+          <alias>Prime Directive</alias>
+          <alias>Starfleet General Order 1</alias>
+        </aliases>
+        <concept_type>doctrine | species | technology | artifact-class | role | magic-system | ideology | other</concept_type>
+        <description>A sentence or two defining what this concept is</description>
+        <certainty>Choose one of: Explicit | StronglyImplied | WeaklyImplied</certainty>
+        <evidence>≤180 chars, verbatim or tight paraphrase grounding why this concept is present</evidence>
+      </concept>
+    </concepts>
   </current_scene_entities>
   <!-- optional: if no enduring inter-entity relations are evident, output empty <relations/> -->
   <relations>
     <relation>
-      <subject>Individual: Frodo</subject>
-      <relationName>trusts</relationName>
-      <relationDescription>Frodo relies on Samwise as his most trusted companion on the journey.</relationDescription>
-      <object>Individual: Samwise</object>
+      <subject>
+        <entityType>Individual</entityType>
+        <alias>Frodo</alias>
+      </subject>
+      <relationType>
+        <name>trusts</name>
+        <description>trust-based companionship and loyalty between individuals</description>
+      </relationType>
+      <object>
+        <entityType>Individual</entityType>
+        <alias>Samwise</alias>
+      </object>
       <certainty>Explicit</certainty>
       <evidence>Frodo turned to Sam and said, "I trust you more than anyone."</evidence>
     </relation>
     <relation>
-      <subject>Individual: Aragorn</subject>
-      <relationName>opposes</relationName>
-      <relationDescription>Aragorn is a standing adversary of the Ringwraiths, dedicated to resisting them.</relationDescription>
-      <object>Collective: Ringwraiths</object>
+      <subject>
+        <entityType>Individual</entityType>
+        <alias>Aragorn</alias>
+      </subject>
+      <relationType>
+        <name>opposes</name>
+        <description>standing adversarial opposition between an individual and a group</description>
+      </relationType>
+      <object>
+        <entityType>Collective</entityType>
+        <alias>Ringwraiths</alias>
+      </object>
       <certainty>StronglyImplied</certainty>
       <evidence>Aragorn barred the path, sword drawn, facing the nine riders.</evidence>
     </relation>

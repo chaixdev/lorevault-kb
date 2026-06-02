@@ -1,7 +1,7 @@
 package com.lorevault.api.search.model;
 
-import com.lorevault.api.ingestion.job.IngestionFailure;
-import com.lorevault.api.ingestion.job.IngestionFailureCarrier;
+import com.lorevault.api.orchestration.job.IngestionFailure;
+import com.lorevault.api.orchestration.job.IngestionFailureCarrier;
 
 /**
  * Business exception for entity-lookup query failures in the search layer.

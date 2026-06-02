@@ -1,6 +1,7 @@
 package com.lorevault.api.integration;
 
-import com.lorevault.api.ingestion.scene.SceneDetectionService;
+import com.lorevault.api.graph.event.scene.Scene;
+import com.lorevault.api.orchestration.scene.SceneDetectionService;
 import org.mockito.Mockito;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -17,20 +18,20 @@ import static org.mockito.Mockito.mock;
 @TestConfiguration
 public class TestConfig {
     
-    @Bean
+    @Bean("testNlpSmallChatClient")
     @Qualifier("nlpSmall")
     public ChatClient nlpSmallChatClient() {
         return mock(ChatClient.class);
     }
 
-    @Bean
+    @Bean("testNlpBigChatClient")
     @Qualifier("nlpBig")
     @Primary
     public ChatClient nlpBig() {
         return mock(ChatClient.class);
     }
 
-    @Bean
+    @Bean("testEmbeddingModel")
     @Qualifier("embeddingModel")
     public EmbeddingModel embeddingModel() {
         return mock(EmbeddingModel.class);

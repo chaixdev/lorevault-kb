@@ -36,8 +36,8 @@ Handlers own their projections, not arbitrary upstream or downstream data. For e
 
 Pipeline events are control-plane contracts. They should describe what downstream handlers are allowed to assume, not merely that code ran.
 
-- `Chapter*ResolvedEvent` means the chapter-level projection for that lane reached a coherent terminal state.
-- `Book*ReducedEvent` means the book-level projection for that lane reached a coherent terminal state.
+- `Chapter*ConsolidatedEvent` means the chapter-level projection for that lane reached a coherent terminal state.
+- `Book*ConsolidatedEvent` means the book-level projection for that lane reached a coherent terminal state.
 - `IngestionFailedEvent` means a stage failed and the affected pipeline key should not be completed by late success-branch events.
 
 Observability flags such as `processed=false` must not be consequential control-plane signals. If a reduced/resolved event is emitted, fan-in may count that branch as complete. Therefore, conditions such as claim contention, retry budget exhaustion, or deferred work must not publish reduced/resolved events. They should be retried, requeued, or represented as failure/deferred state before completion can advance.

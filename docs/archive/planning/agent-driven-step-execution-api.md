@@ -493,9 +493,9 @@ Implementation notes are appended here as each phase is completed. Each entry re
 **What was built:**
 
 Core layer (`lorevault-core`):
-- `StepKey` enum in `com.lorevault.api.ingestion.pipeline` — all 12 pipeline step identifiers with `toUrlSegment()` and `getScope()`
-- `StepDefinition` record in `com.lorevault.api.ingestion.pipeline` — key, description, scope, prerequisites
-- `StepCatalog` Spring `@Component` in `com.lorevault.api.ingestion.pipeline` — registers all 12 steps in pipeline order
+- `StepKey` enum in `com.lorevault.api.orchestration.pipeline` — all 12 pipeline step identifiers with `toUrlSegment()` and `getScope()`
+- `StepDefinition` record in `com.lorevault.api.orchestration.pipeline` — key, description, scope, prerequisites
+- `StepCatalog` Spring `@Component` in `com.lorevault.api.orchestration.pipeline` — registers all 12 steps in pipeline order
 - `PipelineStageSupport.updateJobStatus()` — now gracefully handles `null` jobId (skips update, for ad hoc step execution without job tracking)
 - `SceneDetectionHandler.execute()` — removed `emitScenesDetected()` calls from inside `execute()`; event emission moved to `handleChapterIngestion()` listener method so that direct `execute()` calls from REST controllers don't trigger downstream cascade
 
@@ -527,13 +527,13 @@ Test fix:
 
 Compilation verified:
 ```bash
-mvn clean compile -pl lorevault-core,lorevault-web -DskipTests
+mvn clean compile -DskipTests
 # BUILD SUCCESS
 ```
 
 SceneDetectionHandler tests verified:
 ```bash
-mvn test -pl lorevault-web -Dtest="SceneDetectionHandlerTest"
+mvn test -Dtest="SceneDetectionHandlerTest"
 # Tests run: 13, Failures: 0, Errors: 0, Skipped: 0
 ```
 
@@ -585,9 +585,9 @@ curl -s -X POST localhost:18080/api/command/ingest/chapters/{chapterId}/detect-s
 **What was built:**
 
 Core layer (`lorevault-core`):
-- `ChunkingOperation` interface in `com.lorevault.api.ingestion.content` — `StepResult execute(UUID jobId, UUID chapterId)`
-- `EmbeddingOperation` interface in `com.lorevault.api.ingestion.content` — `StepResult execute(UUID jobId, UUID chapterId)`
-- `ChapterEventResolutionOperation` interface in `com.lorevault.api.ingestion.resolution.event` — `StepResult execute(UUID jobId, UUID chapterId)`
+- `ChunkingOperation` interface in `com.lorevault.api.orchestration.content` — `StepResult execute(UUID jobId, UUID chapterId)`
+- `EmbeddingOperation` interface in `com.lorevault.api.orchestration.content` — `StepResult execute(UUID jobId, UUID chapterId)`
+- `ChapterEventResolutionOperation` interface in `com.lorevault.api.orchestration.consolidation.event` — `StepResult execute(UUID jobId, UUID chapterId)`
 - `ChunkingHandler` refactored: implements `ChunkingOperation`, `execute()` extracted with try/catch returning `StepResult`, `handleScenesDetected()` delegates to `execute()` and publishes `ChunksCreatedEvent` on success / `IngestionFailedEvent` on failure
 - `EmbeddingHandler` refactored: implements `EmbeddingOperation`, `execute()` extracted, `handleChunksCreated()` delegates and publishes `EmbeddingsCompletedEvent` on success / `IngestionFailedEvent` on failure
 - `ChapterEventResolutionHandler` refactored: implements `ChapterEventResolutionOperation`, `execute()` extracted (runs coref pass + aggregation), `handleScenesDetected()` delegates and publishes `ChapterEventsResolvedEvent` on success / `IngestionFailedEvent` on failure
@@ -611,13 +611,13 @@ Web layer (`lorevault-web`):
 
 Compilation verified:
 ```bash
-mvn clean compile -pl lorevault-core,lorevault-web -DskipTests
+mvn clean compile -DskipTests
 # BUILD SUCCESS
 ```
 
 Handler tests verified:
 ```bash
-mvn test -pl lorevault-web -Dtest="SceneDetectionHandlerTest,ChunkingHandlerTest,EmbeddingHandlerTest,ChapterEventResolutionHandlerTest"
+mvn test -Dtest="SceneDetectionHandlerTest,ChunkingHandlerTest,EmbeddingHandlerTest,ChapterEventResolutionHandlerTest"
 # Tests run: 23, Failures: 0, Errors: 0
 ```
 
@@ -672,13 +672,13 @@ Web layer (`lorevault-web`):
 
 Compilation verified:
 ```bash
-mvn clean compile -pl lorevault-core,lorevault-web -DskipTests
+mvn clean compile -DskipTests
 # BUILD SUCCESS
 ```
 
 Handler tests verified:
 ```bash
-mvn test -pl lorevault-web -Dtest="SceneDetectionHandlerTest,ChunkingHandlerTest,EmbeddingHandlerTest,ChapterEventResolutionHandlerTest"
+mvn test -Dtest="SceneDetectionHandlerTest,ChunkingHandlerTest,EmbeddingHandlerTest,ChapterEventResolutionHandlerTest"
 # Tests run: 23, Failures: 0, Errors: 0
 ```
 
@@ -808,7 +808,7 @@ During E2E validation with a 2-chapter Deathworlders test, the cross-chapter bou
 **Verification:**
 
 ```bash
-mvn test -pl lorevault-core,lorevault-web
+mvn test
 # Tests run: 497, Failures: 0, Errors: 9 (pre-existing WebMvc ApplicationContext failures for deleted controllers)
 ```
 

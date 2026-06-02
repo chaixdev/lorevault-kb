@@ -1,15 +1,15 @@
 package com.lorevault.api.testutil.fakes;
 
 import com.lorevault.api.library.book.Book;
-import com.lorevault.api.content.chapter.Chapter;
-import com.lorevault.api.content.chunk.Chunk;
-import com.lorevault.api.content.scene.Scene;
+import com.lorevault.api.library.chapter.Chapter;
+import com.lorevault.api.library.chunk.Chunk;
+import com.lorevault.api.graph.event.scene.Scene;
 import com.lorevault.api.library.series.Series;
 import com.lorevault.api.library.universe.Universe;
 import com.lorevault.api.library.book.BookGraphRepository;
-import com.lorevault.api.content.chapter.ChapterGraphRepository;
-import com.lorevault.api.content.chunk.ChunkGraphRepository;
-import com.lorevault.api.content.scene.SceneGraphRepository;
+import com.lorevault.api.library.chapter.ChapterGraphRepository;
+import com.lorevault.api.library.chunk.ChunkGraphRepository;
+import com.lorevault.api.graph.event.scene.SceneGraphRepository;
 import com.lorevault.api.library.series.SeriesGraphRepository;
 import com.lorevault.api.library.universe.UniverseGraphRepository;
 import org.springframework.data.domain.Example;
@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.query.FluentQuery;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -369,8 +370,8 @@ public class FakeContentRepositories {
             if (removed != null) removed.forEach(s -> scenesById.remove(s.getId()));
         }
 
-        @Override public long countMeetsBetween(UUID fromId, UUID toId) { return countNextInReadingOrderBetween(fromId, toId); }
-        @Override public void createMeetsBetween(UUID fromId, UUID toId) { createNextInReadingOrderBetween(fromId, toId); }
+        @Override public Optional<UUID> findPreviousSceneIdByReadingOrder(UUID sceneId) { return Optional.empty(); }
+        @Override public Optional<UUID> findNextSceneIdByReadingOrder(UUID sceneId) { return Optional.empty(); }
         @Override public long countNextInReadingOrderBetween(UUID fromId, UUID toId) { return 0; }
         @Override public void createNextInReadingOrderBetween(UUID fromId, UUID toId) { }
         @Override public void linkChunkToScene(UUID sceneId, UUID chunkId, Integer chunkIndex) { }
@@ -419,6 +420,16 @@ public class FakeContentRepositories {
         @Override public void deleteAllById(Iterable<? extends UUID> ids) { ids.forEach(this::deleteById); }
         @Override public void deleteAll(Iterable<? extends Scene> entities) { entities.forEach(e -> deleteById(e.getId())); }
         @Override public void deleteAll() { scenesById.clear(); scenesByChapter.clear(); }
+
+        @Override
+        public Scene mergeScene(UUID id, UUID chapterId, Integer sceneIndex, Long startOffset, Long endOffset,
+                                String contextSummary, String text, UUID stageId, List<String> labels,
+                                LocalDateTime createdAt, LocalDateTime updatedAt) {
+            Scene scene = new Scene(id, sceneIndex, startOffset, endOffset, contextSummary,
+                    text, chapterId, labels, createdAt, updatedAt, null);
+            save(scene);
+            return scene;
+        }
 
         @Override public List<Scene> findAll(Sort sort) { return findAll(); }
         @Override public Page<Scene> findAll(Pageable pageable) { throw new UnsupportedOperationException(); }

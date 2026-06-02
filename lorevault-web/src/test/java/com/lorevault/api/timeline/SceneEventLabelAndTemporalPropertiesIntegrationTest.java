@@ -20,9 +20,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.lorevault.api.ingestion.resolution.event.DefaultTemporalEdgeService;
-import com.lorevault.api.content.timeline.infrastructure.EventGraphRepository;
-import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
+import com.lorevault.api.graph.timeline.DefaultTemporalEdgeService;
+import com.lorevault.api.graph.timeline.infrastructure.EventGraphRepository;
+import com.lorevault.api.graph.timeline.infrastructure.TemporalEdgeWriteRepository;
 
 @DataNeo4jTest
 @Testcontainers
@@ -115,6 +115,7 @@ class SceneEventLabelAndTemporalPropertiesIntegrationTest {
                 "evidence text",
                 0L,
                 10L,
+                null,
                 null
         );
 
@@ -188,6 +189,7 @@ class SceneEventLabelAndTemporalPropertiesIntegrationTest {
                 0.95,
                 "test-suite",
                 "canonical evidence",
+                null,
                 null,
                 null,
                 null

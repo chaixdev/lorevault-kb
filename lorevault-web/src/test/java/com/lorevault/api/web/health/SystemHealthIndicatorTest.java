@@ -1,5 +1,6 @@
 package com.lorevault.api.web.health;
 
+import com.lorevault.api.ai.ModelSlot;
 import com.lorevault.api.health.HealthMetricsCollector;
 import com.lorevault.api.health.SystemHealthService;
 import org.junit.jupiter.api.Test;
@@ -22,8 +23,8 @@ class SystemHealthIndicatorTest {
         var emb = new SystemHealthService.EmbeddingHealthStatus(false, "dim mismatch", 5, 0);
         var db = new SystemHealthService.DatabaseHealthStatus(false, "db down", 3);
         var slots = Map.of(
-                "nlp-small", new HealthMetricsCollector.ModelHealthStatus(true, "A", "OK", 8, 8, 1),
-                "nlp-big", new HealthMetricsCollector.ModelHealthStatus(false, "B", "timeout", 60, 60, 2)
+                ModelSlot.NLP_SMALL.slotName(), new HealthMetricsCollector.ModelHealthStatus(true, "A", "OK", 8, 8, 1),
+                ModelSlot.NLP_BIG.slotName(), new HealthMetricsCollector.ModelHealthStatus(false, "B", "timeout", 60, 60, 2)
         );
         var system = new SystemHealthService.SystemHealthResponse(false, llmHealth, emb, slots, db);
         when(svc.getOverallSystemHealth()).thenReturn(system);

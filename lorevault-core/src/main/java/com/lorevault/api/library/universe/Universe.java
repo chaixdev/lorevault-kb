@@ -1,10 +1,13 @@
 package com.lorevault.api.library.universe;
 
-import static com.lorevault.api.library.StringSanitizer.toSnakeCase;
+import static com.lorevault.api.common.StringSanitizer.toSnakeCase;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 
@@ -15,7 +18,10 @@ import java.util.UUID;
  * Top-level content universe (e.g., "Cosmere").
  * Provides a stable UUID and a normalized slug for consistent referencing.
  */
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Node("Universe")

@@ -1,6 +1,6 @@
 package com.lorevault.api.timeline;
-import com.lorevault.api.content.timeline.domain.CertaintyLevel;
-import com.lorevault.api.content.timeline.domain.CertaintyWeights;
+import com.lorevault.api.graph.timeline.domain.CertaintyLevel;
+import com.lorevault.api.graph.timeline.domain.CertaintyWeights;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;

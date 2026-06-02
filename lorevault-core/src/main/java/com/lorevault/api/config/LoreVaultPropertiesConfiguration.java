@@ -1,6 +1,6 @@
 package com.lorevault.api.config;
 
-import com.lorevault.api.ingestion.resolution.event.BookEventAnnProperties;
+import com.lorevault.api.graph.event.consolidation.book.BookEventAnnProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -11,11 +11,14 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @EnableConfigurationProperties({
-    LoreVaultLlmProperties.class,
-    LoreVaultLlmLoggingProperties.class,
-    LoreVaultEmbeddingProperties.class,
+    LoreVaultAsyncProperties.class,
     LoreVaultContentProperties.class,
-    LoreVaultSlotsProperties.class,
+    LoreVaultLlmLoggingProperties.class,
+    LoreVaultModelsProperties.class,
+    LoreVaultPromptProperties.class,
+    LoreVaultRetryProperties.class,
+    LoreVaultWebMultipartProperties.class,
+    SchemaConfigurationProperties.class,
     BookEventAnnProperties.class
 })
 public class LoreVaultPropertiesConfiguration {

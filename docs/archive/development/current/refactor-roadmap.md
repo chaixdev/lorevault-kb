@@ -153,7 +153,7 @@ The previously listed first item has now shipped:
    - Added `maxContextTokens` handling and conservative admission checks
    - Added deterministic segmentation fallback for oversized chapters
    - Tagged segment-boundary risk for later reconciliation
-   - See `../../brainstorm/scene-detection-context-budget-and-segmentation-spec-april-2026.md`
+   - See `../../brainstorm/scene-detection/2026-04-11T1210_scene-detection-context-budget-and-segmentation-spec.md`
 
 Current priority order:
 

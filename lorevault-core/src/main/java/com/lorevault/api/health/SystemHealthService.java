@@ -1,9 +1,7 @@
 package com.lorevault.api.health;
 
 import com.lorevault.api.config.LoreVaultModelsProperties;
-import com.lorevault.api.health.HealthMetricsCollector;
-import com.lorevault.api.health.RetryableHealthChecker;
-import com.lorevault.api.health.ModelHealthValidator;
+import com.lorevault.api.ai.ModelSlot;
 import org.neo4j.driver.Driver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -223,8 +221,8 @@ public class SystemHealthService {
      */
     public Map<String, HealthMetricsCollector.ModelHealthStatus> checkChatSlotsHealth() {
         Map<String, HealthMetricsCollector.ModelHealthStatus> results = new LinkedHashMap<>();
-        results.put("nlp-small", checkChatClientHealth(nlpSmallChatClient, modelsProperties.nlpSmall().model()));
-        results.put("nlp-big", checkChatClientHealth(nlpBigChatClient, modelsProperties.nlpBig().model()));
+        results.put(ModelSlot.NLP_SMALL.slotName(), checkChatClientHealth(nlpSmallChatClient, modelsProperties.nlpSmall().model()));
+        results.put(ModelSlot.NLP_BIG.slotName(), checkChatClientHealth(nlpBigChatClient, modelsProperties.nlpBig().model()));
         return results;
     }
 

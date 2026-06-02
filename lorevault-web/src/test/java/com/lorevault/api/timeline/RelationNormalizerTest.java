@@ -1,7 +1,7 @@
 package com.lorevault.api.timeline;
-import com.lorevault.api.content.timeline.domain.RelationNormalizer;
-import com.lorevault.api.content.timeline.domain.TemporalRelation;
-import com.lorevault.api.content.timeline.domain.CanonicalRelation;
+import com.lorevault.api.graph.timeline.domain.RelationNormalizer;
+import com.lorevault.api.graph.timeline.domain.TemporalRelation;
+import com.lorevault.api.graph.timeline.domain.CanonicalRelation;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;

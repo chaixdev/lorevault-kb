@@ -1,10 +1,10 @@
 package com.lorevault.api.web.query.job;
-import com.lorevault.api.ingestion.submission.IngestionService;
+import com.lorevault.api.orchestration.submission.IngestionService;
 
-import com.lorevault.api.ingestion.job.IngestionStatus;
-import com.lorevault.api.ingestion.job.JobStatusDetails;
-import com.lorevault.api.ingestion.job.JobSummary;
-import com.lorevault.api.ingestion.job.PaginatedJobSummaries;
+import com.lorevault.api.orchestration.job.IngestionStatus;
+import com.lorevault.api.orchestration.job.JobStatusDetails;
+import com.lorevault.api.orchestration.job.JobSummary;
+import com.lorevault.api.orchestration.job.PaginatedJobSummaries;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,5 +1,7 @@
 package com.lorevault.api.config;
 
+import com.lorevault.api.graph.event.persistence.ChapterEvent;
+import com.lorevault.api.library.chunk.Chunk;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
@@ -7,7 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Neo4j implementation of GraphSchemaInitializer.
@@ -17,15 +18,11 @@ import java.util.Map;
 public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
 
     private static final Logger log = LoggerFactory.getLogger(Neo4jSchemaInitializer.class);
-    private static final String CHUNK_VECTOR_INDEX_NAME = "chunk_embedding_idx";
-    private static final String CHAPTER_EVENT_VECTOR_INDEX_NAME = "chapter_event_embedding_idx";
 
     private final Neo4jClient neo4jClient;
-    private final LoreVaultEmbeddingProperties embeddingProperties;
 
-    public Neo4jSchemaInitializer(Neo4jClient neo4jClient, LoreVaultEmbeddingProperties embeddingProperties) {
+    public Neo4jSchemaInitializer(Neo4jClient neo4jClient) {
         this.neo4jClient = neo4jClient;
-        this.embeddingProperties = embeddingProperties;
     }
 
     // Unique constraints on business IDs
@@ -35,10 +32,16 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE CONSTRAINT scene_id_unique IF NOT EXISTS FOR (s:Scene) REQUIRE s.id IS UNIQUE";
     private static final String CHUNK_ID_UNIQUE =
             "CREATE CONSTRAINT chunk_id_unique IF NOT EXISTS FOR (ch:Chunk) REQUIRE ch.id IS UNIQUE";
-    private static final String INGESTION_JOB_ID_UNIQUE =
-            "CREATE CONSTRAINT ingestion_job_id_unique IF NOT EXISTS FOR (j:IngestionJob) REQUIRE j.id IS UNIQUE";
-    private static final String STATUS_RECORD_ID_UNIQUE =
-            "CREATE CONSTRAINT status_record_id_unique IF NOT EXISTS FOR (sr:StatusRecord) REQUIRE sr.id IS UNIQUE";
+
+    // ── Durable orchestration constraints (new model) ──────────────────
+    private static final String CHAPTER_INGESTION_JOB_ID_UNIQUE =
+            "CREATE CONSTRAINT chapter_ingestion_job_id_unique IF NOT EXISTS FOR (j:ChapterIngestionJob) REQUIRE j.id IS UNIQUE";
+    private static final String STAGE_ID_UNIQUE =
+            "CREATE CONSTRAINT stage_id_unique IF NOT EXISTS FOR (s:Stage) REQUIRE s.id IS UNIQUE";
+    private static final String STAGE_JOB_STEP_UNIQUE =
+            "CREATE CONSTRAINT stage_job_step_unique IF NOT EXISTS FOR (s:Stage) REQUIRE (s.jobId, s.step) IS UNIQUE";
+    private static final String STAGE_OUTPUT_ID_UNIQUE =
+            "CREATE CONSTRAINT stage_output_id_unique IF NOT EXISTS FOR (o:StageOutput) REQUIRE o.id IS UNIQUE";
     private static final String LLM_CALL_RECORD_ID_UNIQUE =
             "CREATE CONSTRAINT llm_call_record_id_unique IF NOT EXISTS FOR (r:LlmCallRecord) REQUIRE r.id IS UNIQUE";
     private static final String CHAPTER_INDIVIDUAL_ID_UNIQUE =
@@ -57,6 +60,14 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     // No (chapterId, normalizedName) scope-unique constraint — that would bake lexical sameness into storage.
     private static final String EVENT_MENTION_ID_UNIQUE =
             "CREATE CONSTRAINT event_mention_id_unique IF NOT EXISTS FOR (m:EventMention) REQUIRE m.id IS UNIQUE";
+    private static final String INDIVIDUAL_MENTION_ID_UNIQUE =
+            "CREATE CONSTRAINT individual_mention_id_unique IF NOT EXISTS FOR (m:IndividualMention) REQUIRE m.id IS UNIQUE";
+    private static final String LOCATION_MENTION_ID_UNIQUE =
+            "CREATE CONSTRAINT location_mention_id_unique IF NOT EXISTS FOR (m:LocationMention) REQUIRE m.id IS UNIQUE";
+    private static final String OBJECT_MENTION_ID_UNIQUE =
+            "CREATE CONSTRAINT object_mention_id_unique IF NOT EXISTS FOR (m:ObjectMention) REQUIRE m.id IS UNIQUE";
+    private static final String COLLECTIVE_MENTION_ID_UNIQUE =
+            "CREATE CONSTRAINT collective_mention_id_unique IF NOT EXISTS FOR (m:CollectiveMention) REQUIRE m.id IS UNIQUE";
     private static final String CHAPTER_LOCATION_ID_UNIQUE =
             "CREATE CONSTRAINT chapter_location_id_unique IF NOT EXISTS FOR (cl:ChapterLocation) REQUIRE cl.id IS UNIQUE";
     private static final String CHAPTER_LOCATION_SCOPE_UNIQUE =
@@ -81,6 +92,16 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE CONSTRAINT book_collective_id_unique IF NOT EXISTS FOR (bc:BookCollective) REQUIRE bc.id IS UNIQUE";
     private static final String BOOK_COLLECTIVE_SCOPE_UNIQUE =
             "CREATE CONSTRAINT book_collective_scope_unique IF NOT EXISTS FOR (bc:BookCollective) REQUIRE (bc.bookId, bc.normalizedName) IS UNIQUE";
+    private static final String CONCEPT_MENTION_ID_UNIQUE =
+            "CREATE CONSTRAINT concept_mention_id_unique IF NOT EXISTS FOR (m:ConceptMention) REQUIRE m.id IS UNIQUE";
+    private static final String CHAPTER_CONCEPT_ID_UNIQUE =
+            "CREATE CONSTRAINT chapter_concept_id_unique IF NOT EXISTS FOR (cc:ChapterConcept) REQUIRE cc.id IS UNIQUE";
+    private static final String CHAPTER_CONCEPT_SCOPE_UNIQUE =
+            "CREATE CONSTRAINT chapter_concept_scope_unique IF NOT EXISTS FOR (cc:ChapterConcept) REQUIRE (cc.chapterId, cc.normalizedName) IS UNIQUE";
+    private static final String BOOK_CONCEPT_ID_UNIQUE =
+            "CREATE CONSTRAINT book_concept_id_unique IF NOT EXISTS FOR (bc:BookConcept) REQUIRE bc.id IS UNIQUE";
+    private static final String BOOK_CONCEPT_SCOPE_UNIQUE =
+            "CREATE CONSTRAINT book_concept_scope_unique IF NOT EXISTS FOR (bc:BookConcept) REQUIRE (bc.bookId, bc.normalizedName) IS UNIQUE";
 
     // RelationClaim constraints
     private static final String RELATION_CLAIM_ID_UNIQUE =
@@ -88,11 +109,11 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
 
     // Book reduction claim uniqueness (mutex for concurrent book-level reduction per lane)
     private static final String DROP_LEGACY_BOOK_REDUCTION_CLAIM_BOOK_ID_UNIQUE =
-            "DROP CONSTRAINT book_reduction_claim_book_id_unique IF EXISTS";
+            "DROP CONSTRAINT book_consolidation_claim_book_id_unique IF EXISTS";
     private static final String DELETE_LEGACY_BOOK_REDUCTION_CLAIMS =
-            "MATCH (c:BookReductionClaim) WHERE c.id IS NULL OR c.claimedAt IS NULL DELETE c";
+            "MATCH (c:BookConsolidationClaim) WHERE c.id IS NULL OR c.claimedAt IS NULL DELETE c";
     private static final String BOOK_REDUCTION_CLAIM_ID_UNIQUE =
-            "CREATE CONSTRAINT book_reduction_claim_id_unique IF NOT EXISTS FOR (c:BookReductionClaim) REQUIRE c.id IS UNIQUE";
+            "CREATE CONSTRAINT book_consolidation_claim_id_unique IF NOT EXISTS FOR (c:BookConsolidationClaim) REQUIRE c.id IS UNIQUE";
 
     // Content hash uniqueness
     private static final String CHAPTER_CONTENT_HASH_UNIQUE =
@@ -135,6 +156,12 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             "CREATE INDEX chapter_collective_chapter_name IF NOT EXISTS FOR (cc:ChapterCollective) ON (cc.chapterId, cc.normalizedName)";
     private static final String BOOK_COLLECTIVE_BOOK_NAME_INDEX =
             "CREATE INDEX book_collective_book_name IF NOT EXISTS FOR (bc:BookCollective) ON (bc.bookId, bc.normalizedName)";
+    private static final String CONCEPT_MENTION_CHAPTER_NAME_INDEX =
+            "CREATE INDEX concept_mention_chapter_name IF NOT EXISTS FOR (m:ConceptMention) ON (m.chapterId, m.normalizedName)";
+    private static final String CHAPTER_CONCEPT_CHAPTER_NAME_INDEX =
+            "CREATE INDEX chapter_concept_chapter_name IF NOT EXISTS FOR (cc:ChapterConcept) ON (cc.chapterId, cc.normalizedName)";
+    private static final String BOOK_CONCEPT_BOOK_NAME_INDEX =
+            "CREATE INDEX book_concept_book_name IF NOT EXISTS FOR (bc:BookConcept) ON (bc.bookId, bc.normalizedName)";
     private static final String LLM_CALL_RECORD_JOB_ID_INDEX =
             "CREATE INDEX llm_call_record_job_id IF NOT EXISTS FOR (r:LlmCallRecord) ON (r.jobId)";
     private static final String LLM_CALL_RECORD_JOB_STEP_INDEX =
@@ -142,33 +169,25 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     private static final String LLM_CALL_RECORD_JOB_STEP_STATUS_INDEX =
             "CREATE INDEX llm_call_record_job_step_status IF NOT EXISTS FOR (r:LlmCallRecord) ON (r.jobId, r.step, r.statusRecordId)";
 
+    // ── Durable orchestration indexes ─────────────────────────────────
+    private static final String STAGE_OUTPUT_CHAPTER_STEP_INDEX =
+            "CREATE INDEX stage_output_chapter_step IF NOT EXISTS FOR (o:StageOutput) ON (o.chapterId, o.step)";
+    private static final String STAGE_OUTPUT_BOOK_STEP_INDEX =
+            "CREATE INDEX stage_output_book_step IF NOT EXISTS FOR (o:StageOutput) ON (o.bookId, o.step)";
+    private static final String LLM_CALL_RECORD_JOB_STEP_STAGE_INDEX =
+            "CREATE INDEX llm_call_record_job_step_stage IF NOT EXISTS FOR (r:LlmCallRecord) ON (r.jobId, r.step, r.stageId)";
+
     // RelationClaim query indexes
-    private static final String RELATION_CLAIM_CHAPTER_RELTYPE_INDEX =
-            "CREATE INDEX relation_claim_chapter_reltype IF NOT EXISTS FOR (rc:RelationClaim) ON (rc.chapterId, rc.provisionalRelTypeId)";
-    private static final String RELATION_CLAIM_BOOK_RELTYPE_INDEX =
-            "CREATE INDEX relation_claim_book_reltype IF NOT EXISTS FOR (rc:RelationClaim) ON (rc.bookId, rc.provisionalRelTypeId)";
+    private static final String RELATION_CLAIM_CHAPTER_DEFKEY_INDEX =
+            "CREATE INDEX relation_claim_chapter_defkey IF NOT EXISTS FOR (rc:RelationClaim) ON (rc.chapterId, rc.definitionKey)";
+    private static final String RELATION_CLAIM_BOOK_DEFKEY_INDEX =
+            "CREATE INDEX relation_claim_book_defkey IF NOT EXISTS FOR (rc:RelationClaim) ON (rc.bookId, rc.definitionKey)";
 
     // Per-chapter ordering index for events
     private static final String EVENT_PER_CHAPTER_SCENE_INDEX =
             "CREATE INDEX event_per_chapter_scene_idx IF NOT EXISTS FOR (e:Event) ON (e.chapterId, e.sceneIndex)";
 
-    private static final List<String> AGGREGATE_LABEL_BACKFILLS = List.of(
-            "MATCH (m:IndividualMention) SET m:Mention",
-            "MATCH (m:LocationMention) SET m:Mention",
-            "MATCH (m:ObjectMention) SET m:Mention",
-            "MATCH (m:CollectiveMention) SET m:Mention",
-            "MATCH (m:EventMention) SET m:Mention",
-            "MATCH (ce:ChapterEvent) SET ce:ChapterEntity",
-            "MATCH (ci:ChapterIndividual) SET ci:ChapterEntity",
-            "MATCH (cl:ChapterLocation) SET cl:ChapterEntity",
-            "MATCH (co:ChapterObject) SET co:ChapterEntity",
-            "MATCH (cc:ChapterCollective) SET cc:ChapterEntity",
-            "MATCH (be:BookEvent) SET be:BookEntity",
-            "MATCH (bi:BookIndividual) SET bi:BookEntity",
-            "MATCH (bl:BookLocation) SET bl:BookEntity",
-            "MATCH (bo:BookObject) SET bo:BookEntity",
-            "MATCH (bc:BookCollective) SET bc:BookEntity"
-    );
+
 
     @Override
     public void ensureMinimalSchema() {
@@ -178,8 +197,6 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(CHAPTER_ID_UNIQUE, "Chapter.id unique"));
         results.add(executeConstraint(SCENE_ID_UNIQUE, "Scene.id unique"));
         results.add(executeConstraint(CHUNK_ID_UNIQUE, "Chunk.id unique"));
-        results.add(executeConstraint(INGESTION_JOB_ID_UNIQUE, "IngestionJob.id unique"));
-        results.add(executeConstraint(STATUS_RECORD_ID_UNIQUE, "StatusRecord.id unique"));
         results.add(executeConstraint(LLM_CALL_RECORD_ID_UNIQUE, "LlmCallRecord.id unique"));
         results.add(executeConstraint(CHAPTER_INDIVIDUAL_ID_UNIQUE, "ChapterIndividual.id unique"));
         results.add(executeConstraint(CHAPTER_INDIVIDUAL_SCOPE_UNIQUE, "ChapterIndividual(chapterId, normalizedName) unique"));
@@ -188,6 +205,10 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(CHAPTER_EVENT_ID_UNIQUE, "ChapterEvent.id unique"));
         results.add(executeConstraint(BOOK_EVENT_ID_UNIQUE, "BookEvent.id unique"));
         results.add(executeConstraint(EVENT_MENTION_ID_UNIQUE, "EventMention.id unique"));
+        results.add(executeConstraint(INDIVIDUAL_MENTION_ID_UNIQUE, "IndividualMention.id unique"));
+        results.add(executeConstraint(LOCATION_MENTION_ID_UNIQUE, "LocationMention.id unique"));
+        results.add(executeConstraint(OBJECT_MENTION_ID_UNIQUE, "ObjectMention.id unique"));
+        results.add(executeConstraint(COLLECTIVE_MENTION_ID_UNIQUE, "CollectiveMention.id unique"));
         results.add(executeConstraint(CHAPTER_LOCATION_ID_UNIQUE, "ChapterLocation.id unique"));
         results.add(executeConstraint(CHAPTER_LOCATION_SCOPE_UNIQUE, "ChapterLocation(chapterId, normalizedName) unique"));
         results.add(executeConstraint(BOOK_LOCATION_ID_UNIQUE, "BookLocation.id unique"));
@@ -200,11 +221,22 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeConstraint(CHAPTER_COLLECTIVE_SCOPE_UNIQUE, "ChapterCollective(chapterId, normalizedName) unique"));
         results.add(executeConstraint(BOOK_COLLECTIVE_ID_UNIQUE, "BookCollective.id unique"));
         results.add(executeConstraint(BOOK_COLLECTIVE_SCOPE_UNIQUE, "BookCollective(bookId, normalizedName) unique"));
+        results.add(executeConstraint(CONCEPT_MENTION_ID_UNIQUE, "ConceptMention.id unique"));
+        results.add(executeConstraint(CHAPTER_CONCEPT_ID_UNIQUE, "ChapterConcept.id unique"));
+        results.add(executeConstraint(CHAPTER_CONCEPT_SCOPE_UNIQUE, "ChapterConcept(chapterId, normalizedName) unique"));
+        results.add(executeConstraint(BOOK_CONCEPT_ID_UNIQUE, "BookConcept.id unique"));
+        results.add(executeConstraint(BOOK_CONCEPT_SCOPE_UNIQUE, "BookConcept(bookId, normalizedName) unique"));
         results.add(executeConstraint(CHAPTER_CONTENT_HASH_UNIQUE, "Chapter.contentHash unique"));
-        results.add(executeConstraint(DROP_LEGACY_BOOK_REDUCTION_CLAIM_BOOK_ID_UNIQUE, "Legacy BookReductionClaim.bookId unique dropped"));
-        results.add(executeConstraint(DELETE_LEGACY_BOOK_REDUCTION_CLAIMS, "Legacy BookReductionClaim rows deleted"));
-        results.add(executeConstraint(BOOK_REDUCTION_CLAIM_ID_UNIQUE, "BookReductionClaim.id unique"));
+        results.add(executeConstraint(DROP_LEGACY_BOOK_REDUCTION_CLAIM_BOOK_ID_UNIQUE, "Legacy BookConsolidationClaim.bookId unique dropped"));
+        results.add(executeConstraint(DELETE_LEGACY_BOOK_REDUCTION_CLAIMS, "Legacy BookConsolidationClaim rows deleted"));
+        results.add(executeConstraint(BOOK_REDUCTION_CLAIM_ID_UNIQUE, "BookConsolidationClaim.id unique"));
         results.add(executeConstraint(RELATION_CLAIM_ID_UNIQUE, "RelationClaim.id unique"));
+
+        // Durable orchestration constraints
+        results.add(executeConstraint(CHAPTER_INGESTION_JOB_ID_UNIQUE, "ChapterIngestionJob.id unique"));
+        results.add(executeConstraint(STAGE_ID_UNIQUE, "Stage.id unique"));
+        results.add(executeConstraint(STAGE_JOB_STEP_UNIQUE, "Stage(jobId, step) unique"));
+        results.add(executeConstraint(STAGE_OUTPUT_ID_UNIQUE, "StageOutput.id unique"));
         
         // Event identity constraint
         results.add(executeConstraint(EVENT_ID_UNIQUE, "Event.id unique"));
@@ -226,21 +258,26 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         results.add(executeIndex(BOOK_OBJECT_BOOK_NAME_INDEX, "BookObject(bookId, normalizedName)"));
         results.add(executeIndex(CHAPTER_COLLECTIVE_CHAPTER_NAME_INDEX, "ChapterCollective(chapterId, normalizedName)"));
         results.add(executeIndex(BOOK_COLLECTIVE_BOOK_NAME_INDEX, "BookCollective(bookId, normalizedName)"));
+        results.add(executeIndex(CONCEPT_MENTION_CHAPTER_NAME_INDEX, "ConceptMention(chapterId, normalizedName)"));
+        results.add(executeIndex(CHAPTER_CONCEPT_CHAPTER_NAME_INDEX, "ChapterConcept(chapterId, normalizedName)"));
+        results.add(executeIndex(BOOK_CONCEPT_BOOK_NAME_INDEX, "BookConcept(bookId, normalizedName)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_ID_INDEX, "LlmCallRecord(jobId)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_INDEX, "LlmCallRecord(jobId, step)"));
         results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_STATUS_INDEX, "LlmCallRecord(jobId, step, statusRecordId)"));
         
+        // Durable orchestration indexes
+        results.add(executeIndex(STAGE_OUTPUT_CHAPTER_STEP_INDEX, "StageOutput(chapterId, step)"));
+        results.add(executeIndex(STAGE_OUTPUT_BOOK_STEP_INDEX, "StageOutput(bookId, step)"));
+        results.add(executeIndex(LLM_CALL_RECORD_JOB_STEP_STAGE_INDEX, "LlmCallRecord(jobId, step, stageId)"));
+        
         // RelationClaim indexes
-        results.add(executeIndex(RELATION_CLAIM_CHAPTER_RELTYPE_INDEX, "RelationClaim(chapterId, provisionalRelTypeId)"));
-        results.add(executeIndex(RELATION_CLAIM_BOOK_RELTYPE_INDEX, "RelationClaim(bookId, provisionalRelTypeId)"));
+        results.add(executeIndex(RELATION_CLAIM_CHAPTER_DEFKEY_INDEX, "RelationClaim(chapterId, definitionKey)"));
+        results.add(executeIndex(RELATION_CLAIM_BOOK_DEFKEY_INDEX, "RelationClaim(bookId, definitionKey)"));
 
         // Event per-chapter ordering index
         results.add(executeIndex(EVENT_PER_CHAPTER_SCENE_INDEX, "Event(chapterId, sceneIndex)"));
 
-        // Backfill aggregate labels for existing nodes; new writes get these from @Node metadata.
-        // RelationClaim no longer carries the Mention label — remove it from any existing nodes.
-        AGGREGATE_LABEL_BACKFILLS.forEach(cypher -> results.add(executeLabelBackfill(cypher)));
-        results.add(executeLabelBackfill("MATCH (rc:RelationClaim) REMOVE rc:Mention"));
+
         
         // Create vector search indexes
         results.add(ensureChunkVectorIndex());
@@ -268,7 +305,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
             return "ensured: " + description;
         } catch (Exception e) {
             log.error("Failed to create constraint {}: {}", description, e.getMessage());
-            if (description.startsWith("BookReductionClaim") || description.startsWith("Legacy BookReductionClaim")) {
+            if (description.startsWith("BookConsolidationClaim") || description.startsWith("Legacy BookConsolidationClaim")) {
                 throw new IllegalStateException("Critical schema operation failed: " + description, e);
             }
             return "failed: " + description;
@@ -286,33 +323,26 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         }
     }
 
-    private String executeLabelBackfill(String cypher) {
-        try {
-            neo4jClient.query(cypher).run();
-            log.debug("Ensured aggregate label backfill: {}", cypher);
-            return "ensured: " + cypher;
-        } catch (Exception e) {
-            log.error("Failed aggregate label backfill {}: {}", cypher, e.getMessage());
-            return "failed: " + cypher;
-        }
-    }
+
 
     private String ensureChunkVectorIndex() {
         String description = "Chunk embedding vector index";
         try {
             Integer existingDimensions = existingChunkVectorDimensions();
-            int expectedDimensions = embeddingProperties.model().dimensions();
+            int expectedDimensions = LoreVaultEmbeddingProperties.DIMENSIONS;
 
             if (existingDimensions != null && existingDimensions != expectedDimensions) {
                 log.warn(
                         "Rebuilding vector index {} due to dimension drift: existing={}, expected={}",
-                        CHUNK_VECTOR_INDEX_NAME,
+                        Chunk.VECTOR_INDEX_NAME,
                         existingDimensions,
                         expectedDimensions
                 );
-                neo4jClient.query("DROP INDEX " + CHUNK_VECTOR_INDEX_NAME + " IF EXISTS").run();
+                // Index names are compile-time constants; safe to concatenate
+                neo4jClient.query("DROP INDEX " + Chunk.VECTOR_INDEX_NAME + " IF EXISTS").run();
             }
 
+            // Index names are compile-time constants; safe to concatenate
             neo4jClient.query(chunkVectorIndexCypher(expectedDimensions)).run();
             log.debug("Ensured vector index: {}", description);
             return "ensured: " + description;
@@ -329,7 +359,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
                         "WHERE name = $indexName " +
                         "RETURN options.indexConfig.`vector.dimensions` AS dimensions"
                 )
-                .bind(CHUNK_VECTOR_INDEX_NAME).to("indexName")
+                .bind(Chunk.VECTOR_INDEX_NAME).to("indexName")
                 .fetch()
                 .one()
                 .map(row -> row.get("dimensions"))
@@ -340,7 +370,8 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     }
 
     private String chunkVectorIndexCypher(int dimensions) {
-        return "CREATE VECTOR INDEX " + CHUNK_VECTOR_INDEX_NAME + " IF NOT EXISTS FOR (ch:Chunk) ON (ch.embedding) " +
+        // Index names are compile-time constants; safe to concatenate
+        return "CREATE VECTOR INDEX " + Chunk.VECTOR_INDEX_NAME + " IF NOT EXISTS FOR (ch:Chunk) ON (ch.embedding) " +
                "OPTIONS {indexConfig: {`vector.dimensions`: " + dimensions + ", `vector.similarity_function`: 'cosine'}}";
     }
 
@@ -348,18 +379,20 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
         String description = "ChapterEvent embedding vector index";
         try {
             Integer existingDimensions = existingChapterEventVectorDimensions();
-            int expectedDimensions = embeddingProperties.model().dimensions();
+            int expectedDimensions = LoreVaultEmbeddingProperties.DIMENSIONS;
 
             if (existingDimensions != null && existingDimensions != expectedDimensions) {
                 log.warn(
                         "Rebuilding vector index {} due to dimension drift: existing={}, expected={}",
-                        CHAPTER_EVENT_VECTOR_INDEX_NAME,
+                        ChapterEvent.VECTOR_INDEX_NAME,
                         existingDimensions,
                         expectedDimensions
                 );
-                neo4jClient.query("DROP INDEX " + CHAPTER_EVENT_VECTOR_INDEX_NAME + " IF EXISTS").run();
+                // Index names are compile-time constants; safe to concatenate
+                neo4jClient.query("DROP INDEX " + ChapterEvent.VECTOR_INDEX_NAME + " IF EXISTS").run();
             }
 
+            // Index names are compile-time constants; safe to concatenate
             neo4jClient.query(chapterEventVectorIndexCypher(expectedDimensions)).run();
             log.debug("Ensured vector index: {}", description);
             return "ensured: " + description;
@@ -376,7 +409,7 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
                         "WHERE name = $indexName " +
                         "RETURN options.indexConfig.`vector.dimensions` AS dimensions"
                 )
-                .bind(CHAPTER_EVENT_VECTOR_INDEX_NAME).to("indexName")
+                .bind(ChapterEvent.VECTOR_INDEX_NAME).to("indexName")
                 .fetch()
                 .one()
                 .map(row -> row.get("dimensions"))
@@ -387,7 +420,8 @@ public class Neo4jSchemaInitializer implements GraphSchemaInitializer {
     }
 
     private String chapterEventVectorIndexCypher(int dimensions) {
-        return "CREATE VECTOR INDEX " + CHAPTER_EVENT_VECTOR_INDEX_NAME + " IF NOT EXISTS FOR (ce:ChapterEvent) ON (ce.embedding) " +
+        // Index names are compile-time constants; safe to concatenate
+        return "CREATE VECTOR INDEX " + ChapterEvent.VECTOR_INDEX_NAME + " IF NOT EXISTS FOR (ce:ChapterEvent) ON (ce.embedding) " +
                "OPTIONS {indexConfig: {`vector.dimensions`: " + dimensions + ", `vector.similarity_function`: 'cosine'}}";
     }
 

@@ -1,5 +1,5 @@
 package com.lorevault.api.timeline;
-import com.lorevault.api.content.timeline.domain.TemporalRelation;
+import com.lorevault.api.graph.timeline.domain.TemporalRelation;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;

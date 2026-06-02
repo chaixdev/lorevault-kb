@@ -1,9 +1,9 @@
 package com.lorevault.api.timeline;
 
-import com.lorevault.api.ingestion.resolution.event.SceneTemporalRelationshipPersistenceService;
-import com.lorevault.api.ingestion.resolution.event.TemporalEdgeProvenance;
-import com.lorevault.api.ingestion.resolution.event.TemporalEdgeWriteRequest;
-import com.lorevault.api.content.timeline.infrastructure.TemporalEdgeWriteRepository;
+import com.lorevault.api.graph.timeline.SceneTemporalRelationshipPersistenceService;
+import com.lorevault.api.graph.timeline.TemporalEdgeProvenance;
+import com.lorevault.api.graph.timeline.TemporalEdgeWriteRequest;
+import com.lorevault.api.graph.timeline.infrastructure.TemporalEdgeWriteRepository;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +54,7 @@ class SceneTemporalRelationshipPersistenceServiceTest {
 
         ArgumentCaptor<String> typeCaptor = ArgumentCaptor.forClass(String.class);
         verify(temporalEdgeWriteRepository).upsertTemporalEdge(
-                eq(scene0Id), eq(scene1Id), typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any()
+                eq(scene0Id), eq(scene1Id), typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any(), any()
         );
         assertThat(typeCaptor.getValue()).isEqualTo("R:temporal.before");
     }
@@ -66,7 +66,7 @@ class SceneTemporalRelationshipPersistenceServiceTest {
         service.applyTemporalRelationships(List.of(request(previousChapterSceneId, scene1Id, "R:temporal.before")));
 
         verify(temporalEdgeWriteRepository).upsertTemporalEdge(
-                eq(previousChapterSceneId), eq(scene1Id), eq("R:temporal.before"), any(), any(), any(), any(), any(), any(), any()
+                eq(previousChapterSceneId), eq(scene1Id), eq("R:temporal.before"), any(), any(), any(), any(), any(), any(), any(), any()
         );
     }
 
@@ -79,7 +79,7 @@ class SceneTemporalRelationshipPersistenceServiceTest {
 
         ArgumentCaptor<String> typeCaptor = ArgumentCaptor.forClass(String.class);
         verify(temporalEdgeWriteRepository).upsertTemporalEdge(
-                eq(scene1Id), eq(scene0Id), typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any()
+                eq(scene1Id), eq(scene0Id), typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any(), any()
         );
         assertThat(typeCaptor.getValue()).isEqualTo("R:temporal.before");
     }
@@ -93,7 +93,7 @@ class SceneTemporalRelationshipPersistenceServiceTest {
         verify(temporalEdgeWriteRepository).upsertAmbiguousRelation(
                 eq(scene0Id), eq(scene1Id), any(), any(), any(), eq(jobId.toString()), eq(chapterId.toString()), eq(statusRecordId.toString()), eq(callRecordId.toString())
         );
-        verify(temporalEdgeWriteRepository, never()).upsertTemporalEdge(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(temporalEdgeWriteRepository, never()).upsertTemporalEdge(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -104,7 +104,7 @@ class SceneTemporalRelationshipPersistenceServiceTest {
         service.applyTemporalRelationships(List.of(request(scene0Id, scene1Id, "R:temporal.contains")));
 
         verify(temporalEdgeWriteRepository).upsertTemporalEdge(
-                eq(scene1Id), eq(scene0Id), eq("R:temporal.during"), any(), any(), any(), any(), any(), any(), any()
+                eq(scene1Id), eq(scene0Id), eq("R:temporal.during"), any(), any(), any(), any(), any(), any(), any(), any()
         );
     }
 
@@ -127,7 +127,7 @@ class SceneTemporalRelationshipPersistenceServiceTest {
         service.applyTemporalRelationships(List.of(request(scene0Id, scene1Id, "R:temporal.after")));
 
         verify(temporalEdgeWriteRepository).upsertTemporalEdge(
-                eq(scene1Id), eq(scene0Id), eq("R:temporal.before"), any(), any(), any(), any(), any(), any(), any()
+                eq(scene1Id), eq(scene0Id), eq("R:temporal.before"), any(), any(), any(), any(), any(), any(), any(), any()
         );
     }
 

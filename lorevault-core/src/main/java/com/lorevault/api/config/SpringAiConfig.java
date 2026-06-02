@@ -1,6 +1,7 @@
 package com.lorevault.api.config;
 
 import com.lorevault.api.config.LoreVaultModelsProperties;
+import com.lorevault.catalog.EmbeddingFunction;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -9,7 +10,7 @@ import org.springframework.ai.openai.OpenAiEmbeddingModel;
 import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -29,11 +30,13 @@ import java.time.Duration;
  */
 @Configuration
 @Profile("!test")
-@EnableConfigurationProperties(LoreVaultModelsProperties.class)
 public class SpringAiConfig {
 
     /** HTTP timeout for all LLM and embedding API calls. */
     private static final Duration API_TIMEOUT = Duration.ofSeconds(60);
+    private static final double DEFAULT_TEMPERATURE = 0.3;
+    private static final double DEFAULT_TOP_P = 1.0;
+    private static final String COMPLETIONS_PATH = "/chat/completions";
 
     /**
      * Creates a {@link RestClient.Builder} with connection and read timeouts configured.
@@ -50,7 +53,7 @@ public class SpringAiConfig {
         return OpenAiApi.builder()
                 .baseUrl(cfg.baseUrl())
                 .apiKey(cfg.apiKey())
-                .completionsPath(cfg.completionsPath())
+                .completionsPath(COMPLETIONS_PATH)
                 .restClientBuilder(restClientBuilderWithTimeout())
                 .build();
     }
@@ -66,8 +69,8 @@ public class SpringAiConfig {
         var openAiApi = buildApi(cfg);
         OpenAiChatOptions defaults = OpenAiChatOptions.builder()
             .model(cfg.model())
-            .temperature(cfg.temperature())
-            .topP(cfg.topP())
+            .temperature(DEFAULT_TEMPERATURE)
+            .topP(DEFAULT_TOP_P)
             .build();
         OpenAiChatModel model = OpenAiChatModel.builder()
             .openAiApi(openAiApi)
@@ -87,8 +90,8 @@ public class SpringAiConfig {
         var openAiApi = buildApi(cfg);
         OpenAiChatOptions defaults = OpenAiChatOptions.builder()
             .model(cfg.model())
-            .temperature(cfg.temperature())
-            .topP(cfg.topP())
+            .temperature(DEFAULT_TEMPERATURE)
+            .topP(DEFAULT_TOP_P)
             .build();
         OpenAiChatModel model = OpenAiChatModel.builder()
             .openAiApi(openAiApi)
@@ -108,8 +111,8 @@ public class SpringAiConfig {
         var openAiApi = buildApi(cfg);
         OpenAiChatOptions defaults = OpenAiChatOptions.builder()
             .model(cfg.model())
-            .temperature(cfg.temperature())
-            .topP(cfg.topP())
+            .temperature(DEFAULT_TEMPERATURE)
+            .topP(DEFAULT_TOP_P)
             .build();
         OpenAiChatModel model = OpenAiChatModel.builder()
             .openAiApi(openAiApi)
@@ -125,8 +128,7 @@ public class SpringAiConfig {
     @Profile("!test")
     @Qualifier("embeddingModel")
     public EmbeddingModel embeddingModel(
-            LoreVaultModelsProperties models,
-            LoreVaultEmbeddingProperties embeddingProperties
+            LoreVaultModelsProperties models
     ) {
         var cfg = models.embedding();
 var openAiApi = OpenAiApi.builder()
@@ -136,8 +138,26 @@ var openAiApi = OpenAiApi.builder()
                 .build();
         OpenAiEmbeddingOptions options = OpenAiEmbeddingOptions.builder()
                 .model(cfg.model())
-                .dimensions(embeddingProperties.model().dimensions())
+                .dimensions(LoreVaultEmbeddingProperties.DIMENSIONS)
                 .build();
         return new OpenAiEmbeddingModel(openAiApi, org.springframework.ai.document.MetadataMode.EMBED, options);
+    }
+
+    /**
+     * Provides the {@link EmbeddingFunction} bean for the catalog module.
+     * <p>
+     * The catalog defines the contract ({@code EmbeddingFunction} interface in
+     * {@code com.lorevault.catalog}); core provides the implementation by wrapping
+     * Spring AI's {@link EmbeddingModel}. The catalog has zero knowledge of Spring AI types.
+     * <p>
+     * This bean is conditional on {@code lorevault.catalog.enabled=true} so it
+     * only activates when the catalog module is in use.
+     */
+    @Bean
+    @Qualifier("catalogEmbeddingFunction")
+    @ConditionalOnProperty(name = "lorevault.catalog.enabled", havingValue = "true")
+    public EmbeddingFunction embeddingFunction(
+            @Qualifier("embeddingModel") EmbeddingModel embeddingModel) {
+        return embeddingModel::embed;
     }
 }

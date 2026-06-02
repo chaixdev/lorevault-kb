@@ -1,34 +1,26 @@
 package com.lorevault.api.config;
 
+import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskDecorator;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import org.springframework.core.task.TaskExecutor;
+
 import java.util.Map;
-import java.util.concurrent.Executor;
 
 /**
  * Configuration for asynchronous processing
  */
 @Configuration
 @EnableAsync(proxyTargetClass = true)
+@RequiredArgsConstructor
 public class AsyncConfig {
 
-    @Value("${lorevault.async.shutdown.wait-for-tasks:true}")
-    private boolean waitForTasksToCompleteOnShutdown;
-
-    @Value("${lorevault.async.shutdown.ingestion-await-seconds:60}")
-    private int ingestionAwaitTerminationSeconds;
-
-    @Value("${lorevault.async.shutdown.ingestion-lane-await-seconds:60}")
-    private int ingestionLaneAwaitTerminationSeconds;
-
-    @Value("${lorevault.async.shutdown.scene-detection-await-seconds:120}")
-    private int sceneDetectionAwaitTerminationSeconds;
+    private final LoreVaultAsyncProperties asyncProperties;
 
     /**
      * Custom thread pool for ingestion orchestration and fan-in processing.
@@ -39,15 +31,15 @@ public class AsyncConfig {
      * and completion fan-in remain serialized.
      */
     @Bean(name = "ingestionTaskExecutor")
-    public Executor taskExecutor() {
+    public TaskExecutor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(1);           // Intentionally single-threaded while concurrent uploads are unsupported
         executor.setMaxPoolSize(1);            // Preserve serialized follow-up processing within this deferred model
         executor.setQueueCapacity(100);        // Prefer queueing over parallelism until finer-grained concurrency is designed
         executor.setThreadNamePrefix("ingestion-");
         executor.setTaskDecorator(mdcTaskDecorator());
-        executor.setWaitForTasksToCompleteOnShutdown(waitForTasksToCompleteOnShutdown);
-        executor.setAwaitTerminationSeconds(ingestionAwaitTerminationSeconds);
+        executor.setWaitForTasksToCompleteOnShutdown(asyncProperties.shutdown().waitForTasks());
+        executor.setAwaitTerminationSeconds(asyncProperties.shutdown().ingestionAwaitSeconds());
         executor.initialize();
         return executor;
     }
@@ -61,15 +53,15 @@ public class AsyncConfig {
      * and event embedding/candidate generation.</p>
      */
     @Bean(name = "ingestionLaneTaskExecutor")
-    public Executor ingestionLaneTaskExecutor() {
+    public TaskExecutor ingestionLaneTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(4);
         executor.setMaxPoolSize(6);
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("ingestion-lane-");
         executor.setTaskDecorator(mdcTaskDecorator());
-        executor.setWaitForTasksToCompleteOnShutdown(waitForTasksToCompleteOnShutdown);
-        executor.setAwaitTerminationSeconds(ingestionLaneAwaitTerminationSeconds);
+        executor.setWaitForTasksToCompleteOnShutdown(asyncProperties.shutdown().waitForTasks());
+        executor.setAwaitTerminationSeconds(asyncProperties.shutdown().ingestionLaneAwaitSeconds());
         executor.initialize();
         return executor;
     }
@@ -79,15 +71,15 @@ public class AsyncConfig {
      * Separate pool to isolate AI processing from other tasks.
      */
     @Bean(name = "sceneDetectionTaskExecutor")
-    public Executor sceneDetectionTaskExecutor() {
+    public TaskExecutor sceneDetectionTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(1);           // AI calls are typically sequential
-        executor.setMaxPoolSize(3);            // Limited concurrent AI calls
+        executor.setCorePoolSize(1);           // Single-threaded — scene detection is per-chapter,
+        executor.setMaxPoolSize(1);            // not parallelizable within a chapter.
         executor.setQueueCapacity(10);         
         executor.setThreadNamePrefix("scene-detection-");
         executor.setTaskDecorator(mdcTaskDecorator());
-        executor.setWaitForTasksToCompleteOnShutdown(waitForTasksToCompleteOnShutdown);
-        executor.setAwaitTerminationSeconds(sceneDetectionAwaitTerminationSeconds); // AI calls might take longer
+        executor.setWaitForTasksToCompleteOnShutdown(asyncProperties.shutdown().waitForTasks());
+        executor.setAwaitTerminationSeconds(asyncProperties.shutdown().sceneDetectionAwaitSeconds()); // AI calls might take longer
         executor.initialize();
         return executor;
     }

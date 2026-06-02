@@ -40,7 +40,7 @@ sequenceDiagram
     SDH->>SDS: "detectScenesInChapter(jobId, chapter)"
     SDS-->>SDH: "localized scene boundaries"
     SDH->>SDH: "persist scenes"
-    SDH->>TOS: "analyzeChapterTriadsWithIndividuals(jobId, chapter-with-persisted-scenes)"
+    SDH->>TOS: "analyzeChapterTriads(jobId, chapter-with-persisted-scenes)"
     TOS->>TBS: "buildTriadsForChapter(chapter)"
     TBS->>TBS: "resolve cross-chapter previous scene"
     TBS-->>TOS: "List<SceneTriad>"

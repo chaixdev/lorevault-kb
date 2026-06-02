@@ -1,11 +1,12 @@
 package com.lorevault.api.web.ui;
 
-import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionResult;
-import com.lorevault.api.ingestion.resolution.individual.ChapterIndividualResolutionService;
-import com.lorevault.api.ingestion.resolution.location.BookLocationReductionService;
-import com.lorevault.api.ingestion.resolution.location.BookLocationResolutionResult;
-import com.lorevault.api.ingestion.resolution.location.ChapterLocationResolutionResult;
-import com.lorevault.api.ingestion.resolution.location.ChapterLocationResolutionService;
+import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationHandler;
+import com.lorevault.api.graph.location.consolidation.chapter.ChapterLocationConsolidationHandler;
+import com.lorevault.api.graph.location.consolidation.book.BookLocationConsolidationHandler;
+import com.lorevault.api.orchestration.pipeline.IngestionPipelineCoordinator;
+import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
+import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -28,44 +30,57 @@ class UiOperatorActionsControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ChapterIndividualResolutionService chapterIndividualResolutionService;
+    private ChapterIndividualConsolidationHandler chapterIndividualConsolidator;
 
     @MockitoBean
-    private ChapterLocationResolutionService chapterLocationResolutionService;
+    private ChapterLocationConsolidationHandler chapterLocationConsolidator;
 
     @MockitoBean
-    private BookLocationReductionService bookLocationReductionService;
+    private BookLocationConsolidationHandler bookLocationConsolidator;
+
+    @MockitoBean
+    private IngestionPipelineCoordinator pipelineCoordinator;
 
     @Test
     void chapterIndividualActionReturnsToast() throws Exception {
+        when(chapterIndividualConsolidator.execute(any(StageExecutionContext.class)))
+                .thenReturn(StageResult.success(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION, "Resolved chapter individuals", 150L));
         UUID chapterId = UUID.randomUUID();
-        when(chapterIndividualResolutionService.resolveChapter(chapterId))
-                .thenReturn(new ChapterIndividualResolutionResult(chapterId, true, 3, 2, "Resolved chapter individuals"));
 
-        mockMvc.perform(post("/ui/actions/chapters/" + chapterId + "/resolve-individuals"))
+        mockMvc.perform(post("/ui/actions/chapters/" + chapterId + "/chapter-consolidate-individuals"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Resolved chapter individuals")));
     }
 
     @Test
     void chapterLocationActionReturnsToast() throws Exception {
+        when(chapterLocationConsolidator.execute(any(StageExecutionContext.class)))
+                .thenReturn(StageResult.success(StageKey.CHAPTER_LOCATION_CONSOLIDATION, "Resolved chapter locations", 150L));
         UUID chapterId = UUID.randomUUID();
-        when(chapterLocationResolutionService.resolveChapter(chapterId))
-                .thenReturn(new ChapterLocationResolutionResult(chapterId, true, 2, 1, "Resolved chapter locations"));
 
-        mockMvc.perform(post("/ui/actions/chapters/" + chapterId + "/resolve-locations"))
+        mockMvc.perform(post("/ui/actions/chapters/" + chapterId + "/chapter-consolidate-locations"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Resolved chapter locations")));
     }
 
     @Test
     void bookLocationActionReturnsToast() throws Exception {
+        when(bookLocationConsolidator.execute(any(StageExecutionContext.class)))
+                .thenReturn(StageResult.success(StageKey.BOOK_LOCATION_CONSOLIDATION, "Resolved book-level locations", 150L));
         UUID bookId = UUID.randomUUID();
-        when(bookLocationReductionService.resolveBook(bookId))
-                .thenReturn(new BookLocationResolutionResult(bookId, true, 4, 2, "Resolved book-level locations"));
 
-        mockMvc.perform(post("/ui/actions/books/" + bookId + "/resolve-locations"))
+        mockMvc.perform(post("/ui/actions/books/" + bookId + "/chapter-consolidate-locations"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Resolved book-level locations")));
+    }
+
+    @Test
+    void consolidationFailureShowsInfoTone() throws Exception {
+        when(chapterIndividualConsolidator.execute(any(StageExecutionContext.class)))
+                .thenReturn(StageResult.failure(StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION, "No mentions found", 0L));
+
+        mockMvc.perform(post("/ui/actions/chapters/" + UUID.randomUUID() + "/chapter-consolidate-individuals"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Consolidation skipped or failed")));
     }
 }

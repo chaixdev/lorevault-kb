@@ -69,6 +69,20 @@ Do not assume:
 
 The code must classify retryability deliberately and consistently.
 
+#### Rule 3a — Every `StageOperation` handler must classify retryability declaratively
+
+Every `StageOperation` handler must implement an `isRetryableError(Exception)` method
+that returns a consistent boolean. Retryability classification must be based on stable
+exception types and causal chains — never on string-matching exception messages.
+
+The classification must:
+- Check typed exception classes (e.g., `ResourceAccessException`, `TooManyRequests`)
+- Recursively unwrap `getCause()` when checking for transient indicators
+- Treat unknown exception types as non-retryable (fail closed)
+
+Handler catch blocks must call `isRetryableError(e)` to decide between
+`StageResult.retryableFailure()` and `StageResult.failure()`.
+
 ### Rule 4 — Keep unexpected technical defects distinct
 
 Not every failure should become a business exception.

@@ -1,12 +1,15 @@
 package com.lorevault.api.web.query.job;
 
-import com.lorevault.api.ingestion.events.ScenesDetectedEvent;
+import com.lorevault.api.orchestration.signals.StageCompletedEvent;
+import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageResult;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,6 +22,12 @@ class JobStatusBroadcasterTest {
     @BeforeEach
     void setUp() {
         broadcaster = new JobStatusBroadcaster();
+        broadcaster.initExecutor();
+    }
+
+    @AfterEach
+    void tearDown() {
+        broadcaster.shutdownExecutor();
     }
 
     @Test
@@ -33,15 +42,20 @@ class JobStatusBroadcasterTest {
     }
 
     @Test
-    @DisplayName("status update broadcasts without dropping healthy emitters")
-    void onStatusUpdateBroadcasts() {
+    @DisplayName("stage completed broadcasts without dropping healthy emitters")
+    void onStageCompletedBroadcasts() {
         broadcaster.register();
 
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
-        ScenesDetectedEvent event = new ScenesDetectedEvent(this, jobId, chapterId, UUID.randomUUID(), List.of(UUID.randomUUID()));
+        UUID bookId = UUID.randomUUID();
+        StageCompletedEvent event = new StageCompletedEvent(
+                this, jobId, chapterId, bookId, StageKey.SCENE_SEGMENTATION,
+                StageResult.success(StageKey.SCENE_SEGMENTATION, "Detected 5 scenes", Map.of("scenesDetected", 5), 1234L),
+                UUID.randomUUID().toString()
+        );
 
-        broadcaster.onStatusUpdate(event);
+        broadcaster.onStageCompleted(event);
 
         assertThat(broadcaster.getConnectionCount()).isEqualTo(1);
     }

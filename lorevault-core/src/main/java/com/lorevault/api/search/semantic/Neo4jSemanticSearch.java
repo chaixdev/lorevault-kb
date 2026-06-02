@@ -1,9 +1,10 @@
 package com.lorevault.api.search.semantic;
+import com.lorevault.api.library.chunk.Chunk;
 import com.lorevault.api.search.model.SpoilerVisibility;
 import com.lorevault.api.search.model.UnconfiguredSeriesPolicy;
 import com.lorevault.api.search.model.SeriesProgress;
 import com.lorevault.api.search.model.SemanticSearchException;
-import com.lorevault.api.ingestion.job.IngestionFailure;
+import com.lorevault.api.orchestration.job.IngestionFailure;
 import org.neo4j.driver.exceptions.Neo4jException;
 import org.springframework.dao.DataAccessException;
 
@@ -54,8 +55,6 @@ public class Neo4jSemanticSearch {
         }
     }
 
-    private static final String VECTOR_INDEX_NAME = "chunk_embedding_idx";
-
     private final Neo4jClient neo4jClient;
 
     @Value("${lorevault.search.snippet.max-length:600}")
@@ -89,7 +88,7 @@ public class Neo4jSemanticSearch {
 
             String cypher = buildCypher(visibility);
             Map<String, Object> params = buildParams(
-                    VECTOR_INDEX_NAME, oversampleLimit, embeddingList, topK,
+                    Chunk.VECTOR_INDEX_NAME, oversampleLimit, embeddingList, topK,
                     universe, series, bookNumber, chapterNumber, visibility);
 
             List<SearchResult> results = neo4jClient.query(cypher)
@@ -138,13 +137,13 @@ public class Neo4jSemanticSearch {
 
         } catch (DataAccessException | Neo4jException e) {
             log.warn("Neo4j vector search failed: {}. Ensure vector index '{}' exists.",
-                    e.getMessage(), VECTOR_INDEX_NAME);
+                    e.getMessage(), Chunk.VECTOR_INDEX_NAME);
             IngestionFailure failure = IngestionFailure.builder(
                             "SEMANTIC_SEARCH_BACKEND_UNAVAILABLE",
                             "Neo4j vector search backend failed")
                     .exceptionType(e.getClass().getSimpleName())
                     .stage("SEMANTIC_SEARCH")
-                    .detail("indexName", VECTOR_INDEX_NAME)
+                    .detail("indexName", Chunk.VECTOR_INDEX_NAME)
                     .detail("topK", topK)
                     .build();
             throw new SemanticSearchException(failure, e);
@@ -158,13 +157,13 @@ public class Neo4jSemanticSearch {
                 WHERE name = $indexName
                 RETURN count(*) as indexCount
                 """)
-                    .bind(VECTOR_INDEX_NAME).to("indexName")
+                    .bind(Chunk.VECTOR_INDEX_NAME).to("indexName")
                     .fetchAs(Long.class)
                     .one()
                     .orElse(0L);
 
             if (count == 0) {
-                log.debug("Vector index '{}' not available", VECTOR_INDEX_NAME);
+                log.debug("Vector index '{}' not available", Chunk.VECTOR_INDEX_NAME);
                 return false;
             }
 

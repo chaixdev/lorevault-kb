@@ -15,12 +15,13 @@ Use the existing feature-oriented split under `com.lorevault.api`.
 | Package | Semantic meaning |
 |---|---|
 | `ai` | generic interaction with LLM APIs and AI infrastructure |
+| `common` | shared utilities with no feature ownership (e.g., HashUtils, NameNormalizer, ExceptionSanitizer). All string normalization, sanitization, and formatting utilities must go here and only here. Never create a second normalizer that produces different output for the same input. |
 | `config` | Spring bean wiring and framework configuration |
-| `content` | the canonical persisted knowledge model and graph state of the product |
+| `graph` | the canonical persisted knowledge graph (entities, persistence, consolidation) |
 | `health` | monitoring, diagnostics, readiness, and observability |
-| `ingestion` | everything related to turning uploads into `content` |
-| `library` | canon scope, corpus boundaries, and library/catalog operations |
-| `search` | navigating, querying, retrieving, and answering over `content` |
+| `library` | canon scope, corpus boundaries, chapter/chunk storage, and library operations |
+| `orchestration` | ingestion pipeline, stage coordination, job tracking, entity consolidation engine |
+| `search` | navigating, querying, retrieving, and answering over the knowledge graph |
 | `web` | HTTP and UI edges |
 
 ## Current package map
@@ -32,14 +33,28 @@ Representative current internal shape:
 
 | Top-level package | Representative internal packages |
 |---|---|
-| `ai` | `chunking`, `embedding`, `llm`, `infrastructure` |
-| `content` | `association`, `chapter`, `chunk`, `mention`, `scene`, `timeline` |
-| `ingestion` | `completion`, `content`, `events`, `job`, `pipeline`, `resolution`, `scene`, `submission`, `triad`, `infrastructure` |
-| `library` | `book`, `series`, `service`, `universe` |
+| `ai` | `embedding`, `infrastructure`, `llm`, `telemetry` |
+| `common` | `error` |
+| `graph` | `collective`, `event`, `individual`, `location`, `mention`, `object`, `relation`, `timeline` |
+| `library` | `book`, `chapter`, `chunk`, `series`, `service`, `universe` |
+| `orchestration` | `consolidation`, `job`, `pipeline`, `signals`, `submission`, `triad` |
 | `search` | `extraction`, `model`, `rag`, `semantic` |
 
 This map is descriptive, not a mandatory template. The rule is capability ownership first,
 with local support packages only where they remain semantically honest.
+
+### `common` is the canonical library for shared utilities
+
+The `common` package (`com.lorevault.api.common`) is the single source of truth for
+shared utility methods: string normalization, sanitization, formatting, hashing, and
+other stateless functions. Any new utility method of this kind must be placed here.
+Existing inline or duplicated utility logic (e.g., normalization methods in
+feature-specific packages) must be deleted and replaced with the `common` equivalent.
+
+A one-line normalization that differs from `NameNormalizer.normalize()` by not
+stripping punctuation is not a harmless convenience — it is a data-integrity defect
+waiting to surface during consolidation. If you find a normalizer outside `common`,
+replace it with the canonical one.
 
 ## Ownership rules
 
@@ -63,17 +78,19 @@ Examples:
 - prompt repositories and prompt rendering
 - retry strategies and API-call support code
 - reusable AI-facing contracts or parsing support when they are not feature-owned
+- `ai/infrastructure` for generic AI support code (model clients, retry strategies); feature-owned shared infrastructure now lives under `orchestration/` and `graph/`
 
 If a type is orchestrating a product workflow such as ingestion, search, or another feature, it usually does **not** belong in `ai`.
 
-### `ingestion` owns content-production workflows
+### `orchestration` owns ingestion and pipeline workflows
 
-`ingestion` should contain:
+`orchestration` should contain:
 
-- upload-to-graph orchestration
-- pipeline handlers and stage coordination
-- extraction, reduction, and resolution flows
-- feature-owned scene-processing logic used to build or enrich content
+- upload-to-graph orchestration (`submission/`)
+- pipeline handlers and stage coordination (`pipeline/`, `signals/`)
+- job tracking and status (`job/`)
+- entity consolidation engine (`consolidation/`)
+- triad analysis orchestration (`triad/`)
 
 ### `search` owns retrieval workflows
 
@@ -100,8 +117,8 @@ recreating `application/domain/infrastructure` buckets by habit.
 
 Prefer packages that communicate what the feature does:
 
-- `scene`, `chunk`, `mention`, `association`
-- `submission`, `job`, `resolution`, `completion`
+- `scene`, `chunk`, `mention`, `persistence`, `consolidation`
+- `submission`, `job`, `pipeline`, `signals`, `triad`
 - `rag`, `semantic`, `extraction`, `model`
 - `book`, `series`, `universe`
 
@@ -109,10 +126,9 @@ Local support buckets are still valid when they are the clearest fit for one bou
 
 | Subpackage | Use it for |
 |---|---|
-| `events` | shared workflow events used across multiple emitters/listeners |
-| `infrastructure` | technical support types that are genuinely shared within one feature |
 | `pipeline` | small feature-local pipeline support that is not itself a business capability |
 | `service` | a compact service/query seam when a feature is too small to justify finer capability splits |
+| `signals` | shared workflow events used across multiple emitters/listeners (was `events`) |
 
 Do not introduce `application`, `domain`, or `infrastructure` as a feature-wide template just
 to complete a familiar architecture pattern. Use them only as a narrow local fit when the
@@ -163,6 +179,32 @@ semantics are still obvious and they do not become mixed catch-all buckets.
 - Keep configuration centralized unless a feature clearly owns meaningful bean wiring.
 - Do **not** create per-feature `config` packages just to complete a template.
 
+## Container-class guidance
+
+For LLM response types and other closed sets that always travel together, use a `public final class` with a private constructor as a namespace:
+
+```java
+public final class TriadAnalysisModels {
+    private TriadAnalysisModels() {}
+    
+    public record SceneRelationshipAnalysis(...) {}
+    public record IndividualExtraction(...) {}
+    // ... rest of the closed set
+}
+```
+
+Apply this pattern when:
+
+- The types form a closed set that always travels together (e.g., LLM deserialization targets)
+- Each type is < 20 lines and too thin to justify a separate file
+- The types are only ever referenced through the container (no external direct usage)
+
+Prefer `*Models` suffix for container classes that group LLM deserialization targets (`TriadAnalysisModels`, `EventCorefModels`, `EventMergeModels`).
+
+Otherwise, use separate top-level records in the same package. Do not use container classes as default grouping just because types are small — the closed-set criterion is the gate.
+
+---
+
 ## DTO and shared-contract rules
 
 - DTOs used by only one feature belong in that feature.
@@ -176,6 +218,12 @@ Name types for product semantics, not implementation technique.
 
 - prefer names like `SceneRelationshipAnalysisService` over technique-leaking names like `TriadOrchestrationService`
 - keep technique terms (for example, `Triad*`) for private/internal helpers where the technique itself is the meaning
+
+**Display-name selection for entities.** When selecting a display name from entity
+extraction data, use the entity's primary string field (e.g., `normalizedName`, the first
+non-blank alias). Never fall back to a type-category string (e.g., `"weapon"`,
+`"furniture"`, `Object`) — this stores a classification label as an entity identity,
+causing unrelated entities of the same type to cluster incorrectly during consolidation.
 
 Use these suffixes consistently:
 
@@ -211,6 +259,40 @@ When placement is ambiguous, ask these questions in order:
 4. Does a new subpackage reveal real ownership, or just add ceremony?
 
 Choose the smallest package structure that answers those questions clearly.
+
+## Backward compatibility is never the goal
+
+**Deprecated code does not exist in this codebase.** Code is either used and must remain, or unused and must be deleted. There is no third state. `@Deprecated` as a Java language feature is not used here — it is not a signal, a preference, or a migration tracker.
+
+If a method, enum value, or class has zero production callers, delete it. If it still has callers, migrate them to the replacement and then delete it. Do not add `@Deprecated` to keep old code alive, and do not add it to "acknowledge" that something exists but is less preferred. Use an inline comment if you need to convey design intent about a value's role.
+
+"Backward compatibility" in Javadoc is a deletion signal. Any method claiming to "exist only for backward compatibility" must be deleted immediately.
+
+When you are tempted to keep old code:
+1. Who calls it? If zero production callers → delete.
+2. If callers exist, what is the replacement? Migrate callers → delete.
+3. If no replacement exists yet, file a migration task. Do not add `@Deprecated`.
+
+Direct deletion with caller migration is always preferred over any form of deprecation.
+
+## Unreachable code after refactor
+
+When a refactor introduces a new mechanism that makes an existing guard or check
+unreachable, the dead code must be removed as part of the same change. Do not leave
+the old guard behind "just in case."
+
+**Example:** Adding an atomic CAS guard (`TRIGGERED → RUNNING`) that runs before an
+existing idempotency check (`status == COMPLETED`) makes the check always return
+`false` — the CAS already ensures a `COMPLETED` stage can never reach the check.
+The old check is dead code and must be deleted in the commit that adds the CAS guard.
+
+The same principle applies to any refactor where a new upstream mechanism renders
+a downstream guard, branch, or validation permanently unreachable. Leaving it in
+place creates confusion ("is this path actually reachable?") and wastes resources
+(an unnecessary Neo4j query on every dispatch in this example).
+
+This extends the deprecated-code rule: just as `@Deprecated` has no place in the
+codebase, unreachable code from refactors has no place either. Delete it.
 
 ## Related docs
 

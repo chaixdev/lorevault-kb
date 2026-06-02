@@ -1,5 +1,6 @@
 package com.lorevault.api.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.retry.annotation.EnableRetry;
@@ -16,7 +17,10 @@ import java.util.Collections;
  */
 @Configuration
 @EnableRetry
+@RequiredArgsConstructor
 public class RetryConfig {
+
+    private final LoreVaultRetryProperties retryProperties;
 
     /**
      * Creates a RetryTemplate for LLM API calls with exponential backoff.
@@ -27,24 +31,8 @@ public class RetryConfig {
      */
     @Bean(name = "llmRetryTemplate")
     public RetryTemplate llmRetryTemplate() {
-        RetryTemplate retryTemplate = new RetryTemplate();
-        
-        // Set the retry policy (how many times to retry)
-        SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy(
-            3, // Max attempts
-            Collections.singletonMap(Exception.class, true) // Retry on all exceptions
-        );
-        
-        // Set the backoff policy (how long to wait between retries)
-        ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
-        backOffPolicy.setInitialInterval(2000); // 2 seconds initial delay
-        backOffPolicy.setMultiplier(2.0);       // Double the wait time for each retry
-        backOffPolicy.setMaxInterval(30000);    // Maximum 30 second delay
-        
-        retryTemplate.setRetryPolicy(retryPolicy);
-        retryTemplate.setBackOffPolicy(backOffPolicy);
-        
-        return retryTemplate;
+        var cfg = retryProperties.llmDefaults();
+        return buildTemplate(cfg.maxAttempts(), cfg.initialIntervalMs(), cfg.multiplier(), cfg.maxIntervalMs());
     }
     
     /**
@@ -56,24 +44,8 @@ public class RetryConfig {
      */
     @Bean(name = "dbRetryTemplate")
     public RetryTemplate dbRetryTemplate() {
-        RetryTemplate retryTemplate = new RetryTemplate();
-        
-        // Set the retry policy (how many times to retry)
-        SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy(
-            3, // Max attempts
-            Collections.singletonMap(Exception.class, true) // Retry on all exceptions
-        );
-        
-        // Set the backoff policy (how long to wait between retries)
-        ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
-        backOffPolicy.setInitialInterval(100);  // 100ms initial delay
-        backOffPolicy.setMultiplier(2.0);       // Double the wait time for each retry
-        backOffPolicy.setMaxInterval(1000);     // Maximum 1 second delay
-        
-        retryTemplate.setRetryPolicy(retryPolicy);
-        retryTemplate.setBackOffPolicy(backOffPolicy);
-        
-        return retryTemplate;
+        var cfg = retryProperties.dbDefaults();
+        return buildTemplate(cfg.maxAttempts(), cfg.initialIntervalMs(), cfg.multiplier(), cfg.maxIntervalMs());
     }
     
     /**
@@ -85,23 +57,26 @@ public class RetryConfig {
      */
     @Bean
     public RetryTemplate retryTemplate() {
+        var cfg = retryProperties.springAiDefaults();
+        return buildTemplate(cfg.maxAttempts(), cfg.initialIntervalMs(), cfg.multiplier(), cfg.maxIntervalMs());
+    }
+
+    private RetryTemplate buildTemplate(int maxAttempts, long initialIntervalMs, double multiplier, long maxIntervalMs) {
         RetryTemplate retryTemplate = new RetryTemplate();
-        
-        // Set the retry policy (how many times to retry)
+
         SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy(
-            3, // Max attempts
-            Collections.singletonMap(Exception.class, true) // Retry on all exceptions
+            maxAttempts,
+            Collections.singletonMap(Exception.class, true)
         );
-        
-        // Set the backoff policy (how long to wait between retries)
+
         ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
-        backOffPolicy.setInitialInterval(1000); // 1 second initial delay
-        backOffPolicy.setMultiplier(2.0);       // Double the wait time for each retry
-        backOffPolicy.setMaxInterval(15000);    // Maximum 15 second delay
-        
+        backOffPolicy.setInitialInterval(initialIntervalMs);
+        backOffPolicy.setMultiplier(multiplier);
+        backOffPolicy.setMaxInterval(maxIntervalMs);
+
         retryTemplate.setRetryPolicy(retryPolicy);
         retryTemplate.setBackOffPolicy(backOffPolicy);
-        
+
         return retryTemplate;
     }
 }

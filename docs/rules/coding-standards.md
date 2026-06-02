@@ -69,6 +69,32 @@ Avoids CGLib subclassing overhead when `@Bean` methods do not call each other.
 
 **`@ConfigurationProperties` over scattered `@Value` injections.**
 A cluster of related `@Value` fields is a signal to extract a `@ConfigurationProperties` record.
+When a class uses constructor injection for its dependencies, configuration values must also
+flow through the constructor — not via `@Value` on fields. The valid patterns are:
+
+- `@ConfigurationProperties` record injected via constructor (preferred)
+- `@Value` on constructor parameters (acceptable for isolated values)
+
+`@Value` on fields alongside constructor-injected dependencies is a style inconsistency.
+Using `@Value` on fields also makes the dependency invisible in the constructor signature
+and harder to test without a Spring context.
+
+```java
+// Wrong — mixed styles: constructor injection + @Value fields
+@RequiredArgsConstructor
+public class LlmClient {
+    private final ChatClient chatClient;  // constructor-injected
+    @Value("${model.id}") private String modelId;  // field-injected — inconsistent
+}
+
+// Correct — ConfigurationProperties record, constructor-injected
+public class LlmClient {
+    private final ChatClient chatClient;
+    private final LlmClientProperties props;  // constructor-injected record
+    public LlmClient(ChatClient chatClient, LlmClientProperties props) { ... }
+    // props.modelId() used throughout
+}
+```
 
 **Prefer slice tests over `@SpringBootTest`.**
 - `@WebMvcTest` for the controller layer.
@@ -115,6 +141,31 @@ index declaration.
 A `MERGE` must use the exact properties that constitute the uniqueness constraint.
 Merging on a partial key creates duplicate nodes when other properties differ.
 
+**Atomic idempotency guards.**
+An idempotency guard that checks then creates — `if (exists) return; else save()` —
+is a TOCTOU defect. The check and the create must be atomic. Acceptable patterns:
+
+- `MERGE` with the full uniqueness key (preferred — single atomic operation)
+- Catch a unique-constraint violation from the write (guardrail, not primary strategy)
+- A persisted claim record under a unique constraint (multi-node-safe serialization)
+
+```java
+// Wrong — check-then-create race between threads
+if (sceneRepo.findByChapterId(chapterId).isEmpty()) {
+    sceneRepo.saveAll(scenes); // another thread may have inserted between check and save
+}
+
+// Correct — MERGE is atomic
+MERGE (s:Scene {chapterId: $chapterId, sceneIndex: $sceneIndex})
+ON CREATE SET s.id = $id, s.text = $text, ...
+```
+
+**Path repetition cardinality bounds.**
+Never use unbounded path repetition patterns (e.g., `(m)-[:SAME_EVENT*0..]-(related)`).
+All path expressions must have an explicit upper bound. Unbounded traversal can exhaust
+Neo4j memory and produce non-deterministic results even on modest datasets. Default to
+a bound that matches the realistic maximum path length for the domain (e.g., `*0..10`).
+
 **Projections for partial reads.**
 When only a subset of node properties is needed, use an SDN interface projection or
 a custom `@QueryResult` record instead of loading the full entity graph.
@@ -128,6 +179,63 @@ result columns onto the domain entity when the return type is an interface, caus
 them via canonical constructor, matching parameters to Cypher column names. Projection
 interfaces are safe only on repositories extending the base `Repository<Entity, ID>` (not
 `Neo4jRepository`), which doesn't trigger entity-aware mapping.
+
+**Stage provenance on domain nodes.**
+
+Every `@Node` entity created during pipeline execution must carry a `stageId` property for provenance, cleanup, and replay:
+
+```java
+// Record entity — stageId as record component, placed after the scope ID
+public record ChapterIndividual(
+        @Id UUID id,
+        UUID chapterId,
+        @Property("stageId") UUID stageId,  // after scope ID, before business fields
+        String displayName,
+        String normalizedName,
+        // ...
+) {}
+
+// @Data entity — stageId as field with setter, NOT in @PersistenceCreator
+@Data
+@Node("Scene")
+public class Scene {
+    @Property("stageId")
+    private UUID stageId;  // set via scene.setStageId(ctx.stageId())
+    // ...
+}
+```
+
+Placement convention: `stageId` goes after the scope ID (`chapterId` for chapter entities, `bookId` for book entities, `sceneId` for mention entities) and before business fields.
+
+For records, `stageId` is a record component that must be passed at every construction site. For `@Data` classes with `@PersistenceCreator`, use a field + setter to avoid adding a 16th parameter to the persistence constructor.
+
+Services that create domain nodes must accept `StageExecutionContext ctx` as their first parameter and pass `ctx.stageId()` to entity constructors:
+
+```java
+// Required — ctx threaded through
+public void persistExtractedIndividuals(StageExecutionContext ctx, ...) {
+    individualMentionRepository.save(new IndividualMention(
+            UUID.randomUUID(), SOURCE, displayName, ...,
+            ctx.stageId(),  // stageId after scope IDs
+            sceneId, chapterId, ...));
+}
+
+// Wrong — no ctx, no stageId
+public void persistExtractedIndividuals(...) {
+    individualMentionRepository.save(new IndividualMention(
+            UUID.randomUUID(), SOURCE, displayName, ...,
+            sceneId, chapterId, ...));  // missing stageId
+}
+```
+
+Stage-scoped cleanup uses `deleteDataByStageId(stageId)`:
+```cypher
+MATCH (n {stageId: $stageId}) DETACH DELETE n
+```
+
+This removes all nodes and their relationships created by a specific stage execution, enabling safe replay.
+
+See ADR-014 (explicit parameter threading) and ADR-015 (stage node provenance).
 
 ---
 
@@ -269,6 +377,15 @@ private void init() {
 public Optional<IngestionJob> findActiveJobForChapter(UUID chapterId) { ... }
 ```
 
+**Do not mix `Neo4jClient` and SDN repositories in the same `@Transactional` method.**
+`Neo4jClient` queries bypass the SDN entity manager's identity map. When a raw
+`Neo4jClient` DELETE is followed by SDN `saveAll()` in the same transaction, previously
+loaded entities held in the identity map are stale — they reference graph state that
+no longer exists. Use one paradigm consistently per transaction boundary: either SDN
+repository methods exclusively, or `Neo4jClient` exclusively. If the operation requires
+raw Cypher that SDN cannot express, extract it to a separate service method that runs
+in its own transaction.
+
 **`@TransactionalEventListener(AFTER_COMMIT)` + new transaction.**
 This fires outside any active transaction. If the handler needs to write to Neo4j,
 add `@Transactional(propagation = REQUIRES_NEW)`.
@@ -310,6 +427,17 @@ waiting on `allOf()` will hang indefinitely.
 `AbortPolicy` (the default) throws `RejectedExecutionException` back to the submitter.
 Ensure this exception is caught and converts to a job failure, not an unhandled crash.
 
+**Spring's `ApplicationEventPublisher` is synchronous.**
+`ApplicationEventPublisher.publishEvent()` dispatches to `@EventListener` methods on
+the calling thread. Publishing from an HTTP controller thread blocks the response until
+every synchronous listener has completed — including Neo4j writes, fan-out evaluations,
+and SSE broadcasts. When publishing from an HTTP thread, offload via executor:
+
+```java
+CompletableFuture.runAsync(() -> eventPublisher.publishEvent(event), taskExecutor)
+    .exceptionally(ex -> { log.error("Event publish failed", ex); return null; });
+```
+
 ---
 
 ## Event-Driven Pipeline
@@ -338,12 +466,60 @@ Any fan-in coordinator must:
 3. Fire the completion event exactly once.
 4. Handle branch failure: the coordinator must still reach a terminal state if a branch fails.
 
+**Fan-out loop resilience.**
+When a coordinator iterates over downstream stages and invokes an external dependency
+(Neo4j, Spring event publisher, etc.) per iteration, a failure on one iteration must
+not prevent the remaining iterations from being attempted. Each iteration's failure
+domain is independent; one child's failure is not an excuse to abandon its siblings.
+
+```java
+// Good — individual failure cannot stall siblings
+for (StageKey child : dag.childrenOf(completedStage)) {
+    try {
+        boolean triggered = stageRepo.tryTrigger(jobId, child);
+        if (triggered) { publishEvent(...); }
+    } catch (Exception e) {
+        log.error("Failed to evaluate barrier for child={}: {}", child, e.getMessage(), e);
+    }
+}
+
+// Bad — a single Neo4j error abandons all remaining children
+for (StageKey child : dag.childrenOf(completedStage)) {
+    boolean triggered = stageRepo.tryTrigger(jobId, child); // throws → loop terminates
+    if (triggered) { publishEvent(...); }
+}
+```
+
 **No circular event chains.**
 Verify no handler publishes an event that transitively causes the same handler to fire.
 
 **Event immutability.**
 Events must be immutable. Prefer Java records.
 Mutable events shared across threads via the event bus are a data corruption defect.
+
+---
+
+## Type Information Must Survive Interfaces
+
+**Do not degrade typed information to strings across method boundaries.**
+
+When crossing a method boundary — especially into an infrastructure adapter — do not convert enums or domain types to strings and reconstruct them on the other side. String-based lookup tables (`Map<String, Enum>`) are fragile: every new enum value requires a manual table update, and string reconstruction has silent fallback bugs.
+
+```java
+// Wrong — StageKey (enum) → String → lookup table → StageKey (fragile reconstruction)
+LlmClient.call("chapter-segmentation", ...);       // enum → string
+LlmCallLoggingService:                              // string → enum via LLM_STEP_TO_STAGE map
+    StageKey key = LLM_STEP_TO_STAGE.get(step);     // misses "event-coref", "event-merge"
+
+// Correct — pass the type directly
+LlmClient.call(StageKey.CHAPTER_SEGMENTATION, ...);
+LlmCallLoggingService:
+    stageRepo.findByJobIdAndStep(jobId, stage);     // no lookup table, no fallback
+```
+
+The lookup table (`LLM_STEP_TO_STAGE`) missed two values. The fallback "find any RUNNING stage" query linked LLM call records to the wrong stage when multiple stages ran concurrently. Neither bug is possible if the enum is passed directly.
+
+**Rule:** If the caller has a typed value, pass the typed value. If the interface is generic, widen the signature. Do not create string-based correspondence tables that must be manually maintained.
 
 ---
 
@@ -402,8 +578,31 @@ Analyze the following content:
 Do not hardcode prompts as Java string literals. Externalize to classpath template files
 or `application.yml` properties to allow tuning without recompile.
 
+**Retry parameter variation.**
+When retrying a structured-output LLM call after a parse or validation failure, vary the
+temperature across attempts. A fixed temperature re-rolls the same likely-failure
+distribution — wasted retries. Progressive temperature (e.g., `+0.1` per retry) or a
+temperature sweep is required for all structured-output call paths that have retry logic.
+
+```java
+// Good — temperature increases on each retry
+retryTemplate.execute(ctx -> {
+    double attemptTemp = baseTemp + (ctx.getRetryCount() * 0.1);
+    var options = OpenAiChatOptions.builder().temperature(attemptTemp).build();
+    return chatClient.prompt().options(options).call().entity(MyType.class);
+});
+
+// Bad — same temperature on every retry
+var options = OpenAiChatOptions.builder().temperature(0.1).build();
+retryTemplate.execute(ctx -> {
+    return chatClient.prompt().options(options).call().entity(MyType.class);
+});
+```
+
 **Token usage observability.**
 Log token usage per LLM call at DEBUG level for cost attribution and capacity planning.
+Prefer actual API-reported token counts (`ChatResponse.getMetadata().getUsage()`) over
+heuristic estimates (`chars/3`). Heuristic estimates can be off by 30%+.
 
 ---
 
@@ -426,6 +625,35 @@ case appears — not before.
 **Premature extraction.**
 A helper method or utility class extracted from a single callsite is premature.
 Wait until the same logic is needed in a second callsite before extracting.
+
+**Excessive duplication.**
+Three or more near-identical blocks of code that differ only by mechanically derivable
+values — enum constants, type names, URL paths, log format strings — are a defect.
+Extract the shared logic into a parameterised method, generic base class, or
+configuration-driven component. Copy-paste duplication compounds every future change:
+a bug fix or behavioural change must be replicated N times, and one copy inevitably
+drifts.
+
+**Return types that no external caller consumes.**
+A public method's return type must serve at least one external (non-`this`) caller.
+If the value is only used by code inside the same class — another method on `this`, or
+an internal delegate — the return type is an implementation detail leaked through the
+public boundary.
+
+```java
+// Wrong — createAllForJob returns Map<StageKey, UUID> but bootstrapJob only
+// null-checks one entry; the map is consumed internally by rewireEdges (called
+// inside createAllForJob). Zero external callers use the map.
+public Map<StageKey, UUID> createAllForJob(UUID jobId, UUID chapterId) { ... }
+
+// Correct — return void; rewireEdges is called internally, bootstrapJob queries
+// stageRepo independently.
+public void createAllForJob(UUID jobId, UUID chapterId) { ... }
+```
+
+This is the method-level companion to the record-design rule "all fields must be
+consumed." A return type is part of the public API. If no external code reads it,
+the API is advertising implementation structure that doesn't belong on the surface.
 
 ---
 
@@ -480,12 +708,25 @@ Do not use Java object deserialization (`ObjectInputStream`) for untrusted data.
 Use JSON with a strict `ObjectMapper` configuration.
 
 **Log safety.**
-Never log credentials, API keys, raw user-supplied content, or internal stack paths
-in API error responses.
+Never log credentials, API keys, raw user-supplied content, or internal stack paths.
+
+**Error response hygiene.**
+Never include exception messages, stack traces, or internal identifiers in HTTP response
+bodies sent to API clients. Exception messages from downstream services may contain
+Neo4j query fragments, database identifiers, internal file paths, or AI provider metadata.
+Return sanitized, client-safe messages in all error responses. Log the full exception
+server-side at ERROR level.
 
 ---
 
 ## Lombok Discipline
+
+**Always use `@Slf4j` for logger fields.**
+Never use `LoggerFactory.getLogger(MyClass.class)` manually. `@Slf4j` generates the
+same field (named `log`) with less noise and eliminates a common source of copy-paste
+errors when adding logging to new or refactored classes. The only acceptable
+`LoggerFactory.getLogger()` call is in abstract or framework code where Lombok
+annotation processing cannot reach.
 
 **Never `@Data` on Neo4j entity classes.**
 `@Data` generates `equals` and `hashCode` using all fields including mutable relationship

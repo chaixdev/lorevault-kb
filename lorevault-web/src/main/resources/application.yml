@@ -63,3 +63,9 @@ lorevault:
       # Batch ingestion sends several multipart fields per file, so Tomcat's default
       # 50-part parser limit is too low for medium-sized chapter batches.
       max-part-count: 200
+  catalog:
+    enabled: true
+    datasource:
+      url: jdbc:postgresql://localhost:5433/lorevault_catalog
+      username: lorevault
+      password: ${CATALOG_DB_PASSWORD:lorevault_secret}

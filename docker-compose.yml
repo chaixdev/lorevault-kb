@@ -12,6 +12,19 @@ services:
       - neo4j_data:/data
       - neo4j_logs:/logs
 
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: lorevault-postgres
+    environment:
+      POSTGRES_USER: lorevault
+      POSTGRES_PASSWORD: lorevault_secret
+      POSTGRES_DB: lorevault_catalog
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
 volumes:
   neo4j_data:
   neo4j_logs:
+  postgres_data:

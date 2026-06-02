@@ -1,8 +1,8 @@
 package com.lorevault.api.search;
 import com.lorevault.api.config.Neo4jSchemaInitializer;
 
-import com.lorevault.api.content.chunk.Chunk;
-import com.lorevault.api.content.chunk.ChunkGraphRepository;
+import com.lorevault.api.library.chunk.Chunk;
+import com.lorevault.api.library.chunk.ChunkGraphRepository;
 import com.lorevault.api.search.semantic.Neo4jSemanticSearch;
 import com.lorevault.api.search.semantic.Neo4jSemanticSearch.SearchFilters;
 import com.lorevault.api.search.semantic.Neo4jSemanticSearch.SearchResult;
@@ -50,7 +50,6 @@ class Neo4jSemanticSearchIntegrationTest {
         registry.add("spring.neo4j.authentication.password", () -> "testpassword");
         // Enable Neo4j-backed semantic search
         registry.add("lorevault.search.provider", () -> "neo4j");
-        registry.add("lorevault.embedding.model.dimensions", () -> "3");
     }
 
     @Autowired

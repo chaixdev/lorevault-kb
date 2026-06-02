@@ -19,6 +19,22 @@ Implemented and accepted truth belongs in the top-level canonical docs such as:
 - `../rules/`
 - `../concepts/`
 
+## Naming Convention
+
+All planning filenames **must** use an ISO datetime prefix, not a month/year suffix.
+
+**Format:** `YYYY-MM-DDTHHMM_topic-slug.md`
+
+**Correct:**
+- `2026-04-12T1100_relation-evidence-harvesting.md`
+- `2026-05-08T1530_concept-resolution-lane.md`
+
+**Wrong (do not use):**
+- `relation-evidence-harvesting-april-2026.md`
+- `concept-resolution-lane-may-2026.md`
+
+The datetime prefix makes files sort chronologically by default, avoids ambiguous month names, and includes time-of-day precision so same-day iterations are distinguishable. Generate the timestamp with `date +%Y-%m-%dT%H%M`.
+
 ## Use This Folder For
 
 - bounded future work
@@ -90,10 +106,21 @@ At minimum, each planning item should include:
 
 ## Current Planning Items
 
-- [HTTP Request ID MDC Propagation](http-request-id-mdc-propagation.md)
-- [Revisit domain modeling with modern Java contracts and value objects](modern-java-domain-modeling-follow-up.md)
-- [Tighten web transport boundaries and internal type visibility](tighten-web-transport-boundaries-and-type-visibility.md)
-- [Q&A Retrieval Quality Validation](qa-retrieval-quality-validation.md)
-- [Concept Entity Resolution Lane](concept-resolution-lane.md)
-- [Catalog Module](relation-catalog-module.md)
-- [Relation Evidence Harvesting and Catalog Discovery — Phased Solution Design](relation-evidence-harvesting.md)
+- [HTTP Request ID MDC Propagation](2026-04-23T1630_http-request-id-mdc-propagation.md)
+- [Revisit domain modeling with modern Java contracts and value objects](2026-04-22T1621_modern-java-domain-modeling-follow-up.md)
+- [Tighten web transport boundaries and internal type visibility](2026-04-24T1611_tighten-web-transport-boundaries-and-type-visibility.md)
+- [Q&A Retrieval Quality Validation](2026-04-30T1237_qa-retrieval-quality-validation.md)
+- [Concept Entity Resolution Lane](2026-04-30T1237_concept-resolution-lane.md)
+- [Event extraction and resolution tuning](2026-04-27T0951_event-extraction-and-resolution-tuning.md)
+- [Relation Evidence Harvesting and Catalog Discovery — Phased Solution Design](2026-05-07T1917_relation-evidence-harvesting.md) — FUNCTIONALLY COMPLETE (all 3 phases absorbed by other shipped work)
+- [Catalog Module](2026-05-13T2027_relation-catalog-module.md)
+- [Pipeline Issues from Smoke Test](2026-05-27T0230_pipeline-issues-from-smoke-test.md)
+- [Code Walkthrough Issues](2026-05-29T2308_code-walkthrough-issues.md)
+- [Model Catalog & A/B Testing](2026-05-30T0930_model-catalog-and-ab-testing.md)
+- [Incremental Book Consolidation](2026-05-30T1750_incremental-book-consolidation.md)
+- [Entity Disambiguation — Co-occurrence + Relation Blocking](2026-06-01T1430_entity-disambiguation-blocking.md) — PLANNING
+- [SSE Event Migration](2026-05-24T0000_sse-event-migration.md) — DONE (May 25 & May 31)
+- [Scene Detection Handler Decomposition](2026-05-23T1600_scene-detection-handler-decomposition.md) — parked
+- [Micrometer Stage Timing](2026-05-23T1700_micrometer-stage-timing.md) — parked
+- [Claim-Entity Linking](2026-05-31T1509_claim-entity-linking.md) — Phases 1+2 complete, Phase 3 (HAS_CHAPTER edges) dropped
+- [Deep Code Quality Review Sessions](2026-06-01T2220_deep-quality-review-sessions.md) — PLANNING (5 thematic review packages for feature branch merge readiness)
