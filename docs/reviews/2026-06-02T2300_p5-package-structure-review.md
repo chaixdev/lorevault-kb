@@ -76,6 +76,7 @@ public class Chapter {
 
 For classes without relationship collections (Book, Series, Universe, etc.), `@Getter @Setter @EqualsAndHashCode @ToString` is sufficient without exclusions, but `@Data` must still be removed per the coding standard.
 
+>! agreed
 ---
 
 #### HIGH-2 — Hardcoded PostgreSQL credential in application.yml
@@ -108,7 +109,7 @@ lorevault:
 ```
 
 This provides a default for local dev while allowing override via environment variable. Add `CATALOG_DB_PASSWORD=lorevault_secret` to `.env` so the existing `dev-api.sh` script continues to work.
-
+>! agreed, must move to .env
 ---
 
 #### HIGH-3 — Dead duplicate ExceptionSanitizer in orphan common/error/ package
@@ -127,7 +128,7 @@ This provides a default for local dev while allowing override via environment va
 The dead copy has a Javadoc stating "Previously part of the deleted `PipelineStageSupport` class" — confirming it's a refactoring artifact. Zero imports exist for `com.lorevault.api.common.error.*` anywhere in the codebase. The entire `common/error/` package exists solely to hold this dead class.
 
 **Fix:** Delete `lorevault-core/src/main/java/com/lorevault/api/common/error/ExceptionSanitizer.java` and the now-empty `common/error/` directory. The canonical `common/ExceptionSanitizer.java` already handles all cleanup needs.
-
+>! agreed, common is appropriate for reusable utilities like formatters, validators, sanitzers, etc. 
 ---
 
 #### HIGH-4 — Duplicate configuration record: LlmClientProperties vs LoreVaultModelsProperties
@@ -146,7 +147,7 @@ The dead copy has a Javadoc stating "Previously part of the deleted `PipelineSta
 `LlmClientProperties` is a subset of what `LoreVaultModelsProperties` provides. Spring Boot binds both to the same property source, so they overlap. `LoreVaultModelsProperties` is the canonical record — `LlmClientProperties` is legacy that should be retired.
 
 **Fix:** Delete `LlmClientProperties.java`. Update `LlmClient.java` to inject `LoreVaultModelsProperties` instead and access model IDs via `modelsProperties.nlpSmall().model()` / `modelsProperties.nlpBig().model()`. Remove `LlmClientProperties` from the `@EnableConfigurationProperties` list in `LoreVaultPropertiesConfiguration`.
-
+>! agreed remove LlmClientProperties
 ---
 
 #### HIGH-5 — Silently-ignored properties in application-common.yml
@@ -180,7 +181,7 @@ lorevault:
 
 2. **Embedding:** Delete `lorevault.embedding.model.*` block — code reads `lorevault.ai.models.embedding.*` instead.
 3. **Health:** Check if `lorevault.embedding.health.expected-dim` should be read by code; if not, delete it.
-
+>! agreed, clean up dead properties
 ---
 
 ### 🟡 MEDIUM
@@ -198,7 +199,7 @@ The `execute(UUID, UUID)` convenience method is used by step-execution controlle
 Note: `ConsolidationOperation` and `SceneDetectionOperation` mentioned in the planning doc **do not exist** — consolidation handlers and `SceneDetectionHandler` implement `StageOperation` directly without a dedicated subinterface.
 
 **Fix:** Either (a) inline the convenience method into callers, or (b) document the specific caller that needs the dedicated interface type. If no `instanceof` or dedicated type check exists across the 6 entity lanes, the interface can be removed.
-
+>! agreed. inline the method in to callers. 
 ---
 
 #### MED-2 — Config bloat: Single-bean configuration classes
@@ -215,7 +216,7 @@ Note: `ConsolidationOperation` and `SceneDetectionOperation` mentioned in the pl
 Each adds a class file, an import surface, and a separate component-scan point for no benefit over inlining.
 
 **Fix:** Inline `CatalogEmbeddingConfig` into `SpringAiConfig` and `SchemaBootstrapConfiguration` into `Neo4jTransactionManagerPrimaryConfiguration` (renaming the latter if needed for clarity). Delete the now-empty config files and remove them from any `@Import` or `@EnableConfigurationProperties` lists.
-
+>! completey agreed. inline small config classes, could go further than only "single bean"?
 ---
 
 #### MED-3 — Hardcoded thread pool sizes in AsyncConfig
@@ -241,7 +242,7 @@ executor.setQueueCapacity(10);
 `LoreVaultAsyncProperties` already exists and is injected into `AsyncConfig` — but only the `waitForTasks` and `awaitSeconds` fields are consumed. The pool sizing should be part of the same properties record for operational tuning.
 
 **Fix:** Add pool sizing fields to `LoreVaultAsyncProperties` (e.g., `ingestionLaneCorePool`, `ingestionLaneMaxPool`, `ingestionLaneQueueCapacity`, `sceneDetectionCorePool`, etc.) with the current values as defaults, then wire them in `AsyncConfig`.
-
+>! rejected! don't want those to be tunable
 ---
 
 #### MED-4 — @RequiredArgsConstructor generating public constructors for internal services
@@ -259,7 +260,7 @@ For services injected via Spring's DI container (constructor injection with `fin
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 ```
 This requires `import lombok.AccessLevel`. The change can be applied incrementally — it's low-risk since Spring can still inject via the non-public constructor.
-
+>! eh :/ don't see the value right now tbh. i'll note your remark that public constructors aren't always appropriate. honestly it's so ingrained in my muscle memory i never even consider it anymore. 
 ---
 
 #### MED-5 — Hardcoded design constants in SpringAiConfig
@@ -280,7 +281,7 @@ private static final String COMPLETIONS_PATH = "/chat/completions";
 The class comment argues these are "code-design constants" — but `API_TIMEOUT` is clearly an operational tuning parameter (network conditions, model latency, cost tradeoffs). Temperature and top_p are arguably prompt-quality-coupled and could stay constant. `COMPLETIONS_PATH` is an API convention that is genuinely fixed per provider.
 
 **Fix:** Move `API_TIMEOUT` to `LoreVaultModelsProperties` as `apiTimeoutSeconds` with a default of 60. Keep temperature, top_p, and completions path as constants — they are genuinely coupled to prompt design and provider API shape.
-
+>! by design! we don't want to bloat properties with params that ops shuoldn't touch. if it's not likely to change between environments, don't expose as property. 
 ---
 
 #### MED-6 — Hardcoded DIMENSIONS constant in LoreVaultEmbeddingProperties
@@ -292,7 +293,7 @@ The class comment argues these are "code-design constants" — but `API_TIMEOUT`
 **Problem:** `LoreVaultEmbeddingProperties` declares a hardcoded `public static final int DIMENSIONS = 1536`. The comment says it's a "design-time decision" tied to the embedding model. However, `application-common.yml` line 77 also defines `dimensions: 1536` under `lorevault.embedding.model` — but no code reads that property. The YML value and the constant are disconnected, creating a false configuration surface.
 
 **Fix:** Either (a) make DIMENSIONS a `@ConfigurationProperties` field read from the YML, or (b) delete the YML `dimensions` property if it truly is a design-time constant. The `@Value` in `SystemHealthService` at line 66 uses `#{null}` default, confirming the YML health check dimension is not connected to this constant.
-
+>! same remark as above. 
 ---
 
 #### MED-7 — _No findings for module dependency direction_
@@ -326,7 +327,7 @@ One minor concern: `@SpringBootApplication(scanBasePackages = {"com.lorevault.ap
 - `search/rag/` — contains only `RagService.java` (796 lines). Active and well-used, but structurally oversized relative to sibling packages like `search/extraction/` (7 files).
 
 Neither is a defect — these are observations for future package reorganization.
-
+>! i thought we renamed Mention to EntityMention? but that's a digression. yes, single class packages are a but smelly, but it's not incorrect as it stands. 
 ---
 
 #### LOW-2 — Planning document references to nonexistent interfaces
@@ -335,7 +336,7 @@ Neither is a defect — these are observations for future package reorganization
 **Track:** E — Structure & Quality
 
 The planning doc (`2026-06-01T2220_deep-quality-review-sessions.md`) references `ConsolidationOperation` and `SceneDetectionOperation` as single-impl interfaces. Neither exists — consolidation handlers and `SceneDetectionHandler` implement `StageOperation` directly without a dedicated subinterface. The doc should be updated to reflect the actual code structure (`ChunkingOperation` and `EmbeddingOperation` are the only `*Operation` subinterfaces).
-
+>! whatever. 
 ---
 
 ## 3. Priority Action Table

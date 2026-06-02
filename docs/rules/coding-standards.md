@@ -427,6 +427,17 @@ waiting on `allOf()` will hang indefinitely.
 `AbortPolicy` (the default) throws `RejectedExecutionException` back to the submitter.
 Ensure this exception is caught and converts to a job failure, not an unhandled crash.
 
+**Spring's `ApplicationEventPublisher` is synchronous.**
+`ApplicationEventPublisher.publishEvent()` dispatches to `@EventListener` methods on
+the calling thread. Publishing from an HTTP controller thread blocks the response until
+every synchronous listener has completed — including Neo4j writes, fan-out evaluations,
+and SSE broadcasts. When publishing from an HTTP thread, offload via executor:
+
+```java
+CompletableFuture.runAsync(() -> eventPublisher.publishEvent(event), taskExecutor)
+    .exceptionally(ex -> { log.error("Event publish failed", ex); return null; });
+```
+
 ---
 
 ## Event-Driven Pipeline
@@ -615,6 +626,14 @@ case appears — not before.
 A helper method or utility class extracted from a single callsite is premature.
 Wait until the same logic is needed in a second callsite before extracting.
 
+**Excessive duplication.**
+Three or more near-identical blocks of code that differ only by mechanically derivable
+values — enum constants, type names, URL paths, log format strings — are a defect.
+Extract the shared logic into a parameterised method, generic base class, or
+configuration-driven component. Copy-paste duplication compounds every future change:
+a bug fix or behavioural change must be replicated N times, and one copy inevitably
+drifts.
+
 **Return types that no external caller consumes.**
 A public method's return type must serve at least one external (non-`this`) caller.
 If the value is only used by code inside the same class — another method on `this`, or
@@ -689,8 +708,14 @@ Do not use Java object deserialization (`ObjectInputStream`) for untrusted data.
 Use JSON with a strict `ObjectMapper` configuration.
 
 **Log safety.**
-Never log credentials, API keys, raw user-supplied content, or internal stack paths
-in API error responses.
+Never log credentials, API keys, raw user-supplied content, or internal stack paths.
+
+**Error response hygiene.**
+Never include exception messages, stack traces, or internal identifiers in HTTP response
+bodies sent to API clients. Exception messages from downstream services may contain
+Neo4j query fragments, database identifiers, internal file paths, or AI provider metadata.
+Return sanitized, client-safe messages in all error responses. Log the full exception
+server-side at ERROR level.
 
 ---
 
