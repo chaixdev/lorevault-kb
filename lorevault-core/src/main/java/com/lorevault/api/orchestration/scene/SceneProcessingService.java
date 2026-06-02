@@ -20,13 +20,13 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Unified service responsible for scene processing operations:
@@ -101,34 +101,26 @@ public class SceneProcessingService {
                 .orElse(null);
 
         final String finalChapterText = chapterText;
-        List<Scene> scenes = scenesWithCoords.stream().map(s -> {
-            Scene scene = new Scene();
-            scene.setSceneIndex(s.sceneIndex());
-            scene.setStartCharacterOffset(s.startCharacterOffset());
-            scene.setEndCharacterOffset(s.endCharacterOffset());
-            scene.setContextSummary(s.contextSummary());
-            scene.setChronology(s.chronology());
-            scene.setChronologyCertainty(s.chronologyCertainty());
-            scene.setChronologyMarker(s.chronologyMarker());
+        List<Scene> savedScenes = new ArrayList<>();
 
-            LinkedHashSet<String> labels = new LinkedHashSet<>();
-            labels.add(Scene.EVENT_LABEL);
+        for (SceneWithCoordinates s : scenesWithCoords) {
+            LinkedHashSet<String> labelsSet = new LinkedHashSet<>();
+            labelsSet.add(Scene.EVENT_LABEL);
             if (s.potentialSplitSceneStart()) {
-                labels.add(Scene.POTENTIAL_SPLIT_SCENE_START_LABEL);
+                labelsSet.add(Scene.POTENTIAL_SPLIT_SCENE_START_LABEL);
             }
             if (s.potentialSplitSceneEnd()) {
-                labels.add(Scene.POTENTIAL_SPLIT_SCENE_END_LABEL);
+                labelsSet.add(Scene.POTENTIAL_SPLIT_SCENE_END_LABEL);
             }
-            scene.setLabels(new ArrayList<>(labels));
+            List<String> labels = new ArrayList<>(labelsSet);
 
-            // Extract and set the scene text
+            String sceneText = null;
             if (finalChapterText != null) {
                 try {
                     int start = (int) s.startCharacterOffset();
                     int end = (int) s.endCharacterOffset();
                     if (start >= 0 && end <= finalChapterText.length() && start < end) {
-                        String sceneText = finalChapterText.substring(start, end);
-                        scene.setText(sceneText);
+                        sceneText = finalChapterText.substring(start, end);
                         log.trace("Extracted scene text for scene {}: {} chars", s.sceneIndex(), sceneText.length());
                     } else {
                         log.warn("Invalid scene coordinates for scene {}: start={}, end={}, chapterLen={}",
@@ -139,21 +131,26 @@ public class SceneProcessingService {
                 }
             }
 
-            return scene;
-        }).collect(Collectors.toList());
+            LocalDateTime now = LocalDateTime.now();
+            Scene savedScene = sceneRepo.mergeScene(
+                    UUID.randomUUID(),
+                    chapterId,
+                    s.sceneIndex(),
+                    s.startCharacterOffset(),
+                    s.endCharacterOffset(),
+                    s.contextSummary(),
+                    s.chronology(),
+                    s.chronologyCertainty(),
+                    s.chronologyMarker(),
+                    sceneText,
+                    ctx.stageId(),
+                    labels,
+                    now,
+                    now
+            );
+            savedScenes.add(savedScene);
+        }
 
-        List<Scene> toSave = scenes.stream()
-                .peek(s -> {
-                    if (s.getId() == null) {
-                        s.setId(UUID.randomUUID());
-                    }
-                    if (s.getChapterId() == null) {
-                        s.setChapterId(chapterId);
-                    }
-                })
-                .collect(Collectors.toList());
-        toSave.forEach(scene -> scene.setStageId(ctx.stageId()));
-        List<Scene> savedScenes = sceneRepo.saveAll(toSave);
         for (Scene savedScene : savedScenes) {
             if (savedScene.getId() != null) {
                 sceneRepo.linkSceneToChapter(chapterId, savedScene.getId());

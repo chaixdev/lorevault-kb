@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.query.FluentQuery;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -419,6 +420,17 @@ public class FakeContentRepositories {
         @Override public void deleteAllById(Iterable<? extends UUID> ids) { ids.forEach(this::deleteById); }
         @Override public void deleteAll(Iterable<? extends Scene> entities) { entities.forEach(e -> deleteById(e.getId())); }
         @Override public void deleteAll() { scenesById.clear(); scenesByChapter.clear(); }
+
+        @Override
+        public Scene mergeScene(UUID id, UUID chapterId, Integer sceneIndex, Long startOffset, Long endOffset,
+                                String contextSummary, String chronology, String chronologyCertainty,
+                                String chronologyMarker, String text, UUID stageId, List<String> labels,
+                                LocalDateTime createdAt, LocalDateTime updatedAt) {
+            Scene scene = new Scene(id, sceneIndex, startOffset, endOffset, contextSummary, chronology,
+                    chronologyCertainty, chronologyMarker, text, chapterId, labels, createdAt, updatedAt, null);
+            save(scene);
+            return scene;
+        }
 
         @Override public List<Scene> findAll(Sort sort) { return findAll(); }
         @Override public Page<Scene> findAll(Pageable pageable) { throw new UnsupportedOperationException(); }

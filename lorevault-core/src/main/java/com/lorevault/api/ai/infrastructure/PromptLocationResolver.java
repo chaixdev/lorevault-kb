@@ -30,6 +30,7 @@ public class PromptLocationResolver {
             case RAG_ANSWER_GENERATION -> getRagAnswerGenerationPath();
             case EVENT_COREF_SYSTEM -> promptProperties.getEventCorefSystemPath();
             case EVENT_COREF_USER -> promptProperties.getPromptPath("event-coref-usertemplate.st");
+            case CHAPTER_SEGMENTATION_USER -> promptProperties.getPromptPath("chapter-segmentation-usertemplate.st");
             case EVENT_MERGE_SYSTEM -> promptProperties.getEventMergeSystemPath();
             case EVENT_MERGE_USER -> promptProperties.getPromptPath("event-merge-user.st");
         };

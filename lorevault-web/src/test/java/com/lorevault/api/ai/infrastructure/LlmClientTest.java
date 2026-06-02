@@ -1,6 +1,6 @@
 package com.lorevault.api.ai.infrastructure;
 
-import com.lorevault.api.ai.llm.LlmCallLogger;
+import com.lorevault.api.ai.infrastructure.LlmCallLoggingService;
 import com.lorevault.api.ai.llm.EventCorefModels;
 import com.lorevault.api.ai.llm.EventMergeModels;
 import com.lorevault.api.ai.llm.LlmClient;
@@ -8,6 +8,7 @@ import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.triad.SceneRelationshipAnalysisService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lorevault.api.config.LlmClientProperties;
 import com.lorevault.api.config.LoreVaultModelsProperties;
 import com.lorevault.api.config.LoreVaultPromptProperties;
 import com.lorevault.api.ai.ModelSlot;
@@ -50,7 +51,10 @@ class LlmClientTest {
     private LoreVaultModelsProperties modelProperties;
 
     @Mock
-    private LlmCallLogger llmLog;
+    private LlmCallLoggingService llmLog;
+
+    @Mock
+    private LlmClientProperties llmClientProperties;
 
     @Mock
     private ChatClient.ChatClientRequestSpec requestSpec;
@@ -70,6 +74,7 @@ class LlmClientTest {
                 modelProperties,
                 llmLog,
                 new ObjectMapper(),
+                llmClientProperties,
                 RetryTemplate.builder().maxAttempts(1).build()
         );
     }
@@ -121,6 +126,7 @@ class LlmClientTest {
         ArgumentCaptor<String> responseBodyCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(llmLog).logCall(
+                any(UUID.class),
                 eq(jobId),
                 eq(StageKey.CHAPTER_EVENT_CONSOLIDATION),
                 eq("openai-compatible"),
@@ -134,7 +140,8 @@ class LlmClientTest {
                 responseBodyCaptor.capture(),
                 anyLong(),
                 eq(4),
-                outputTokensCaptor.capture()
+                outputTokensCaptor.capture(),
+                any(Boolean.class)
         );
 
         assertThat(responseBodyCaptor.getValue()).contains("\"timelineMarker\":\"timeline-marker\"");
@@ -173,6 +180,7 @@ class LlmClientTest {
         ArgumentCaptor<String> responseBodyCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(llmLog).logCall(
+                any(UUID.class),
                 eq(jobId),
                 eq(StageKey.CHAPTER_EVENT_CONSOLIDATION),
                 eq("openai-compatible"),
@@ -186,7 +194,8 @@ class LlmClientTest {
                 responseBodyCaptor.capture(),
                 anyLong(),
                 eq(13),
-                outputTokensCaptor.capture()
+                outputTokensCaptor.capture(),
+                any(Boolean.class)
         );
 
         assertThat(responseBodyCaptor.getValue()).contains("\"sameEventGroups\"");
@@ -218,6 +227,7 @@ class LlmClientTest {
         ArgumentCaptor<String> responseBodyCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Integer> outputTokensCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(llmLog).logCall(
+                any(UUID.class),
                 eq(jobId),
                 eq(StageKey.CHAPTER_EVENT_CONSOLIDATION),
                 eq("openai-compatible"),
@@ -231,7 +241,8 @@ class LlmClientTest {
                 responseBodyCaptor.capture(),
                 anyLong(),
                 eq(5),
-                outputTokensCaptor.capture()
+                outputTokensCaptor.capture(),
+                any(Boolean.class)
         );
 
         assertThat(responseBodyCaptor.getValue()).contains("\"decision\":\"MERGE\"");

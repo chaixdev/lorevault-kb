@@ -13,9 +13,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class TriadTemporalEdgeRequestFactory {
 
-    private final TriadAnalysisArtifactLookup triadAnalysisArtifactLookup;
+    private final GraphTriadAnalysisArtifactLookup triadAnalysisArtifactLookup;
 
-    public TriadTemporalEdgeRequestFactory(TriadAnalysisArtifactLookup triadAnalysisArtifactLookup) {
+    public TriadTemporalEdgeRequestFactory(GraphTriadAnalysisArtifactLookup triadAnalysisArtifactLookup) {
         this.triadAnalysisArtifactLookup = triadAnalysisArtifactLookup;
     }
 

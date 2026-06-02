@@ -40,7 +40,7 @@ class ObjectPersistenceServiceTest {
     void persistsObjectsAndLinksMentions() {
         UUID sceneId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
-        Scene persistedScene = new Scene(sceneId, 1, 0L, 10L, "ctx", "text", chapterId, null, null, null, null, null);
+        Scene persistedScene = new Scene(sceneId, 1, 0L, 10L, "ctx", "text", chapterId, null, null, null, null);
         TriadAnalysisModels.ObjectExtraction extracted =
                 new TriadAnalysisModels.ObjectExtraction(
                         List.of("  Nightblood  "),
@@ -79,8 +79,8 @@ class ObjectPersistenceServiceTest {
     @Test
     @DisplayName("Uses first non-blank alias as display name")
     void usesFirstNonBlankAliasAsDisplayName() {
-        Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null, null);
-        TriadAnalysisModels.ObjectExtraction extracted =
+        Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null);
+        TriadAnalysisModels.ObjectExtraction invalid =
                 new TriadAnalysisModels.ObjectExtraction(
                         List.of("", "   ", "  pulse gun  "),
                         null,
@@ -94,7 +94,7 @@ class ObjectPersistenceServiceTest {
         service.persistExtractedObjects(
                 CTX,
                 List.of(persistedScene),
-                List.of(new TriadAnalysisModels.SceneObjectExtraction(0, List.of(extracted)))
+                List.of(new TriadAnalysisModels.SceneObjectExtraction(0, List.of(invalid)))
         );
 
         ArgumentCaptor<ObjectMention> savedCaptor = ArgumentCaptor.forClass(ObjectMention.class);
@@ -106,7 +106,7 @@ class ObjectPersistenceServiceTest {
     @Test
     @DisplayName("Skips extracted objects without alias or type")
     void skipsObjectsWithoutAliasOrType() {
-        Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null, null);
+        Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null);
         TriadAnalysisModels.ObjectExtraction invalid =
                 new TriadAnalysisModels.ObjectExtraction(
                         List.of("", "   "),

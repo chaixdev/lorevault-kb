@@ -87,7 +87,7 @@ class RelationClaimPersistenceServiceTest {
     @DisplayName("Returns without error and does not call repository when sceneExtractions is null")
     void nullSceneExtractions() {
         Scene scene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text",
-                UUID.randomUUID(), null, null, null, null, null);
+                UUID.randomUUID(), null, null, null, null);
 
         service.persistExtractedRelationClaims(CTX, List.of(scene), null,
                 BOOK_ID, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS);
@@ -99,7 +99,7 @@ class RelationClaimPersistenceServiceTest {
     @DisplayName("Returns without error and does not call repository when sceneExtractions is empty")
     void emptySceneExtractions() {
         Scene scene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text",
-                UUID.randomUUID(), null, null, null, null, null);
+                UUID.randomUUID(), null, null, null, null);
 
         service.persistExtractedRelationClaims(CTX, List.of(scene), List.of(),
                 BOOK_ID, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS, EMPTY_IDS);
@@ -117,7 +117,7 @@ class RelationClaimPersistenceServiceTest {
         UUID sceneId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         Scene persistedScene = new Scene(sceneId, 0, 0L, 10L, "ctx", "text",
-                chapterId, null, null, null, null, null);
+                chapterId, null, null, null, null);
 
         TriadAnalysisModels.RelationClaimExtraction claim1 =
                 new TriadAnalysisModels.RelationClaimExtraction(
@@ -200,7 +200,7 @@ class RelationClaimPersistenceServiceTest {
         UUID sceneId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         Scene persistedScene = new Scene(sceneId, 0, 0L, 10L, "ctx", "text",
-                chapterId, null, null, null, null, null);
+                chapterId, null, null, null, null);
 
         TriadAnalysisModels.RelationClaimExtraction claim =
                 new TriadAnalysisModels.RelationClaimExtraction(
@@ -235,7 +235,7 @@ class RelationClaimPersistenceServiceTest {
         UUID sceneId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         Scene persistedScene = new Scene(sceneId, 0, 0L, 10L, "ctx", "text",
-                chapterId, null, null, null, null, null);
+                chapterId, null, null, null, null);
 
         TriadAnalysisModels.RelationClaimExtraction claim =
                 new TriadAnalysisModels.RelationClaimExtraction(
@@ -265,7 +265,7 @@ class RelationClaimPersistenceServiceTest {
         UUID sceneId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         Scene persistedScene = new Scene(sceneId, 0, 0L, 10L, "ctx", "text",
-                chapterId, null, null, null, null, null);
+                chapterId, null, null, null, null);
 
         TriadAnalysisModels.RelationClaimExtraction claim =
                 new TriadAnalysisModels.RelationClaimExtraction(
@@ -287,7 +287,7 @@ class RelationClaimPersistenceServiceTest {
     void skipsClaimsForSceneWithNullIdentityFields() {
         // Scene with null id and sceneIndex — will be filtered out by the stream filter
         Scene invalidScene = new Scene(null, null, 0L, 10L, "ctx", "text",
-                UUID.randomUUID(), null, null, null, null, null);
+                UUID.randomUUID(), null, null, null, null);
 
         TriadAnalysisModels.RelationClaimExtraction claim =
                 new TriadAnalysisModels.RelationClaimExtraction(

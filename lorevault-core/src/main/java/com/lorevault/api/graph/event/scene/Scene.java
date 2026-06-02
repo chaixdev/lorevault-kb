@@ -1,9 +1,11 @@
 package com.lorevault.api.graph.event.scene;
 
-import com.lorevault.api.library.chapter.Chapter;
 import com.lorevault.api.library.chunk.Chunk;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.PersistenceCreator;
@@ -30,7 +32,10 @@ import java.util.UUID;
  * Scenes contain the exact character coordinates within the chapter text and provide
  * contextual boundaries for the chunking process in v0.3.0+.
  */
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode
+@ToString
 @NoArgsConstructor
 @Node("Scene")
 public class Scene {
@@ -40,11 +45,6 @@ public class Scene {
 
     @Id
     private UUID id;
-
-    /**
-     * Foreign key referencing the parent Chapter (aggregate root)
-     */
-    private Chapter chapter;
 
     private UUID chapterId;
 
@@ -107,6 +107,8 @@ public class Scene {
     /**
      * Chunks that belong to this scene (v0.3.0+)
      */
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     @Relationship(type = "HAS_CHUNK")
     private List<Chunk> chunks = new ArrayList<>();
 
@@ -124,8 +126,7 @@ public class Scene {
                  List<String> labels,
                  LocalDateTime createdAt,
                  LocalDateTime updatedAt,
-                 List<Chunk> chunks,
-                 Chapter chapter) {
+                 List<Chunk> chunks) {
         this.id = id;
         this.sceneIndex = sceneIndex;
         this.startCharacterOffset = startCharacterOffset;
@@ -140,7 +141,6 @@ public class Scene {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.chunks = chunks == null ? new ArrayList<>() : chunks;
-        this.chapter = chapter;
     }
 
     public Scene(UUID id,
@@ -153,10 +153,9 @@ public class Scene {
                  List<String> labels,
                  LocalDateTime createdAt,
                  LocalDateTime updatedAt,
-                 List<Chunk> chunks,
-                 Chapter chapter) {
+                 List<Chunk> chunks) {
         this(id, sceneIndex, startCharacterOffset, endCharacterOffset, contextSummary,
-                null, null, null, text, chapterId, labels, createdAt, updatedAt, chunks, chapter);
+                null, null, null, text, chapterId, labels, createdAt, updatedAt, chunks);
     }
 
     // =====================================

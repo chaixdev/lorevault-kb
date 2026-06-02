@@ -18,6 +18,7 @@ import com.lorevault.api.library.chapter.ChapterGraphRepository;
 import com.lorevault.api.orchestration.pipeline.ForStage;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StepResult;
 import com.lorevault.api.orchestration.triad.SceneRelationshipAnalysisService;
 import com.lorevault.api.orchestration.triad.TriadAnalysisException;
@@ -35,14 +36,12 @@ import java.util.stream.Collectors;
 /**
  * Handler for scene detection stage of the ingestion pipeline.
  * <p>
- * Implements {@link SceneDetectionOperation} so the step-by-step execution controller can invoke
- * scene detection directly without going through Spring event dispatch.
  * The step-by-step execution controller provides the transaction context; this handler provides the logic.
  */
 @Component
 @Slf4j
 @ForStage(StageKey.SCENE_SEGMENTATION)
-public class SceneDetectionHandler implements SceneDetectionOperation {
+public class SceneDetectionHandler implements StageOperation {
 
     private final ChapterGraphRepository chapterRepo;
     private final SceneGraphRepository sceneRepo;
@@ -137,7 +136,11 @@ public class SceneDetectionHandler implements SceneDetectionOperation {
                     .collect(Collectors.toMap(
                             Scene :: getSceneIndex,
                             Scene :: getEventId,
-                            (left, right) -> left
+                            (left, right) -> {
+                                log.warn("[SCENE_DETECTION] Duplicate scene index detected: keeping eventId={}, discarding eventId={}",
+                                        left, right);
+                                return left;
+                            }
                     ));
 
             TriadAnalysisModels.SceneRelationshipOutcome sceneRelationshipOutcome = TriadAnalysisModels.SceneRelationshipOutcome.builder().build();

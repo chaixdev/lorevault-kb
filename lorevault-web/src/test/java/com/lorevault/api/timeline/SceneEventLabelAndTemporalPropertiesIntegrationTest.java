@@ -115,6 +115,7 @@ class SceneEventLabelAndTemporalPropertiesIntegrationTest {
                 "evidence text",
                 0L,
                 10L,
+                null,
                 null
         );
 
@@ -188,6 +189,7 @@ class SceneEventLabelAndTemporalPropertiesIntegrationTest {
                 0.95,
                 "test-suite",
                 "canonical evidence",
+                null,
                 null,
                 null,
                 null

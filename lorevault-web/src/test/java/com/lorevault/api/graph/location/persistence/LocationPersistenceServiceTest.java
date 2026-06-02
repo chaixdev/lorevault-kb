@@ -35,7 +35,7 @@ class LocationPersistenceServiceTest {
     void persistsLocationsAndLinksMentions() {
         UUID sceneId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
-        Scene persistedScene = new Scene(sceneId, 2, 0L, 10L, "ctx", "text", chapterId, null, null, null, null, null);
+        Scene persistedScene = new Scene(sceneId, 2, 0L, 10L, "ctx", "text", chapterId, null, null, null, null);
         TriadAnalysisModels.LocationExtraction extracted =
                 new TriadAnalysisModels.LocationExtraction(
                         "  Urithiru  ",
@@ -73,7 +73,7 @@ class LocationPersistenceServiceTest {
     @Test
     @DisplayName("Falls back to first non blank alias when primary name is missing")
     void fallsBackToAliasWhenPrimaryNameMissing() {
-        Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null, null);
+        Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null);
         TriadAnalysisModels.LocationExtraction extracted =
                 new TriadAnalysisModels.LocationExtraction(
                         " ",

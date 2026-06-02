@@ -1,6 +1,5 @@
 package com.lorevault.api.ai.infrastructure;
 
-import com.lorevault.api.ai.llm.LlmCallLogger;
 import com.lorevault.api.config.LoreVaultLlmLoggingProperties;
 import com.lorevault.api.orchestration.pipeline.StageGraphRepository;
 import com.lorevault.api.orchestration.pipeline.StageKey;
@@ -20,7 +19,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
-public class LlmCallLoggingService implements LlmCallLogger {
+public class LlmCallLoggingService {
 
     private static final Logger log = LoggerFactory.getLogger(LlmCallLoggingService.class);
 
@@ -36,8 +35,8 @@ public class LlmCallLoggingService implements LlmCallLogger {
         this.llmCallRepo = llmCallRepo;
     }
 
-    @Override
     public void logCall(
+            UUID callId,
             UUID jobId,
             StageKey stage,
             String provider,
@@ -51,7 +50,8 @@ public class LlmCallLoggingService implements LlmCallLogger {
             String responseBody,
             long latencyMs,
             Integer inputTokensEst,
-            Integer outputTokensEst
+            Integer outputTokensEst,
+            Boolean tokensEstimated
     ) {
         String step = stage.name().toLowerCase().replace('_', '-');
 
@@ -64,7 +64,7 @@ public class LlmCallLoggingService implements LlmCallLogger {
         }
 
         LlmCallRecord rec = new LlmCallRecord();
-        rec.setId(UUID.randomUUID());
+        rec.setId(callId);
         rec.setJobId(jobId);
         rec.setStep(step);
         rec.setProvider(provider);
@@ -75,7 +75,7 @@ public class LlmCallLoggingService implements LlmCallLogger {
         rec.setLatencyMs(latencyMs);
         rec.setInputTokens(inputTokensEst);
         rec.setOutputTokens(outputTokensEst);
-        rec.setTokensEstimated(Boolean.TRUE);
+        rec.setTokensEstimated(tokensEstimated);
         rec.setPromptTemplateId(promptTemplateId);
         rec.setStoreRenderedPrompt(props.storeRenderedPrompt());
         Integer maxBodyChars = props.maxBodyChars();
@@ -121,7 +121,7 @@ public class LlmCallLoggingService implements LlmCallLogger {
                         });
             }
         } catch (Exception e) {
-            log.debug("[LLM-LOG] Unable to resolve current stage for job {}: {}", jobId, e.getMessage());
+            log.warn("[LLM-LOG] Unable to resolve current stage for job {}: {}", jobId, e.getMessage());
         }
 
         llmCallRepo.save(rec);

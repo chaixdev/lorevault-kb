@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @EnableConfigurationProperties({
+    LlmClientProperties.class,
     LoreVaultAsyncProperties.class,
     LoreVaultContentProperties.class,
     LoreVaultLlmLoggingProperties.class,

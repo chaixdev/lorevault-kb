@@ -172,7 +172,7 @@ At minimum, add `@ToString.Exclude` and `@EqualsAndHashCode.Exclude` on all `@Re
 **Problem:** `isKnownRetryableMessage` checks for scene-coordinate and segmentation-specific substrings, but does not include `"empty response"` — the message used when `LlmClient` returns an empty response (line 273). This causes the service-level 4-attempt retry loop to break immediately on transient LLM empty responses, relying solely on the handler-level retry (`SceneDetectionHandler.isRetryableError` line 258, which *does* check for `"empty response"`). The inconsistency means the service's retry loop is useless for this failure mode.
 
 **Fix:** Add `|| lowerMessage.contains("empty response")` to `isKnownRetryableMessage`. Alternatively, extract retryable-message logic into a shared utility used by both `SceneDetectionService` and `SceneDetectionHandler`.
->! 
+>! must fix
 ---
 
 #### MED-2 — Default `execute` method passes null `stageId`, causing provenance data loss
@@ -184,7 +184,7 @@ At minimum, add `@ToString.Exclude` and `@EqualsAndHashCode.Exclude` on all `@Re
 **Problem:** The default method `execute(UUID jobId, UUID chapterId)` constructs `StageExecutionContext` with `null` for both `callingStageId` and `stageId`. This null propagates to `SceneProcessingService.persistDetectedScenes()` (line 155: `scene.setStageId(ctx.stageId())` sets null on every scene) and to `TriadTemporalEdgeRequestFactory.buildRequests()`. In `GraphTriadAnalysisArtifactLookup.findLatestTriadCallRecord()`, a null `stageId` causes early return of `Optional.empty()`, so temporal edges lose their `llmCallId` provenance — breaking traceability to which LLM call produced each relationship.
 
 **Fix:** Either require callers to provide a `stageId`, or deprecate the convenience default method. No caller currently invokes the 2-param overload, so removing it is the simplest fix.
-
+>! remove convenience method
 ---
 
 #### MED-3 — Scene-Chapter duplicate detection is non-atomic (TOCTOU race)
@@ -196,7 +196,7 @@ At minimum, add `@ToString.Exclude` and `@EqualsAndHashCode.Exclude` on all `@Re
 **Problem:** `persistDetectedScenes()` checks `sceneRepo.findByChapterId(chapterId).isEmpty()` (line 93) to skip persistence, then executes `sceneRepo.saveAll(toSave)` (line 156). Between the check and the save, a concurrent execution for the same chapter could also pass the emptiness check and create duplicate Scene nodes. The `linkSceneToChapter` MERGE (line 159) is idempotent for the relationship but does not prevent duplicate nodes.
 
 **Fix:** Add a unique constraint on `(:Scene {chapterId, sceneIndex})` in Neo4j, or use a `MERGE`-based persistence that matches on `{chapterId, sceneIndex}`. Alternatively, synchronize on `chapterId` if concurrent ingestion of the same chapter is an expected scenario.
-
+>! mustfix
 ---
 
 #### MED-4 — `llmCallRecordId` provenance stored inconsistently across temporal edge types
@@ -208,6 +208,7 @@ At minimum, add `@ToString.Exclude` and `@EqualsAndHashCode.Exclude` on all `@Re
 **Problem:** When persisting `TEMPORAL` edges, `llmCallRecordId` is embedded in a free-text `rationale` string property. When persisting `AMBIGUOUS_RELATION` edges, the same provenance ID is stored in a dedicated `r.llmCallRecordId` property. This means querying "find all edges derived from LLM call X" requires different query patterns for different edge types — string parsing for TEMPORAL edges, simple property match for AMBIGUOUS_RELATION edges.
 
 **Fix:** Add `llmCallRecordId` as a dedicated property on the `TEMPORAL` edge, mirroring the `AMBIGUOUS_RELATION` pattern.
+>! must fix
 
 ---
 
@@ -220,7 +221,7 @@ At minimum, add `@ToString.Exclude` and `@EqualsAndHashCode.Exclude` on all `@Re
 **Problem:** `LlmRetryStrategy` is declared as a field in `SceneDetectionService` (line 31) but `llmRetryStrategy.` is never invoked anywhere. The actual retry logic lives in two other places: `SceneDetectionService.detectScenesWithRetry()` (hand-rolled loop) and `LlmClient` (Spring `RetryTemplate`). The class also contains `Thread.sleep()` in `waitWithJitter()` — a blocking anti-pattern if this code were ever activated. Additionally, a `static final Random` field uses `java.util.Random` instead of `ThreadLocalRandom`, creating potential contention if shared across threads.
 
 **Fix:** Delete `LlmRetryStrategy.java` and remove the import and unused field from `SceneDetectionService.java`. The retry capability already exists in `LlmClient` via Spring Retry.
-
+>! mustfix
 ---
 
 #### MED-6 — System prompt logged verbatim at TRACE exposes proprietary prompt engineering
@@ -232,7 +233,7 @@ At minimum, add `@ToString.Exclude` and `@EqualsAndHashCode.Exclude` on all `@Re
 **Problem:** `log.trace("[LLM] System prompt ({} chars): {}", systemPrompt.length(), systemPrompt)` logs the full system prompt text. System prompts are proprietary prompt engineering — the system prompt IS the intellectual property of the prompt design. If logs are sent to centralized logging services with broader access, competitors could reproduce exact prompt templates.
 
 **Fix:** Log only `systemPrompt.length()` and a SHA-256 hash for version identification. Never log full prompt text.
-
+>! fix
 ---
 
 #### MED-7 — Token counts are heuristic estimates, not actual API-reported usage
@@ -244,7 +245,7 @@ At minimum, add `@ToString.Exclude` and `@EqualsAndHashCode.Exclude` on all `@Re
 **Problem:** `estimateTokens()` uses `max(ceil(chars/3), ceil(words*1.35))` — a crude heuristic. Spring AI's `ChatResponse` object, accessible via `.call().chatResponse()`, carries actual token usage metadata (`promptTokens`, `generationTokens`) from the provider's API response. This metadata is discarded. `LlmCallRecord` stores `tokensEstimated = Boolean.TRUE` as a mitigation flag, but the accuracy gap can be 30%+, degrading cost tracking, capacity planning, and abuse detection.
 
 **Fix:** Capture `ChatResponse` via `.call().chatResponse()` and extract `chatResponse.getMetadata().getUsage().getPromptTokens()` and `getGenerationTokens()`. Pass these to `persistLlmCallSafely()` and set `tokensEstimated = false` when actual counts are available.
-
+>! that's fine.
 ---
 
 #### MED-8 — `llmCallId` generated post-call — no audit trail during LLM invocation
@@ -256,7 +257,7 @@ At minimum, add `@ToString.Exclude` and `@EqualsAndHashCode.Exclude` on all `@Re
 **Problem:** `LlmCallRecord.id` (the audit trail `llmCallId`) is generated inside `logCall()` — called *after* the LLM response is received. This means: (1) log messages emitted during the call cannot reference this ID, (2) if `persistLlmCallSafely()` fails (e.g., Neo4j write timeout), the call has occurred but no `llmCallId` was ever persisted, and (3) pre-call budget checks (`evaluateSegmentationBudget()`) cannot be correlated with post-call records.
 
 **Fix:** Generate `llmCallId` in `LlmClient` *before* making the LLM call. Pass it through to `persistLlmCallSafely()` and into all log statements. Store it in MDC so all log messages during the call carry it automatically.
-
+>! yep must fix
 ---
 
 #### MED-9 — Chapter text passed to LLM without structural data/instruction delimiters (prompt injection risk)
@@ -272,7 +273,7 @@ At minimum, add `@ToString.Exclude` and `@EqualsAndHashCode.Exclude` on all `@Re
 <chapter_text><![CDATA[{chapter_text}]]></chapter_text>
 ```
 Render via `PromptTemplate` as is done for scene analysis, rather than passing raw text as the user message.
-
+>! i suppose that's accurate. can't hurt to fix. 
 ---
 
 #### MED-10 — Single-implementation interfaces without clear justification
@@ -289,7 +290,7 @@ Render via `PromptTemplate` as is done for scene analysis, rather than passing r
 Additionally, `SceneDetectionOperation.execute(UUID, UUID)` contains a dead default method that constructs a `StageExecutionContext` with three `null` values — no caller invokes it.
 
 **Fix:** Delete the interfaces and depend directly on the concrete classes, or add a comment documenting the abstraction's purpose. For `SceneDetectionOperation`, remove the dead default method.
-
+>! remove interfaces. 
 ---
 
 #### MED-11 — Mixed injection style in `LlmClient`
@@ -301,7 +302,7 @@ Additionally, `SceneDetectionOperation.execute(UUID, UUID)` contains a dead defa
 **Problem:** `LlmClient` uses constructor injection for 8 of its 10 dependencies but uses field injection for `@Value` properties `nlpSmallModelId` and `nlpBigModelId`. Mixing injection styles in the same class reduces consistency and makes the class harder to test (field injection requires a Spring context). The `@Qualifier("llmRetryTemplate")` annotation also lives on a field (line 41) rather than the constructor parameter (line 51).
 
 **Fix:** Move `@Value` properties to constructor parameters, or use `@ConfigurationProperties` for cohesive property groups. Move `@Qualifier` from the field declaration to the constructor parameter.
-
+>! agreed and, use @ConfigurationProperties
 ---
 
 ### 🟢 LOW
@@ -315,7 +316,7 @@ Additionally, `SceneDetectionOperation.execute(UUID, UUID)` contains a dead defa
 **Problem:** The `Collectors.toMap` merge function `(left, right) -> left` silently discards all but the first Scene for a given `sceneIndex`. If duplicate indices exist, the discarded scene's `eventId` is lost from the `sceneIndexToId` map, and temporal edges involving it are silently dropped. No warning is logged.
 
 **Fix:** Log a warning when a duplicate scene index is encountered.
-
+>! trivial. fine. 
 ---
 
 #### LOW-2 — Logged temperature is always initial value, not retry-attempt temperature
@@ -327,7 +328,7 @@ Additionally, `SceneDetectionOperation.execute(UUID, UUID)` contains a dead defa
 **Problem:** `executeSceneDetectionCall()` passes the initial `temperature` parameter to `persistLlmCallSafely()`, but the actual LLM call may have succeeded at a higher temperature from the retry lambda. The logged `LlmCallRecord` records an inaccurate temperature, misleading telemetry.
 
 **Fix:** Capture the actual `attemptTemp` from the successful retry attempt using an atomic reference or mutable holder, then pass it to `persistLlmCallSafely()`.
-
+>! whatever
 ---
 
 #### LOW-3 — `Scene.chapter` field always null when loaded from the graph
@@ -339,7 +340,7 @@ Additionally, `SceneDetectionOperation.execute(UUID, UUID)` contains a dead defa
 **Problem:** The field `private Chapter chapter` has no `@Relationship` annotation. The actual graph relationship `(c:Chapter)-[:HAS_SCENE]->(s:Scene)` is incoming to Scene. Without `@Relationship(direction = INCOMING)`, Spring Data Neo4j looks for an outgoing relationship FROM Scene TO Chapter — which does not exist. The field always receives `null` during materialization. Current code uses `scene.getChapterId()` instead, so no functional defect exists, but future code expecting `scene.getChapter()` to work would fail silently.
 
 **Fix:** Either annotate with `@Relationship(type = "HAS_SCENE", direction = Relationship.Direction.INCOMING)` or remove the field entirely since `chapterId` suffices.
-
+>! just remove
 ---
 
 #### LOW-4 — `SceneHasChunk` relationship properties inaccessible via domain model
@@ -351,7 +352,7 @@ Additionally, `SceneDetectionOperation.execute(UUID, UUID)` contains a dead defa
 **Problem:** `Scene` maps chunks as `@Relationship(type = "HAS_CHUNK") private List<Chunk> chunks` — directly to Chunk entities, bypassing the `SceneHasChunk` `@RelationshipProperties` class that carries `chunkIndex`. The `chunkIndex` stored in Neo4j is invisible when traversing `Scene.getChunks()` through the domain model.
 
 **Fix:** Change `Scene.chunks` to `List<SceneHasChunk>` and access Chunk via `.getChunk()`, or remove the unused `SceneHasChunk` class.
-
+>! not needed today
 ---
 
 #### LOW-5 — Unused method overloads in `LlmClient`
@@ -363,7 +364,7 @@ Additionally, `SceneDetectionOperation.execute(UUID, UUID)` contains a dead defa
 **Problem:** Two method overloads are never called: `executeSceneDetectionCall(UUID, StageKey, String, String, ChatClient, String)` (4-param without temperature) and `detectChapterSegmentation(UUID, String)` (2-param without temperature). Both merely delegate with default values.
 
 **Fix:** Delete both unused overloads.
-
+>! sure, delete them
 ---
 
 #### LOW-6 — `serializeStructuredResponse` silently swallows serialization failures
@@ -375,7 +376,7 @@ Additionally, `SceneDetectionOperation.execute(UUID, UUID)` contains a dead defa
 **Problem:** When JSON serialization of the structured LLM response fails, the fallback `String.valueOf(response)` produces a non-JSON `ClassName@hashCode` string, which is persisted in the database. No warning is logged.
 
 **Fix:** Upgrade from `log.debug` to `log.warn` when the fallback is triggered.
-
+>! yep soudns sensible
 ---
 
 ## 3. Priority Action Table

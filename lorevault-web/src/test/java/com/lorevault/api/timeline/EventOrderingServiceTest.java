@@ -40,7 +40,6 @@ class EventOrderingServiceTest {
                 null,
                 null,
                 null,
-                null,
                 null
         );
     }
@@ -57,7 +56,6 @@ class EventOrderingServiceTest {
                 null,
                 "text",
                 chapterId,
-                null,
                 null,
                 null,
                 null,

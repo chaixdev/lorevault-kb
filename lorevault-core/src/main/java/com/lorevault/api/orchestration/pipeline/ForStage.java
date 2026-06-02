@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
  * <pre>{@code
  * @ForStage(StageKey.SCENE_SEGMENTATION)
  * @Component
- * public class SceneDetectionHandler implements SceneDetectionOperation { ... }
+ * public class SceneDetectionHandler { ... }
  * }</pre>
  */
 @Target(ElementType.TYPE)

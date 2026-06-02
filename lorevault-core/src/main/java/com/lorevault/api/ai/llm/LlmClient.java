@@ -2,8 +2,10 @@ package com.lorevault.api.ai.llm;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lorevault.api.ai.infrastructure.LlmCallLoggingService;
 import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
+import com.lorevault.api.config.LlmClientProperties;
 import com.lorevault.api.config.LoreVaultPromptProperties;
 import com.lorevault.api.config.LoreVaultModelsProperties;
 import com.lorevault.api.ai.ModelSlot;
@@ -11,13 +13,15 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.retry.support.RetryTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.lorevault.api.orchestration.pipeline.StageKey;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.UUID;
 
@@ -35,8 +39,9 @@ public class LlmClient {
     private final PromptRepository promptRepository;
     private final LoreVaultPromptProperties promptProperties;
     private final LoreVaultModelsProperties modelProperties;
-    private final LlmCallLogger llmLog;
+    private final LlmCallLoggingService llmLog;
     private final ObjectMapper objectMapper;
+    private final LlmClientProperties llmClientProperties;
     
     @Qualifier("llmRetryTemplate")
     private final RetryTemplate retryTemplate;
@@ -46,8 +51,9 @@ public class LlmClient {
                      PromptRepository promptRepository,
                      LoreVaultPromptProperties promptProperties,
                      LoreVaultModelsProperties modelProperties,
-                     LlmCallLogger llmLog,
+                     LlmCallLoggingService llmLog,
                      ObjectMapper objectMapper,
+                     LlmClientProperties llmClientProperties,
                      @Qualifier("llmRetryTemplate") RetryTemplate retryTemplate) {
         this.nlpSmallChatClient = nlpSmallChatClient;
         this.nlpBigChatClient = nlpBigChatClient;
@@ -56,13 +62,9 @@ public class LlmClient {
         this.modelProperties = modelProperties;
         this.llmLog = llmLog;
         this.objectMapper = objectMapper;
+        this.llmClientProperties = llmClientProperties;
         this.retryTemplate = retryTemplate;
     }
-
-    @Value("${lorevault.ai.models.nlp-small.model:openai/gpt-oss-120b}")
-    private String nlpSmallModelId;
-    @Value("${lorevault.ai.models.nlp-big.model:openai/gpt-oss-120b}")
-    private String nlpBigModelId;
 
     private static final double SEGMENTATION_INPUT_BUDGET_RATIO = 0.70d;
 
@@ -91,20 +93,19 @@ public class LlmClient {
         );
     }
 
-    public String detectChapterSegmentation(UUID jobId, String chapterText) {
-        return detectChapterSegmentation(jobId, chapterText, 0.1);
-    }
-
     public String detectChapterSegmentation(UUID jobId, String chapterText, double temperature) {
         PromptTemplate template = promptRepository.get(PromptName.CHAPTER_SEGMENTATION);
         String systemPrompt = template.render(Map.of());
+        
+        PromptTemplate userTemplate = promptRepository.get(PromptName.CHAPTER_SEGMENTATION_USER);
+        String userInput = userTemplate.render(Map.of("chapter_text", chapterText));
         
         String modelSlotStr = promptProperties.getChapterSegmentationModel();
         ModelSlot modelSlot = ModelSlot.NLP_BIG.slotName().equals(modelSlotStr) ? ModelSlot.NLP_BIG : ModelSlot.NLP_SMALL;
         ChatClient chatClient = getChatClientForModel(modelSlot);
         String actualModelId = getModelIdForStage(StageKey.SCENE_SEGMENTATION);
         
-        return executeSceneDetectionCall(jobId, StageKey.SCENE_SEGMENTATION, systemPrompt, chapterText, chatClient, actualModelId, temperature);
+        return executeSceneDetectionCall(jobId, StageKey.SCENE_SEGMENTATION, systemPrompt, userInput, chatClient, actualModelId, temperature);
     }
 
     public <T> T detectSceneAnalysisTriad(UUID jobId, String systemPrompt, Map<String, Object> userVariables,
@@ -184,7 +185,7 @@ public class LlmClient {
                 systemPrompt,
                 userInput,
                 chatClient,
-                nlpSmallModelId,
+                llmClientProperties.nlpSmallModelId(),
                 0.1,
                 EventMergeModels.EventMergePairResponse.class
         );
@@ -206,9 +207,9 @@ public class LlmClient {
     
     private String getModelIdForStage(StageKey stage) {
         return switch (stage) {
-            case SCENE_SEGMENTATION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getChapterSegmentationModel()) ? nlpBigModelId : nlpSmallModelId;
-            case CHAPTER_EVENT_CONSOLIDATION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getSceneAnalysisModel()) ? nlpBigModelId : nlpSmallModelId;
-            default -> nlpSmallModelId;
+            case SCENE_SEGMENTATION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getChapterSegmentationModel()) ? llmClientProperties.nlpBigModelId() : llmClientProperties.nlpSmallModelId();
+            case CHAPTER_EVENT_CONSOLIDATION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getSceneAnalysisModel()) ? llmClientProperties.nlpBigModelId() : llmClientProperties.nlpSmallModelId();
+            default -> llmClientProperties.nlpSmallModelId();
         };
     }
 
@@ -230,17 +231,16 @@ public class LlmClient {
      * @return Raw XML response from the AI model
      * @throws RuntimeException if all retry attempts fail
      */
-    private String executeSceneDetectionCall(UUID jobId, StageKey stage, String systemPrompt, String userInput, ChatClient chatClient, String modelId) {
-        return executeSceneDetectionCall(jobId, stage, systemPrompt, userInput, chatClient, modelId, 0.1);
-    }
-
     private String executeSceneDetectionCall(UUID jobId, StageKey stage, String systemPrompt, String userInput, ChatClient chatClient, String modelId, double temperature) {
         String step = stage.name().toLowerCase().replace('_', '-');
         log.debug("[LLM] {} request: inputLength={} chars, model={}", 
                  step, userInput == null ? 0 : userInput.length(), modelId);
-        log.trace("[LLM] System prompt ({} chars): {}", systemPrompt.length(), systemPrompt);
+        log.trace("[LLM] System prompt ({} chars) sha256={}", systemPrompt.length(), sha256prefix(systemPrompt));
         
         final String safeInput = userInput == null ? "" : userInput;
+        UUID callId = UUID.randomUUID();
+        final Integer[] promptTokensHolder = new Integer[1];
+        final Integer[] completionTokensHolder = new Integer[1];
         
         try {
             long start = System.nanoTime();
@@ -259,12 +259,12 @@ public class LlmClient {
                 }
                 log.debug("[LLM] Calling model={} for {}{}", modelId, step, attemptMsg);
                 
-                String responseContent = chatClient.prompt()
+                var callSpec = chatClient.prompt()
                     .system(systemPrompt)
                     .user(safeInput)
                     .options(options)
-                    .call()
-                    .content();
+                    .call();
+                String responseContent = callSpec.content();
                     
                 long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
                 if (responseContent == null || responseContent.trim().isEmpty()) {
@@ -274,11 +274,20 @@ public class LlmClient {
                 }
                 
                 int len = responseContent.length();
-                String preview = responseContent.substring(0, Math.min(400, len)).replaceAll("\n", "\\n");
                 log.debug("[LLM] {} response length={} elapsed={}ms model={}", 
                          step, len, elapsedMs, modelId);
-                log.trace("[LLM] Full raw response:{}\n{}", System.lineSeparator(), responseContent);
+                String preview = responseContent.substring(0, Math.min(100, len)).replaceAll("\n", "\\n");
                 log.debug("[LLM] Response preview (first {} chars): {}", preview.length(), preview);
+
+                // Capture actual token counts from ChatResponse if available
+                var chatResponse = callSpec.chatResponse();
+                if (chatResponse != null && chatResponse.getMetadata() != null) {
+                    var usage = chatResponse.getMetadata().getUsage();
+                    if (usage != null) {
+                        promptTokensHolder[0] = usage.getPromptTokens();
+                        completionTokensHolder[0] = usage.getCompletionTokens();
+                    }
+                }
 
                 return responseContent;
                 
@@ -293,7 +302,9 @@ public class LlmClient {
                         recoveryContext.getLastThrowable());
             });
             long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
+            
             persistLlmCallSafely(
+                    callId,
                     jobId,
                     stage,
                     modelId,
@@ -304,7 +315,9 @@ public class LlmClient {
                     systemPrompt,
                     safeInput,
                     response,
-                    elapsedMs
+                    elapsedMs,
+                    promptTokensHolder[0],
+                    completionTokensHolder[0]
             );
             return response;
             
@@ -322,18 +335,21 @@ public class LlmClient {
         log.debug("[LLM] {} request: inputLength={} chars, model={}",
                 step, userInput == null ? 0 : userInput.length(), modelId);
 
-        OpenAiChatOptions options = OpenAiChatOptions.builder()
-                .temperature(temperature)
-                .topP(0.9)
-                .maxTokens(6000)
-                .build();
-
         final String safeInput = userInput == null ? "" : userInput;
+        UUID callId = UUID.randomUUID();
+        final Integer[] promptTokensHolder = new Integer[1];
+        final Integer[] completionTokensHolder = new Integer[1];
 
         try {
             long start = System.nanoTime();
             T response = retryTemplate.execute(retryContext -> {
                 int retryCount = retryContext.getRetryCount();
+                double attemptTemp = temperature + (retryCount * 0.1);
+                OpenAiChatOptions options = OpenAiChatOptions.builder()
+                        .temperature(attemptTemp)
+                        .topP(0.9)
+                        .maxTokens(6000)
+                        .build();
                 String attemptMsg = retryCount > 0 ? " (retry=" + retryCount + ")" : "";
                 if (retryCount > 0) {
                     log.warn("[LLM] Retrying: jobId={}, step={}, model={}, attempt={}",
@@ -341,19 +357,27 @@ public class LlmClient {
                 }
                 log.debug("[LLM] Calling model={} for {}{}", modelId, step, attemptMsg);
 
-                T structuredResponse = chatClient.prompt()
+                var callSpec = chatClient.prompt()
                         .system(systemPrompt)
                         .user(safeInput)
                         .options(options)
-                        .call()
-                        .entity(responseType);
+                        .call();
+                T structuredResponse = callSpec.entity(responseType);
 
                 long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
                 if (structuredResponse == null) {
                     throw new RuntimeException("Empty structured response from " + modelId + " during " + step);
                 }
 
-                String responseBody = serializeStructuredResponse(structuredResponse);
+                // Capture actual token counts from ChatResponse if available
+                var chatResponse = callSpec.chatResponse();
+                if (chatResponse != null && chatResponse.getMetadata() != null) {
+                    var usage = chatResponse.getMetadata().getUsage();
+                    if (usage != null) {
+                        promptTokensHolder[0] = usage.getPromptTokens();
+                        completionTokensHolder[0] = usage.getCompletionTokens();
+                    }
+                }
 
                 return structuredResponse;
             }, recoveryContext -> {
@@ -367,17 +391,20 @@ public class LlmClient {
             long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
             String responseBody = serializeStructuredResponse(response);
             persistLlmCallSafely(
+                    callId,
                     jobId,
                     stage,
                     modelId,
-                    options.getTemperature(),
-                    options.getTopP(),
-                    options.getMaxTokens(),
+                    temperature,
+                    0.9,
+                    6000,
                     promptTemplateId,
                     systemPrompt,
                     safeInput,
                     responseBody,
-                    elapsedMs
+                    elapsedMs,
+                    promptTokensHolder[0],
+                    completionTokensHolder[0]
             );
             return response;
         } catch (Exception e) {
@@ -386,7 +413,8 @@ public class LlmClient {
         }
     }
 
-    private void persistLlmCallSafely(UUID jobId,
+    private void persistLlmCallSafely(UUID callId,
+                                      UUID jobId,
                                       StageKey stage,
                                       String modelId,
                                       Double temperature,
@@ -396,10 +424,16 @@ public class LlmClient {
                                       String systemPrompt,
                                       String input,
                                       String responseBody,
-                                      long elapsedMs) {
+                                      long elapsedMs,
+                                      Integer inputTokensActual,
+                                      Integer outputTokensActual) {
         String step = stage.name().toLowerCase().replace('_', '-');
         try {
+            Integer inputTokens = inputTokensActual != null ? inputTokensActual : estimateTokens(input);
+            Integer outputTokens = outputTokensActual != null ? outputTokensActual : estimateTokens(responseBody);
+            Boolean tokensEstimated = (inputTokensActual == null || outputTokensActual == null);
             llmLog.logCall(
+                    callId,
                     jobId,
                     stage,
                     "openai-compatible",
@@ -412,8 +446,9 @@ public class LlmClient {
                     input,
                     responseBody,
                     elapsedMs,
-                    estimateTokens(input),
-                    estimateTokens(responseBody)
+                    inputTokens,
+                    outputTokens,
+                    tokensEstimated
             );
         } catch (Exception loggingError) {
             log.warn("[LLM] Call logging failed after successful model response: jobId={}, step={}, model={}, error={}",
@@ -433,11 +468,26 @@ public class LlmClient {
         return Math.max(1, Math.max(charsEstimate, wordsEstimate));
     }
 
+    private static String sha256prefix(String s) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(s.getBytes(StandardCharsets.UTF_8));
+            var hex = new StringBuilder();
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.substring(0, 12);
+        } catch (NoSuchAlgorithmException e) {
+            log.warn("[LLM] SHA-256 not available for prefix generation");
+            return "ERROR";
+        }
+    }
+
     private String serializeStructuredResponse(Object response) {
         try {
             return objectMapper.writeValueAsString(response);
         } catch (JsonProcessingException | RuntimeException e) {
-            log.debug("[LLM] Structured response serialization failed, falling back to String.valueOf(): {}", e.getMessage());
+            log.warn("[LLM] Structured response serialization failed, falling back to String.valueOf(): {}", e.getMessage());
             return String.valueOf(response);
         }
     }

@@ -2,9 +2,11 @@ package com.lorevault.api.ai.telemetry;
 
 import com.lorevault.api.orchestration.job.ChapterIngestionJob;
 import com.lorevault.api.orchestration.pipeline.Stage;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
@@ -17,9 +19,11 @@ import java.util.UUID;
  * Domain model capturing a single LLM call made during an ingestion job step.
  * Request/response payloads are owned by dedicated child nodes.
  */
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode
+@ToString
 @NoArgsConstructor
-@AllArgsConstructor
 @Node("LlmCallRecord")
 public class LlmCallRecord {
     @Id
@@ -52,16 +56,24 @@ public class LlmCallRecord {
     @CreatedDate
     private LocalDateTime createdAt; // set by persistence layer
 
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     @Relationship(type = "WITH_REQUEST", direction = Relationship.Direction.OUTGOING)
     private LlmCallRequest request;
 
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     @Relationship(type = "WITH_RESPONSE", direction = Relationship.Direction.OUTGOING)
     private LlmCallResponse response;
 
     // Optional convenience relationships (not required for queries but useful visually)
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     @Relationship(type = "OF_JOB", direction = Relationship.Direction.OUTGOING)
     private ChapterIngestionJob job;
 
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     @Relationship(type = "OF_STAGE", direction = Relationship.Direction.OUTGOING)
     private Stage stage;
 }

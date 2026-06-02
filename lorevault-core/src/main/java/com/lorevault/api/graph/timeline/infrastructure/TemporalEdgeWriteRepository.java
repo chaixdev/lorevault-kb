@@ -156,7 +156,8 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
             t.rationale = coalesce($rationale, ''),
             t.evidenceStartOffset = $evidenceStart,
             t.evidenceEndOffset = $evidenceEnd,
-            t.evidenceChunkId = $evidenceChunkId
+            t.evidenceChunkId = $evidenceChunkId,
+            t.llmCallRecordId = coalesce($llmCallRecordId, '')
         RETURN id(t)
         """)
     Long upsertTemporalEdge(
@@ -169,7 +170,8 @@ public interface TemporalEdgeWriteRepository extends Neo4jRepository<Scene, UUID
             @Param("rationale") String rationale,
             @Param("evidenceStart") Long evidenceStart,
             @Param("evidenceEnd") Long evidenceEnd,
-            @Param("evidenceChunkId") UUID evidenceChunkId
+            @Param("evidenceChunkId") UUID evidenceChunkId,
+            @Param("llmCallRecordId") String llmCallRecordId
     );
 
     @Query("""

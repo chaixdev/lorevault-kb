@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -36,16 +37,6 @@ public class SceneRelationshipAnalysisService {
             "R:temporal.overlaps",
             "R:temporal.contains",
             "R:temporal.during"
-    );
-
-    private static final int MAX_SEMANTIC_TRIAD_ATTEMPTS = 3;
-
-    private static final Set<String> RETRYABLE_TRIAD_ANALYSIS_FAILURE_CODES = Set.of(
-            "TRIAD_RESPONSE_MISSING",
-            "TRIAD_RELATION_MISSING",
-            "TRIAD_RELATION_TYPE_MISSING",
-            "TRIAD_RELATION_CERTAINTY_MISSING",
-            "TRIAD_RELATION_TYPE_INVALID"
     );
 
     public record TriadRelation(String temporalType, String certainty, String evidence) {}
@@ -345,50 +336,13 @@ public class SceneRelationshipAnalysisService {
     }
 
     private TriadStructuredResult analyzeTriadWithSemanticRetry(UUID jobId,
-                                                               String systemPrompt,
-                                                               Map<String, Object> userVariables,
-                                                               TriadBuilderService.SceneTriad triad,
-                                                               Map<String, Object> statusProps) {
-        TriadAnalysisException lastFailure = null;
-
-        for (int attempt = 1; attempt <= MAX_SEMANTIC_TRIAD_ATTEMPTS; attempt++) {
-            try {
-                double temperature = 0.1 + ((attempt - 1) * 0.2); // 0.1, 0.3, 0.5
-                TriadStructuredResult parsed = llmClient.detectSceneAnalysisTriad(
-                        jobId,
-                        systemPrompt,
-                        userVariables,
-                        temperature,
-                        TriadStructuredResult.class
-                );
-                return validateAndNormalizeTriadResult(parsed, triad, statusProps);
-            } catch (TriadAnalysisException e) {
-                if (!isRetryableTriadAnalysisFailure(e) || attempt == MAX_SEMANTIC_TRIAD_ATTEMPTS) {
-                    throw e;
-                }
-                lastFailure = e;
-                LOG.warn("[TRIAD_ANALYSIS] Retrying semantic validation: jobId={}, triadIndex={}, attempt={}/{}, failureCode={}, message={}",
-                        jobId,
-                        statusProps.get("triadIndex"),
-                        attempt + 1,
-                        MAX_SEMANTIC_TRIAD_ATTEMPTS,
-                        e.failure() != null ? e.failure().code() : null,
-                        e.getMessage());
-            }
-        }
-
-        throw lastFailure != null ? lastFailure : triadFailure(
-                "TRIAD_RESPONSE_MISSING",
-                "Triad analysis returned no structured result",
-                triad,
-                statusProps,
-                null
-        );
-    }
-
-    private boolean isRetryableTriadAnalysisFailure(TriadAnalysisException exception) {
-        return exception.failure() != null
-                && RETRYABLE_TRIAD_ANALYSIS_FAILURE_CODES.contains(exception.failure().code());
+                                                                String systemPrompt,
+                                                                Map<String, Object> userVariables,
+                                                                TriadBuilderService.SceneTriad triad,
+                                                                Map<String, Object> statusProps) {
+        TriadStructuredResult parsed = llmClient.detectSceneAnalysisTriad(
+                jobId, systemPrompt, userVariables, 0.1, TriadStructuredResult.class);
+        return validateAndNormalizeTriadResult(parsed, triad, statusProps);
     }
 
     private List<TriadAnalysisModels.IndividualExtraction> normalizeIndividuals(TriadStructuredResult parsed) {
@@ -502,6 +456,10 @@ public class SceneRelationshipAnalysisService {
         return parsed.currentSceneEntities().relations().stream()
                 .filter(claim -> claim != null)
                 .map(claim -> {
+                    if (claim.relationType() == null || claim.subject() == null || claim.object() == null) {
+                        return null;
+                    }
+
                     String normalizedRelationName = normalizeText(claim.relationType().name());
                     if (normalizedRelationName != null) {
                         normalizedRelationName = normalizedRelationName.replaceAll("\\s+", " ");
@@ -529,6 +487,7 @@ public class SceneRelationshipAnalysisService {
                             normalizedEvidence
                     );
                 })
+                .filter(Objects::nonNull)
                 .toList();
     }
 
@@ -769,8 +728,15 @@ public class SceneRelationshipAnalysisService {
     }
 
     private String extractSceneText(Chapter chapter, Scene s) {
+        if (s == null) return "";
+        // Prefer the scene's own materialized text (set during persistDetectedScenes)
+        String sceneText = s.getText();
+        if (sceneText != null && !sceneText.isBlank()) {
+            return sceneText;
+        }
+        // Fallback: extract from chapter rawText (only valid for same-chapter scenes)
         String chapterText = readChapterRawText(chapter);
-        if (chapterText == null || s == null) return "";
+        if (chapterText == null) return "";
         try {
             int start = s.getStartOffset().intValue();
             int end = s.getEndOffset().intValue();

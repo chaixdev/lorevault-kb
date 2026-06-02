@@ -3,7 +3,6 @@ import com.lorevault.api.ai.ModelSlot;
 import com.lorevault.api.ai.llm.LlmClient;
 
 import com.lorevault.api.orchestration.job.IngestionFailure;
-import com.lorevault.api.ai.llm.LlmRetryStrategy;
 import com.lorevault.api.orchestration.scene.SceneDetectionException;
 import com.lorevault.api.orchestration.scene.SceneDetectionResult;
 import com.lorevault.api.orchestration.scene.SceneDetectionService;
@@ -36,8 +35,6 @@ class SceneDetectionServiceTest {
     private LlmClient llmClient;
     @Mock
     private SceneProcessingService sceneProcessingService;
-    @Mock
-    private LlmRetryStrategy llmRetryStrategy;
     @InjectMocks
     private SceneDetectionService sceneDetectionService;
 
@@ -96,8 +93,8 @@ class SceneDetectionServiceTest {
     }
 
     @Test
-    @DisplayName("Should retry when localization drops too many parsed scenes")
-    void shouldRetryWhenLocalizationDropsTooManyScenes() {
+    @DisplayName("Should fail when localization drops too many parsed scenes")
+    void shouldFailWhenLocalizationDropsTooManyScenes() {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         String chapterText = "Short text.";
@@ -121,15 +118,14 @@ class SceneDetectionServiceTest {
 
         assertThatThrownBy(() -> sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText))
                 .isInstanceOf(SceneDetectionException.class)
-                .hasMessageContaining("Scene detection failed with retry")
                 .hasMessageContaining("Scene coordinate localization dropped scenes");
 
-        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
+        verify(llmClient, times(1)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
     }
 
     @Test
-    @DisplayName("Should retry when localization drops any parsed scene")
-    void shouldRetryWhenLocalizationDropsAnyParsedScene() {
+    @DisplayName("Should fail when localization drops any parsed scene")
+    void shouldFailWhenLocalizationDropsAnyParsedScene() {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         String chapterText = "Short text.";
@@ -158,15 +154,14 @@ class SceneDetectionServiceTest {
 
         assertThatThrownBy(() -> sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText))
                 .isInstanceOf(SceneDetectionException.class)
-                .hasMessageContaining("Scene detection failed with retry")
                 .hasMessageContaining("Scene coordinate localization dropped scenes");
 
-        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
+        verify(llmClient, times(1)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
     }
 
     @Test
-    @DisplayName("Should retry when a segment produces no localizable scenes")
-    void shouldRetryWhenSegmentProducesNoLocalizableScenes() {
+    @DisplayName("Should fail when a segment produces no localizable scenes")
+    void shouldFailWhenSegmentProducesNoLocalizableScenes() {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         String chapterText = "Paragraph one sentence one.\n\nParagraph two sentence two.".repeat(40);
@@ -185,15 +180,14 @@ class SceneDetectionServiceTest {
 
         assertThatThrownBy(() -> sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText))
                 .isInstanceOf(SceneDetectionException.class)
-                .hasMessageContaining("Scene detection failed with retry")
                 .hasMessageContaining("Scene coordinate localization returned empty results");
 
-        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), any(String.class), anyDouble());
+        verify(llmClient, times(1)).detectChapterSegmentation(eq(jobId), any(String.class), anyDouble());
     }
 
     @Test
-    @DisplayName("Should preserve scene localization business failure after retries are exhausted")
-    void shouldPreserveSceneLocalizationExceptionAfterRetryExhaustion() {
+    @DisplayName("Should throw SceneLocalizationException directly")
+    void shouldThrowSceneLocalizationExceptionDirectly() {
         UUID jobId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         String chapterText = "Short text.";
@@ -227,7 +221,7 @@ class SceneDetectionServiceTest {
                 .isInstanceOf(SceneLocalizationException.class)
                 .hasMessageContaining("start anchor 'anchor' was not found");
 
-        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
+        verify(llmClient, times(1)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
     }
 
 }

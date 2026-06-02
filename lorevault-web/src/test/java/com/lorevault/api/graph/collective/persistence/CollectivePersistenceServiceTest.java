@@ -39,7 +39,7 @@ class CollectivePersistenceServiceTest {
     void persistsCollectivesAndLinksMentions() {
         UUID sceneId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
-        Scene persistedScene = new Scene(sceneId, 1, 0L, 10L, "ctx", "text", chapterId, null, null, null, null, null);
+        Scene persistedScene = new Scene(sceneId, 1, 0L, 10L, "ctx", "text", chapterId, null, null, null, null);
         TriadAnalysisModels.CollectiveExtraction extracted =
                 new TriadAnalysisModels.CollectiveExtraction(
                         List.of("  Bridge Four  "),
@@ -76,7 +76,7 @@ class CollectivePersistenceServiceTest {
     @Test
     @DisplayName("Skips extracted collectives without aliases")
     void skipsCollectivesWithoutAliases() {
-        Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null, null);
+        Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null);
         TriadAnalysisModels.CollectiveExtraction invalid =
                 new TriadAnalysisModels.CollectiveExtraction(
                         List.of("", "   "),

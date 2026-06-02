@@ -116,7 +116,8 @@ public class SceneTemporalRelationshipPersistenceService {
                 appendArtifactProvenance(request.evidence(), request.timelineMarker(), provenance),
                 null,
                 null,
-                null
+                null,
+                asString(provenance != null ? provenance.llmCallRecordId() : null)
         );
     }
 

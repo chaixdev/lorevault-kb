@@ -2,7 +2,7 @@ package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.graph.event.scene.Scene;
 import com.lorevault.api.library.chapter.ChapterGraphRepository;
-import com.lorevault.api.orchestration.scene.SceneDetectionOperation;
+import com.lorevault.api.orchestration.scene.SceneDetectionHandler;
 import com.lorevault.api.library.chunk.ChunkingOperation;
 import com.lorevault.api.ai.embedding.EmbeddingOperation;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class StepExecutionCommandController {
 
     private final ChapterGraphRepository chapterGraphRepository;
-    private final SceneDetectionOperation sceneDetectionOperation;
+    private final SceneDetectionHandler sceneDetectionHandler;
     private final ChunkingOperation chunkingOperation;
     private final EmbeddingOperation embeddingOperation;
     private final StageOperation chapterEventResolutionOperation;
@@ -76,7 +76,7 @@ public class StepExecutionCommandController {
         }
 
         log.info("[CMD] Detect scenes: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StepResult result = sceneDetectionOperation.execute(jobUuid, chapterUuid);
+        StepResult result = sceneDetectionHandler.execute(new StageExecutionContext(null, jobUuid, chapterUuid, null, StageKey.SCENE_SEGMENTATION));
 
         StepExecutionResponse response = StepExecutionResponse.from(result, StepKey.DETECT_SCENES, "chapter", chapterId);
 

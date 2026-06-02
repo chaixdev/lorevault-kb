@@ -23,9 +23,6 @@ import com.tngtech.archunit.lang.ArchRule;
  *
  * Known pre-existing cycles (not introduced by restructure):
  * <ul>
- *   <li>{@code ai/llm ↔ ai/infrastructure} — {@code LlmCallLogger} (interface in llm)
- *       and {@code LlmCallLoggingService} (impl in infrastructure) create a dependency
- *       inversion violation. Left for a follow-up cleanup.</li>
  *   <li>{@code orchestration/pipeline ↔ orchestration/signals} — events are the glue
  *       between pipeline components; event classes reference StageKey/StepResult from
  *       pipeline, while pipeline creates and consumes those events. This is an expected
@@ -37,21 +34,17 @@ class CorePackageBoundaryArchitectureTest {
 
     // Sub-sliced packages where sub-packages should be cycle-free.
     // ai and orchestration are NOT sub-sliced because they contain expected internal
-    // cycles (ai: llm↔infrastructure; orchestration: pipeline↔signals).
+    // cycles (orchestration: pipeline↔signals).
     @ArchTest
     static final ArchRule sub_sliced_contexts_should_be_cycle_free = slices()
             .matching("com.lorevault.api.(search|health|config|common).(*)..")
             .should().beFreeOfCycles();
 
-    // ai as a single slice — llm↔infrastructure is an expected internal cycle
-    // (LlmCallLogger interface in llm, LlmCallLoggingService impl in infrastructure).
+    // ai as a single slice — no expected internal cycles after LlmCallLogger removal.
     @ArchTest
     static final ArchRule ai_should_be_cycle_free = slices()
             .matching("com.lorevault.api.ai.(*)..")
-            .should().beFreeOfCycles()
-            .ignoreDependency(
-                    com.lorevault.api.ai.infrastructure.LlmCallLoggingService.class,
-                    com.lorevault.api.ai.llm.LlmCallLogger.class);
+            .should().beFreeOfCycles();
 
     // orchestration as a single slice — pipeline↔signals is an expected event-driven cycle.
     @ArchTest

@@ -52,7 +52,7 @@ class IndividualPersistenceServiceTest {
                 "raw",
                 "hash"
         );
-        Scene persistedScene = new Scene(sceneId, 3, 0L, 10L, "ctx", "text", chapterId, null, null, null, null, chapter);
+        Scene persistedScene = new Scene(sceneId, 3, 0L, 10L, "ctx", "text", chapterId, null, null, null, null);
         TriadAnalysisModels.IndividualExtraction extracted =
                 new TriadAnalysisModels.IndividualExtraction(
                         List.of("  Nyx  ", "N."),
@@ -71,7 +71,7 @@ class IndividualPersistenceServiceTest {
     @Test
     @DisplayName("Skips extracted individuals without non-blank alias")
     void skipsIndividualsWithoutAlias() {
-        Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null, null);
+        Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null);
         TriadAnalysisModels.IndividualExtraction invalid =
                 new TriadAnalysisModels.IndividualExtraction(
                         List.of(" ", "\t", ""),

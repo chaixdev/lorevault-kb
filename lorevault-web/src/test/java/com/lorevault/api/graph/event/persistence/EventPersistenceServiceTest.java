@@ -39,7 +39,7 @@ class EventPersistenceServiceTest {
     void persistsEventsAndLinksMentions() {
         UUID sceneId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
-        Scene persistedScene = new Scene(sceneId, 4, 0L, 10L, "ctx", "text", chapterId, null, null, null, null, null);
+        Scene persistedScene = new Scene(sceneId, 4, 0L, 10L, "ctx", "text", chapterId, null, null, null, null);
         TriadAnalysisModels.EventExtraction extracted =
                 new TriadAnalysisModels.EventExtraction(
                         "  The Winter War  ",
@@ -80,7 +80,7 @@ class EventPersistenceServiceTest {
     @Test
     @DisplayName("Skips extracted events without non-blank name")
     void skipsEventsWithoutName() {
-        Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null, null);
+        Scene persistedScene = new Scene(UUID.randomUUID(), 0, 0L, 10L, "ctx", "text", UUID.randomUUID(), null, null, null, null);
         TriadAnalysisModels.EventExtraction invalid =
                 new TriadAnalysisModels.EventExtraction(
                         " ",

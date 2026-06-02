@@ -115,7 +115,6 @@ public class Chapter {
      */
     public Scene addScene(int sceneIndex, long startCharacterOffset, long endCharacterOffset, String contextSummary) {
         Scene scene = new Scene();
-        scene.setChapter(this);
         scene.setSceneIndex(sceneIndex);
         scene.setStartCharacterOffset(startCharacterOffset);
         scene.setEndCharacterOffset(endCharacterOffset);
@@ -131,7 +130,6 @@ public class Chapter {
     public void removeScene(Scene scene) {
         if (scene != null && scenes.contains(scene)) {
             scenes.remove(scene);
-            scene.setChapter(null);
         }
     }
 
@@ -140,7 +138,6 @@ public class Chapter {
      */
     public void addExistingScene(Scene scene) {
         if (scene != null) {
-            scene.setChapter(this);
             scenes.add(scene);
         }
     }
@@ -149,7 +146,6 @@ public class Chapter {
      * Clear all scenes
      */
     public void clearScenes() {
-        scenes.forEach(scene -> scene.setChapter(null));
         scenes.clear();
     }
 

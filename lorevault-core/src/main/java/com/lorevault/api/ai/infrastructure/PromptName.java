@@ -16,7 +16,8 @@ public enum PromptName {
     EVENT_COREF_SYSTEM("event-coref-system"),
     EVENT_COREF_USER("event-coref-user"),
     EVENT_MERGE_SYSTEM("event-merge-system"),
-    EVENT_MERGE_USER("event-merge-user");
+    EVENT_MERGE_USER("event-merge-user"),
+    CHAPTER_SEGMENTATION_USER("chapter-segmentation-usertemplate.st");
 
     private final String promptKey;
 

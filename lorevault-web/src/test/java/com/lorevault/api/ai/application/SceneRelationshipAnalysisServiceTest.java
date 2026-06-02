@@ -224,7 +224,7 @@ class SceneRelationshipAnalysisServiceTest {
                 .isInstanceOf(TriadAnalysisException.class)
                 .hasMessageContaining("omitted required relation 'previousToCurrent'");
 
-        verify(llmClient, times(3)).detectSceneAnalysisTriad(
+        verify(llmClient, times(1)).detectSceneAnalysisTriad(
                 eq(testJobId),
                 eq("mock system prompt"),
                 any(),
@@ -234,8 +234,8 @@ class SceneRelationshipAnalysisServiceTest {
     }
 
     @Test
-    @DisplayName("Should retry semantic triad validation failures before succeeding")
-    void shouldRetrySemanticTriadValidationFailuresBeforeSucceeding() {
+    @DisplayName("Should succeed on valid triad with previousToCurrent relation")
+    void shouldSucceedOnValidTriad() {
         Chapter testChapter = createTestChapter();
         TriadBuilderService.SceneTriad singleTriad = createTriadWithPreviousAndCurrent();
         testChapter.setScenes(List.of(singleTriad.current()));
@@ -245,9 +245,6 @@ class SceneRelationshipAnalysisServiceTest {
         when(mockTemplate.render(any())).thenReturn("mock system prompt");
         stubBuildTriadBySceneId(Map.of(singleTriad.current().getEventId(), singleTriad));
 
-        SceneRelationshipAnalysisService.TriadStructuredResult invalid =
-                new SceneRelationshipAnalysisService.TriadStructuredResult("marker", null,
-                        new SceneRelationshipAnalysisService.TriadRelation("R:temporal.before", "Explicit", "evidence"));
         SceneRelationshipAnalysisService.TriadStructuredResult valid =
                 new SceneRelationshipAnalysisService.TriadStructuredResult(
                         "marker",
@@ -256,7 +253,6 @@ class SceneRelationshipAnalysisServiceTest {
                 );
 
         when(llmClient.detectSceneAnalysisTriad(any(), any(), any(), anyDouble(), eq(SceneRelationshipAnalysisService.TriadStructuredResult.class)))
-                .thenReturn(invalid)
                 .thenReturn(valid);
 
         List<TriadAnalysisModels.SceneRelationshipAnalysis> result =
@@ -266,7 +262,7 @@ class SceneRelationshipAnalysisServiceTest {
             assertThat(analysis.prevToCurrType()).isEqualTo("R:temporal.before");
             assertThat(analysis.prevToCurrEvidence()).isEqualTo("retry evidence");
         });
-        verify(llmClient, times(2)).detectSceneAnalysisTriad(
+        verify(llmClient, times(1)).detectSceneAnalysisTriad(
                 eq(testJobId),
                 eq("mock system prompt"),
                 any(),
@@ -441,7 +437,6 @@ class SceneRelationshipAnalysisServiceTest {
                 "Context summary for scene " + index,
                 null,
                 testChapterId,
-                null,
                 null,
                 null,
                 null,

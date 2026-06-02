@@ -10,7 +10,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 @Component
-public class GraphTriadAnalysisArtifactLookup implements TriadAnalysisArtifactLookup {
+public class GraphTriadAnalysisArtifactLookup {
 
     private final ChapterIngestionJobGraphRepository jobRepo;
     private final LlmCallRecordGraphRepository llmCallRepo;
@@ -22,7 +22,6 @@ public class GraphTriadAnalysisArtifactLookup implements TriadAnalysisArtifactLo
         this.llmCallRepo = llmCallRepo;
     }
 
-    @Override
     public Optional<UUID> findLatestJobIdByChapterId(UUID chapterId) {
         if (chapterId == null) {
             return Optional.empty();
@@ -30,7 +29,6 @@ public class GraphTriadAnalysisArtifactLookup implements TriadAnalysisArtifactLo
         return jobRepo.findLatestJobIdByChapterId(chapterId);
     }
 
-    @Override
     public Optional<LlmCallRecord> findLatestTriadCallRecord(UUID jobId, UUID stageId) {
         if (jobId == null || stageId == null) {
             return Optional.empty();

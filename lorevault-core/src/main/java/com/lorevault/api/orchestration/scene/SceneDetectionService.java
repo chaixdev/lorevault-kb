@@ -1,7 +1,6 @@
 package com.lorevault.api.orchestration.scene;
 
 import com.lorevault.api.ai.llm.LlmClient;
-import com.lorevault.api.ai.llm.LlmRetryStrategy;
 import com.lorevault.api.library.chapter.Chapter;
 import com.lorevault.api.orchestration.job.IngestionFailure;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +27,6 @@ public class SceneDetectionService {
 
     private final LlmClient llmClient;
     private final SceneProcessingService sceneProcessingService;
-    private final LlmRetryStrategy llmRetryStrategy;
 
     public SceneSegmentationOutcome detectScenesInText(UUID jobId, UUID chapterId, String chapterText) {
         if (chapterText == null || chapterText.trim().isEmpty()) {
@@ -104,60 +102,18 @@ public class SceneDetectionService {
                                                            UUID chapterId,
                                                            String chapterText,
                                                            Chapter chapter) {
-        int maxAttempts = 4;
         long startTime = System.currentTimeMillis();
-        Exception lastException = null;
-
-        log.info("Chapter segmentation starting with retry (max {} attempts) for job {}",
-                maxAttempts, jobId);
-
-        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-            double temperature = 0.1 + ((attempt - 1) * 0.2); // 0.1, 0.3, 0.5, 0.7
-            try {
-                log.info("Chapter segmentation: attempt {}/{} with temperature={} for job {}",
-                        attempt, maxAttempts, temperature, jobId);
-
-                SceneSegmentationOutcome result = performFullSceneDetection(
-                        jobId, chapterId, chapterText, chapter, temperature);
-
-                long totalDuration = System.currentTimeMillis() - startTime;
-                log.info("Scene detection successful for chapter {}: attempt {}/{} in {} ms",
-                        chapterId, attempt, maxAttempts, totalDuration);
-                return result;
-
-            } catch (Exception e) {
-                lastException = e;
-                boolean retryable = isExpectedRetryableSegmentationFailure(e);
-                log.warn("[LLM-Retry] Scene Detection attempt {}/{} failed: {} (retryable={})",
-                        attempt, maxAttempts, e.getMessage(), retryable);
-
-                if (!retryable || attempt >= maxAttempts) {
-                    break;
-                }
-                // exponential backoff with jitter
-                try {
-                    long delay = (long) (200 * Math.pow(2, attempt - 1));
-                    Thread.sleep(delay + (long) (Math.random() * delay));
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
+        log.info("Chapter segmentation starting for job {}", jobId);
+        try {
+            SceneSegmentationOutcome result = performFullSceneDetection(jobId, chapterId, chapterText, chapter, 0.1);
+            long totalDuration = System.currentTimeMillis() - startTime;
+            log.info("Scene detection successful for chapter {} in {} ms", chapterId, totalDuration);
+            return result;
+        } catch (Exception e) {
+            long totalDuration = System.currentTimeMillis() - startTime;
+            log.error("Scene detection failed for chapter {} in {} ms: {}", chapterId, totalDuration, e.getMessage());
+            throw e;
         }
-
-        long totalDuration = System.currentTimeMillis() - startTime;
-        log.error("Scene detection failed permanently after {} attempts in {} ms: {}",
-                maxAttempts, totalDuration, lastException != null ? lastException.getMessage() : "unknown");
-
-        if (lastException instanceof SceneLocalizationException sle) {
-            throw sle;
-        }
-        throw buildSceneDetectionFailure(
-                "SCENE_DETECTION_RETRY_EXHAUSTED",
-                "Scene detection failed with retry: " + (lastException != null ? lastException.getMessage() : "unknown"),
-                chapterId,
-                lastException
-        );
     }
 
     private SceneSegmentationOutcome performFullSceneDetection(UUID jobId,
@@ -248,13 +204,15 @@ public class SceneDetectionService {
         if (message == null) {
             return false;
         }
+        String lowerMessage = message.toLowerCase();
         return message.contains("Chapter segmentation parsing returned empty results")
                 || message.contains("Scene coordinate localization returned empty results")
                 || message.contains("Scene coordinate localization dropped scenes")
                 || message.contains("Segmented fallback produced no localizable scenes")
                 || message.contains("produced no localizable scenes")
                 || message.contains("Scene detection failed with retry:")
-                || message.contains("Chapter segmentation failed after");
+                || message.contains("Chapter segmentation failed after")
+                || lowerMessage.contains("empty response");
     }
 
     private List<SceneWithCoordinates> processSegments(UUID jobId, UUID chapterId, List<SegmentWindow> segments, double temperature) {

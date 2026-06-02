@@ -2,7 +2,9 @@ package com.lorevault.api.graph.event.scene;
 
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,4 +50,41 @@ public interface SceneGraphRepository extends Neo4jRepository<Scene, UUID> {
 
     @Query("MATCH (:Scene {id: $sceneId})-[:NEXT_IN_READING_ORDER]->(next:Scene) RETURN next.id")
     Optional<UUID> findNextSceneIdByReadingOrder(UUID sceneId);
+
+    /**
+     * Idempotently create or match a Scene by chapterId + sceneIndex.
+     * Prevents duplicate Scene nodes from concurrent insertions.
+     */
+    @Query("""
+        MERGE (s:Scene {chapterId: $chapterId, sceneIndex: $sceneIndex})
+        ON CREATE SET s.id = $id,
+                      s.startOffset = $startOffset,
+                      s.endOffset = $endOffset,
+                      s.contextSummary = $contextSummary,
+                      s.chronology = $chronology,
+                      s.chronologyCertainty = $chronologyCertainty,
+                      s.chronologyMarker = $chronologyMarker,
+                      s.text = $text,
+                      s.stageId = $stageId,
+                      s.labels = $labels,
+                      s.createdAt = $createdAt,
+                      s.updatedAt = $updatedAt
+        RETURN s
+        """)
+    Scene mergeScene(
+            @Param("id") UUID id,
+            @Param("chapterId") UUID chapterId,
+            @Param("sceneIndex") Integer sceneIndex,
+            @Param("startOffset") Long startOffset,
+            @Param("endOffset") Long endOffset,
+            @Param("contextSummary") String contextSummary,
+            @Param("chronology") String chronology,
+            @Param("chronologyCertainty") String chronologyCertainty,
+            @Param("chronologyMarker") String chronologyMarker,
+            @Param("text") String text,
+            @Param("stageId") UUID stageId,
+            @Param("labels") List<String> labels,
+            @Param("createdAt") LocalDateTime createdAt,
+            @Param("updatedAt") LocalDateTime updatedAt
+    );
 }
