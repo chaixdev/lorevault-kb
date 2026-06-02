@@ -62,21 +62,6 @@ public class Scene {
     private String contextSummary;
 
     /**
-     * Temporal relationship hint extracted during scene analysis.
-     */
-    private String chronology;
-
-    /**
-     * Certainty for chronology hint extracted during scene analysis.
-     */
-    private String chronologyCertainty;
-
-    /**
-     * Verbatim temporal marker extracted during scene analysis.
-     */
-    private String chronologyMarker;
-
-    /**
      * Zero-indexed character position where this scene starts in the chapter text
      */
     @Property("startOffset")
@@ -118,9 +103,6 @@ public class Scene {
                  Long startCharacterOffset,
                  Long endCharacterOffset,
                  String contextSummary,
-                 String chronology,
-                 String chronologyCertainty,
-                 String chronologyMarker,
                  String text,
                  UUID chapterId,
                  List<String> labels,
@@ -132,30 +114,12 @@ public class Scene {
         this.startCharacterOffset = startCharacterOffset;
         this.endCharacterOffset = endCharacterOffset;
         this.contextSummary = contextSummary;
-        this.chronology = chronology;
-        this.chronologyCertainty = chronologyCertainty;
-        this.chronologyMarker = chronologyMarker;
         this.text = text;
         this.chapterId = chapterId;
         this.labels = labels == null ? new ArrayList<>(List.of(EVENT_LABEL)) : labels;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.chunks = chunks == null ? new ArrayList<>() : chunks;
-    }
-
-    public Scene(UUID id,
-                 Integer sceneIndex,
-                 Long startCharacterOffset,
-                 Long endCharacterOffset,
-                 String contextSummary,
-                 String text,
-                 UUID chapterId,
-                 List<String> labels,
-                 LocalDateTime createdAt,
-                 LocalDateTime updatedAt,
-                 List<Chunk> chunks) {
-        this(id, sceneIndex, startCharacterOffset, endCharacterOffset, contextSummary,
-                null, null, null, text, chapterId, labels, createdAt, updatedAt, chunks);
     }
 
     // =====================================

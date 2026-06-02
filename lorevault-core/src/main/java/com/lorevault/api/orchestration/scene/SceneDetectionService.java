@@ -248,9 +248,6 @@ public class SceneDetectionService {
                         segment.startOffset() + localScene.startCharacterOffset(),
                         segment.startOffset() + localScene.endCharacterOffset(),
                         localScene.contextSummary(),
-                        localScene.chronology(),
-                        localScene.chronologyCertainty(),
-                        localScene.chronologyMarker(),
                         potentialSplitStart,
                         potentialSplitEnd
                 ));
@@ -278,9 +275,6 @@ public class SceneDetectionService {
                     scene.startCharacterOffset(),
                     scene.endCharacterOffset(),
                     scene.contextSummary(),
-                    scene.chronology(),
-                    scene.chronologyCertainty(),
-                    scene.chronologyMarker(),
                     scene.potentialSplitSceneStart(),
                     scene.potentialSplitSceneEnd()
             ));

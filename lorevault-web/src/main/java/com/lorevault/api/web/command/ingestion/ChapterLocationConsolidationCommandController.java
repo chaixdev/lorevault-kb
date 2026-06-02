@@ -1,8 +1,8 @@
 package com.lorevault.api.web.command.ingestion;
 
+import com.lorevault.api.graph.location.consolidation.chapter.ChapterLocationConsolidationHandler;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
-import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StageResult;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ChapterLocationConsolidationCommandController {
 
-    private final StageOperation chapterLocationResolutionOperation;
+    private final ChapterLocationConsolidationHandler chapterLocationConsolidator;
     private final StepEventMapper stepEventMapper;
 
     @PostMapping("/chapters/{chapterId}/chapter-consolidate-locations")
@@ -61,7 +61,7 @@ public class ChapterLocationConsolidationCommandController {
         }
 
         log.info("[CMD] Resolve chapter locations: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StageResult result = chapterLocationResolutionOperation.execute(
+        StageResult result = chapterLocationConsolidator.execute(
                 new StageExecutionContext(null, jobUuid, chapterUuid, null, StageKey.CHAPTER_LOCATION_CONSOLIDATION));
 
         StageExecutionResponse response = StageExecutionResponse.from(result, StageKey.CHAPTER_LOCATION_CONSOLIDATION, "chapter", chapterId);

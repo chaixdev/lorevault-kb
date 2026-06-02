@@ -1,8 +1,8 @@
 package com.lorevault.api.web.command.ingestion;
 
+import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationHandler;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
-import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StageResult;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ChapterIndividualConsolidationCommandController {
 
-    private final StageOperation chapterIndividualResolutionOperation;
+    private final ChapterIndividualConsolidationHandler chapterIndividualConsolidator;
     private final StepEventMapper stepEventMapper;
 
     @PostMapping("/chapters/{chapterId}/chapter-consolidate-individuals")
@@ -61,7 +61,7 @@ public class ChapterIndividualConsolidationCommandController {
         }
 
         log.info("[CMD] Resolve chapter individuals: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StageResult result = chapterIndividualResolutionOperation.execute(
+        StageResult result = chapterIndividualConsolidator.execute(
                 new StageExecutionContext(null, jobUuid, chapterUuid, null, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION));
 
         StageExecutionResponse response = StageExecutionResponse.from(result, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION, "chapter", chapterId);

@@ -6,7 +6,7 @@ import com.lorevault.api.library.chunk.ChunkingHandler;
 import com.lorevault.api.ai.embedding.EmbeddingHandler;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
-import com.lorevault.api.orchestration.pipeline.StageOperation;
+import com.lorevault.api.graph.event.consolidation.chapter.ChapterEventConsolidationHandler;
 import com.lorevault.api.orchestration.pipeline.StageResult;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,7 +31,7 @@ public class StepExecutionCommandController {
     private final SceneDetectionHandler sceneDetectionHandler;
     private final ChunkingHandler chunkingHandler;
     private final EmbeddingHandler embeddingHandler;
-    private final StageOperation chapterEventResolutionOperation;
+    private final ChapterEventConsolidationHandler chapterEventConsolidator;
     private final StepEventMapper stepEventMapper;
 
     @PostMapping("/chapters/{chapterId}/detect-scenes")
@@ -210,7 +210,7 @@ public class StepExecutionCommandController {
         }
 
         log.info("[CMD] Resolve chapter events: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StageResult result = chapterEventResolutionOperation.execute(
+        StageResult result = chapterEventConsolidator.execute(
                 new StageExecutionContext(null, jobUuid, chapterUuid, null, StageKey.CHAPTER_EVENT_CONSOLIDATION));
 
         StageExecutionResponse response = StageExecutionResponse.from(result, StageKey.CHAPTER_EVENT_CONSOLIDATION, "chapter", chapterId);

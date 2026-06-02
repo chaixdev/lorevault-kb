@@ -52,7 +52,7 @@ class SceneDetectionServiceTest {
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
         when(llmClient.detectChapterSegmentation(eq(jobId), any(String.class), anyDouble())).thenReturn("<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>");
         when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt()))
-                .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "", "", "", "")));
+                .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "")));
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
                 .thenReturn(List.of(new SceneWithCoordinates(0, 0, 10, "ctx")));
         SceneDetectionService.SceneSegmentationOutcome outcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
@@ -80,7 +80,7 @@ class SceneDetectionServiceTest {
         when(llmClient.evaluateSegmentationBudget(chapterText)).thenReturn(admission);
         when(llmClient.detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble())).thenReturn("<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>");
         when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt()))
-                .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "", "", "", "")));
+                .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "")));
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
                 .thenReturn(List.of(new SceneWithCoordinates(0, 0, chapterText.length(), "ctx")));
         SceneDetectionService.SceneSegmentationOutcome outcome = sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText);
@@ -108,10 +108,10 @@ class SceneDetectionServiceTest {
                 "<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>"
         );
         when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt())).thenReturn(List.of(
-                new SceneDetectionResult(0, "a", "ctx-1", "", "", "", ""),
-                new SceneDetectionResult(1, "b", "ctx-2", "", "", "", ""),
-                new SceneDetectionResult(2, "c", "ctx-3", "", "", "", ""),
-                new SceneDetectionResult(3, "d", "ctx-4", "", "", "", "")
+                new SceneDetectionResult(0, "a", "ctx-1", ""),
+                new SceneDetectionResult(1, "b", "ctx-2", ""),
+                new SceneDetectionResult(2, "c", "ctx-3", ""),
+                new SceneDetectionResult(3, "d", "ctx-4", "")
         ));
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any()))
                 .thenReturn(List.of(new SceneWithCoordinates(0, 0, chapterText.length(), "ctx-1")));
@@ -139,11 +139,11 @@ class SceneDetectionServiceTest {
                 "<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>"
         );
         when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt())).thenReturn(List.of(
-                new SceneDetectionResult(0, "a", "ctx-1", "", "", "", ""),
-                new SceneDetectionResult(1, "b", "ctx-2", "", "", "", ""),
-                new SceneDetectionResult(2, "c", "ctx-3", "", "", "", ""),
-                new SceneDetectionResult(3, "d", "ctx-4", "", "", "", ""),
-                new SceneDetectionResult(4, "e", "ctx-5", "", "", "", "")
+                new SceneDetectionResult(0, "a", "ctx-1", ""),
+                new SceneDetectionResult(1, "b", "ctx-2", ""),
+                new SceneDetectionResult(2, "c", "ctx-3", ""),
+                new SceneDetectionResult(3, "d", "ctx-4", ""),
+                new SceneDetectionResult(4, "e", "ctx-5", "")
         ));
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any())).thenReturn(List.of(
                 new SceneWithCoordinates(0, 0, 2, "ctx-1"),
@@ -175,7 +175,7 @@ class SceneDetectionServiceTest {
                 "<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>"
         );
         when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt()))
-                .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "", "", "", "")));
+                .thenReturn(List.of(new SceneDetectionResult(0, "a", "ctx", "")));
         when(sceneProcessingService.localizeSceneCoordinates(any(String.class), any())).thenReturn(List.of());
 
         assertThatThrownBy(() -> sceneDetectionService.detectScenesInText(jobId, chapterId, chapterText))
@@ -201,7 +201,7 @@ class SceneDetectionServiceTest {
                 "<scenes><scene><index>0</index><start_anchor>a</start_anchor><context_summary>x</context_summary></scene></scenes>"
         );
         when(sceneProcessingService.parseSceneDetectionXml(any(String.class), anyInt()))
-                .thenReturn(List.of(new SceneDetectionResult(4, "anchor", "ctx", "", "", "", "")));
+                .thenReturn(List.of(new SceneDetectionResult(4, "anchor", "ctx", "")));
 
         SceneLocalizationException failure = new SceneLocalizationException(
                 IngestionFailure.builder(

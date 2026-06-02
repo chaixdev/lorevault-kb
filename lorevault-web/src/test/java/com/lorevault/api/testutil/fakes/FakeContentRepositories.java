@@ -423,11 +423,10 @@ public class FakeContentRepositories {
 
         @Override
         public Scene mergeScene(UUID id, UUID chapterId, Integer sceneIndex, Long startOffset, Long endOffset,
-                                String contextSummary, String chronology, String chronologyCertainty,
-                                String chronologyMarker, String text, UUID stageId, List<String> labels,
+                                String contextSummary, String text, UUID stageId, List<String> labels,
                                 LocalDateTime createdAt, LocalDateTime updatedAt) {
-            Scene scene = new Scene(id, sceneIndex, startOffset, endOffset, contextSummary, chronology,
-                    chronologyCertainty, chronologyMarker, text, chapterId, labels, createdAt, updatedAt, null);
+            Scene scene = new Scene(id, sceneIndex, startOffset, endOffset, contextSummary,
+                    text, chapterId, labels, createdAt, updatedAt, null);
             save(scene);
             return scene;
         }

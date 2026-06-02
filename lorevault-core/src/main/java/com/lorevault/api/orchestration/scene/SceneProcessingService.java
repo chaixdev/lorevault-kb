@@ -139,9 +139,6 @@ public class SceneProcessingService {
                     s.startCharacterOffset(),
                     s.endCharacterOffset(),
                     s.contextSummary(),
-                    s.chronology(),
-                    s.chronologyCertainty(),
-                    s.chronologyMarker(),
                     sceneText,
                     ctx.stageId(),
                     labels,
@@ -258,9 +255,6 @@ public class SceneProcessingService {
                             startPos,
                             endPos,
                             result.contextSummary(),
-                            result.chronology(),
-                            result.chronologyCertainty(),
-                            result.chronologyMarker(),
                             false,
                             false));
                     log.debug("Localized scene {}: start={}, end={}, length={}",
@@ -423,19 +417,12 @@ public class SceneProcessingService {
                 String startAnchor = getStringValue(sceneElement, "start_anchor");
                 String contextSummary = getStringValue(sceneElement, "context_summary");
                 String breakReason = getStringValue(sceneElement, "break_reason");
-                String chronology = getStringValue(sceneElement, "chronology");
-                String chronologyCertainty = getStringValue(sceneElement, "chronology_certainty");
-                String chronologyMarker = getStringValue(sceneElement, "chronology_marker");
-
                 if (startAnchor != null && contextSummary != null) {
                     results.add(new SceneDetectionResult(
                             sceneIndex,
                             startAnchor,
                             contextSummary,
-                            breakReason,
-                            chronology,
-                            chronologyCertainty,
-                            chronologyMarker));
+                            breakReason));
                 } else {
                     log.warn("Skipping incomplete scene: index={}, start={}, context={}, reason={}",
                             sceneIndex,

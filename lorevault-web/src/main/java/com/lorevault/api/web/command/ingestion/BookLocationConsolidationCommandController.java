@@ -1,8 +1,8 @@
 package com.lorevault.api.web.command.ingestion;
 
+import com.lorevault.api.graph.location.consolidation.book.BookLocationConsolidationHandler;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
-import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StageResult;
 import com.lorevault.api.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class BookLocationConsolidationCommandController {
 
-    private final StageOperation bookLocationReductionOperation;
+    private final BookLocationConsolidationHandler bookLocationConsolidator;
     private final StepEventMapper stepEventMapper;
 
     @PostMapping("/books/{bookId}/book-consolidate-locations")
@@ -61,7 +61,7 @@ public class BookLocationConsolidationCommandController {
         }
 
         log.info("[CMD] Reduce book locations: bookId={}, jobId={}, fireEvents={}", bookUuid, jobUuid, fireEvents);
-        StageResult result = bookLocationReductionOperation.execute(
+        StageResult result = bookLocationConsolidator.execute(
                 new StageExecutionContext(null, jobUuid, null, bookUuid, StageKey.BOOK_LOCATION_CONSOLIDATION));
 
         StageExecutionResponse response = StageExecutionResponse.from(result, StageKey.BOOK_LOCATION_CONSOLIDATION, "book", bookId);

@@ -1,14 +1,13 @@
 package com.lorevault.api.web.ui;
 
+import com.lorevault.api.common.ExceptionSanitizer;
+import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationHandler;
+import com.lorevault.api.graph.location.consolidation.chapter.ChapterLocationConsolidationHandler;
+import com.lorevault.api.graph.location.consolidation.book.BookLocationConsolidationHandler;
+import com.lorevault.api.orchestration.pipeline.IngestionPipelineCoordinator;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
-import com.lorevault.api.orchestration.pipeline.IngestionPipelineCoordinator;
-import com.lorevault.api.graph.location.consolidation.book.BookLocationConsolidationService;
-import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationService;
-import com.lorevault.api.graph.location.consolidation.chapter.ChapterLocationConsolidationService;
-import com.lorevault.api.graph.location.consolidation.book.BookLocationConsolidationResult;
-import com.lorevault.api.graph.individual.consolidation.chapter.ChapterIndividualConsolidationResult;
-import com.lorevault.api.graph.location.consolidation.chapter.ChapterLocationConsolidationResult;
+import com.lorevault.api.orchestration.pipeline.StageResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -25,35 +24,35 @@ import java.util.UUID;
 @Slf4j
 public class UiOperatorActionsController {
 
-    private final ChapterIndividualConsolidationService chapterIndividualConsolidationService;
-    private final ChapterLocationConsolidationService chapterLocationConsolidationService;
-    private final BookLocationConsolidationService bookLocationConsolidationService;
+    private final ChapterIndividualConsolidationHandler chapterIndividualConsolidator;
+    private final ChapterLocationConsolidationHandler chapterLocationConsolidator;
+    private final BookLocationConsolidationHandler bookLocationConsolidator;
     private final IngestionPipelineCoordinator pipelineCoordinator;
 
     @PostMapping("/chapters/{chapterId}/chapter-consolidate-individuals")
     public String consolidateChapterIndividuals(@PathVariable UUID chapterId, Model model) {
-        var ctx = new StageExecutionContext(UUID.randomUUID(), UUID.randomUUID(), chapterId, null, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION);
-        ChapterIndividualConsolidationResult response = chapterIndividualConsolidationService.consolidateChapter(ctx, chapterId);
-        model.addAttribute("message", response.message());
-        model.addAttribute("tone", response.success() ? "success" : "info");
+        var ctx = new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_INDIVIDUAL_CONSOLIDATION);
+        StageResult result = chapterIndividualConsolidator.execute(ctx);
+        model.addAttribute("message", result.success() ? result.summary() : "Consolidation skipped or failed");
+        model.addAttribute("tone", result.success() ? "success" : "info");
         return "ui/jobs :: actionToast";
     }
 
     @PostMapping("/chapters/{chapterId}/chapter-consolidate-locations")
     public String consolidateChapterLocations(@PathVariable UUID chapterId, Model model) {
-        var ctx = new StageExecutionContext(UUID.randomUUID(), UUID.randomUUID(), chapterId, null, StageKey.CHAPTER_LOCATION_CONSOLIDATION);
-        ChapterLocationConsolidationResult response = chapterLocationConsolidationService.consolidateChapter(ctx, chapterId);
-        model.addAttribute("message", response.message());
-        model.addAttribute("tone", response.success() ? "success" : "info");
+        var ctx = new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_LOCATION_CONSOLIDATION);
+        StageResult result = chapterLocationConsolidator.execute(ctx);
+        model.addAttribute("message", result.success() ? result.summary() : "Consolidation skipped or failed");
+        model.addAttribute("tone", result.success() ? "success" : "info");
         return "ui/jobs :: actionToast";
     }
 
     @PostMapping("/books/{bookId}/chapter-consolidate-locations")
     public String consolidateBookLocations(@PathVariable UUID bookId, Model model) {
-        var ctx = new StageExecutionContext(UUID.randomUUID(), UUID.randomUUID(), null, bookId, StageKey.BOOK_LOCATION_CONSOLIDATION);
-        BookLocationConsolidationResult response = bookLocationConsolidationService.consolidateBook(ctx, bookId);
-        model.addAttribute("message", response.message());
-        model.addAttribute("tone", response.success() ? "success" : "info");
+        var ctx = new StageExecutionContext(null, null, null, bookId, StageKey.BOOK_LOCATION_CONSOLIDATION);
+        StageResult result = bookLocationConsolidator.execute(ctx);
+        model.addAttribute("message", result.success() ? result.summary() : "Consolidation skipped or failed");
+        model.addAttribute("tone", result.success() ? "success" : "info");
         return "ui/jobs :: actionToast";
     }
 
@@ -61,9 +60,14 @@ public class UiOperatorActionsController {
     public String replayChapter(@PathVariable UUID chapterId, Model model) {
         try {
             UUID jobId = pipelineCoordinator.findJobIdByChapterId(chapterId);
-            UUID bookId = pipelineCoordinator.findBookIdByChapterId(chapterId);
             if (jobId == null) {
                 model.addAttribute("message", "No ingestion job found for this chapter.");
+                model.addAttribute("tone", "error");
+                return "ui/jobs :: actionToast";
+            }
+            UUID bookId = pipelineCoordinator.findBookIdByChapterId(chapterId);
+            if (bookId == null) {
+                model.addAttribute("message", "No book found for this chapter. Replay requires chapter-to-book association.");
                 model.addAttribute("tone", "error");
                 return "ui/jobs :: actionToast";
             }
@@ -72,8 +76,8 @@ public class UiOperatorActionsController {
             model.addAttribute("message", "Replay initiated — destroying effects and reingesting chapter.");
             model.addAttribute("tone", "success");
         } catch (Exception e) {
-            log.error("[REPLAY] Failed: chapterId={}: {}", chapterId, e.getMessage(), e);
-            model.addAttribute("message", "Replay failed: " + e.getMessage());
+            log.error("[REPLAY] Failed: chapterId={}: {}", chapterId, ExceptionSanitizer.sanitize(e), e);
+            model.addAttribute("message", "Replay failed. Please try again.");
             model.addAttribute("tone", "error");
         }
         return "ui/jobs :: actionToast";

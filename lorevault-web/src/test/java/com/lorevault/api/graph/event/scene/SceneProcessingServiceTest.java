@@ -76,7 +76,7 @@ class SceneProcessingServiceTest {
     @DisplayName("Should throw typed localization failure when scene anchor is missing")
     void localizeSceneCoordinates_missingAnchor_throwsSceneLocalizationException() {
         List<SceneDetectionResult> results = List.of(
-                new SceneDetectionResult(2, "missing anchor", "ctx", "", "", "", "")
+                new SceneDetectionResult(2, "missing anchor", "ctx", "")
         );
 
         assertThatThrownBy(() -> sceneProcessingService.localizeSceneCoordinates("Existing chapter text", results))

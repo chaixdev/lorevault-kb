@@ -1,8 +1,8 @@
 package com.lorevault.api.web.command.ingestion;
 
+import com.lorevault.api.graph.object.consolidation.chapter.ChapterObjectConsolidationHandler;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
-import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StageResult;
 
 import java.util.Map;
@@ -26,7 +26,7 @@ class ChapterObjectConsolidationCommandControllerWebMvcTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private StageOperation chapterObjectResolutionOperation;
+    private ChapterObjectConsolidationHandler chapterObjectConsolidator;
 
     @MockitoBean
     private StepEventMapper stepEventMapper;
@@ -34,7 +34,7 @@ class ChapterObjectConsolidationCommandControllerWebMvcTest {
     @Test
     void consolidateChapterObjectsSuccessReturns200() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        when(chapterObjectResolutionOperation.execute(
+        when(chapterObjectConsolidator.execute(
                 new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_OBJECT_CONSOLIDATION)))
                 .thenReturn(StageResult.success(
                         StageKey.CHAPTER_OBJECT_CONSOLIDATION,
@@ -52,7 +52,7 @@ class ChapterObjectConsolidationCommandControllerWebMvcTest {
                 .andExpect(jsonPath("$.counts.mentionCount").value(3))
                 .andExpect(jsonPath("$.counts.chapterObjectCount").value(2));
 
-        verify(chapterObjectResolutionOperation).execute(
+        verify(chapterObjectConsolidator).execute(
                 new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_OBJECT_CONSOLIDATION));
     }
 
@@ -66,7 +66,7 @@ class ChapterObjectConsolidationCommandControllerWebMvcTest {
     @Test
     void consolidateChapterObjects_stageFailure_returns200WithFailureResult() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        when(chapterObjectResolutionOperation.execute(
+        when(chapterObjectConsolidator.execute(
                 new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_OBJECT_CONSOLIDATION)))
                 .thenReturn(StageResult.failure(
                         StageKey.CHAPTER_OBJECT_CONSOLIDATION, "Entity not found", 0L));

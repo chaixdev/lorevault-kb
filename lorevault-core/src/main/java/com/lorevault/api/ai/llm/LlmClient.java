@@ -234,9 +234,6 @@ public class LlmClient {
         log.trace("[LLM] System prompt ({} chars) sha256={}", systemPrompt.length(), sha256prefix(systemPrompt));
         
         final String safeInput = userInput == null ? "" : userInput;
-        UUID callId = UUID.randomUUID();
-        final Integer[] promptTokensHolder = new Integer[1];
-        final Integer[] completionTokensHolder = new Integer[1];
         
         try {
             long start = System.nanoTime();
@@ -255,12 +252,12 @@ public class LlmClient {
                 }
                 log.debug("[LLM] Calling model={} for {}{}", modelId, step, attemptMsg);
                 
-                var callSpec = chatClient.prompt()
+                String responseContent = chatClient.prompt()
                     .system(systemPrompt)
                     .user(safeInput)
                     .options(options)
-                    .call();
-                String responseContent = callSpec.content();
+                    .call()
+                    .content();
                     
                 long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
                 if (responseContent == null || responseContent.trim().isEmpty()) {
@@ -274,16 +271,6 @@ public class LlmClient {
                          step, len, elapsedMs, modelId);
                 String preview = responseContent.substring(0, Math.min(100, len)).replaceAll("\n", "\\n");
                 log.debug("[LLM] Response preview (first {} chars): {}", preview.length(), preview);
-
-                // Capture actual token counts from ChatResponse if available
-                var chatResponse = callSpec.chatResponse();
-                if (chatResponse != null && chatResponse.getMetadata() != null) {
-                    var usage = chatResponse.getMetadata().getUsage();
-                    if (usage != null) {
-                        promptTokensHolder[0] = usage.getPromptTokens();
-                        completionTokensHolder[0] = usage.getCompletionTokens();
-                    }
-                }
 
                 return responseContent;
                 
@@ -299,22 +286,22 @@ public class LlmClient {
             });
             long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
             
-            persistLlmCallSafely(
-                    callId,
-                    jobId,
-                    stage,
-                    modelId,
-                    temperature,
-                    0.9,
-                    6000,
-                    stage == StageKey.SCENE_SEGMENTATION ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
-                    systemPrompt,
-                    safeInput,
-                    response,
-                    elapsedMs,
-                    promptTokensHolder[0],
-                    completionTokensHolder[0]
-            );
+             persistLlmCallSafely(
+                     UUID.randomUUID(),
+                     jobId,
+                     stage,
+                     modelId,
+                     temperature,
+                     0.9,
+                     6000,
+                     stage == StageKey.SCENE_SEGMENTATION ? promptProperties.getChapterSegmentationPath() : promptProperties.getSceneAnalysisPath(),
+                     systemPrompt,
+                     safeInput,
+                     response,
+                     elapsedMs,
+                     null,
+                     null
+             );
             return response;
             
         } catch (Exception e) {
@@ -332,9 +319,6 @@ public class LlmClient {
                 step, userInput == null ? 0 : userInput.length(), modelId);
 
         final String safeInput = userInput == null ? "" : userInput;
-        UUID callId = UUID.randomUUID();
-        final Integer[] promptTokensHolder = new Integer[1];
-        final Integer[] completionTokensHolder = new Integer[1];
 
         try {
             long start = System.nanoTime();
@@ -353,26 +337,16 @@ public class LlmClient {
                 }
                 log.debug("[LLM] Calling model={} for {}{}", modelId, step, attemptMsg);
 
-                var callSpec = chatClient.prompt()
+                T structuredResponse = chatClient.prompt()
                         .system(systemPrompt)
                         .user(safeInput)
                         .options(options)
-                        .call();
-                T structuredResponse = callSpec.entity(responseType);
+                        .call()
+                        .entity(responseType);
 
                 long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
                 if (structuredResponse == null) {
                     throw new RuntimeException("Empty structured response from " + modelId + " during " + step);
-                }
-
-                // Capture actual token counts from ChatResponse if available
-                var chatResponse = callSpec.chatResponse();
-                if (chatResponse != null && chatResponse.getMetadata() != null) {
-                    var usage = chatResponse.getMetadata().getUsage();
-                    if (usage != null) {
-                        promptTokensHolder[0] = usage.getPromptTokens();
-                        completionTokensHolder[0] = usage.getCompletionTokens();
-                    }
                 }
 
                 return structuredResponse;
@@ -387,7 +361,7 @@ public class LlmClient {
             long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
             String responseBody = serializeStructuredResponse(response);
             persistLlmCallSafely(
-                    callId,
+                    UUID.randomUUID(),
                     jobId,
                     stage,
                     modelId,
@@ -399,8 +373,8 @@ public class LlmClient {
                     safeInput,
                     responseBody,
                     elapsedMs,
-                    promptTokensHolder[0],
-                    completionTokensHolder[0]
+                    null,
+                    null
             );
             return response;
         } catch (Exception e) {

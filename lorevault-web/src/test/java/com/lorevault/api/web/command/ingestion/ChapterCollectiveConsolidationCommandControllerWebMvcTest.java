@@ -1,8 +1,8 @@
 package com.lorevault.api.web.command.ingestion;
 
+import com.lorevault.api.graph.collective.consolidation.chapter.ChapterCollectiveConsolidationHandler;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
-import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StageResult;
 
 import java.util.Map;
@@ -26,7 +26,7 @@ class ChapterCollectiveConsolidationCommandControllerWebMvcTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private StageOperation chapterCollectiveResolutionOperation;
+    private ChapterCollectiveConsolidationHandler chapterCollectiveConsolidator;
 
     @MockitoBean
     private StepEventMapper stepEventMapper;
@@ -34,7 +34,7 @@ class ChapterCollectiveConsolidationCommandControllerWebMvcTest {
     @Test
     void consolidateChapterCollectivesSuccessReturns200() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        when(chapterCollectiveResolutionOperation.execute(
+        when(chapterCollectiveConsolidator.execute(
                 new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION)))
                 .thenReturn(StageResult.success(
                         StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION,
@@ -52,7 +52,7 @@ class ChapterCollectiveConsolidationCommandControllerWebMvcTest {
                 .andExpect(jsonPath("$.counts.mentionCount").value(3))
                 .andExpect(jsonPath("$.counts.chapterCollectiveCount").value(2));
 
-        verify(chapterCollectiveResolutionOperation).execute(
+        verify(chapterCollectiveConsolidator).execute(
                 new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION));
     }
 
@@ -66,7 +66,7 @@ class ChapterCollectiveConsolidationCommandControllerWebMvcTest {
     @Test
     void consolidateChapterCollectives_stageFailure_returns200WithFailureResult() throws Exception {
         UUID chapterId = UUID.randomUUID();
-        when(chapterCollectiveResolutionOperation.execute(
+        when(chapterCollectiveConsolidator.execute(
                 new StageExecutionContext(null, null, chapterId, null, StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION)))
                 .thenReturn(StageResult.failure(
                         StageKey.CHAPTER_COLLECTIVE_CONSOLIDATION, "Entity not found", 0L));
