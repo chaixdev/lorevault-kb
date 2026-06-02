@@ -44,6 +44,13 @@ generic LLM infrastructure.
 Do not add new shared domain models. See the topology doc for the current state
 and rationale.
 
+**Cross-lane type placement.** A domain type consumed by all entity consolidation lanes
+(e.g., `BookConsolidationClaim`) must not live inside a single lane's package. Placing
+a shared type inside one lane (e.g., `location/consolidation/book/`) creates an implicit
+ownership claim that all other lanes violate via cross-package imports. Cross-lane types
+belong in the consuming boundary's most stable package (e.g., `orchestration/consolidation`)
+or in `common` if they have no feature-specific semantics.
+
 ## Package-Structure Direction
 
 Within `lorevault-core`, the default internal package shape is capability-oriented.

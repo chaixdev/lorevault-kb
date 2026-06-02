@@ -115,6 +115,12 @@ index declaration.
 A `MERGE` must use the exact properties that constitute the uniqueness constraint.
 Merging on a partial key creates duplicate nodes when other properties differ.
 
+**Path repetition cardinality bounds.**
+Never use unbounded path repetition patterns (e.g., `(m)-[:SAME_EVENT*0..]-(related)`).
+All path expressions must have an explicit upper bound. Unbounded traversal can exhaust
+Neo4j memory and produce non-deterministic results even on modest datasets. Default to
+a bound that matches the realistic maximum path length for the domain (e.g., `*0..10`).
+
 **Projections for partial reads.**
 When only a subset of node properties is needed, use an SDN interface projection or
 a custom `@QueryResult` record instead of loading the full entity graph.
@@ -325,6 +331,15 @@ private void init() {
 @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
 public Optional<IngestionJob> findActiveJobForChapter(UUID chapterId) { ... }
 ```
+
+**Do not mix `Neo4jClient` and SDN repositories in the same `@Transactional` method.**
+`Neo4jClient` queries bypass the SDN entity manager's identity map. When a raw
+`Neo4jClient` DELETE is followed by SDN `saveAll()` in the same transaction, previously
+loaded entities held in the identity map are stale — they reference graph state that
+no longer exists. Use one paradigm consistently per transaction boundary: either SDN
+repository methods exclusively, or `Neo4jClient` exclusively. If the operation requires
+raw Cypher that SDN cannot express, extract it to a separate service method that runs
+in its own transaction.
 
 **`@TransactionalEventListener(AFTER_COMMIT)` + new transaction.**
 This fires outside any active transaction. If the handler needs to write to Neo4j,
@@ -612,6 +627,13 @@ in API error responses.
 ---
 
 ## Lombok Discipline
+
+**Always use `@Slf4j` for logger fields.**
+Never use `LoggerFactory.getLogger(MyClass.class)` manually. `@Slf4j` generates the
+same field (named `log`) with less noise and eliminates a common source of copy-paste
+errors when adding logging to new or refactored classes. The only acceptable
+`LoggerFactory.getLogger()` call is in abstract or framework code where Lombok
+annotation processing cannot reach.
 
 **Never `@Data` on Neo4j entity classes.**
 `@Data` generates `equals` and `hashCode` using all fields including mutable relationship

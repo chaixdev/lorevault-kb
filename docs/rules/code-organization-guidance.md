@@ -15,7 +15,7 @@ Use the existing feature-oriented split under `com.lorevault.api`.
 | Package | Semantic meaning |
 |---|---|
 | `ai` | generic interaction with LLM APIs and AI infrastructure |
-| `common` | shared utilities with no feature ownership (e.g., HashUtils) |
+| `common` | shared utilities with no feature ownership (e.g., HashUtils, NameNormalizer, ExceptionSanitizer). All string normalization, sanitization, and formatting utilities must go here and only here. Never create a second normalizer that produces different output for the same input. |
 | `config` | Spring bean wiring and framework configuration |
 | `graph` | the canonical persisted knowledge graph (entities, persistence, consolidation) |
 | `health` | monitoring, diagnostics, readiness, and observability |
@@ -42,6 +42,19 @@ Representative current internal shape:
 
 This map is descriptive, not a mandatory template. The rule is capability ownership first,
 with local support packages only where they remain semantically honest.
+
+### `common` is the canonical library for shared utilities
+
+The `common` package (`com.lorevault.api.common`) is the single source of truth for
+shared utility methods: string normalization, sanitization, formatting, hashing, and
+other stateless functions. Any new utility method of this kind must be placed here.
+Existing inline or duplicated utility logic (e.g., normalization methods in
+feature-specific packages) must be deleted and replaced with the `common` equivalent.
+
+A one-line normalization that differs from `NameNormalizer.normalize()` by not
+stripping punctuation is not a harmless convenience — it is a data-integrity defect
+waiting to surface during consolidation. If you find a normalizer outside `common`,
+replace it with the canonical one.
 
 ## Ownership rules
 
@@ -205,6 +218,12 @@ Name types for product semantics, not implementation technique.
 
 - prefer names like `SceneRelationshipAnalysisService` over technique-leaking names like `TriadOrchestrationService`
 - keep technique terms (for example, `Triad*`) for private/internal helpers where the technique itself is the meaning
+
+**Display-name selection for entities.** When selecting a display name from entity
+extraction data, use the entity's primary string field (e.g., `normalizedName`, the first
+non-blank alias). Never fall back to a type-category string (e.g., `"weapon"`,
+`"furniture"`, `Object`) — this stores a classification label as an entity identity,
+causing unrelated entities of the same type to cluster incorrectly during consolidation.
 
 Use these suffixes consistently:
 
