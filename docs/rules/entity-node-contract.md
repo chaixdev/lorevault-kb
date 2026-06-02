@@ -68,6 +68,21 @@ public interface EntityIdentity {
 Every node must carry its domain-specific secondary label (e.g., `IndividualNode`,
 `LocationNode`) plus `EntityNode` for cross-kind queries.
 
+## Scene: Bridging Evidence and Timeline
+
+`Scene` is both evidence layer and an `Event` subclass — it bridges the entity graph
+and the timeline DAG.
+
+- **Evidence role:** Extracted directly from chapter text via segmentation. No
+  consolidation ladder — scenes are concrete, not clustered. Other evidence nodes
+  reference scenes via `sceneId`.
+- **Timeline role:** Scenes form the timeline DAG backbone via `NEXT_IN_READING_ORDER`
+  and `TEMPORAL` edges. Extracted `Event` entities (EventMention → ChapterEvent →
+  BookEvent at the interpretation layer) attach to this backbone.
+
+Scenes don't carry `EntityIdentity` — they're not identity-clustered. They do carry
+`PublicationCoordinates` as evidence-layer nodes and `stageId` for provenance.
+
 ## Spoilergating Pattern
 
 ```cypher
@@ -79,7 +94,7 @@ MATCH (m)-[:REFERS_TO]->(bi:BookIndividual)
 RETURN bi
 ```
 
-Node types not in scope: `Scene`, `Chunk` (substrate), `Chapter`, `Book` (library
+Node types not in scope: `Chunk` (substrate), `Chapter`, `Book` (library
 hierarchy), `Stage`/`StageOutput` (pipeline state).
 
 ## Implementation Priority
