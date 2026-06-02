@@ -371,22 +371,22 @@ The planning doc (`2026-06-01T2220_deep-quality-review-sessions.md`) references 
 
 ## 3. Priority Action Table
 
-| ID | Severity | File | Description | Must Fix Before Merge? |
-|----|----------|------|-------------|------------------------|
-| HIGH-1 | 🟠 HIGH | 11 entity classes | @Data on Neo4j entities — Set/Map corruption risk | Yes |
-| HIGH-2 | 🟠 HIGH | `application.yml:71` | Hardcoded PostgreSQL password in source | Yes |
-| HIGH-3 | 🟠 HIGH | `common/error/ExceptionSanitizer.java` | Dead duplicate class + orphan package | Yes |
-| HIGH-4 | 🟠 HIGH | `LlmClientProperties.java` | Duplicate config record vs LoreVaultModelsProperties | Yes |
-| HIGH-5 | 🟠 HIGH | `application-common.yml:16-21,73-80` | Silently-ignored YML properties | Yes |
-| MED-1 | 🟡 MEDIUM | `EmbeddingOperation.java`, `ChunkingOperation.java` | Single-impl interfaces (YAGNI) | Recommended |
-| MED-2 | 🟡 MEDIUM | `CatalogEmbeddingConfig.java`, `SchemaBootstrapConfiguration.java` | Single-bean config bloat | Recommended |
-| MED-3 | 🟡 MEDIUM | `AsyncConfig.java:58-60,76-78` | Hardcoded thread pool sizes | Recommended |
-| MED-4 | 🟡 MEDIUM | ~60 service classes | @RequiredArgsConstructor producing public constructors | Recommended |
-| MED-5 | 🟡 MEDIUM | `SpringAiConfig.java:34-37` | Hardcoded API_TIMEOUT constant | Recommended |
-| MED-6 | 🟡 MEDIUM | `LoreVaultEmbeddingProperties.java:12` | Disconnected DIMENSIONS constant vs YML | Recommended |
+| ID | Severity | File | Description | Resolution |
+|----|----------|------|-------------|------------|
+| HIGH-1 | 🟠 HIGH | 11 entity classes | @Data on Neo4j entities — Set/Map corruption risk | ✅ Applied |
+| HIGH-2 | 🟠 HIGH | `application.yml:71` | Hardcoded PostgreSQL password in source | ✅ Applied |
+| HIGH-3 | 🟠 HIGH | `common/error/ExceptionSanitizer.java` | Dead duplicate class + orphan package | ✅ Applied |
+| HIGH-4 | 🟠 HIGH | `LlmClientProperties.java` | Duplicate config record vs LoreVaultModelsProperties | ✅ Applied |
+| HIGH-5 | 🟠 HIGH | `application-common.yml:16-21,73-80` | Silently-ignored YML properties | ✅ Applied |
+| MED-1 | 🟡 MEDIUM | `EmbeddingOperation.java`, `ChunkingOperation.java` | Single-impl interfaces (YAGNI) | ✅ Applied |
+| MED-2 | 🟡 MEDIUM | `CatalogEmbeddingConfig.java`, `SchemaBootstrapConfiguration.java` | Single-bean config bloat | ✅ Applied |
+| MED-3 | 🟡 MEDIUM | `AsyncConfig.java:58-60,76-78` | Hardcoded thread pool sizes | ❌ Rejected — by design |
+| MED-4 | 🟡 MEDIUM | ~60 service classes | @RequiredArgsConstructor producing public constructors | 🔵 Noted — deprioritized |
+| MED-5 | 🟡 MEDIUM | `SpringAiConfig.java:34-37` | Hardcoded API_TIMEOUT constant | ❌ Rejected — by design |
+| MED-6 | 🟡 MEDIUM | `LoreVaultEmbeddingProperties.java:12` | Disconnected DIMENSIONS constant vs YML | ❌ Rejected — by design |
 | MED-7 | — | Module dependency graph | No violations — clean acyclic structure | N/A (positive) |
-| LOW-1 | 🟢 LOW | `graph/mention/`, `search/rag/` | Singleton packages with minimal files | No |
-| LOW-2 | 🟢 LOW | Planning doc | References to nonexistent interfaces | No |
+| LOW-1 | 🟢 LOW | `graph/mention/`, `search/rag/` | Singleton packages with minimal files | Noted |
+| LOW-2 | 🟢 LOW | Planning doc | References to nonexistent interfaces | Noted |
 
 ---
 
