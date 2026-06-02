@@ -61,7 +61,7 @@ class EventPersistenceServiceTest {
         EventMention saved = savedCaptor.getValue();
         assertThat(saved.source()).isEqualTo("ai-scene-analysis");
         assertThat(saved.displayName()).isEqualTo("The Winter War");
-        assertThat(saved.normalizedName()).isEqualTo("the winter war");
+        assertThat(saved.normalizedName()).isEqualTo("winter war");
         assertThat(saved.aliases()).containsExactly("The Winter War");
         assertThat(saved.eventType()).isEqualTo("war");
         assertThat(saved.description()).isEqualTo("A remembered historical war that characters invoke as past context.");

@@ -102,18 +102,60 @@ public class SceneDetectionService {
                                                            UUID chapterId,
                                                            String chapterText,
                                                            Chapter chapter) {
+        int maxAttempts = 4;
         long startTime = System.currentTimeMillis();
-        log.info("Chapter segmentation starting for job {}", jobId);
-        try {
-            SceneSegmentationOutcome result = performFullSceneDetection(jobId, chapterId, chapterText, chapter, 0.1);
-            long totalDuration = System.currentTimeMillis() - startTime;
-            log.info("Scene detection successful for chapter {} in {} ms", chapterId, totalDuration);
-            return result;
-        } catch (Exception e) {
-            long totalDuration = System.currentTimeMillis() - startTime;
-            log.error("Scene detection failed for chapter {} in {} ms: {}", chapterId, totalDuration, e.getMessage());
-            throw e;
+        Exception lastException = null;
+
+        log.info("Chapter segmentation starting with retry (max {} attempts) for job {}",
+                maxAttempts, jobId);
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            double temperature = 0.1 + ((attempt - 1) * 0.2); // 0.1, 0.3, 0.5, 0.7
+            try {
+                log.info("Chapter segmentation: attempt {}/{} with temperature={} for job {}",
+                        attempt, maxAttempts, temperature, jobId);
+
+                SceneSegmentationOutcome result = performFullSceneDetection(
+                        jobId, chapterId, chapterText, chapter, temperature);
+
+                long totalDuration = System.currentTimeMillis() - startTime;
+                log.info("Scene detection successful for chapter {}: attempt {}/{} in {} ms",
+                        chapterId, attempt, maxAttempts, totalDuration);
+                return result;
+
+            } catch (Exception e) {
+                lastException = e;
+                boolean retryable = isExpectedRetryableSegmentationFailure(e);
+                log.warn("[LLM-Retry] Scene Detection attempt {}/{} failed: {} (retryable={})",
+                        attempt, maxAttempts, e.getMessage(), retryable);
+
+                if (!retryable || attempt >= maxAttempts) {
+                    break;
+                }
+                // exponential backoff with jitter
+                try {
+                    long delay = (long) (200 * Math.pow(2, attempt - 1));
+                    Thread.sleep(delay + (long) (Math.random() * delay));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
         }
+
+        long totalDuration = System.currentTimeMillis() - startTime;
+        log.error("Scene detection failed permanently after {} attempts in {} ms: {}",
+                maxAttempts, totalDuration, lastException != null ? lastException.getMessage() : "unknown");
+
+        if (lastException instanceof SceneLocalizationException sle) {
+            throw sle;
+        }
+        throw buildSceneDetectionFailure(
+                "SCENE_DETECTION_RETRY_EXHAUSTED",
+                "Scene detection failed with retry: " + (lastException != null ? lastException.getMessage() : "unknown"),
+                chapterId,
+                lastException
+        );
     }
 
     private SceneSegmentationOutcome performFullSceneDetection(UUID jobId,

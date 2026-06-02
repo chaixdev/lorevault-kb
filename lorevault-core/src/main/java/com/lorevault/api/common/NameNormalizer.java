@@ -11,8 +11,9 @@ public final class NameNormalizer {
 
     /**
      * Normalize a name for consistent lookup: trim, collapse whitespace,
-     * lowercase, strip punctuation. Covers LLM punctuation drift
-     * (e.g., "Mr. Underhill" → "mr underhill").
+     * lowercase, strip punctuation, remove leading articles.
+     * Covers LLM punctuation drift (e.g., "Mr. Underhill" → "mr underhill")
+     * and article inconsistency (e.g., "the Elves" and "Elves" → "elves").
      *
      * @param name the raw name (may be null)
      * @return normalized name, or null if input is null or blank after trimming
@@ -25,8 +26,14 @@ public final class NameNormalizer {
         if (trimmed.isEmpty()) {
             return null;
         }
-        return trimmed.replaceAll("\\s+", " ")
+        String result = trimmed.replaceAll("\\s+", " ")
                 .toLowerCase()
                 .replaceAll("[^a-z0-9 ]", "");
+        // Strip leading article so "the Elves" and "Elves" share a key
+        result = result.replaceFirst("^(the|a|an) ", "");
+        if (result.isBlank()) {
+            return null;
+        }
+        return result;
     }
 }

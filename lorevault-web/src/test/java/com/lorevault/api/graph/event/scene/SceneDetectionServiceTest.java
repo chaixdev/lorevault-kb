@@ -120,7 +120,7 @@ class SceneDetectionServiceTest {
                 .isInstanceOf(SceneDetectionException.class)
                 .hasMessageContaining("Scene coordinate localization dropped scenes");
 
-        verify(llmClient, times(1)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
+        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
     }
 
     @Test
@@ -156,7 +156,7 @@ class SceneDetectionServiceTest {
                 .isInstanceOf(SceneDetectionException.class)
                 .hasMessageContaining("Scene coordinate localization dropped scenes");
 
-        verify(llmClient, times(1)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
+        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
     }
 
     @Test
@@ -182,7 +182,7 @@ class SceneDetectionServiceTest {
                 .isInstanceOf(SceneDetectionException.class)
                 .hasMessageContaining("Scene coordinate localization returned empty results");
 
-        verify(llmClient, times(1)).detectChapterSegmentation(eq(jobId), any(String.class), anyDouble());
+        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), any(String.class), anyDouble());
     }
 
     @Test
@@ -221,7 +221,7 @@ class SceneDetectionServiceTest {
                 .isInstanceOf(SceneLocalizationException.class)
                 .hasMessageContaining("start anchor 'anchor' was not found");
 
-        verify(llmClient, times(1)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
+        verify(llmClient, times(4)).detectChapterSegmentation(eq(jobId), eq(chapterText), anyDouble());
     }
 
 }
