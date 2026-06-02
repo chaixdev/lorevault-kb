@@ -395,6 +395,30 @@ Any fan-in coordinator must:
 3. Fire the completion event exactly once.
 4. Handle branch failure: the coordinator must still reach a terminal state if a branch fails.
 
+**Fan-out loop resilience.**
+When a coordinator iterates over downstream stages and invokes an external dependency
+(Neo4j, Spring event publisher, etc.) per iteration, a failure on one iteration must
+not prevent the remaining iterations from being attempted. Each iteration's failure
+domain is independent; one child's failure is not an excuse to abandon its siblings.
+
+```java
+// Good — individual failure cannot stall siblings
+for (StageKey child : dag.childrenOf(completedStage)) {
+    try {
+        boolean triggered = stageRepo.tryTrigger(jobId, child);
+        if (triggered) { publishEvent(...); }
+    } catch (Exception e) {
+        log.error("Failed to evaluate barrier for child={}: {}", child, e.getMessage(), e);
+    }
+}
+
+// Bad — a single Neo4j error abandons all remaining children
+for (StageKey child : dag.childrenOf(completedStage)) {
+    boolean triggered = stageRepo.tryTrigger(jobId, child); // throws → loop terminates
+    if (triggered) { publishEvent(...); }
+}
+```
+
 **No circular event chains.**
 Verify no handler publishes an event that transitively causes the same handler to fire.
 

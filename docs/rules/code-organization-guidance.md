@@ -256,6 +256,25 @@ When you are tempted to keep old code:
 
 Direct deletion with caller migration is always preferred over any form of deprecation.
 
+## Unreachable code after refactor
+
+When a refactor introduces a new mechanism that makes an existing guard or check
+unreachable, the dead code must be removed as part of the same change. Do not leave
+the old guard behind "just in case."
+
+**Example:** Adding an atomic CAS guard (`TRIGGERED → RUNNING`) that runs before an
+existing idempotency check (`status == COMPLETED`) makes the check always return
+`false` — the CAS already ensures a `COMPLETED` stage can never reach the check.
+The old check is dead code and must be deleted in the commit that adds the CAS guard.
+
+The same principle applies to any refactor where a new upstream mechanism renders
+a downstream guard, branch, or validation permanently unreachable. Leaving it in
+place creates confusion ("is this path actually reachable?") and wastes resources
+(an unnecessary Neo4j query on every dispatch in this example).
+
+This extends the deprecated-code rule: just as `@Deprecated` has no place in the
+codebase, unreachable code from refactors has no place either. Delete it.
+
 ## Related docs
 
 - [Development workflow](development-workflow.md)
