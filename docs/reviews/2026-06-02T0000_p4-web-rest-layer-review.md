@@ -513,3 +513,72 @@ if (statusOpt.isEmpty()) {
 ## Section 5 — Positive Notes
 
 The web layer follows a consistent REST API pattern with structured `ErrorResponse` bodies, manual UUID parsing with proper error handling, and clean separation of command vs. query controllers. SSE status broadcasting is integrated with the event pipeline, and `JobStatusBroadcaster` correctly uses `CopyOnWriteArrayList` for thread-safe emitter management. File upload validation and content extraction are properly separated into dedicated classes. The Thymeleaf templates use safe HTML escaping (no `th:utext`), and no raw Cypher string composition or `ObjectInputStream` usage was found anywhere in the web layer. UUID path variables are consistently validated before reaching the service layer in all 15+ controllers.
+
+---
+
+## Section 6 — Post-Review Disposition *(added June 2, 2026)*
+
+### LLM drift vs rule gaps
+
+Of the 17 CRITICAL/HIGH findings, 5 were **LLM drift** — guidance existed, code contradicted it, review caught it:
+
+| Finding | Existing rule |
+|---------|---------------|
+| CRIT-4 (`correlationId`) | `ingestion-pipeline.md` mandates `correlationId` on every event class |
+| CRIT-5 (backward-compat redirect) | `code-organization-guidance.md` forbids backward-compatibility shims |
+| CRIT-6 (random `stageId`/`jobId`) | `ingestion-pipeline.md` mandates `stageId` for provenance, cleanup, replay |
+| HIGH-7 (constructor ambiguity) | Specific code defect, not a guidance gap |
+| HIGH-9 (TOCTOU `findById`) | `coding-standards.md` — atomic idempotency guards (codified from P2/P3) |
+
+The other 11 exposed **genuine rule gaps** — either no guidance existed or existing guidance was incomplete. See rules codified below.
+
+### Fixes applied
+
+| Finding | Change |
+|---------|--------|
+| CRIT-4 | `correlationId` field on both event classes; propagated through `StageDispatcher`, `IngestionPipelineCoordinator`, `StepEventMapper` |
+| CRIT-2 + HIGH-9 | Removed `ChapterGraphRepository`/`BookGraphRepository` injection + `findById` TOCTOU blocks from all 11 controllers |
+| CRIT-5 | Deleted `BookConsolidationRedirectController.java` (77 lines) |
+| HIGH-3 | `SseEmitter(300_000L)` — 5-minute timeout |
+| HIGH-4 | `StepEventMapper` async dispatch via `CompletableFuture.runAsync(ingestionTaskExecutor)` |
+| HIGH-5 | `JobStatusBroadcaster` — dedicated `sseBroadcastExecutor` (2-4 threads); async `broadcast()` and `keepAlive()` with `List.copyOf()` snapshots |
+| HIGH-8 | `CommandIngestionController` UUID type → `String` with manual parsing + structured `ErrorResponse` |
+| HIGH-11 | `JobsUiController` — replaced `orElseThrow` with explicit `Optional.isEmpty()` → 404 |
+
+### Deferred
+
+| Finding | Reason |
+|---------|--------|
+| CRIT-1 (no auth) | Separate IAM/RBAC sprint |
+| CRIT-3 + HIGH-6 (error sanitization) | Needs project-wide pass |
+| HIGH-1 (hardcoded PG password) | Deferred |
+| HIGH-2 (consolidation controller generification) | Extracted to `docs/planning/2026-06-02T0000_consolidation-controller-generification.md` |
+| HIGH-7 (Step→Stage rename) | Separate cleanup pass planned |
+| CRIT-6 + HIGH-10 (UI operator bypass) | Blocked on HIGH-2 generification refactor |
+
+### Test updates
+
+- 3 WebMvcTest files: removed `ChapterGraphRepository` mock and dead 404 tests; added `StageOperation` failure-path tests
+- `JobStatusBroadcasterTest`: added manual `initExecutor()`/`shutdownExecutor()` calls for new executor
+- `StageDispatcherTest` + `IngestionPipelineCoordinatorTest`: 23 event call sites updated for `correlationId`
+- New `WebLayerArchitectureTest`: 2 ArchUnit rules — no controller may depend on `*Repository` types
+
+### Rules codified
+
+**`coding-standards.md` (portable):**
+- **Error response hygiene** (Security §) — never include exception messages in HTTP response bodies; return sanitized, client-safe strings
+- **Excessive duplication** (Over-Abstraction §) — 3+ near-identical blocks differing only by mechanically derivable values is a defect
+- **`ApplicationEventPublisher` is synchronous** (Async & Executors §) — offload from HTTP threads via executor
+
+**`docs/rules/web-layer-conventions.md` (new file, LoreVault-specific):**
+- Controllers must not inject repositories or data-access beans
+- UI and API controllers must use the same `StageOperation` pipeline interfaces
+- All controllers must use structured `ErrorResponse`; REST/UI status codes must agree
+- Controllers must not contain business logic (event publishing, existence checks)
+
+### Verification
+
+```
+mvn test → BUILD SUCCESS — 430 tests, 0 failures, 0 errors
+mvn test -P architecture-tests → 2 WebLayerArchitectureTest rules pass
+```

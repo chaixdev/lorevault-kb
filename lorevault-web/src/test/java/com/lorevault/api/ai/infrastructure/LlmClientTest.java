@@ -9,6 +9,7 @@ import com.lorevault.api.orchestration.triad.SceneRelationshipAnalysisService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.config.LoreVaultModelsProperties;
+import com.lorevault.api.config.LoreVaultModelsProperties.ModelProperties;
 import com.lorevault.api.config.LoreVaultPromptProperties;
 import com.lorevault.api.ai.ModelSlot;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,6 +63,10 @@ class LlmClientTest {
 
     @BeforeEach
     void setUp() {
+        // Stub model property records so getModelIdForStage doesn't NPE
+        var nlpSmallProps = new ModelProperties(null, null, null, null, null);
+        when(modelProperties.nlpSmall()).thenReturn(nlpSmallProps);
+
         client = new LlmClient(
                 nlpSmallChatClient,
                 nlpBigChatClient,
