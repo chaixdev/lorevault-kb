@@ -14,7 +14,7 @@
 
 The orchestration core is well-designed: the DAG topology is clean, the two-phase CAS guard (PENDING→TRIGGERED→RUNNING) provides correct double-fire protection, and the barrier evaluation Cypher is sound. The review uncovered **1 CRITICAL** (fan-out partial completion) and **1 HIGH** (dead idempotency check), both fixed in-review. Two known gaps (MDC in coordinator, Step→Stage migration) are tracked in planning docs. Four remaining findings (MEDIUM/LOW) are non-blocking cleanup.
 
-**Maintainer disposition:** CRIT-1 and HIGH-1 fixed in `d3d7ab5` (evaluateDownstream try-catch + dead isAlreadyCompleted removal). Two new rules added to `docs/rules/` (fan-out loop resilience, unreachable code after refactor). Step→Stage migration doc status corrected from IMPLEMENTED→PLANNING (`954aeb3`, `docs/planning/`). 436 tests green.
+**Maintainer disposition:** CRIT-1 and HIGH-1 fixed in `d3d7ab5` (evaluateDownstream try-catch + dead isAlreadyCompleted removal). MDC gap confirmed as tracked (downgraded from HIGH after verifying existing planning doc). Step→Stage migration uncovered as a documentation drift incident — retirement was marked IMPLEMENTED in a docs-only commit (`1ffbb244`) and archived 5 minutes later (`20ca49bd`) without any code changes. Corrective docs fix in `954aeb3` (moved back to `docs/planning/`, status corrected to PLANNING). Two new rules codified from this review (`d3d7ab5`). 436 tests green.
 
 ---
 
@@ -54,6 +54,8 @@ The orchestration core is well-designed: the DAG topology is clean, the two-phas
 **Severity:** 🟡 MEDIUM
 **File:** `lorevault-core/.../pipeline/IngestionPipelineCoordinator.java:141-153`
 **Problem:** `findStaleTriggered` returns stages where `status = 'TRIGGERED' AND triggeredAt < now - grace`. It does not update `triggeredAt`. If the dispatcher's `@Async("ingestionTaskExecutor")` pool is saturated and hasn't processed the event within 30s, the same stale stage is returned every cycle and a duplicate `StageTriggeredEvent` is published. The dispatcher's CAS guard prevents duplicate execution, but duplicate events waste resources and create noisy logs.
+
+**Validation performed during review:** In normal operation, the dispatcher receives the event and CAS-es TRIGGERED→RUNNING in milliseconds via `setRunningConditionally`. Once RUNNING, `findStaleTriggered` (which filters on `status = 'TRIGGERED'`) won't re-find it. The duplicate scenario requires the executor to be so saturated that an event sits unprocessed for >30s. Practical risk is low — the CAS guard is the ultimate defense against double-execution.
 
 **Fix:** After re-publishing, update `triggeredAt` to `datetime()` so the stage won't be re-picked until the next grace window expires. Add a `touchTriggeredAt(UUID stageId)` Cypher method to `StageGraphRepository`.
 
@@ -101,12 +103,25 @@ The orchestration core is well-designed: the DAG topology is clean, the two-phas
 ### KG-1 — No MDC context in Coordinator, recovery, or bootstrap paths
 **Severity:** TRACKED
 **File:** `IngestionPipelineCoordinator.java:93-204`
-**Status:** Known gap with existing planning document. Logs from `onStageCompleted`, recovery methods, and `bootstrapJob` have no `jobId`/`stage` — making pipeline debugging require UUID substring matching across log streams. Deferred to MDC propagation planning item.
+**Status:** Known gap with existing planning document. Logs from `onStageCompleted`, recovery methods, and `bootstrapJob` have no `jobId`/`stage` — making pipeline debugging require UUID substring matching across log streams. The reviewer initially flagged this as HIGH, then downgraded to TRACKED after confirming it was already captured in an existing MDC propagation planning item — not a surprise finding.
 
 ### KG-2 — Step→Stage migration documented but never executed
 **Severity:** TRACKED
 **Files:** `StepKey.java`, `StepDefinition.java`, `StepCatalog.java`, `StepResult.java`, `StepEventMapper.java`, 12 command controllers
-**Status:** Retirement plan was marked IMPLEMENTED prematurely (commit `1ffbb244`, docs only, no code changes). `PROJECT-STATUS.md` corrected. Doc moved to `docs/planning/` with PLANNING status. ~32 source files still reference `StepKey`.
+**Status:** Retirement plan was marked IMPLEMENTED prematurely — but the code was never changed. Git archaeology reveals:
+
+- Commit `0bcfa94f`: StepKey/StepDefinition/StepCatalog created (initial)
+- Commit `c3710adb`: One partial move — `StepResult.stepName` typed to `StageKey` (but not renamed)
+- Commit `aebfc6ba`: Concept lane entries ADDED to StepKey (grew it, not retired it)
+- Commit `1ffbb244` (May 31, 02:14): **Docs-only** update — changed retirement doc status to IMPLEMENTED and claimed "StepKey retired" in `PROJECT-STATUS.md`. Zero `.java` files touched.
+- Commit `20ca49bd` (May 31, 02:19, 5 min later): Archived the doc to `docs/archive/planning/`
+
+No deletion commit exists for StepKey. `git log --diff-filter=D` returns nothing. `StageResult.java` and `StageQueryController.java` never existed. The retirement was documented as done but never executed — a documentation drift incident.
+
+**Corrective actions taken:**
+1. Doc moved `docs/archive/planning/` → `docs/planning/`  (re-activated)
+2. Status changed IMPLEMENTED → PLANNING
+3. `PROJECT-STATUS.md` line 67 corrected from past-tense ("Deleted… now use StageKey") to present-tense ("PLANNING, not yet executed… 32+ source files still reference StepKey")
 
 ---
 
@@ -117,7 +132,7 @@ The orchestration core is well-designed: the DAG topology is clean, the two-phas
 | CRIT-1 | 🔴 CRITICAL | `IngestionPipelineCoordinator.java` | Fan-out partial completion on Neo4j error | FIXED `d3d7ab5` |
 | HIGH-1 | 🟠 HIGH | `StageDispatcher.java` | Dead-code idempotency check | FIXED `d3d7ab5` |
 | KG-1 | TRACKED | `IngestionPipelineCoordinator.java` | No MDC in coordinator/recovery | Existing planning doc |
-| KG-2 | TRACKED | 32 files | Step→Stage migration not executed | Doc corrected, plan active |
+| KG-2 | TRACKED | 32 files | Step→Stage migration not executed | Doc corrected `954aeb3`; plan active |
 | MED-1 | 🟡 MEDIUM | `IngestionPipelineCoordinator.java` | Duplicate stale trigger events under load | Open |
 | LOW-1 | 🟢 LOW | `BookConsolidationClaimRepository.java` | UUID/String type mismatch | Open |
 | LOW-2 | 🟢 LOW | `BookConsolidationClaim.java` | Unmapped stageId property | Open |
