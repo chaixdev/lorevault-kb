@@ -22,12 +22,12 @@ import java.util.concurrent.CompletableFuture;
  */
 @Component
 @Slf4j
-public class StepEventMapper {
+public class StageEventMapper {
 
     private final ApplicationEventPublisher eventPublisher;
     private final TaskExecutor ingestionTaskExecutor;
 
-    public StepEventMapper(ApplicationEventPublisher eventPublisher,
+    public StageEventMapper(ApplicationEventPublisher eventPublisher,
                            @Qualifier("ingestionTaskExecutor") TaskExecutor ingestionTaskExecutor) {
         this.eventPublisher = eventPublisher;
         this.ingestionTaskExecutor = ingestionTaskExecutor;
@@ -64,11 +64,11 @@ public class StepEventMapper {
         };
         CompletableFuture.runAsync(() -> eventPublisher.publishEvent(event), ingestionTaskExecutor)
                 .exceptionally(ex -> {
-                    log.error("[StepEventMapper] Failed to publish StageCompletedEvent: stage={}, jobId={}",
+                    log.error("[StageEventMapper] Failed to publish StageCompletedEvent: stage={}, jobId={}",
                             stage, jobId, ex);
                     return null;
                 });
-        log.info("[StepEventMapper] Dispatched StageCompletedEvent: stage={}, jobId={}, scopeId={}, correlationId={}",
+        log.info("[StageEventMapper] Dispatched StageCompletedEvent: stage={}, jobId={}, scopeId={}, correlationId={}",
                 event.getStage(), jobId, scopeId, correlationId);
     }
 
@@ -102,11 +102,11 @@ public class StepEventMapper {
         };
         CompletableFuture.runAsync(() -> eventPublisher.publishEvent(event), ingestionTaskExecutor)
                 .exceptionally(ex -> {
-                    log.error("[StepEventMapper] Failed to publish StageTriggeredEvent: stage={}, jobId={}",
+                    log.error("[StageEventMapper] Failed to publish StageTriggeredEvent: stage={}, jobId={}",
                             stage, jobId, ex);
                     return null;
                 });
-        log.info("[StepEventMapper] Dispatched StageTriggeredEvent: stage={}, jobId={}, scopeId={}, correlationId={}",
+        log.info("[StageEventMapper] Dispatched StageTriggeredEvent: stage={}, jobId={}, scopeId={}, correlationId={}",
                 event.getStage(), jobId, scopeId, correlationId);
     }
 }

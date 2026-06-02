@@ -29,7 +29,7 @@ class ChapterObjectConsolidationCommandControllerWebMvcTest {
     private ChapterObjectConsolidationHandler chapterObjectConsolidator;
 
     @MockitoBean
-    private StepEventMapper stepEventMapper;
+    private StageEventMapper stepEventMapper;
 
     @Test
     void consolidateChapterObjectsSuccessReturns200() throws Exception {

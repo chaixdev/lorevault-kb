@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ChapterCollectiveConsolidationCommandController {
 
     private final ChapterCollectiveConsolidationHandler chapterCollectiveConsolidator;
-    private final StepEventMapper stepEventMapper;
+    private final StageEventMapper stepEventMapper;
 
     @PostMapping("/chapters/{chapterId}/chapter-consolidate-collectives")
     public ResponseEntity<?> consolidateChapterCollectives(

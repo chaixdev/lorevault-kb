@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ChapterLocationConsolidationCommandController {
 
     private final ChapterLocationConsolidationHandler chapterLocationConsolidator;
-    private final StepEventMapper stepEventMapper;
+    private final StageEventMapper stepEventMapper;
 
     @PostMapping("/chapters/{chapterId}/chapter-consolidate-locations")
     public ResponseEntity<?> consolidateChapterLocations(

@@ -177,7 +177,7 @@ public class SceneDetectionHandler implements StageOperation {
             }
 
             // Note: ScenesDetectedEvent is emitted by the caller (handleChapterIngestion
-            // or StepExecutionCommandController), not here — so that fireEvents=false
+            // or StageExecutionCommandController), not here — so that fireEvents=false
             // can suppress the cascade.
 
             long elapsed = System.currentTimeMillis() - start;

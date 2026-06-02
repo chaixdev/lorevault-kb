@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class BookConceptConsolidationCommandController {
 
     private final BookConceptConsolidationHandler bookConceptConsolidator;
-    private final StepEventMapper stepEventMapper;
+    private final StageEventMapper stepEventMapper;
 
     @PostMapping("/books/{bookId}/book-consolidate-concepts")
     public ResponseEntity<?> consolidateBookConcepts(

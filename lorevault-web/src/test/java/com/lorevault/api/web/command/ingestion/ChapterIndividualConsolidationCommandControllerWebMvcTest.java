@@ -29,7 +29,7 @@ class ChapterIndividualConsolidationCommandControllerWebMvcTest {
     private ChapterIndividualConsolidationHandler chapterIndividualConsolidator;
 
     @MockitoBean
-    private StepEventMapper stepEventMapper;
+    private StageEventMapper stepEventMapper;
 
     @Test
     void consolidateChapterIndividuals_success_returns200() throws Exception {

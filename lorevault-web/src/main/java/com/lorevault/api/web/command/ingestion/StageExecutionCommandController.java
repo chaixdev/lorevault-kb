@@ -26,13 +26,13 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Ingestion", description = "Content ingestion operations")
 @Slf4j
 @RequiredArgsConstructor
-public class StepExecutionCommandController {
+public class StageExecutionCommandController {
 
     private final SceneDetectionHandler sceneDetectionHandler;
     private final ChunkingHandler chunkingHandler;
     private final EmbeddingHandler embeddingHandler;
     private final ChapterEventConsolidationHandler chapterEventConsolidator;
-    private final StepEventMapper stepEventMapper;
+    private final StageEventMapper stepEventMapper;
 
     @PostMapping("/chapters/{chapterId}/detect-scenes")
     public ResponseEntity<?> detectScenes(

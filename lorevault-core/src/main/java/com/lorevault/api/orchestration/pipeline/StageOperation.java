@@ -10,7 +10,7 @@ package com.lorevault.api.orchestration.pipeline;
  * orchestration fields, no Spring event annotations.
  *
  * <p>Callers that need step-by-step execution (e.g.
- * {@code StepExecutionCommandController}) should create a
+ * {@code StageExecutionCommandController}) should create a
  * {@link StageExecutionContext} directly and invoke
  * {@link #execute(StageExecutionContext)}.
  *

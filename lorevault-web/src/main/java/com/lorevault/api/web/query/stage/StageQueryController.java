@@ -1,4 +1,4 @@
-package com.lorevault.api.web.query.step;
+package com.lorevault.api.web.query.stage;
 
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,7 +21,7 @@ import java.util.List;
 @RequestMapping("/api/query/ingestion")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Ingestion Steps", description = "Pipeline step discoverability")
+@Tag(name = "Ingestion Stages", description = "Pipeline stage discoverability")
 public class StageQueryController {
 
     /**
@@ -45,28 +45,28 @@ public class StageQueryController {
     );
 
     /**
-     * Returns all registered pipeline step definitions in pipeline order.
+     * Returns all registered pipeline stage definitions in pipeline order.
      */
-    @GetMapping("/steps")
-    public ResponseEntity<?> getSteps() {
-        log.debug("Step definition list requested");
-        StepsResponse response = new StepsResponse(STAGE_INFOS);
-        log.debug("Returning {} step definitions", STAGE_INFOS.size());
+    @GetMapping("/stages")
+    public ResponseEntity<?> getStages() {
+        log.debug("Stage definition list requested");
+        StagesResponse response = new StagesResponse(STAGE_INFOS);
+        log.debug("Returning {} stage definitions", STAGE_INFOS.size());
         return ResponseEntity.ok(response);
     }
 
     /**
-     * Response DTO wrapping a list of step definitions.
+     * Response DTO wrapping a list of stage definitions.
      */
-    record StepsResponse(List<StageInfo> steps) {}
+    record StagesResponse(List<StageInfo> stages) {}
 
     /**
-     * Response DTO for a single step definition.
+     * Response DTO for a single stage definition.
      *
-     * @param key           kebab-case URL segment identifying the step
-     * @param description   human-readable description of what the step does
+     * @param key           kebab-case URL segment identifying the stage
+     * @param description   human-readable description of what the stage does
      * @param scope         {@code "chapter"} or {@code "book"}
-     * @param prerequisites kebab-case URL segments of prerequisite steps
+     * @param prerequisites kebab-case URL segments of prerequisite stages
      */
     record StageInfo(
             String key,

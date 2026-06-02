@@ -111,7 +111,7 @@ Related pattern: [Handler Retry-Safety Pattern](../patterns/ingestion/handler-re
 
 ### 7. `execute(StageExecutionContext ctx)` must not publish domain events
 
-When the `StageOperation` interface's `execute(StageExecutionContext ctx)` method is called, it must not publish domain events. Event emission is the caller's responsibility — either the `StageDispatcher` or the REST controller via `StepEventMapper`.
+When the `StageOperation` interface's `execute(StageExecutionContext ctx)` method is called, it must not publish domain events. Event emission is the caller's responsibility — either the `StageDispatcher` or the REST controller via `StageEventMapper`.
 
 This ensures that direct `execute(ctx)` calls from step endpoints don't trigger downstream cascades unless explicitly requested via `fireEvents=true`.
 
