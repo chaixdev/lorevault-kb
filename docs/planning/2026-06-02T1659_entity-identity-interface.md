@@ -11,6 +11,20 @@ Every entity type (Individual, Location, Object, Collective, Concept, Event) has
 
 Extracting these into interfaces lets consolidation and pipeline code operate on the interface instead of concrete types, collapsing call sites and reducing the blast radius of future changes.
 
+## Evidence vs Interpretation
+
+LoreVault's domain model has two layers. See `docs/rules/entity-node-contract.md`.
+
+| | Evidence Layer | Interpretation Layer |
+|---|---|---|
+| **Nodes** | `*Mention`, `RelationClaim` | `ChapterXxx`, `BookXxx` |
+| **Role** | Raw LLM extractions — facts | Identity grouping — connecting tissue |
+| **Carries coordinates?** | Yes — `PublicationCoordinates` resolved at persistence | No — visible because backing evidence is visible |
+| **Shared interfaces** | `HasProvenance`, `EntityIdentity` | `HasProvenance`, `EntityIdentity` |
+
+Spoilergating filters evidence by coordinates, then traverses to interpretation.
+Interpretation nodes don't hold knowledge — they're identity clustering results.
+
 ## Interface Design
 
 ```java
@@ -31,63 +45,6 @@ public interface EntityIdentity {
 }
 ```
 
-### Field coverage per ladder level
-
-**Mention-level** (IndividualMention, LocationMention, ObjectMention, CollectiveMention, ConceptMention):
-
-| Field | Interface | Notes |
-|-------|-----------|-------|
-| `id` | `HasProvenance` | `@Id` |
-| `displayName` | `EntityIdentity` | Raw |
-| `normalizedName` → `primaryName` | `EntityIdentity` | Rename |
-| `aliases` → `displayAliases` | `EntityIdentity` | Rename, raw |
-| (new) `aliases` | `EntityIdentity` | Normalized |
-| `stageId` | `HasProvenance` | `@Property` |
-| `createdAt` | `HasProvenance` | `@CreatedDate` |
-| `updatedAt` | `HasProvenance` | `@LastModifiedDate` |
-| `source` | — | Provenance, mention-level only |
-| `sceneId` | — | Spatial scope, mention-level only |
-| `chapterId` | — | Spatial scope |
-| `bookId` | — | Spatial scope |
-| `resolutionStatus` | — | Pipeline state |
-| `extractionIndex` | — | Ordering |
-| **Type-specific** (activity, age, region, kind, type, collectiveType, conceptType, etc.) | — | Varies per entity |
-
-**ChapterXxx-level:**
-
-| Field | Interface | Notes |
-|-------|-----------|-------|
-| `id` | `HasProvenance` | |
-| `chapterId` | — | |
-| `stageId` | `HasProvenance` | |
-| `displayName` | `EntityIdentity` | |
-| `normalizedName` → `primaryName` | `EntityIdentity` | |
-| `aliases` → `displayAliases` | `EntityIdentity` | |
-| (new) `aliases` | `EntityIdentity` | |
-| `mentionCount` | — | |
-| `createdAt` | `HasProvenance` | |
-| `updatedAt` | `HasProvenance` | |
-
-**BookXxx-level:**
-
-| Field | Interface | Notes |
-|-------|-----------|-------|
-| `id` | `HasProvenance` | |
-| `bookId` | — | |
-| `stageId` | `HasProvenance` | |
-| `displayName` | `EntityIdentity` | |
-| `normalizedName` → `primaryName` | `EntityIdentity` | |
-| `aliases` → `displayAliases` | `EntityIdentity` | |
-| (new) `aliases` | `EntityIdentity` | |
-| `chapterXxxCount` | — | |
-| `representativeChapterXxxId` | — | |
-| `firstSeenChapterId` | — | |
-| `createdAt` | `HasProvenance` | |
-| `updatedAt` | `HasProvenance` | |
-
-## Code Surface Savings
-
-**NameKeys** gains a convenience overload:
 ```java
 public static Set<String> from(EntityIdentity entity) {
     return from(entity.primaryName(), entity.aliases());
@@ -133,4 +90,5 @@ Field renames change Neo4j property names. Requires **dev DB wipe + re-ingest**.
 - Normalization of `displayAliases` at read time (they're raw audit fields)
 - Fuzzy matching or stemming in `NameKeys`
 - Event entity type — Event has a different structure (no aliases field on `EventExtraction`), documented in `LOW-5` of P2 review. Event integration with these interfaces is Phase 4.
-- Mention-level interfaces for scope (`sceneId`/`chapterId`/`bookId`) and pipeline state (`resolutionStatus`) — these can be extracted later if they prove useful
+- Mention-level interfaces for scope (`sceneId`/`chapterId`/`bookId`) and pipeline state (`resolutionStatus`) — can be extracted later
+- `PublicationCoordinates` on evidence nodes — separate pass, see `docs/rules/entity-node-contract.md` for the evidence/interpretation distinction
