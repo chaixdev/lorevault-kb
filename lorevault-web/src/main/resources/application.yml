@@ -68,4 +68,4 @@ lorevault:
     datasource:
       url: jdbc:postgresql://localhost:5433/lorevault_catalog
       username: lorevault
-      password: lorevault_secret
+      password: ${CATALOG_DB_PASSWORD:lorevault_secret}

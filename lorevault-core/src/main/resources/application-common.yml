@@ -13,13 +13,6 @@ lorevault:
     fail-on-error: false
 
   ai:
-    retry:
-      max-attempts: 3
-      base-delay-ms: 1000
-      backoff-multiplier: 2.0
-      max-delay-ms: 10000
-      jitter-factor: 0.1
-
     models:
       embedding:
         provider: openai-compatible
@@ -69,15 +62,6 @@ lorevault:
       overlap-percentage: 25
       min-chunk-size: 400
       max-chunk-size: 1200
-
-  embedding:
-    model:
-      provider: openai-compatible
-      model: perplexity/pplx-embed-v1-4b
-      dimensions: 1536
-      batch-size: 32
-    health:
-      expected-dim: 1536
 
   event-ann:
     top-k: 8

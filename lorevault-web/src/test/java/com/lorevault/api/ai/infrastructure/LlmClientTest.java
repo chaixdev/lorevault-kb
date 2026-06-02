@@ -8,7 +8,6 @@ import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.triad.SceneRelationshipAnalysisService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lorevault.api.config.LlmClientProperties;
 import com.lorevault.api.config.LoreVaultModelsProperties;
 import com.lorevault.api.config.LoreVaultPromptProperties;
 import com.lorevault.api.ai.ModelSlot;
@@ -54,9 +53,6 @@ class LlmClientTest {
     private LlmCallLoggingService llmLog;
 
     @Mock
-    private LlmClientProperties llmClientProperties;
-
-    @Mock
     private ChatClient.ChatClientRequestSpec requestSpec;
 
     @Mock
@@ -74,7 +70,6 @@ class LlmClientTest {
                 modelProperties,
                 llmLog,
                 new ObjectMapper(),
-                llmClientProperties,
                 RetryTemplate.builder().maxAttempts(1).build()
         );
     }

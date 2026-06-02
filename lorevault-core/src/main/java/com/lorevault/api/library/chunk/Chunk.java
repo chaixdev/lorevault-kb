@@ -2,9 +2,12 @@ package com.lorevault.api.library.chunk;
 
 import com.lorevault.api.library.chapter.Chapter;
 import com.lorevault.api.graph.event.scene.Scene;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.PersistenceCreator;
@@ -16,7 +19,10 @@ import org.springframework.data.neo4j.core.schema.Property;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Node("Chunk")

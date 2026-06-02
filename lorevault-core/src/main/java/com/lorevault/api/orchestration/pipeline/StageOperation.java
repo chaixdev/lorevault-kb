@@ -10,9 +10,9 @@ package com.lorevault.api.orchestration.pipeline;
  * orchestration fields, no Spring event annotations.
  *
  * <p>Callers that need step-by-step execution (e.g.
- * {@code StepExecutionCommandController}) should use the lane-specific
- * {@code *Operation} subinterfaces, which extend this interface and provide
- * a backward-compatible {@code execute(UUID, UUID)} default method.
+ * {@code StepExecutionCommandController}) should create a
+ * {@link StageExecutionContext} directly and invoke
+ * {@link #execute(StageExecutionContext)}.
  *
  * @see StageKey
  * @see StageDispatcher

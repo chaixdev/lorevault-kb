@@ -1,6 +1,7 @@
 package com.lorevault.api.config;
 
 import com.lorevault.api.config.LoreVaultModelsProperties;
+import com.lorevault.catalog.EmbeddingFunction;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -9,6 +10,7 @@ import org.springframework.ai.openai.OpenAiEmbeddingModel;
 import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -139,5 +141,23 @@ var openAiApi = OpenAiApi.builder()
                 .dimensions(LoreVaultEmbeddingProperties.DIMENSIONS)
                 .build();
         return new OpenAiEmbeddingModel(openAiApi, org.springframework.ai.document.MetadataMode.EMBED, options);
+    }
+
+    /**
+     * Provides the {@link EmbeddingFunction} bean for the catalog module.
+     * <p>
+     * The catalog defines the contract ({@code EmbeddingFunction} interface in
+     * {@code com.lorevault.catalog}); core provides the implementation by wrapping
+     * Spring AI's {@link EmbeddingModel}. The catalog has zero knowledge of Spring AI types.
+     * <p>
+     * This bean is conditional on {@code lorevault.catalog.enabled=true} so it
+     * only activates when the catalog module is in use.
+     */
+    @Bean
+    @Qualifier("catalogEmbeddingFunction")
+    @ConditionalOnProperty(name = "lorevault.catalog.enabled", havingValue = "true")
+    public EmbeddingFunction embeddingFunction(
+            @Qualifier("embeddingModel") EmbeddingModel embeddingModel) {
+        return embeddingModel::embed;
     }
 }

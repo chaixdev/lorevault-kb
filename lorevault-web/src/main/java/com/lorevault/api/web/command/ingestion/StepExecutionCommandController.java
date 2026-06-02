@@ -2,8 +2,8 @@ package com.lorevault.api.web.command.ingestion;
 
 import com.lorevault.api.graph.event.scene.Scene;
 import com.lorevault.api.orchestration.scene.SceneDetectionHandler;
-import com.lorevault.api.library.chunk.ChunkingOperation;
-import com.lorevault.api.ai.embedding.EmbeddingOperation;
+import com.lorevault.api.library.chunk.ChunkingHandler;
+import com.lorevault.api.ai.embedding.EmbeddingHandler;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.StageKey;
 import com.lorevault.api.orchestration.pipeline.StageOperation;
@@ -29,8 +29,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class StepExecutionCommandController {
 
     private final SceneDetectionHandler sceneDetectionHandler;
-    private final ChunkingOperation chunkingOperation;
-    private final EmbeddingOperation embeddingOperation;
+    private final ChunkingHandler chunkingHandler;
+    private final EmbeddingHandler embeddingHandler;
     private final StageOperation chapterEventResolutionOperation;
     private final StepEventMapper stepEventMapper;
 
@@ -116,7 +116,7 @@ public class StepExecutionCommandController {
         }
 
         log.info("[CMD] Chunk chapter: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StageResult result = chunkingOperation.execute(jobUuid, chapterUuid);
+        StageResult result = chunkingHandler.execute(new StageExecutionContext(null, jobUuid, chapterUuid, null, StageKey.CHUNKING));
 
         StageExecutionResponse response = StageExecutionResponse.from(result, StageKey.CHUNKING, "chapter", chapterId);
 
@@ -163,7 +163,7 @@ public class StepExecutionCommandController {
         }
 
         log.info("[CMD] Embed chapter: chapterId={}, jobId={}, fireEvents={}", chapterUuid, jobUuid, fireEvents);
-        StageResult result = embeddingOperation.execute(jobUuid, chapterUuid);
+        StageResult result = embeddingHandler.execute(new StageExecutionContext(null, jobUuid, chapterUuid, null, StageKey.EMBEDDING));
 
         StageExecutionResponse response = StageExecutionResponse.from(result, StageKey.EMBEDDING, "chapter", chapterId);
 

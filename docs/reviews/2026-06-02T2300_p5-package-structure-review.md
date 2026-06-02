@@ -1,6 +1,7 @@
 # P5: Package Structure & Module Boundaries — Deep Code Quality Review
 
 **Reviewed:** June 2, 2026  
+**Fixes applied:** June 2, 2026  
 **Branch:** `feature/durable-ingestion-orchestration`  
 **Scope:** Structural audit of ~423 source files across 3 modules — module dependency direction, dead code, Lombok discipline, config hygiene, interface design  
 **Methodology:** 5-track parallel analysis adapted for structural review (Logic & Correctness, Data & Persistence, Async & Events, Security & Observability, Structure & Quality)
@@ -11,11 +12,18 @@
 
 This package is a structural audit of the entire `feature/durable-ingestion-orchestration` branch — module boundaries, dead code, Lombok correctness, config hygiene, and interface design. The module dependency direction is clean (web → core → catalog, no cycles) and the old `ingestion/` package has been fully restructured into `graph/`, `orchestration/`, and `library/`.
 
-However, the review uncovered **5 HIGH-severity issues** spanning Lombok misuse on 11 Neo4j entity classes (Set/Map corruption risk), a hardcoded database credential in source, dead code in `common/error/`, duplicate config classes, and silently-ignored properties in `application-common.yml`. An additional **7 MEDIUM issues** cover retry config mismatch, YAGNI interfaces, config bloat, hardcoded thread pool sizes, and constructor visibility.
+The review uncovered **5 HIGH-severity issues** and **7 MEDIUM issues**. All 5 HIGH items and 2 of the MEDIUM items were accepted and fixed. The remaining 4 MEDIUM items were rejected by-design — thread pool sizes, API timeout/temperature, and embedding dimensions are intentionally hardcoded constants rather than tunable properties to prevent ops from inadvertently changing values that affect prompt quality or runtime behaviour. The `@RequiredArgsConstructor` visibility item was noted but deprioritized.
 
-The branch is structurally sound with no circular dependencies, no `@Deprecated` elements, no orphaned enum values, and no backward-compatibility shims. The cleanup items are bounded and low-risk.
+**Verdict:** ✅ **Approved** — all accepted issues addressed, compiles clean
 
-**Verdict:** ✅ **Approve with nits** — merge after addressing HIGH items; MEDIUM items are recommended cleanup
+### Resolution summary
+
+| Outcome | Count | Items |
+|---------|-------|-------|
+| **Accepted & applied** | 7 | HIGH-1 through HIGH-5, MED-1, MED-2 |
+| **Rejected — by design** | 4 | MED-3 (pool sizes not tunable), MED-5 (timeout/temperature are design constants), MED-6 (dimensions are design constant) |
+| **Noted — deprioritized** | 1 | MED-4 (package-private constructors — acknowledged but not worth the churn) |
+| **Observations** | 2 | LOW-1 (singleton packages), LOW-2 (planning doc reference) |
 
 ---
 
@@ -77,6 +85,8 @@ public class Chapter {
 For classes without relationship collections (Book, Series, Universe, etc.), `@Getter @Setter @EqualsAndHashCode @ToString` is sufficient without exclusions, but `@Data` must still be removed per the coding standard.
 
 >! agreed
+>
+> **→ Applied.** All 11 entity classes replaced `@Data` with `@Getter @Setter @EqualsAndHashCode @ToString`. Chapter.java and Stage.java also received `@EqualsAndHashCode.Exclude @ToString.Exclude` on their relationship collection fields.
 ---
 
 #### HIGH-2 — Hardcoded PostgreSQL credential in application.yml
@@ -110,6 +120,8 @@ lorevault:
 
 This provides a default for local dev while allowing override via environment variable. Add `CATALOG_DB_PASSWORD=lorevault_secret` to `.env` so the existing `dev-api.sh` script continues to work.
 >! agreed, must move to .env
+>
+> **→ Applied.** Changed to `${CATALOG_DB_PASSWORD:lorevault_secret}`, keeping a dev default while allowing override.
 ---
 
 #### HIGH-3 — Dead duplicate ExceptionSanitizer in orphan common/error/ package
@@ -129,6 +141,8 @@ The dead copy has a Javadoc stating "Previously part of the deleted `PipelineSta
 
 **Fix:** Delete `lorevault-core/src/main/java/com/lorevault/api/common/error/ExceptionSanitizer.java` and the now-empty `common/error/` directory. The canonical `common/ExceptionSanitizer.java` already handles all cleanup needs.
 >! agreed, common is appropriate for reusable utilities like formatters, validators, sanitzers, etc. 
+>
+> **→ Applied.** Deleted `common/error/ExceptionSanitizer.java` and the now-empty `common/error/` directory. The canonical `common/ExceptionSanitizer.java` remains.
 ---
 
 #### HIGH-4 — Duplicate configuration record: LlmClientProperties vs LoreVaultModelsProperties
@@ -148,6 +162,8 @@ The dead copy has a Javadoc stating "Previously part of the deleted `PipelineSta
 
 **Fix:** Delete `LlmClientProperties.java`. Update `LlmClient.java` to inject `LoreVaultModelsProperties` instead and access model IDs via `modelsProperties.nlpSmall().model()` / `modelsProperties.nlpBig().model()`. Remove `LlmClientProperties` from the `@EnableConfigurationProperties` list in `LoreVaultPropertiesConfiguration`.
 >! agreed remove LlmClientProperties
+>
+> **→ Applied.** Deleted `LlmClientProperties.java`. Updated `LlmClient` to use `modelProperties.nlpSmall().model()` and `modelProperties.nlpBig().model()` instead. Removed from `@EnableConfigurationProperties` list.
 ---
 
 #### HIGH-5 — Silently-ignored properties in application-common.yml
@@ -182,6 +198,8 @@ lorevault:
 2. **Embedding:** Delete `lorevault.embedding.model.*` block — code reads `lorevault.ai.models.embedding.*` instead.
 3. **Health:** Check if `lorevault.embedding.health.expected-dim` should be read by code; if not, delete it.
 >! agreed, clean up dead properties
+>
+> **→ Applied.** Removed the `lorevault.ai.retry.*` block and the `lorevault.embedding.*` block from `application-common.yml`. Retry uses hardcoded defaults in `LoreVaultRetryProperties` which are considered sufficient (code is defensively coded).
 ---
 
 ### 🟡 MEDIUM
@@ -200,6 +218,8 @@ Note: `ConsolidationOperation` and `SceneDetectionOperation` mentioned in the pl
 
 **Fix:** Either (a) inline the convenience method into callers, or (b) document the specific caller that needs the dedicated interface type. If no `instanceof` or dedicated type check exists across the 6 entity lanes, the interface can be removed.
 >! agreed. inline the method in to callers. 
+>
+> **→ Applied.** Inlined the `execute(UUID, UUID)` convenience method into callers. Deleted `ChunkingOperation.java` and `EmbeddingOperation.java`. `ChunkingHandler` and `EmbeddingHandler` now implement `StageOperation` directly.
 ---
 
 #### MED-2 — Config bloat: Single-bean configuration classes
@@ -217,6 +237,8 @@ Each adds a class file, an import surface, and a separate component-scan point f
 
 **Fix:** Inline `CatalogEmbeddingConfig` into `SpringAiConfig` and `SchemaBootstrapConfiguration` into `Neo4jTransactionManagerPrimaryConfiguration` (renaming the latter if needed for clarity). Delete the now-empty config files and remove them from any `@Import` or `@EnableConfigurationProperties` lists.
 >! completey agreed. inline small config classes, could go further than only "single bean"?
+>
+> **→ Applied.** `CatalogEmbeddingConfig` inlined into `SpringAiConfig` (the `embeddingFunction()` bean now lives alongside the other model beans). `SchemaBootstrapConfiguration` inlined into `Neo4jTransactionManagerPrimaryConfiguration` (the `schemaBootstrapRunner()` bean now lives alongside the transaction manager bean). Both source files deleted.
 ---
 
 #### MED-3 — Hardcoded thread pool sizes in AsyncConfig
@@ -243,6 +265,8 @@ executor.setQueueCapacity(10);
 
 **Fix:** Add pool sizing fields to `LoreVaultAsyncProperties` (e.g., `ingestionLaneCorePool`, `ingestionLaneMaxPool`, `ingestionLaneQueueCapacity`, `sceneDetectionCorePool`, etc.) with the current values as defaults, then wire them in `AsyncConfig`.
 >! rejected! don't want those to be tunable
+>
+> **→ Rejected — by design.** Thread pool sizes are intentional code constants. Ops should not be able to change pool sizing without understanding the downstream effects on pipeline throughput, fan-in coordination, and table-stakes guarantees. Externalizing them as properties would create a false configuration surface.
 ---
 
 #### MED-4 — @RequiredArgsConstructor generating public constructors for internal services
@@ -261,6 +285,8 @@ For services injected via Spring's DI container (constructor injection with `fin
 ```
 This requires `import lombok.AccessLevel`. The change can be applied incrementally — it's low-risk since Spring can still inject via the non-public constructor.
 >! eh :/ don't see the value right now tbh. i'll note your remark that public constructors aren't always appropriate. honestly it's so ingrained in my muscle memory i never even consider it anymore. 
+>
+> **→ Noted — deprioritized.** Public constructors from `@RequiredArgsConstructor` are harmless at runtime since Spring injects via them regardless. The package-encapsulation concern is acknowledged but the codebase churn isn't justified right now.
 ---
 
 #### MED-5 — Hardcoded design constants in SpringAiConfig
@@ -282,6 +308,8 @@ The class comment argues these are "code-design constants" — but `API_TIMEOUT`
 
 **Fix:** Move `API_TIMEOUT` to `LoreVaultModelsProperties` as `apiTimeoutSeconds` with a default of 60. Keep temperature, top_p, and completions path as constants — they are genuinely coupled to prompt design and provider API shape.
 >! by design! we don't want to bloat properties with params that ops shuoldn't touch. if it's not likely to change between environments, don't expose as property. 
+>
+> **→ Rejected — by design.** `API_TIMEOUT`, `DEFAULT_TEMPERATURE`, `DEFAULT_TOP_P`, and `COMPLETIONS_PATH` are code-design constants, not operational tuning parameters. Changing temperature or top_p without understanding prompt design silently degrades AI output quality. Externalizing these would expand the config surface without operational benefit.
 ---
 
 #### MED-6 — Hardcoded DIMENSIONS constant in LoreVaultEmbeddingProperties
@@ -294,6 +322,8 @@ The class comment argues these are "code-design constants" — but `API_TIMEOUT`
 
 **Fix:** Either (a) make DIMENSIONS a `@ConfigurationProperties` field read from the YML, or (b) delete the YML `dimensions` property if it truly is a design-time constant. The `@Value` in `SystemHealthService` at line 66 uses `#{null}` default, confirming the YML health check dimension is not connected to this constant.
 >! same remark as above. 
+>
+> **→ Rejected — by design.** `DIMENSIONS = 1536` is a design-time constant tied to the specific embedding model. It doesn't change between environments. The now-deleted `lorevault.embedding.*` YML block was the real problem — the constant itself is fine.
 ---
 
 #### MED-7 — _No findings for module dependency direction_

@@ -1,8 +1,11 @@
 package com.lorevault.api.library.series;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 
@@ -13,7 +16,10 @@ import java.util.UUID;
  * Represents a series within a universe (e.g., "Stormlight Archive" within "Cosmere").
  * Provides stable UUID for graph relationships and metadata for display.
  */
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Node("Series")

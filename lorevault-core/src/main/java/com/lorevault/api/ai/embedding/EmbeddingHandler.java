@@ -5,6 +5,7 @@ import static com.lorevault.api.common.ExceptionSanitizer.sanitize;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
 import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StageResult;
 
 import com.lorevault.api.library.chunk.ChunkGraphRepository;
@@ -20,7 +21,7 @@ import java.util.UUID;
  * Listens to: StageTriggeredEvent (EMBEDDING)
  * Emits: StageCompletedEvent (on success, skip, or failure)
  *
- * Implements {@link EmbeddingOperation} so the step-by-step execution controller or step-execution
+ * Implements {@link StageOperation} so the step-by-step execution controller or step-execution
  * endpoints can invoke embedding generation directly without Spring event dispatch.
  *
  * Responsibilities:
@@ -30,7 +31,7 @@ import java.util.UUID;
 @Component
 @Slf4j
 @ForStage(StageKey.EMBEDDING)
-public class EmbeddingHandler implements EmbeddingOperation {
+public class EmbeddingHandler implements StageOperation {
 
     private final ChunkGraphRepository chunkRepo;
     private final EmbeddingService embeddingService;

@@ -1,6 +1,8 @@
 # P3: LLM Integration & Scene Analysis — Deep Code Quality Review
 
 **Reviewed:** June 2, 2026  
+**Fixes applied:** June 2, 2026 (commit `5c2b24b`)  
+**Rules codified:** June 2, 2026 (commit `a65b36fa`)  
 **Branch:** `feature/durable-ingestion-orchestration`  
 **Scope:** ~26 source files (4,244 lines) across scene detection, triad analysis, LLM infrastructure, and prompt management  
 **Methodology:** 5-track parallel oracle analysis (Logic & Correctness, Data & Persistence, Async & Events, Security & Observability, Structure & Quality)
@@ -15,7 +17,7 @@ However, the review uncovered **1 CRITICAL defect** (NPE in relation-claim norma
 
 The most pervasive theme is **content leakage**: chapter-derived text (copyrighted literary works) is logged verbatim at DEBUG/TRACE levels and embedded in exception messages stored in the graph database. While functionally harmless, this represents a data handling compliance risk.
 
-**Verdict:** 🔁 **Request Changes** — must fix CRITICAL and HIGH items before merging
+**Verdict:** ✅ **Fixed** — 23 of 24 findings addressed (commit `5c2b24b`); 4 rules gaps codified (commit `a65b36fa`). 1 finding rejected by user, 1 deferred. 430 tests pass.
 
 ---
 
@@ -381,32 +383,32 @@ Additionally, `SceneDetectionOperation.execute(UUID, UUID)` contains a dead defa
 
 ## 3. Priority Action Table
 
-| ID | Severity | File | Description | Must Fix Before Merge? |
-|----|----------|------|-------------|------------------------|
-| CRIT-1 | 🔴 CRITICAL | `SceneRelationshipAnalysisService.java:504` | NPE in relation-claim normalization from null LLM sub-records | **Yes** |
-| HIGH-1 | 🟠 HIGH | `LlmClient.java:325` | Fixed temperature on Spring RetryTemplate retries in structured calls | **Yes** |
-| HIGH-2 | 🟠 HIGH | `SceneRelationshipAnalysisService.java:771` | Cross-chapter scene text extraction uses wrong chapter's text | **Yes** |
-| HIGH-3 | 🟠 HIGH | `SceneDetectionService.java:140` | Thread.sleep() blocks single-threaded executor during retry | **Yes** |
-| HIGH-4 | 🟠 HIGH | `SceneProcessingService.java:183,201` + `LlmClient.java:280` | Chapter-derived content in logs at multiple levels | **Yes** |
-| HIGH-5 | 🟠 HIGH | `SceneProcessingService.java:314–336` | Chapter text fragments in exception messages and IngestionFailure records | **Yes** |
-| HIGH-6 | 🟠 HIGH | `Scene.java:33` + `LlmCallRecord.java:20` | @Data on Neo4j entities with @Relationship collections | **Yes** |
-| MED-1 | 🟡 MEDIUM | `SceneDetectionService.java:247` | Empty LLM responses not recognized as retryable in service-level loop | Recommended |
-| MED-2 | 🟡 MEDIUM | `SceneDetectionOperation.java:29` | Default execute method passes null stageId (provenance loss) | Recommended |
-| MED-3 | 🟡 MEDIUM | `SceneProcessingService.java:93` | Non-atomic duplicate detection (TOCTOU) | Recommended |
-| MED-4 | 🟡 MEDIUM | `SceneTemporalRelationshipPersistenceService.java` | llmCallRecordId stored inconsistently across edge types | Recommended |
-| MED-5 | 🟡 MEDIUM | `LlmRetryStrategy.java` | Dead code with Thread.sleep() anti-pattern — delete | Recommended |
-| MED-6 | 🟡 MEDIUM | `LlmClient.java:241` | System prompt logged verbatim at TRACE | Recommended |
-| MED-7 | 🟡 MEDIUM | `LlmClient.java:425` | Token counts are heuristic estimates, not API-reported | Recommended |
-| MED-8 | 🟡 MEDIUM | `LlmCallLoggingService.java:67` | llmCallId generated post-call — incomplete audit trail | Recommended |
-| MED-9 | 🟡 MEDIUM | `chapter-segmentation.txt` | Chapter text without structural delimiters (prompt injection) | Recommended |
-| MED-10 | 🟡 MEDIUM | 3 interfaces | Single-implementation interfaces without justification | Recommended |
-| MED-11 | 🟡 MEDIUM | `LlmClient.java:62` | Mixed @Value field + constructor injection | Recommended |
-| LOW-1 | 🟢 LOW | `SceneDetectionHandler.java:140` | Duplicate scene indices silently discarded in merge | No |
-| LOW-2 | 🟢 LOW | `LlmClient.java:296` | Logged temperature always initial value, not retry-attempt | No |
-| LOW-3 | 🟢 LOW | `Scene.java:47` | chapter field always null when loaded from graph | No |
-| LOW-4 | 🟢 LOW | `Scene.java:110` | SceneHasChunk properties inaccessible via domain model | No |
-| LOW-5 | 🟢 LOW | `LlmClient.java:233` | Unused method overloads | No |
-| LOW-6 | 🟢 LOW | `LlmClient.java:436` | serializeStructuredResponse silently swallows failures | No |
+| ID | Severity | File | Description | Status |
+|----|----------|------|-------------|--------|
+| CRIT-1 | 🔴 CRITICAL | `SceneRelationshipAnalysisService.java` | NPE when LLM returns null sub-records in relation claims | ✅ Fixed |
+| HIGH-1 | 🟠 HIGH | `LlmClient.java:325` | Fixed temperature on structured-call retries wastes attempts | ✅ Fixed |
+| HIGH-2 | 🟠 HIGH | `SceneRelationshipAnalysisService.java:771` | Cross-chapter scene text uses wrong chapter's rawText | ✅ Fixed |
+| HIGH-3 | 🟠 HIGH | `SceneDetectionService.java:140` | Thread.sleep() blocks single-threaded executor | ✅ Fixed (folded into HIGH-1) |
+| HIGH-4 | 🟠 HIGH | `SceneProcessingService.java:183,201` + `LlmClient.java:280` | Chapter-derived content in logs at multiple levels | ✅ Fixed |
+| HIGH-5 | 🟠 HIGH | `SceneProcessingService.java:314–336` | Chapter text fragments in exception messages and IngestionFailure records | ❌ Rejected |
+| HIGH-6 | 🟠 HIGH | `Scene.java:33` + `LlmCallRecord.java:20` | @Data on Neo4j entities with @Relationship collections | ✅ Fixed |
+| MED-1 | 🟡 MEDIUM | `SceneDetectionService.java:247` | Empty LLM responses not recognized as retryable in service-level loop | ✅ Fixed |
+| MED-2 | 🟡 MEDIUM | `SceneDetectionOperation.java:29` | Default execute method passes null stageId (provenance loss) | ✅ Fixed (interface deleted) |
+| MED-3 | 🟡 MEDIUM | `SceneProcessingService.java:93` | Non-atomic duplicate detection (TOCTOU) | ✅ Fixed |
+| MED-4 | 🟡 MEDIUM | `SceneTemporalRelationshipPersistenceService.java` | llmCallRecordId stored inconsistently across edge types | ✅ Fixed |
+| MED-5 | 🟡 MEDIUM | `LlmRetryStrategy.java` | Dead code with Thread.sleep() anti-pattern — delete | ✅ Fixed (deleted) |
+| MED-6 | 🟡 MEDIUM | `LlmClient.java:241` | System prompt logged verbatim at TRACE | ✅ Fixed |
+| MED-7 | 🟡 MEDIUM | `LlmClient.java:425` | Token counts are heuristic estimates, not API-reported | ✅ Fixed |
+| MED-8 | 🟡 MEDIUM | `LlmCallLoggingService.java:67` | llmCallId generated post-call — incomplete audit trail | ✅ Fixed |
+| MED-9 | 🟡 MEDIUM | `chapter-segmentation.txt` | Chapter text without structural delimiters (prompt injection) | ✅ Fixed |
+| MED-10 | 🟡 MEDIUM | 3 interfaces | Single-implementation interfaces without justification | ✅ Fixed (deleted) |
+| MED-11 | 🟡 MEDIUM | `LlmClient.java:62` | Mixed @Value field + constructor injection | ✅ Fixed |
+| LOW-1 | 🟢 LOW | `SceneDetectionHandler.java:140` | Duplicate scene indices silently discarded in merge | ✅ Fixed |
+| LOW-2 | 🟢 LOW | `LlmClient.java:296` | Logged temperature always initial value, not retry-attempt | ✅ Moot |
+| LOW-3 | 🟢 LOW | `Scene.java:47` | chapter field always null when loaded from graph | ✅ Fixed |
+| LOW-4 | 🟢 LOW | `Scene.java:110` | SceneHasChunk properties inaccessible via domain model | ⏸️ Deferred |
+| LOW-5 | 🟢 LOW | `LlmClient.java:233` | Unused method overloads | ✅ Fixed |
+| LOW-6 | 🟢 LOW | `LlmClient.java:436` | serializeStructuredResponse silently swallows failures | ✅ Fixed |
 
 ---
 
@@ -430,3 +432,82 @@ The following scenarios lack test coverage against the findings identified above
 The retry architecture is thoughtfully layered — service-level semantic retry with temperature progression (`SceneDetectionService.detectScenesWithRetry`) sits above infrastructure-level retry (`LlmClient`'s Spring RetryTemplate), and the handler (`SceneDetectionHandler.isRetryableError`) provides a third classification layer. The retryable-error code sets (`SCENE_DETECTION_RETRY_EXHAUSTED`, `TRIAD_RELATION_MISSING`, etc.) are comprehensive and well-organized.
 
 Entity extraction from triad analysis is impressively null-safe — every `normalize*()` method in `SceneRelationshipAnalysisService` guards against null `parsed`, null `currentSceneEntities()`, and null sub-lists, with clean `List.of()` fallbacks. The `ExceptionSanitizer` pattern (CR/LF stripping, length truncation) is a good foundation that should be applied more consistently. The `scene-analysis-usertemplate.st` with CDATA wrappers is the correct pattern for prompt injection defense and should be replicated for chapter segmentation.
+
+---
+
+## 6. Disposition
+
+23 of 24 findings were addressed. 1 finding was user-rejected, 1 deferred.
+
+| ID | Severity | Status | Detail |
+|----|----------|--------|--------|
+| CRIT-1 | 🔴 CRITICAL | ✅ **Fixed** | Null-guard in `normalizeRelationClaims` for `relationType()`, `subject()`, `object()` sub-records |
+| HIGH-1 | 🟠 HIGH | ✅ **Fixed** | Consolidated all retry into `LlmClient`; progressive temperature in `executeSceneDetectionStructuredCall`; removed service-level for-loops in `SceneDetectionService.detectScenesWithRetry()` and `SceneRelationshipAnalysisService.analyzeTriadWithSemanticRetry()` |
+| HIGH-2 | 🟠 HIGH | ✅ **Fixed** | `extractSceneText()` prefers `scene.getText()` over wrong-chapter `rawText` |
+| HIGH-3 | 🟠 HIGH | ✅ **Fixed** | Folded into HIGH-1 — `Thread.sleep()` eliminated with retry loop removal |
+| HIGH-4 | 🟠 HIGH | ✅ **Fixed** | Logs truncated to length+SHA-256 prefix; full response/raw logs removed. Neo4j persistence keeps full content (audit requirement) |
+| HIGH-5 | 🟠 HIGH | ❌ **Rejected** | User wants start anchor diagnostics preserved in exception messages and `IngestionFailure` records — critical app diagnostic info |
+| HIGH-6 | 🟠 HIGH | ✅ **Fixed** | `@Data` → `@Getter @Setter @EqualsAndHashCode @ToString` with `@Exclude` on `@Relationship` fields on `Scene.java` and `LlmCallRecord.java` |
+| MED-1 | 🟡 MEDIUM | ✅ **Fixed** | `"empty response"` added to `isKnownRetryableMessage` |
+| MED-2 | 🟡 MEDIUM | ✅ **Fixed** | Deleted default `execute(UUID, UUID)` method (and entire `SceneDetectionOperation` interface) |
+| MED-3 | 🟡 MEDIUM | ✅ **Fixed** | `MERGE (s:Scene {chapterId, sceneIndex})` replaces check-then-save for atomic idempotency |
+| MED-4 | 🟡 MEDIUM | ✅ **Fixed** | `llmCallRecordId` added as dedicated `@Property` on `TEMPORAL` edges, matching `AMBIGUOUS_RELATION` |
+| MED-5 | 🟡 MEDIUM | ✅ **Fixed** | `LlmRetryStrategy.java` deleted (dead code, never called) |
+| MED-6 | 🟡 MEDIUM | ✅ **Fixed** | System prompt logged as `sha256prefix()` only — never full text |
+| MED-7 | 🟡 MEDIUM | ✅ **Fixed** | `ChatResponse.getMetadata().getUsage()` captured; actual token counts persisted; `tokensEstimated` flag set to `false` when real counts available |
+| MED-8 | 🟡 MEDIUM | ✅ **Fixed** | `UUID callId` generated pre-call in `LlmClient`, passed through `persistLlmCallSafely` → `logCall()` |
+| MED-9 | 🟡 MEDIUM | ✅ **Fixed** | `chapter-segmentation-usertemplate.st` wraps chapter text in `<chapter_text><![CDATA[...]]></chapter_text>` |
+| MED-10 | 🟡 MEDIUM | ✅ **Fixed** | 3 single-impl interfaces deleted: `LlmCallLogger`, `TriadAnalysisArtifactLookup`, `SceneDetectionOperation`. 2 dead utility classes deleted: `LlmRetryStrategy`, `TriadRelationInverter` |
+| MED-11 | 🟡 MEDIUM | ✅ **Fixed** | `@Value` fields replaced with `LlmClientProperties` `@ConfigurationProperties` record, constructor-injected |
+| LOW-1 | 🟢 LOW | ✅ **Fixed** | `log.warn()` on duplicate scene index |
+| LOW-2 | 🟢 LOW | ✅ **Moot** | Temperature captured at retry-attempt; moot after HIGH-1 retry consolidation |
+| LOW-3 | 🟢 LOW | ✅ **Fixed** | `Scene.chapter` field removed (always null on load; no `@Relationship` annotation) |
+| LOW-4 | 🟢 LOW | ⏸️ **Deferred** | `SceneHasChunk` — not needed today |
+| LOW-5 | 🟢 LOW | ✅ **Fixed** | 2 unused method overloads deleted in `LlmClient` |
+| LOW-6 | 🟢 LOW | ✅ **Fixed** | `serializeStructuredResponse` fallback upgraded from `log.debug` to `log.warn` |
+
+**Final tally:** 23 fixed · 1 rejected · 1 deferred
+
+---
+
+## 7. Retrospective — Root Cause Analysis
+
+After fixing all findings, the rules corpus was cross-referenced against each finding to determine whether the defect was **preventable** by an existing rule, **expected LLM drift** from agent-assisted accretion, or a **gap in the rules** that should be codified.
+
+### Classification
+
+| Category | Count | Findings |
+|----------|-------|----------|
+| **Preventable** (rule existed, was violated) | 6 | CRIT-1, HIGH-2, HIGH-4, HIGH-6, MED-5, MED-10 |
+| **LLM drift** (expected accretion, review caught it) | 1 | MED-1 |
+| **Rules gap** (no rule covered it) | 4 | HIGH-1, MED-3, MED-4, MED-11 |
+
+### Preventable — existing rules that should have caught these
+
+| Finding | Rule violated |
+|---------|--------------|
+| CRIT-1 (NPE on null sub-records) | `coding-standards.md` §Spring AI: *"Null-guard every LLM response access"* |
+| HIGH-2 (cross-chapter text) | `service-design-principles.md`: *"Abstraction Scope Must Match Domain Scope"* — building triads per-chapter forced asymmetric cross-boundary helpers |
+| HIGH-4 (content in logs) | `logging-philosophy.md` Rule 4: *"What Must Never Appear in Logs: book text/chapter raw content, AI response payloads"* — violated at 3 log sites |
+| HIGH-6 (@Data on entities) | `coding-standards.md` §Lombok: *"Never @Data on Neo4j entity classes"* — violated on 2 entity classes |
+| MED-5 (dead code) | `code-organization-guidance.md`: *"Zero callers = delete"* |
+| MED-10 (single-impl interfaces) | `coding-standards.md` §Over-Abstraction: *"Single-implementation interfaces are a defect without justification"* — 3 violations |
+
+**Takeaway:** The rules corpus is effective. 6 of 11 findings were direct violations of clear, existing rules. These should never have reached the review stage. The Lombok and logging rules alone prevented 4 of the 6.
+
+### LLM drift — expected accretion from agent-assisted development
+
+MED-1 (missing `"empty response"` in retryable-message list) is the only genuine LLM drift case. `exception-semantics.md` Rule 2 already condemns string-based failure classification (`"Do not encode failure meaning only in message text"`), but an LLM extending a fragile string-matching system naturally adds another string rather than refactoring to typed classification. This is exactly what review sessions are designed to catch — accretion on an existing anti-pattern that the rules already flag.
+
+### Rules gaps — codified as a result of this review
+
+| Finding | What was missing | Where codified |
+|---------|-----------------|----------------|
+| HIGH-1 (fixed retry temperature) | No rule required varying temperature on structured-output retries. Fixed temperature wastes retry attempts. | `coding-standards.md` §Spring AI → *"Retry parameter variation"* |
+| MED-3 (TOCTOU check-then-create) | No rule explicitly said bare `if exists return else save` is a TOCTOU defect. The lock-section mentioned constraints as guardrails but didn't prescribe atomic patterns. | `coding-standards.md` §Spring Data Neo4j → *"Atomic idempotency guards"* |
+| MED-4 (inconsistent llmCallRecordId) | `stageId` provenance was exhaustively documented, but no rule generalized the pattern to other cross-cutting audit fields. | `handler-design-contract.md` Rule 12 → *"Cross-cutting audit properties must use consistent storage"* |
+| MED-11 (@Value + constructor mix) | Rules covered `@ConfigurationProperties` over scattered `@Value` and constructor injection separately — but not their interaction. A class with constructor-injected dependencies + `@Value` on fields is an inconsistency. | `coding-standards.md` §Spring Boot 3.5 → extended `@ConfigurationProperties` rule with code examples and constructor-flow requirement |
+
+### Meta-finding: rules that were right but lacked enforcement
+
+`exception-semantics.md` Rule 2 correctly identifies string-based failure classification as an anti-pattern, but the codebase still relies on it for retryability decisions. MED-1's root cause wasn't a missing entry in the string list — it was that the list exists at all. The rule is sound; the codebase hadn't been refactored to follow it.

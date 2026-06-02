@@ -3,6 +3,7 @@ package com.lorevault.api.library.chunk;
 import com.lorevault.api.orchestration.pipeline.StageExecutionContext;
 import com.lorevault.api.orchestration.pipeline.ForStage;
 import com.lorevault.api.orchestration.pipeline.StageKey;
+import com.lorevault.api.orchestration.pipeline.StageOperation;
 import com.lorevault.api.orchestration.pipeline.StageResult;
 
 import com.lorevault.api.library.chapter.Chapter;
@@ -26,7 +27,7 @@ import static com.lorevault.api.common.HashUtils.generateSha256Hash;
  * Listens to: StageTriggeredEvent (CHUNKING)
  * Emits: StageCompletedEvent (on success, skip, or failure)
  *
- * Implements {@link ChunkingOperation} so the step-by-step execution controller or step-execution
+ * Implements {@link StageOperation} so the step-by-step execution controller or step-execution
  * endpoints can invoke chunking directly without Spring event dispatch.
  *
  * Responsibilities:
@@ -37,7 +38,7 @@ import static com.lorevault.api.common.HashUtils.generateSha256Hash;
 @Component
 @Slf4j
 @ForStage(StageKey.CHUNKING)
-public class ChunkingHandler implements ChunkingOperation {
+public class ChunkingHandler implements StageOperation {
 
     private final ChapterGraphRepository chapterRepo;
     private final ChunkGraphRepository chunkRepo;

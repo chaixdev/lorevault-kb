@@ -2,8 +2,11 @@ package com.lorevault.api.orchestration.pipeline;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Relationship;
@@ -22,7 +25,10 @@ import java.util.UUID;
  * at runtime. These edges are created when a job starts and recreated during
  * cascade invalidation.
  */
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -66,6 +72,8 @@ public class Stage {
      * These edges mirror the static {@code StageDag} topology and are used
      * by the coordinator for fan-in evaluation via reverse traversal.
      */
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     @Relationship(type = "TRIGGERS", direction = Relationship.Direction.OUTGOING)
     private java.util.List<Stage> triggers;
 

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lorevault.api.ai.infrastructure.LlmCallLoggingService;
 import com.lorevault.api.ai.infrastructure.PromptName;
 import com.lorevault.api.ai.infrastructure.PromptRepository;
-import com.lorevault.api.config.LlmClientProperties;
 import com.lorevault.api.config.LoreVaultPromptProperties;
 import com.lorevault.api.config.LoreVaultModelsProperties;
 import com.lorevault.api.ai.ModelSlot;
@@ -41,7 +40,6 @@ public class LlmClient {
     private final LoreVaultModelsProperties modelProperties;
     private final LlmCallLoggingService llmLog;
     private final ObjectMapper objectMapper;
-    private final LlmClientProperties llmClientProperties;
     
     @Qualifier("llmRetryTemplate")
     private final RetryTemplate retryTemplate;
@@ -53,7 +51,6 @@ public class LlmClient {
                      LoreVaultModelsProperties modelProperties,
                      LlmCallLoggingService llmLog,
                      ObjectMapper objectMapper,
-                     LlmClientProperties llmClientProperties,
                      @Qualifier("llmRetryTemplate") RetryTemplate retryTemplate) {
         this.nlpSmallChatClient = nlpSmallChatClient;
         this.nlpBigChatClient = nlpBigChatClient;
@@ -62,7 +59,6 @@ public class LlmClient {
         this.modelProperties = modelProperties;
         this.llmLog = llmLog;
         this.objectMapper = objectMapper;
-        this.llmClientProperties = llmClientProperties;
         this.retryTemplate = retryTemplate;
     }
 
@@ -185,7 +181,7 @@ public class LlmClient {
                 systemPrompt,
                 userInput,
                 chatClient,
-                llmClientProperties.nlpSmallModelId(),
+                modelProperties.nlpSmall().model(),
                 0.1,
                 EventMergeModels.EventMergePairResponse.class
         );
@@ -207,9 +203,9 @@ public class LlmClient {
     
     private String getModelIdForStage(StageKey stage) {
         return switch (stage) {
-            case SCENE_SEGMENTATION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getChapterSegmentationModel()) ? llmClientProperties.nlpBigModelId() : llmClientProperties.nlpSmallModelId();
-            case CHAPTER_EVENT_CONSOLIDATION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getSceneAnalysisModel()) ? llmClientProperties.nlpBigModelId() : llmClientProperties.nlpSmallModelId();
-            default -> llmClientProperties.nlpSmallModelId();
+            case SCENE_SEGMENTATION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getChapterSegmentationModel()) ? modelProperties.nlpBig().model() : modelProperties.nlpSmall().model();
+            case CHAPTER_EVENT_CONSOLIDATION -> ModelSlot.NLP_BIG.slotName().equals(promptProperties.getSceneAnalysisModel()) ? modelProperties.nlpBig().model() : modelProperties.nlpSmall().model();
+            default -> modelProperties.nlpSmall().model();
         };
     }
 

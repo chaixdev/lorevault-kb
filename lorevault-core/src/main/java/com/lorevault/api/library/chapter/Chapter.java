@@ -5,8 +5,11 @@ import com.lorevault.api.graph.event.scene.Scene;
 import com.lorevault.api.library.book.Book;
 import com.lorevault.api.library.book.PublicationCoordinates;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.neo4j.core.schema.Id;
@@ -26,7 +29,10 @@ import java.util.stream.Collectors;
  * Contains the full raw text and high-level metadata. Acts as the "source of truth"
  * from which scenes and chunks are derived.
  */
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Node("Chapter")
@@ -82,12 +88,16 @@ public class Chapter {
     /**
      * Scenes within this chapter, ordered by scene index
      */
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     @Relationship(type = "HAS_SCENE")
     private List<Scene> scenes = new ArrayList<>();
 
     /**
      * All chunks within this chapter
      */
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     @Relationship(type = "HAS_CHUNK")
     private List<Chunk> chunks = new ArrayList<>();
 
